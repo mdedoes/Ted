@@ -30,7 +30,7 @@ typedef struct ParagraphFrame
 			 *  This is very similar to the content rect in CSS2.
 			 *
 			 *  The first line potentially has a different
-			 *  rectangle. With a negative lirst line indent,
+			 *  rectangle. With a negative first line indent,
 			 *  the first line protrudes to the left in 
 			 *  left-to-right paragraphs and to the right in 
 			 *  right-to-left paragraphs.

@@ -49,9 +49,9 @@ INCLUDES=			\
 	-I../docLayout		\
 	-I../docEdit		\
 	-I../docBuf		\
+	-I../docField		\
 	-I../docBase		\
 	-I../ind		\
-	-I../drawMeta		\
 	-I../bitmap		\
 	-I../utilPs		\
 	-I../docFont		\
@@ -147,7 +147,7 @@ duplicates: $(OBS)
 includes:
 	includes.sh tedToolsConfig.h $(INCLUDES)
 
-# deps -I../include -I../tedFront -I../appTools -I../guiInterface -I../docHtml -I../docLayout -I../docRtf -I../docEdit -I../docBuf -I../docBase -I../drawMeta -I../guiBase -I../appFrame -I../utilPs -I../docFont -I../textEncoding -I../utilGeo -I../appUtil -I/usr/X11R6/include -I../bitmap -I../ind -I/usr/include/gtk-2.0 -I/usr/lib/x86_64-linux-gnu/gtk-2.0/include -I/usr/include/atk-1.0 -I/usr/include/cairo -I/usr/include/gdk-pixbuf-2.0 -I/usr/include/pango-1.0 -I/usr/include/gio-unix-2.0/ -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/pixman-1 -I/usr/include/freetype2 -I/usr/include/libpng12
+# deps -I../include -I../tedFront -I../appTools -I../guiInterface -I../docHtml -I../docLayout -I../docRtf -I../docEdit -I../docBuf -I../docField -I../docBase -I../guiBase -I../appFrame -I../utilPs -I../docFont -I../textEncoding -I../utilGeo -I../appUtil -I/usr/X11R6/include -I../bitmap -I../ind -I/usr/include/gtk-2.0 -I/usr/lib/x86_64-linux-gnu/gtk-2.0/include -I/usr/include/atk-1.0 -I/usr/include/cairo -I/usr/include/gdk-pixbuf-2.0 -I/usr/include/pango-1.0 -I/usr/include/gio-unix-2.0/ -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/pixman-1 -I/usr/include/freetype2 -I/usr/include/libpng12
 ################################# !! sh
 
 tedAppFormatTool.o: \
@@ -234,14 +234,14 @@ tedBookmarkList.o: \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
-    ../docBase/docChildFields.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docInsertedObjectList.h \
     ../docBase/docListNumberTree.h \
     ../docBase/docStyleSheet.h \
     ../docBuf/docBuf.h \
     ../docBuf/docDocumentTree.h \
     ../docBuf/docDrawingShapeList.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
     ../guiBase/guiBaseGtk.h \
     ../guiBase/guiBase.h \
     ../guiBase/guiBaseMotif.h \
@@ -261,15 +261,15 @@ tedBookmarkTool.o: \
     ../appUtil/appUtilConfig.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPropMask.h \
-    ../docBase/docBookmarkField.h \
     ../docBase/docCellProperties.h \
-    ../docBase/docFieldKind.h \
     ../docBase/docSelectionScope.h \
     ../docBuf/docField.h \
     ../docBuf/docSelect.h \
     ../docBuf/docTableRectangle.h \
     ../docEdit/docEditCommand.h \
     ../docEdit/docSelectionDescription.h \
+    ../docField/docBookmarkField.h \
+    ../docField/docFieldKind.h \
     ../guiBase/guiBaseGtk.h \
     ../guiBase/guiBase.h \
     ../guiBase/guiBaseMotif.h \
@@ -300,8 +300,6 @@ tedBorderTool.o: \
     ../appUtil/utilPalette.h \
     ../appUtil/utilPropMask.h \
     ../docBase/docBorderProperties.h \
-    ../docBase/docChildFields.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docInsertedObjectList.h \
     ../docBase/docListNumberTree.h \
@@ -311,6 +309,8 @@ tedBorderTool.o: \
     ../docBuf/docBuf.h \
     ../docBuf/docDocumentTree.h \
     ../docBuf/docDrawingShapeList.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
     ../docLayout/docScreenDrawOrnaments.h \
     ../guiBase/guiBaseGtk.h \
     ../guiBase/guiBase.h \
@@ -552,8 +552,6 @@ tedFontTool.o: \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
     ../docBase/docCellProperties.h \
-    ../docBase/docChildFields.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docInsertedObjectList.h \
@@ -572,9 +570,11 @@ tedFontTool.o: \
     ../docBuf/docTableRectangle.h \
     ../docEdit/docEditCommand.h \
     ../docEdit/docSelectionDescription.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
     ../docFont/docExpandedTextAttribute.h \
     ../docFont/fontDocFont.h \
-    ../docFont/fontDocFontList.h \
+    ../docFont/fontDocFontListImpl.h \
     ../guiBase/guiBaseGtk.h \
     ../guiBase/guiBase.h \
     ../guiBase/guiBaseMotif.h \
@@ -662,8 +662,6 @@ tedHeaderFooterTool.o: \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
     ../docBase/docCellProperties.h \
-    ../docBase/docChildFields.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docInsertedObjectList.h \
     ../docBase/docLayoutPosition.h \
@@ -686,6 +684,8 @@ tedHeaderFooterTool.o: \
     ../docBuf/docTreeNode.h \
     ../docEdit/docEditCommand.h \
     ../docEdit/docSelectionDescription.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
     ../guiBase/guiBaseGtk.h \
     ../guiBase/guiBase.h \
     ../guiBase/guiBaseMotif.h \
@@ -799,8 +799,6 @@ tedLanguageTool.o: \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
     ../docBase/docCellProperties.h \
-    ../docBase/docChildFields.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docInsertedObjectList.h \
     ../docBase/docListNumberTree.h \
@@ -812,6 +810,8 @@ tedLanguageTool.o: \
     ../docBuf/docTableRectangle.h \
     ../docEdit/docEditCommand.h \
     ../docEdit/docSelectionDescription.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
     ../docFont/docExpandedTextAttribute.h \
     ../guiBase/guiBaseGtk.h \
     ../guiBase/guiBase.h \
@@ -842,16 +842,16 @@ tedLinkTool.o: \
     ../appUtil/appUtilConfig.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPropMask.h \
-    ../docBase/docBookmarkField.h \
     ../docBase/docCellProperties.h \
-    ../docBase/docFieldKind.h \
-    ../docBase/docHyperlinkField.h \
     ../docBase/docSelectionScope.h \
     ../docBuf/docField.h \
     ../docBuf/docSelect.h \
     ../docBuf/docTableRectangle.h \
     ../docEdit/docEditCommand.h \
     ../docEdit/docSelectionDescription.h \
+    ../docField/docBookmarkField.h \
+    ../docField/docFieldKind.h \
+    ../docField/docHyperlinkField.h \
     ../guiBase/guiBaseGtk.h \
     ../guiBase/guiBase.h \
     ../guiBase/guiBaseMotif.h \
@@ -879,8 +879,6 @@ tedListTool.o: \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
     ../docBase/docCellProperties.h \
-    ../docBase/docChildFields.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docInsertedObjectList.h \
@@ -904,6 +902,8 @@ tedListTool.o: \
     ../docBuf/docTableRectangle.h \
     ../docEdit/docEditCommand.h \
     ../docEdit/docSelectionDescription.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
     ../guiBase/guiBaseGtk.h \
     ../guiBase/guiBase.h \
     ../guiBase/guiBaseMotif.h \
@@ -937,8 +937,6 @@ tedNotesTool.o: \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
-    ../docBase/docChildFields.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docInsertedObjectList.h \
     ../docBase/docLayoutPosition.h \
@@ -959,6 +957,8 @@ tedNotesTool.o: \
     ../docBuf/docSelect.h \
     ../docBuf/docTreeNode.h \
     ../docEdit/docEditCommand.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
     ../guiBase/guiBaseGtk.h \
     ../guiBase/guiBase.h \
     ../guiBase/guiBaseMotif.h \
@@ -990,8 +990,6 @@ tedPageLayoutTool.o: \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
     ../docBase/docCellProperties.h \
-    ../docBase/docChildFields.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docInsertedObjectList.h \
     ../docBase/docLayoutPosition.h \
@@ -1013,6 +1011,8 @@ tedPageLayoutTool.o: \
     ../docBuf/docTreeNode.h \
     ../docEdit/docEditCommand.h \
     ../docEdit/docSelectionDescription.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
     ../guiBase/guiBaseGtk.h \
     ../guiBase/guiBase.h \
     ../guiBase/guiBaseMotif.h \
@@ -1243,8 +1243,6 @@ tedSectionTool.o: \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
     ../docBase/docBreakKind.h \
-    ../docBase/docChildFields.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docInsertedObjectList.h \
     ../docBase/docLayoutPosition.h \
@@ -1265,6 +1263,8 @@ tedSectionTool.o: \
     ../docBuf/docSelect.h \
     ../docBuf/docTreeNode.h \
     ../docEdit/docEditCommand.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
     ../guiBase/guiBaseGtk.h \
     ../guiBase/guiBase.h \
     ../guiBase/guiBaseMotif.h \
@@ -1296,8 +1296,6 @@ tedShadingTool.o: \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPalette.h \
     ../appUtil/utilPropMask.h \
-    ../docBase/docChildFields.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docInsertedObjectList.h \
     ../docBase/docItemShading.h \
@@ -1308,6 +1306,8 @@ tedShadingTool.o: \
     ../docBuf/docBuf.h \
     ../docBuf/docDocumentTree.h \
     ../docBuf/docDrawingShapeList.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
     ../guiBase/guiBaseGtk.h \
     ../guiBase/guiBase.h \
     ../guiBase/guiBaseMotif.h \
@@ -1336,8 +1336,6 @@ tedSpellTool.o: \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
     ../docBase/docCellProperties.h \
-    ../docBase/docChildFields.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docInsertedObjectList.h \
     ../docBase/docListNumberTree.h \
     ../docBase/docSelectionScope.h \
@@ -1349,6 +1347,8 @@ tedSpellTool.o: \
     ../docBuf/docTableRectangle.h \
     ../docEdit/docEditCommand.h \
     ../docEdit/docSelectionDescription.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
     ../guiBase/guiBaseGtk.h \
     ../guiBase/guiBase.h \
     ../guiBase/guiBaseMotif.h \
@@ -1377,8 +1377,6 @@ tedSymbolPicker.o: \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
     ../docBase/docCellProperties.h \
-    ../docBase/docChildFields.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docInsertedObjectList.h \
     ../docBase/docListNumberTree.h \
@@ -1390,8 +1388,10 @@ tedSymbolPicker.o: \
     ../docBuf/docTableRectangle.h \
     ../docEdit/docEditCommand.h \
     ../docEdit/docSelectionDescription.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
     ../docFont/docExpandedTextAttribute.h \
-    ../docFont/fontDocFontList.h \
+    ../docFont/fontDocFontListImpl.h \
     ../guiBase/guiBaseGtk.h \
     ../guiBase/guiBase.h \
     ../guiBase/guiBaseMotif.h \
@@ -1459,8 +1459,6 @@ tedTabsTool.o: \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
     ../docBase/docCellProperties.h \
-    ../docBase/docChildFields.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docInsertedObjectList.h \
     ../docBase/docListNumberTree.h \
@@ -1479,6 +1477,8 @@ tedTabsTool.o: \
     ../docBuf/docTableRectangle.h \
     ../docEdit/docEditCommand.h \
     ../docEdit/docSelectionDescription.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
     ../guiBase/guiBaseGtk.h \
     ../guiBase/guiBase.h \
     ../guiBase/guiBaseMotif.h \
@@ -1518,8 +1518,6 @@ tedTextOrnamentsTool.o: \
     ../appUtil/utilPropMask.h \
     ../docBase/docBorderProperties.h \
     ../docBase/docCellProperties.h \
-    ../docBase/docChildFields.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docInsertedObjectList.h \
     ../docBase/docItemShading.h \
@@ -1532,6 +1530,8 @@ tedTextOrnamentsTool.o: \
     ../docBuf/docTableRectangle.h \
     ../docEdit/docEditCommand.h \
     ../docEdit/docSelectionDescription.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
     ../docFont/docExpandedTextAttribute.h \
     ../guiBase/guiBaseGtk.h \
     ../guiBase/guiBase.h \
@@ -1566,8 +1566,6 @@ tedThisNoteTool.o: \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
     ../docBase/docCellProperties.h \
-    ../docBase/docChildFields.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docInsertedObjectList.h \
     ../docBase/docLayoutPosition.h \
@@ -1583,7 +1581,6 @@ tedThisNoteTool.o: \
     ../docBuf/docDocumentNote.h \
     ../docBuf/docDocumentTree.h \
     ../docBuf/docDrawingShapeList.h \
-    ../docBuf/docEvalField.h \
     ../docBuf/docNodeTree.h \
     ../docBuf/docNotes.h \
     ../docBuf/docParaNode.h \
@@ -1593,6 +1590,9 @@ tedThisNoteTool.o: \
     ../docBuf/docTreeNode.h \
     ../docEdit/docEditCommand.h \
     ../docEdit/docSelectionDescription.h \
+    ../docField/docChftnField.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
     ../guiBase/guiBaseGtk.h \
     ../guiBase/guiBase.h \
     ../guiBase/guiBaseMotif.h \
@@ -1622,9 +1622,6 @@ tedTocTool.o: \
     ../appUtil/utilPropMask.h \
     ../appUtil/utilTree.h \
     ../docBase/docCellProperties.h \
-    ../docBase/docChildFields.h \
-    ../docBase/docDocumentFieldList.h \
-    ../docBase/docFieldKind.h \
     ../docBase/docInsertedObjectList.h \
     ../docBase/docLayoutPosition.h \
     ../docBase/docListDepth.h \
@@ -1632,7 +1629,6 @@ tedTocTool.o: \
     ../docBase/docParaProperties.h \
     ../docBase/docSelectionScope.h \
     ../docBase/docStyleSheet.h \
-    ../docBase/docTocField.h \
     ../docBuf/docBuf.h \
     ../docBuf/docCellNode.h \
     ../docBuf/docDocumentTree.h \
@@ -1646,6 +1642,10 @@ tedTocTool.o: \
     ../docBuf/docTableRectangle.h \
     ../docBuf/docTreeNode.h \
     ../docEdit/docSelectionDescription.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../docField/docFieldKind.h \
+    ../docField/docTocField.h \
     ../guiBase/guiBaseGtk.h \
     ../guiBase/guiBase.h \
     ../guiBase/guiBaseMotif.h \

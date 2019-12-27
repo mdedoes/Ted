@@ -13,7 +13,6 @@
 #   include	"docParaBuilderImpl.h"
 #   include	"docTreeNode.h"
 #   include	"docDocumentTree.h"
-#   include	"docBuf.h"
 #   include	"docTreeNode.h"
 #   include	"docFields.h"
 #   include	<docTextParticule.h>
@@ -54,7 +53,7 @@ DocumentField * docParaBuilderAppendFieldHead(
     epHead.epParaNr= pb->pbParaNr;
     epHead.epStroff= docParaStrlen( paraNode );
 
-    df= docClaimField( &(bd->bdFieldList) );
+    df= docClaimField( bd );
     if  ( ! df )
 	{ XDEB(df); goto ready;	}
 

@@ -8,7 +8,7 @@
 
 #   include	<stddef.h>
 
-#   include	"tedEdit.h"
+#   include	"tedEditOperation.h"
 #   include	<tedDocFront.h>
 #   include	"tedDocument.h"
 #   include	<docRtfTrace.h>
@@ -23,6 +23,7 @@
 #   include	<docFieldInstructions.h>
 #   include	<docFields.h>
 #   include	<docBuf.h>
+#   include	<docRecalculateFields.h>
 
 #   include	<appDebugon.h>
 
@@ -36,6 +37,8 @@ int tedRefreshTocField(		DocumentSelection *	dsAroundToc,
 				TedEditOperation *	teo,
 				struct DocumentField *	dfToc )
     {
+    int				rval= 0;
+
     const LayoutContext *	lc= &(teo->teoLayoutContext);
     EditOperation *		eo= &(teo->teoEo);
 
@@ -45,18 +48,19 @@ int tedRefreshTocField(		DocumentSelection *	dsAroundToc,
     int				reachedBottom= 0;
     DocumentSelection		dsInsideToc;
 
+    RecalculateFields	rf;
+
+    docInitRecalculateFields( &rf );
+
     if  ( docRecalculateOneTocField( eo->eoDocument, dfToc ) )
-	{ LDEB(1); return -1;	}
+	{ LDEB(1); rval= -1; goto ready;	}
 
     if  ( tedLayoutDocumentBody( &reachedBottom, &(teo->teoLayoutContext) ) )
-	{ LDEB(1); return -1;	}
+	{ LDEB(1); rval= -1; goto ready;	}
 
     {
     int			page= 0;
     struct BufferDocument *	bd= eo->eoDocument;
-    RecalculateFields	rf;
-
-    docInitRecalculateFields( &rf );
 
     rf.rfDocument= bd;
     rf.rfUpdateFlags= FIELDdoDOC_FORMATTED|FIELDdoDOC_COMPLETE|FIELDdoDOC_INFO;
@@ -67,17 +71,17 @@ int tedRefreshTocField(		DocumentSelection *	dsAroundToc,
 
     if  ( docRecalculateTextLevelFieldsInDocumentTree( &rf, &(bd->bdBody),
 				    bd->bdBody.dtRoot->biChildren[0], page ) )
-	{ LDEB(1); return -1;	}
+	{ LDEB(1); rval= -1; goto ready;	}
 
     if  ( rf.rfFieldsUpdated > 0					&&
 	  tedLayoutDocumentBody( &reachedBottom,
 					  &(teo->teoLayoutContext) )	)
-	{ LDEB(1); return -1;	}
+	{ LDEB(1); rval= -1; goto ready;	}
     }
 
     if  ( docDelimitFieldInDoc( &dsInsideToc, dsAroundToc,
 				&headPart, &tailPart, eo->eoDocument, dfToc ) )
-	{ LDEB(1); return -1; }
+	{ LDEB(1); rval= -1; goto ready; }
 
     docEditIncludeNodeInReformatRange( eo, dsAroundToc->dsHead.dpNode );
     docEditIncludeNodeInReformatRange( eo, dsAroundToc->dsTail.dpNode );
@@ -88,7 +92,11 @@ int tedRefreshTocField(		DocumentSelection *	dsAroundToc,
     if  ( reachedBottom )
 	{ teo->teoRefreshScreenRectangle= 1;	}
 
-    return 0;
+  ready:
+
+    docCleanRecalculateFields( &rf );
+
+    return rval;
     }
 
 /************************************************************************/

@@ -10,8 +10,6 @@
 #   include	<stdlib.h>
 #   include	<string.h>
 
-#   include	<docEvalField.h>
-
 #   include	"tedThisNoteTool.h"
 #   include	<tedAppFront.h>
 #   include	<docTreeType.h>
@@ -29,6 +27,7 @@
 #   include	<appGuiResource.h>
 #   include	<guiWidgets.h>
 #   include	<docSectProperties.h>
+#   include	<docChftnField.h>
 #   include	"tedFormatToolSubject.h"
 
 #   include	<appDebugon.h>

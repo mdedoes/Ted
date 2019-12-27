@@ -18,6 +18,7 @@ struct BufferDocument;
 struct DocumentField;
 struct DocumentSelection;
 struct BufferItem;
+struct MemoryBuffer;
 
 /************************************************************************/
 /*									*/
@@ -127,5 +128,19 @@ extern int docCheckNoteSeparatorExistence(
 extern int docCheckSeparatorExistenceForNoteType(
 				struct BufferDocument *		bd,
 				int				noteTreeType );
+
+extern int docSetNoteLinks(	struct MemoryBuffer *		mbTarget,
+				struct MemoryBuffer *		mbSource,
+				struct BufferItem *		paraNode,
+				const struct DocumentField *	dfChftn );
+
+extern int docCollectNoteTitle(	struct MemoryBuffer *		mbTitle,
+				const struct DocumentNote *	dn,
+				struct BufferDocument *		bd );
+
+extern int docGetNotePosition(	struct DocumentNote *		dn,
+				struct BufferDocument *		bd );
+
+extern int docGetEndnotePlacement(	struct BufferDocument *	bd );
 
 #   endif

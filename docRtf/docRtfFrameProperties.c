@@ -20,7 +20,8 @@
 /*									*/
 /************************************************************************/
 
-void docRtfSaveParaFrameProperties( RtfWriter *		rwc,
+void docRtfSaveParaFrameProperties(
+				RtfWriter *			rwc,
 				const FrameProperties *		fp )
     {
     docRtfWriteArgTag( rwc, "absw", fp->fpWideTwips );

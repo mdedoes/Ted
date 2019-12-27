@@ -3,36 +3,36 @@
 #   include "ucdIntern.h"
 #   include "ucdGeneralCategory.h"
 
-#   define Ps	UCDgc_Ps
-#   define Cn	UCDgc_Cn
-#   define Lu	UCDgc_Lu
-#   define Me	UCDgc_Me
-#   define Sc	UCDgc_Sc
-#   define Zs	UCDgc_Zs
-#   define Pe	UCDgc_Pe
-#   define Cf	UCDgc_Cf
-#   define Lm	UCDgc_Lm
-#   define Mc	UCDgc_Mc
-#   define So	UCDgc_So
-#   define Pf	UCDgc_Pf
-#   define Co	UCDgc_Co
-#   define Nd	UCDgc_Nd
-#   define Cs	UCDgc_Cs
-#   define Pd	UCDgc_Pd
-#   define Zl	UCDgc_Zl
-#   define Sk	UCDgc_Sk
-#   define Ll	UCDgc_Ll
-#   define No	UCDgc_No
-#   define Pi	UCDgc_Pi
-#   define Nl	UCDgc_Nl
-#   define Sm	UCDgc_Sm
-#   define Po	UCDgc_Po
-#   define Zp	UCDgc_Zp
-#   define Lt	UCDgc_Lt
-#   define Lo	UCDgc_Lo
 #   define Cc	UCDgc_Cc
+#   define Cf	UCDgc_Cf
+#   define Cn	UCDgc_Cn
+#   define Co	UCDgc_Co
+#   define Cs	UCDgc_Cs
+#   define Ll	UCDgc_Ll
+#   define Lm	UCDgc_Lm
+#   define Lo	UCDgc_Lo
+#   define Lt	UCDgc_Lt
+#   define Lu	UCDgc_Lu
+#   define Mc	UCDgc_Mc
+#   define Me	UCDgc_Me
 #   define Mn	UCDgc_Mn
+#   define Nd	UCDgc_Nd
+#   define Nl	UCDgc_Nl
+#   define No	UCDgc_No
 #   define Pc	UCDgc_Pc
+#   define Pd	UCDgc_Pd
+#   define Pe	UCDgc_Pe
+#   define Pf	UCDgc_Pf
+#   define Pi	UCDgc_Pi
+#   define Po	UCDgc_Po
+#   define Ps	UCDgc_Ps
+#   define Sc	UCDgc_Sc
+#   define Sk	UCDgc_Sk
+#   define Sm	UCDgc_Sm
+#   define So	UCDgc_So
+#   define Zl	UCDgc_Zl
+#   define Zp	UCDgc_Zp
+#   define Zs	UCDgc_Zs
 
 static const unsigned char    UCD_GC_0000_000f[16]= {Cc,Cc,Cc,Cc,Cc,Cc,Cc,Cc,Cc,Cc,Cc,Cc,Cc,Cc,Cc,Cc,};
 static const unsigned char    UCD_GC_0020_002f[16]= {Zs,Po,Po,Po,Sc,Po,Po,Po,Ps,Pe,Po,Sm,Po,Pd,Po,Po,};
@@ -250,9 +250,10 @@ static const unsigned char    UCD_GC_0810_081f[16]= {Lo,Lo,Lo,Lo,Lo,Lo,Mn,Mn,Mn,
 static const unsigned char    UCD_GC_0820_082f[16]= {Mn,Mn,Mn,Mn,Lm,Mn,Mn,Mn,Lm,Mn,Mn,Mn,Mn,Mn,Cn,Cn,};
 static const unsigned char    UCD_GC_0830_083f[16]= {Po,Po,Po,Po,Po,Po,Po,Po,Po,Po,Po,Po,Po,Po,Po,Cn,};
 static const unsigned char    UCD_GC_0850_085f[16]= {Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Mn,Mn,Mn,Cn,Cn,Po,Cn,};
-static const unsigned char    UCD_GC_0860_086f[16]= {Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,};
-static const unsigned char    UCD_GC_08b0_08bf[16]= {Lo,Lo,Lo,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,};
-static const unsigned char    UCD_GC_08e0_08ef[16]= {Cn,Cn,Cn,Cn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,};
+static const unsigned char    UCD_GC_0870_087f[16]= {Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,};
+static const unsigned char    UCD_GC_08b0_08bf[16]= {Lo,Lo,Lo,Lo,Lo,Cn,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Cn,Cn,};
+static const unsigned char    UCD_GC_08d0_08df[16]= {Cn,Cn,Cn,Cn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,};
+static const unsigned char    UCD_GC_08e0_08ef[16]= {Mn,Mn,Cf,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,};
 static const unsigned char * const UCD_GC_0800_08ff[16]= {
     UCD_GC_05d0_05df, /*  UCD_GC_0800_080f  */
     UCD_GC_0810_081f,
@@ -260,14 +261,14 @@ static const unsigned char * const UCD_GC_0800_08ff[16]= {
     UCD_GC_0830_083f,
     UCD_GC_05d0_05df, /*  UCD_GC_0840_084f  */
     UCD_GC_0850_085f,
-    UCD_GC_0860_086f,
-    UCD_GC_0860_086f, /*  UCD_GC_0870_087f  */
-    UCD_GC_0860_086f, /*  UCD_GC_0880_088f  */
-    UCD_GC_0860_086f, /*  UCD_GC_0890_089f  */
+    UCD_GC_05e0_05ef, /*  UCD_GC_0860_086f  */
+    UCD_GC_0870_087f,
+    UCD_GC_0870_087f, /*  UCD_GC_0880_088f  */
+    UCD_GC_0870_087f, /*  UCD_GC_0890_089f  */
     UCD_GC_05d0_05df, /*  UCD_GC_08a0_08af  */
     UCD_GC_08b0_08bf,
-    UCD_GC_0860_086f, /*  UCD_GC_08c0_08cf  */
-    UCD_GC_0860_086f, /*  UCD_GC_08d0_08df  */
+    UCD_GC_0870_087f, /*  UCD_GC_08c0_08cf  */
+    UCD_GC_08d0_08df,
     UCD_GC_08e0_08ef,
     UCD_GC_0300_030f, /*  UCD_GC_08f0_08ff  */
 };
@@ -284,7 +285,7 @@ static const unsigned char    UCD_GC_09b0_09bf[16]= {Lo,Cn,Lo,Cn,Cn,Cn,Lo,Lo,Lo,
 static const unsigned char    UCD_GC_09c0_09cf[16]= {Mc,Mn,Mn,Mn,Mn,Cn,Cn,Mc,Mc,Cn,Cn,Mc,Mc,Mn,Lo,Cn,};
 static const unsigned char    UCD_GC_09d0_09df[16]= {Cn,Cn,Cn,Cn,Cn,Cn,Cn,Mc,Cn,Cn,Cn,Cn,Lo,Lo,Cn,Lo,};
 static const unsigned char    UCD_GC_09e0_09ef[16]= {Lo,Lo,Mn,Mn,Cn,Cn,Nd,Nd,Nd,Nd,Nd,Nd,Nd,Nd,Nd,Nd,};
-static const unsigned char    UCD_GC_09f0_09ff[16]= {Lo,Lo,Sc,Sc,No,No,No,No,No,No,So,Sc,Cn,Cn,Cn,Cn,};
+static const unsigned char    UCD_GC_09f0_09ff[16]= {Lo,Lo,Sc,Sc,No,No,No,No,No,No,So,Sc,Lo,Po,Cn,Cn,};
 static const unsigned char * const UCD_GC_0900_09ff[16]= {
     UCD_GC_0900_090f,
     UCD_GC_05d0_05df, /*  UCD_GC_0910_091f  */
@@ -314,7 +315,7 @@ static const unsigned char    UCD_GC_0a90_0a9f[16]= {Lo,Lo,Cn,Lo,Lo,Lo,Lo,Lo,Lo,
 static const unsigned char    UCD_GC_0ab0_0abf[16]= {Lo,Cn,Lo,Lo,Cn,Lo,Lo,Lo,Lo,Lo,Cn,Cn,Mn,Lo,Mc,Mc,};
 static const unsigned char    UCD_GC_0ac0_0acf[16]= {Mc,Mn,Mn,Mn,Mn,Mn,Cn,Mn,Mn,Mc,Cn,Mc,Mc,Mn,Cn,Cn,};
 static const unsigned char    UCD_GC_0ad0_0adf[16]= {Lo,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,};
-static const unsigned char    UCD_GC_0af0_0aff[16]= {Po,Sc,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,};
+static const unsigned char    UCD_GC_0af0_0aff[16]= {Po,Sc,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Lo,Mn,Mn,Mn,Mn,Mn,Mn,};
 static const unsigned char * const UCD_GC_0a00_0aff[16]= {
     UCD_GC_0a00_0a0f,
     UCD_GC_0990_099f, /*  UCD_GC_0a10_0a1f  */
@@ -367,9 +368,9 @@ static const unsigned char    UCD_GC_0c00_0c0f[16]= {Mn,Mc,Mc,Mc,Cn,Lo,Lo,Lo,Lo,
 static const unsigned char    UCD_GC_0c10_0c1f[16]= {Lo,Cn,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,};
 static const unsigned char    UCD_GC_0c30_0c3f[16]= {Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Cn,Cn,Cn,Lo,Mn,Mn,};
 static const unsigned char    UCD_GC_0c40_0c4f[16]= {Mn,Mc,Mc,Mc,Mc,Cn,Mn,Mn,Mn,Cn,Mn,Mn,Mn,Mn,Cn,Cn,};
-static const unsigned char    UCD_GC_0c50_0c5f[16]= {Cn,Cn,Cn,Cn,Cn,Mn,Mn,Cn,Lo,Lo,Cn,Cn,Cn,Cn,Cn,Cn,};
+static const unsigned char    UCD_GC_0c50_0c5f[16]= {Cn,Cn,Cn,Cn,Cn,Mn,Mn,Cn,Lo,Lo,Lo,Cn,Cn,Cn,Cn,Cn,};
 static const unsigned char    UCD_GC_0c70_0c7f[16]= {Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,No,No,No,No,No,No,No,So,};
-static const unsigned char    UCD_GC_0c80_0c8f[16]= {Cn,Mn,Mc,Mc,Cn,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Cn,Lo,Lo,};
+static const unsigned char    UCD_GC_0c80_0c8f[16]= {Lo,Mn,Mc,Mc,Cn,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Cn,Lo,Lo,};
 static const unsigned char    UCD_GC_0cb0_0cbf[16]= {Lo,Lo,Lo,Lo,Cn,Lo,Lo,Lo,Lo,Lo,Cn,Cn,Mn,Lo,Mc,Mn,};
 static const unsigned char    UCD_GC_0cc0_0ccf[16]= {Mc,Mc,Mc,Mc,Mc,Cn,Mn,Mc,Mc,Cn,Mc,Mc,Mn,Mn,Cn,Cn,};
 static const unsigned char    UCD_GC_0cd0_0cdf[16]= {Cn,Cn,Cn,Cn,Cn,Mc,Mc,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Lo,Cn,};
@@ -392,10 +393,11 @@ static const unsigned char * const UCD_GC_0c00_0cff[16]= {
     UCD_GC_09e0_09ef, /*  UCD_GC_0ce0_0cef  */
     UCD_GC_0cf0_0cff,
 };
-static const unsigned char    UCD_GC_0d30_0d3f[16]= {Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Cn,Cn,Lo,Mc,Mc,};
-static const unsigned char    UCD_GC_0d40_0d4f[16]= {Mc,Mn,Mn,Mn,Mn,Cn,Mc,Mc,Mc,Cn,Mc,Mc,Mc,Mn,Lo,Cn,};
-static const unsigned char    UCD_GC_0d50_0d5f[16]= {Cn,Cn,Cn,Cn,Cn,Cn,Cn,Mc,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,};
-static const unsigned char    UCD_GC_0d70_0d7f[16]= {No,No,No,No,No,No,Cn,Cn,Cn,So,Lo,Lo,Lo,Lo,Lo,Lo,};
+static const unsigned char    UCD_GC_0d00_0d0f[16]= {Mn,Mn,Mc,Mc,Cn,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Cn,Lo,Lo,};
+static const unsigned char    UCD_GC_0d30_0d3f[16]= {Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Mn,Mn,Lo,Mc,Mc,};
+static const unsigned char    UCD_GC_0d40_0d4f[16]= {Mc,Mn,Mn,Mn,Mn,Cn,Mc,Mc,Mc,Cn,Mc,Mc,Mc,Mn,Lo,So,};
+static const unsigned char    UCD_GC_0d50_0d5f[16]= {Cn,Cn,Cn,Cn,Lo,Lo,Lo,Mc,No,No,No,No,No,No,No,Lo,};
+static const unsigned char    UCD_GC_0d70_0d7f[16]= {No,No,No,No,No,No,No,No,No,So,Lo,Lo,Lo,Lo,Lo,Lo,};
 static const unsigned char    UCD_GC_0d80_0d8f[16]= {Cn,Cn,Mc,Mc,Cn,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,};
 static const unsigned char    UCD_GC_0d90_0d9f[16]= {Lo,Lo,Lo,Lo,Lo,Lo,Lo,Cn,Cn,Cn,Lo,Lo,Lo,Lo,Lo,Lo,};
 static const unsigned char    UCD_GC_0db0_0dbf[16]= {Lo,Lo,Cn,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Cn,Lo,Cn,Cn,};
@@ -403,7 +405,7 @@ static const unsigned char    UCD_GC_0dc0_0dcf[16]= {Lo,Lo,Lo,Lo,Lo,Lo,Lo,Cn,Cn,
 static const unsigned char    UCD_GC_0dd0_0ddf[16]= {Mc,Mc,Mn,Mn,Mn,Cn,Mn,Cn,Mc,Mc,Mc,Mc,Mc,Mc,Mc,Mc,};
 static const unsigned char    UCD_GC_0df0_0dff[16]= {Cn,Cn,Mc,Mc,Po,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,};
 static const unsigned char * const UCD_GC_0d00_0dff[16]= {
-    UCD_GC_0c80_0c8f, /*  UCD_GC_0d00_0d0f  */
+    UCD_GC_0d00_0d0f,
     UCD_GC_0c10_0c1f, /*  UCD_GC_0d10_0d1f  */
     UCD_GC_05d0_05df, /*  UCD_GC_0d20_0d2f  */
     UCD_GC_0d30_0d3f,
@@ -437,16 +439,16 @@ static const unsigned char * const UCD_GC_0e00_0eff[16]= {
     UCD_GC_0e30_0e3f,
     UCD_GC_0e40_0e4f,
     UCD_GC_0e50_0e5f,
-    UCD_GC_0860_086f, /*  UCD_GC_0e60_0e6f  */
-    UCD_GC_0860_086f, /*  UCD_GC_0e70_0e7f  */
+    UCD_GC_0870_087f, /*  UCD_GC_0e60_0e6f  */
+    UCD_GC_0870_087f, /*  UCD_GC_0e70_0e7f  */
     UCD_GC_0e80_0e8f,
     UCD_GC_0e90_0e9f,
     UCD_GC_0ea0_0eaf,
     UCD_GC_0eb0_0ebf,
     UCD_GC_0ec0_0ecf,
     UCD_GC_0ed0_0edf,
-    UCD_GC_0860_086f, /*  UCD_GC_0ee0_0eef  */
-    UCD_GC_0860_086f, /*  UCD_GC_0ef0_0eff  */
+    UCD_GC_0870_087f, /*  UCD_GC_0ee0_0eef  */
+    UCD_GC_0870_087f, /*  UCD_GC_0ef0_0eff  */
 };
 static const unsigned char    UCD_GC_0f00_0f0f[16]= {Lo,So,So,So,Po,Po,Po,Po,Po,Po,Po,Po,Po,Po,Po,Po,};
 static const unsigned char    UCD_GC_0f10_0f1f[16]= {Po,Po,Po,So,Po,So,So,So,Mn,Mn,So,So,So,So,So,So,};
@@ -475,8 +477,8 @@ static const unsigned char * const UCD_GC_0f00_0fff[16]= {
     UCD_GC_0fb0_0fbf,
     UCD_GC_0fc0_0fcf,
     UCD_GC_0fd0_0fdf,
-    UCD_GC_0860_086f, /*  UCD_GC_0fe0_0fef  */
-    UCD_GC_0860_086f, /*  UCD_GC_0ff0_0fff  */
+    UCD_GC_0870_087f, /*  UCD_GC_0fe0_0fef  */
+    UCD_GC_0870_087f, /*  UCD_GC_0ff0_0fff  */
 };
 static const unsigned char * const * const UCD_GC_0000_0fff[16]= {
     UCD_GC_0000_00ff,
@@ -569,7 +571,7 @@ static const unsigned char    UCD_GC_1350_135f[16]= {Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,
 static const unsigned char    UCD_GC_1360_136f[16]= {Po,Po,Po,Po,Po,Po,Po,Po,Po,No,No,No,No,No,No,No,};
 static const unsigned char    UCD_GC_1370_137f[16]= {No,No,No,No,No,No,No,No,No,No,No,No,No,Cn,Cn,Cn,};
 static const unsigned char    UCD_GC_1390_139f[16]= {So,So,So,So,So,So,So,So,So,So,Cn,Cn,Cn,Cn,Cn,Cn,};
-static const unsigned char    UCD_GC_13f0_13ff[16]= {Lo,Lo,Lo,Lo,Lo,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,};
+static const unsigned char    UCD_GC_13f0_13ff[16]= {Lu,Lu,Lu,Lu,Lu,Lu,Cn,Cn,Ll,Ll,Ll,Ll,Ll,Ll,Cn,Cn,};
 static const unsigned char * const UCD_GC_1300_13ff[16]= {
     UCD_GC_05d0_05df, /*  UCD_GC_1300_130f  */
     UCD_GC_12c0_12cf, /*  UCD_GC_1310_131f  */
@@ -581,11 +583,11 @@ static const unsigned char * const UCD_GC_1300_13ff[16]= {
     UCD_GC_1370_137f,
     UCD_GC_05d0_05df, /*  UCD_GC_1380_138f  */
     UCD_GC_1390_139f,
-    UCD_GC_05d0_05df, /*  UCD_GC_13a0_13af  */
-    UCD_GC_05d0_05df, /*  UCD_GC_13b0_13bf  */
-    UCD_GC_05d0_05df, /*  UCD_GC_13c0_13cf  */
-    UCD_GC_05d0_05df, /*  UCD_GC_13d0_13df  */
-    UCD_GC_05d0_05df, /*  UCD_GC_13e0_13ef  */
+    UCD_GC_00c0_00cf, /*  UCD_GC_13a0_13af  */
+    UCD_GC_00c0_00cf, /*  UCD_GC_13b0_13bf  */
+    UCD_GC_00c0_00cf, /*  UCD_GC_13c0_13cf  */
+    UCD_GC_00c0_00cf, /*  UCD_GC_13d0_13df  */
+    UCD_GC_00c0_00cf, /*  UCD_GC_13e0_13ef  */
     UCD_GC_13f0_13ff,
 };
 static const unsigned char    UCD_GC_1400_140f[16]= {Pd,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,};
@@ -661,6 +663,7 @@ static const unsigned char * const UCD_GC_1700_17ff[16]= {
 static const unsigned char    UCD_GC_1800_180f[16]= {Po,Po,Po,Po,Po,Po,Pd,Po,Po,Po,Po,Mn,Mn,Mn,Cf,Cn,};
 static const unsigned char    UCD_GC_1840_184f[16]= {Lo,Lo,Lo,Lm,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,};
 static const unsigned char    UCD_GC_1870_187f[16]= {Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,};
+static const unsigned char    UCD_GC_1880_188f[16]= {Lo,Lo,Lo,Lo,Lo,Mn,Mn,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,};
 static const unsigned char    UCD_GC_18a0_18af[16]= {Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Mn,Lo,Cn,Cn,Cn,Cn,Cn,};
 static const unsigned char    UCD_GC_18f0_18ff[16]= {Lo,Lo,Lo,Lo,Lo,Lo,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,};
 static const unsigned char * const UCD_GC_1800_18ff[16]= {
@@ -672,7 +675,7 @@ static const unsigned char * const UCD_GC_1800_18ff[16]= {
     UCD_GC_05d0_05df, /*  UCD_GC_1850_185f  */
     UCD_GC_05d0_05df, /*  UCD_GC_1860_186f  */
     UCD_GC_1870_187f,
-    UCD_GC_05d0_05df, /*  UCD_GC_1880_188f  */
+    UCD_GC_1880_188f,
     UCD_GC_05d0_05df, /*  UCD_GC_1890_189f  */
     UCD_GC_18a0_18af,
     UCD_GC_05d0_05df, /*  UCD_GC_18b0_18bf  */
@@ -686,9 +689,9 @@ static const unsigned char    UCD_GC_1920_192f[16]= {Mn,Mn,Mn,Mc,Mc,Mc,Mc,Mn,Mn,
 static const unsigned char    UCD_GC_1930_193f[16]= {Mc,Mc,Mn,Mc,Mc,Mc,Mc,Mc,Mc,Mn,Mn,Mn,Cn,Cn,Cn,Cn,};
 static const unsigned char    UCD_GC_1940_194f[16]= {So,Cn,Cn,Cn,Po,Po,Nd,Nd,Nd,Nd,Nd,Nd,Nd,Nd,Nd,Nd,};
 static const unsigned char    UCD_GC_1960_196f[16]= {Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Cn,Cn,};
+static const unsigned char    UCD_GC_1970_197f[16]= {Lo,Lo,Lo,Lo,Lo,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,};
 static const unsigned char    UCD_GC_19a0_19af[16]= {Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Cn,Cn,Cn,Cn,};
-static const unsigned char    UCD_GC_19b0_19bf[16]= {Mc,Mc,Mc,Mc,Mc,Mc,Mc,Mc,Mc,Mc,Mc,Mc,Mc,Mc,Mc,Mc,};
-static const unsigned char    UCD_GC_19c0_19cf[16]= {Mc,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Mc,Mc,Cn,Cn,Cn,Cn,Cn,Cn,};
+static const unsigned char    UCD_GC_19c0_19cf[16]= {Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Cn,Cn,Cn,Cn,Cn,Cn,};
 static const unsigned char    UCD_GC_19d0_19df[16]= {Nd,Nd,Nd,Nd,Nd,Nd,Nd,Nd,Nd,Nd,No,Cn,Cn,Cn,So,So,};
 static const unsigned char    UCD_GC_19e0_19ef[16]= {So,So,So,So,So,So,So,So,So,So,So,So,So,So,So,So,};
 static const unsigned char * const UCD_GC_1900_19ff[16]= {
@@ -699,11 +702,11 @@ static const unsigned char * const UCD_GC_1900_19ff[16]= {
     UCD_GC_1940_194f,
     UCD_GC_05d0_05df, /*  UCD_GC_1950_195f  */
     UCD_GC_1960_196f,
-    UCD_GC_13f0_13ff, /*  UCD_GC_1970_197f  */
+    UCD_GC_1970_197f,
     UCD_GC_05d0_05df, /*  UCD_GC_1980_198f  */
     UCD_GC_05d0_05df, /*  UCD_GC_1990_199f  */
     UCD_GC_19a0_19af,
-    UCD_GC_19b0_19bf,
+    UCD_GC_05d0_05df, /*  UCD_GC_19b0_19bf  */
     UCD_GC_19c0_19cf,
     UCD_GC_19d0_19df,
     UCD_GC_19e0_19ef,
@@ -728,10 +731,10 @@ static const unsigned char * const UCD_GC_1a00_1aff[16]= {
     UCD_GC_17e0_17ef, /*  UCD_GC_1a90_1a9f  */
     UCD_GC_1aa0_1aaf,
     UCD_GC_1ab0_1abf,
-    UCD_GC_0860_086f, /*  UCD_GC_1ac0_1acf  */
-    UCD_GC_0860_086f, /*  UCD_GC_1ad0_1adf  */
-    UCD_GC_0860_086f, /*  UCD_GC_1ae0_1aef  */
-    UCD_GC_0860_086f, /*  UCD_GC_1af0_1aff  */
+    UCD_GC_0870_087f, /*  UCD_GC_1ac0_1acf  */
+    UCD_GC_0870_087f, /*  UCD_GC_1ad0_1adf  */
+    UCD_GC_0870_087f, /*  UCD_GC_1ae0_1aef  */
+    UCD_GC_0870_087f, /*  UCD_GC_1af0_1aff  */
 };
 static const unsigned char    UCD_GC_1b00_1b0f[16]= {Mn,Mn,Mn,Mn,Mc,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,};
 static const unsigned char    UCD_GC_1b30_1b3f[16]= {Lo,Lo,Lo,Lo,Mn,Mc,Mn,Mn,Mn,Mn,Mn,Mc,Mn,Mc,Mc,Mc,};
@@ -764,10 +767,11 @@ static const unsigned char    UCD_GC_1c20_1c2f[16]= {Lo,Lo,Lo,Lo,Mc,Mc,Mc,Mc,Mc,
 static const unsigned char    UCD_GC_1c30_1c3f[16]= {Mn,Mn,Mn,Mn,Mc,Mc,Mn,Mn,Cn,Cn,Cn,Po,Po,Po,Po,Po,};
 static const unsigned char    UCD_GC_1c40_1c4f[16]= {Nd,Nd,Nd,Nd,Nd,Nd,Nd,Nd,Nd,Nd,Cn,Cn,Cn,Lo,Lo,Lo,};
 static const unsigned char    UCD_GC_1c70_1c7f[16]= {Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lm,Lm,Lm,Lm,Lm,Lm,Po,Po,};
+static const unsigned char    UCD_GC_1c80_1c8f[16]= {Ll,Ll,Ll,Ll,Ll,Ll,Ll,Ll,Ll,Cn,Cn,Cn,Cn,Cn,Cn,Cn,};
 static const unsigned char    UCD_GC_1cc0_1ccf[16]= {Po,Po,Po,Po,Po,Po,Po,Po,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,};
 static const unsigned char    UCD_GC_1cd0_1cdf[16]= {Mn,Mn,Mn,Po,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,};
 static const unsigned char    UCD_GC_1ce0_1cef[16]= {Mn,Mc,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Lo,Lo,Lo,Lo,Mn,Lo,Lo,};
-static const unsigned char    UCD_GC_1cf0_1cff[16]= {Lo,Lo,Mc,Mc,Mn,Lo,Lo,Cn,Mn,Mn,Cn,Cn,Cn,Cn,Cn,Cn,};
+static const unsigned char    UCD_GC_1cf0_1cff[16]= {Lo,Lo,Mc,Mc,Mn,Lo,Lo,Mc,Mn,Mn,Cn,Cn,Cn,Cn,Cn,Cn,};
 static const unsigned char * const UCD_GC_1c00_1cff[16]= {
     UCD_GC_05d0_05df, /*  UCD_GC_1c00_1c0f  */
     UCD_GC_05d0_05df, /*  UCD_GC_1c10_1c1f  */
@@ -777,10 +781,10 @@ static const unsigned char * const UCD_GC_1c00_1cff[16]= {
     UCD_GC_07c0_07cf, /*  UCD_GC_1c50_1c5f  */
     UCD_GC_05d0_05df, /*  UCD_GC_1c60_1c6f  */
     UCD_GC_1c70_1c7f,
-    UCD_GC_0860_086f, /*  UCD_GC_1c80_1c8f  */
-    UCD_GC_0860_086f, /*  UCD_GC_1c90_1c9f  */
-    UCD_GC_0860_086f, /*  UCD_GC_1ca0_1caf  */
-    UCD_GC_0860_086f, /*  UCD_GC_1cb0_1cbf  */
+    UCD_GC_1c80_1c8f,
+    UCD_GC_0870_087f, /*  UCD_GC_1c90_1c9f  */
+    UCD_GC_0870_087f, /*  UCD_GC_1ca0_1caf  */
+    UCD_GC_0870_087f, /*  UCD_GC_1cb0_1cbf  */
     UCD_GC_1cc0_1ccf,
     UCD_GC_1cd0_1cdf,
     UCD_GC_1ce0_1cef,
@@ -790,7 +794,7 @@ static const unsigned char    UCD_GC_1d20_1d2f[16]= {Ll,Ll,Ll,Ll,Ll,Ll,Ll,Ll,Ll,
 static const unsigned char    UCD_GC_1d60_1d6f[16]= {Lm,Lm,Lm,Lm,Lm,Lm,Lm,Lm,Lm,Lm,Lm,Ll,Ll,Ll,Ll,Ll,};
 static const unsigned char    UCD_GC_1d70_1d7f[16]= {Ll,Ll,Ll,Ll,Ll,Ll,Ll,Ll,Lm,Ll,Ll,Ll,Ll,Ll,Ll,Ll,};
 static const unsigned char    UCD_GC_1d90_1d9f[16]= {Ll,Ll,Ll,Ll,Ll,Ll,Ll,Ll,Ll,Ll,Ll,Lm,Lm,Lm,Lm,Lm,};
-static const unsigned char    UCD_GC_1df0_1dff[16]= {Mn,Mn,Mn,Mn,Mn,Mn,Cn,Cn,Cn,Cn,Cn,Cn,Mn,Mn,Mn,Mn,};
+static const unsigned char    UCD_GC_1df0_1dff[16]= {Mn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Cn,Mn,Mn,Mn,Mn,Mn,};
 static const unsigned char * const UCD_GC_1d00_1dff[16]= {
     UCD_GC_00e0_00ef, /*  UCD_GC_1d00_1d0f  */
     UCD_GC_00e0_00ef, /*  UCD_GC_1d10_1d1f  */
@@ -885,7 +889,6 @@ static const unsigned char    UCD_GC_2070_207f[16]= {No,Lm,Cn,Cn,No,No,No,No,No,
 static const unsigned char    UCD_GC_2080_208f[16]= {No,No,No,No,No,No,No,No,No,No,Sm,Sm,Sm,Ps,Pe,Cn,};
 static const unsigned char    UCD_GC_2090_209f[16]= {Lm,Lm,Lm,Lm,Lm,Lm,Lm,Lm,Lm,Lm,Lm,Lm,Lm,Cn,Cn,Cn,};
 static const unsigned char    UCD_GC_20a0_20af[16]= {Sc,Sc,Sc,Sc,Sc,Sc,Sc,Sc,Sc,Sc,Sc,Sc,Sc,Sc,Sc,Sc,};
-static const unsigned char    UCD_GC_20b0_20bf[16]= {Sc,Sc,Sc,Sc,Sc,Sc,Sc,Sc,Sc,Sc,Sc,Sc,Sc,Sc,Cn,Cn,};
 static const unsigned char    UCD_GC_20d0_20df[16]= {Mn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Me,Me,Me,};
 static const unsigned char    UCD_GC_20e0_20ef[16]= {Me,Mn,Me,Me,Me,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,};
 static const unsigned char    UCD_GC_20f0_20ff[16]= {Mn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,};
@@ -901,8 +904,8 @@ static const unsigned char * const UCD_GC_2000_20ff[16]= {
     UCD_GC_2080_208f,
     UCD_GC_2090_209f,
     UCD_GC_20a0_20af,
-    UCD_GC_20b0_20bf,
-    UCD_GC_0860_086f, /*  UCD_GC_20c0_20cf  */
+    UCD_GC_20a0_20af, /*  UCD_GC_20b0_20bf  */
+    UCD_GC_0870_087f, /*  UCD_GC_20c0_20cf  */
     UCD_GC_20d0_20df,
     UCD_GC_20e0_20ef,
     UCD_GC_20f0_20ff,
@@ -914,7 +917,7 @@ static const unsigned char    UCD_GC_2130_213f[16]= {Lu,Lu,Lu,Lu,Ll,Lo,Lo,Lo,Lo,
 static const unsigned char    UCD_GC_2140_214f[16]= {Sm,Sm,Sm,Sm,Sm,Lu,Ll,Ll,Ll,Ll,So,Sm,So,So,Ll,So,};
 static const unsigned char    UCD_GC_2150_215f[16]= {No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,No,};
 static const unsigned char    UCD_GC_2160_216f[16]= {Nl,Nl,Nl,Nl,Nl,Nl,Nl,Nl,Nl,Nl,Nl,Nl,Nl,Nl,Nl,Nl,};
-static const unsigned char    UCD_GC_2180_218f[16]= {Nl,Nl,Nl,Lu,Ll,Nl,Nl,Nl,Nl,No,Cn,Cn,Cn,Cn,Cn,Cn,};
+static const unsigned char    UCD_GC_2180_218f[16]= {Nl,Nl,Nl,Lu,Ll,Nl,Nl,Nl,Nl,No,So,So,Cn,Cn,Cn,Cn,};
 static const unsigned char    UCD_GC_2190_219f[16]= {Sm,Sm,Sm,Sm,Sm,So,So,So,So,So,Sm,Sm,So,So,So,So,};
 static const unsigned char    UCD_GC_21a0_21af[16]= {Sm,So,So,Sm,So,So,Sm,So,So,So,So,So,So,So,Sm,So,};
 static const unsigned char    UCD_GC_21c0_21cf[16]= {So,So,So,So,So,So,So,So,So,So,So,So,So,So,Sm,Sm,};
@@ -964,7 +967,6 @@ static const unsigned char    UCD_GC_2390_239f[16]= {So,So,So,So,So,So,So,So,So,
 static const unsigned char    UCD_GC_23b0_23bf[16]= {Sm,Sm,Sm,Sm,So,So,So,So,So,So,So,So,So,So,So,So,};
 static const unsigned char    UCD_GC_23d0_23df[16]= {So,So,So,So,So,So,So,So,So,So,So,So,Sm,Sm,Sm,Sm,};
 static const unsigned char    UCD_GC_23e0_23ef[16]= {Sm,Sm,So,So,So,So,So,So,So,So,So,So,So,So,So,So,};
-static const unsigned char    UCD_GC_23f0_23ff[16]= {So,So,So,So,So,So,So,So,So,So,So,Cn,Cn,Cn,Cn,Cn,};
 static const unsigned char * const UCD_GC_2300_23ff[16]= {
     UCD_GC_2300_230f,
     UCD_GC_19e0_19ef, /*  UCD_GC_2310_231f  */
@@ -981,18 +983,19 @@ static const unsigned char * const UCD_GC_2300_23ff[16]= {
     UCD_GC_19e0_19ef, /*  UCD_GC_23c0_23cf  */
     UCD_GC_23d0_23df,
     UCD_GC_23e0_23ef,
-    UCD_GC_23f0_23ff,
+    UCD_GC_19e0_19ef, /*  UCD_GC_23f0_23ff  */
 };
 static const unsigned char    UCD_GC_2420_242f[16]= {So,So,So,So,So,So,So,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,};
+static const unsigned char    UCD_GC_2440_244f[16]= {So,So,So,So,So,So,So,So,So,So,So,Cn,Cn,Cn,Cn,Cn,};
 static const unsigned char    UCD_GC_2490_249f[16]= {No,No,No,No,No,No,No,No,No,No,No,No,So,So,So,So,};
 static const unsigned char    UCD_GC_24e0_24ef[16]= {So,So,So,So,So,So,So,So,So,So,No,No,No,No,No,No,};
 static const unsigned char * const UCD_GC_2400_24ff[16]= {
     UCD_GC_19e0_19ef, /*  UCD_GC_2400_240f  */
     UCD_GC_19e0_19ef, /*  UCD_GC_2410_241f  */
     UCD_GC_2420_242f,
-    UCD_GC_0860_086f, /*  UCD_GC_2430_243f  */
-    UCD_GC_23f0_23ff, /*  UCD_GC_2440_244f  */
-    UCD_GC_0860_086f, /*  UCD_GC_2450_245f  */
+    UCD_GC_0870_087f, /*  UCD_GC_2430_243f  */
+    UCD_GC_2440_244f,
+    UCD_GC_0870_087f, /*  UCD_GC_2450_245f  */
     UCD_GC_2150_215f, /*  UCD_GC_2460_246f  */
     UCD_GC_2150_215f, /*  UCD_GC_2470_247f  */
     UCD_GC_2150_215f, /*  UCD_GC_2480_248f  */
@@ -1112,7 +1115,8 @@ static const unsigned char    UCD_GC_2b70_2b7f[16]= {So,So,So,So,Cn,Cn,So,So,So,
 static const unsigned char    UCD_GC_2b90_2b9f[16]= {So,So,So,So,So,So,Cn,Cn,So,So,So,So,So,So,So,So,};
 static const unsigned char    UCD_GC_2bb0_2bbf[16]= {So,So,So,So,So,So,So,So,So,So,Cn,Cn,Cn,So,So,So,};
 static const unsigned char    UCD_GC_2bc0_2bcf[16]= {So,So,So,So,So,So,So,So,So,Cn,So,So,So,So,So,So,};
-static const unsigned char    UCD_GC_2bd0_2bdf[16]= {So,So,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,};
+static const unsigned char    UCD_GC_2bd0_2bdf[16]= {So,So,So,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,};
+static const unsigned char    UCD_GC_2be0_2bef[16]= {Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,So,So,So,So,};
 static const unsigned char * const UCD_GC_2b00_2bff[16]= {
     UCD_GC_19e0_19ef, /*  UCD_GC_2b00_2b0f  */
     UCD_GC_19e0_19ef, /*  UCD_GC_2b10_2b1f  */
@@ -1128,8 +1132,8 @@ static const unsigned char * const UCD_GC_2b00_2bff[16]= {
     UCD_GC_2bb0_2bbf,
     UCD_GC_2bc0_2bcf,
     UCD_GC_2bd0_2bdf,
-    UCD_GC_0860_086f, /*  UCD_GC_2be0_2bef  */
-    UCD_GC_0860_086f, /*  UCD_GC_2bf0_2bff  */
+    UCD_GC_2be0_2bef,
+    UCD_GC_0870_087f, /*  UCD_GC_2bf0_2bff  */
 };
 static const unsigned char    UCD_GC_2c20_2c2f[16]= {Lu,Lu,Lu,Lu,Lu,Lu,Lu,Lu,Lu,Lu,Lu,Lu,Lu,Lu,Lu,Cn,};
 static const unsigned char    UCD_GC_2c50_2c5f[16]= {Ll,Ll,Ll,Ll,Ll,Ll,Ll,Ll,Ll,Ll,Ll,Ll,Ll,Ll,Ll,Cn,};
@@ -1182,7 +1186,7 @@ static const unsigned char    UCD_GC_2e00_2e0f[16]= {Po,Po,Pi,Pf,Pi,Pf,Po,Po,Po,
 static const unsigned char    UCD_GC_2e10_2e1f[16]= {Po,Po,Po,Po,Po,Po,Po,Pd,Po,Po,Pd,Po,Pi,Pf,Po,Po,};
 static const unsigned char    UCD_GC_2e20_2e2f[16]= {Pi,Pf,Ps,Pe,Ps,Pe,Ps,Pe,Ps,Pe,Po,Po,Po,Po,Po,Lm,};
 static const unsigned char    UCD_GC_2e30_2e3f[16]= {Po,Po,Po,Po,Po,Po,Po,Po,Po,Po,Pd,Pd,Po,Po,Po,Po,};
-static const unsigned char    UCD_GC_2e40_2e4f[16]= {Pd,Po,Ps,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,};
+static const unsigned char    UCD_GC_2e40_2e4f[16]= {Pd,Po,Ps,Po,Po,Po,Po,Po,Po,Po,Cn,Cn,Cn,Cn,Cn,Cn,};
 static const unsigned char    UCD_GC_2e90_2e9f[16]= {So,So,So,So,So,So,So,So,So,So,Cn,So,So,So,So,So,};
 static const unsigned char    UCD_GC_2ef0_2eff[16]= {So,So,So,So,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,};
 static const unsigned char * const UCD_GC_2e00_2eff[16]= {
@@ -1191,9 +1195,9 @@ static const unsigned char * const UCD_GC_2e00_2eff[16]= {
     UCD_GC_2e20_2e2f,
     UCD_GC_2e30_2e3f,
     UCD_GC_2e40_2e4f,
-    UCD_GC_0860_086f, /*  UCD_GC_2e50_2e5f  */
-    UCD_GC_0860_086f, /*  UCD_GC_2e60_2e6f  */
-    UCD_GC_0860_086f, /*  UCD_GC_2e70_2e7f  */
+    UCD_GC_0870_087f, /*  UCD_GC_2e50_2e5f  */
+    UCD_GC_0870_087f, /*  UCD_GC_2e60_2e6f  */
+    UCD_GC_0870_087f, /*  UCD_GC_2e70_2e7f  */
     UCD_GC_19e0_19ef, /*  UCD_GC_2e80_2e8f  */
     UCD_GC_2e90_2e9f,
     UCD_GC_19e0_19ef, /*  UCD_GC_2ea0_2eaf  */
@@ -1220,7 +1224,7 @@ static const unsigned char * const UCD_GC_2f00_2fff[16]= {
     UCD_GC_19e0_19ef, /*  UCD_GC_2fb0_2fbf  */
     UCD_GC_19e0_19ef, /*  UCD_GC_2fc0_2fcf  */
     UCD_GC_2fd0_2fdf,
-    UCD_GC_0860_086f, /*  UCD_GC_2fe0_2fef  */
+    UCD_GC_0870_087f, /*  UCD_GC_2fe0_2fef  */
     UCD_GC_2ff0_2fff,
 };
 static const unsigned char * const * const UCD_GC_2000_2fff[16]= {
@@ -1270,7 +1274,7 @@ static const unsigned char    UCD_GC_3190_319f[16]= {So,So,No,No,No,No,So,So,So,
 static const unsigned char * const UCD_GC_3100_31ff[16]= {
     UCD_GC_3100_310f,
     UCD_GC_05d0_05df, /*  UCD_GC_3110_311f  */
-    UCD_GC_1960_196f, /*  UCD_GC_3120_312f  */
+    UCD_GC_1910_191f, /*  UCD_GC_3120_312f  */
     UCD_GC_0e00_0e0f, /*  UCD_GC_3130_313f  */
     UCD_GC_05d0_05df, /*  UCD_GC_3140_314f  */
     UCD_GC_05d0_05df, /*  UCD_GC_3150_315f  */
@@ -1392,10 +1396,10 @@ static const unsigned char * const UCD_GC_9f00_9fff[16]= {
     UCD_GC_05d0_05df, /*  UCD_GC_9f90_9f9f  */
     UCD_GC_05d0_05df, /*  UCD_GC_9fa0_9faf  */
     UCD_GC_05d0_05df, /*  UCD_GC_9fb0_9fbf  */
-    UCD_GC_0f60_0f6f, /*  UCD_GC_9fc0_9fcf  */
-    UCD_GC_0860_086f, /*  UCD_GC_9fd0_9fdf  */
-    UCD_GC_0860_086f, /*  UCD_GC_9fe0_9fef  */
-    UCD_GC_0860_086f, /*  UCD_GC_9ff0_9fff  */
+    UCD_GC_05d0_05df, /*  UCD_GC_9fc0_9fcf  */
+    UCD_GC_05d0_05df, /*  UCD_GC_9fd0_9fdf  */
+    UCD_GC_05e0_05ef, /*  UCD_GC_9fe0_9fef  */
+    UCD_GC_0870_087f, /*  UCD_GC_9ff0_9fff  */
 };
 static const unsigned char * const * const UCD_GC_9000_9fff[16]= {
     UCD_GC_1100_11ff, /*  UCD_GC_9000_90ff  */
@@ -1456,14 +1460,14 @@ static const unsigned char    UCD_GC_a600_a60f[16]= {Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,
 static const unsigned char    UCD_GC_a620_a62f[16]= {Nd,Nd,Nd,Nd,Nd,Nd,Nd,Nd,Nd,Nd,Lo,Lo,Cn,Cn,Cn,Cn,};
 static const unsigned char    UCD_GC_a660_a66f[16]= {Lu,Ll,Lu,Ll,Lu,Ll,Lu,Ll,Lu,Ll,Lu,Ll,Lu,Ll,Lo,Mn,};
 static const unsigned char    UCD_GC_a670_a67f[16]= {Me,Me,Me,Po,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Po,Lm,};
-static const unsigned char    UCD_GC_a690_a69f[16]= {Lu,Ll,Lu,Ll,Lu,Ll,Lu,Ll,Lu,Ll,Lu,Ll,Lm,Lm,Cn,Mn,};
+static const unsigned char    UCD_GC_a690_a69f[16]= {Lu,Ll,Lu,Ll,Lu,Ll,Lu,Ll,Lu,Ll,Lu,Ll,Lm,Lm,Mn,Mn,};
 static const unsigned char    UCD_GC_a6e0_a6ef[16]= {Lo,Lo,Lo,Lo,Lo,Lo,Nl,Nl,Nl,Nl,Nl,Nl,Nl,Nl,Nl,Nl,};
 static const unsigned char    UCD_GC_a6f0_a6ff[16]= {Mn,Mn,Po,Po,Po,Po,Po,Po,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,};
 static const unsigned char * const UCD_GC_a600_a6ff[16]= {
     UCD_GC_a600_a60f,
     UCD_GC_05d0_05df, /*  UCD_GC_a610_a61f  */
     UCD_GC_a620_a62f,
-    UCD_GC_0860_086f, /*  UCD_GC_a630_a63f  */
+    UCD_GC_0870_087f, /*  UCD_GC_a630_a63f  */
     UCD_GC_0100_010f, /*  UCD_GC_a640_a64f  */
     UCD_GC_0100_010f, /*  UCD_GC_a650_a65f  */
     UCD_GC_a660_a66f,
@@ -1481,10 +1485,10 @@ static const unsigned char    UCD_GC_a710_a71f[16]= {Sk,Sk,Sk,Sk,Sk,Sk,Sk,Lm,Lm,
 static const unsigned char    UCD_GC_a720_a72f[16]= {Sk,Sk,Lu,Ll,Lu,Ll,Lu,Ll,Lu,Ll,Lu,Ll,Lu,Ll,Lu,Ll,};
 static const unsigned char    UCD_GC_a730_a73f[16]= {Ll,Ll,Lu,Ll,Lu,Ll,Lu,Ll,Lu,Ll,Lu,Ll,Lu,Ll,Lu,Ll,};
 static const unsigned char    UCD_GC_a770_a77f[16]= {Lm,Ll,Ll,Ll,Ll,Ll,Ll,Ll,Ll,Lu,Ll,Lu,Ll,Lu,Lu,Ll,};
-static const unsigned char    UCD_GC_a780_a78f[16]= {Lu,Ll,Lu,Ll,Lu,Ll,Lu,Ll,Lm,Sk,Sk,Lu,Ll,Lu,Ll,Cn,};
+static const unsigned char    UCD_GC_a780_a78f[16]= {Lu,Ll,Lu,Ll,Lu,Ll,Lu,Ll,Lm,Sk,Sk,Lu,Ll,Lu,Ll,Lo,};
 static const unsigned char    UCD_GC_a790_a79f[16]= {Lu,Ll,Lu,Ll,Ll,Ll,Lu,Ll,Lu,Ll,Lu,Ll,Lu,Ll,Lu,Ll,};
-static const unsigned char    UCD_GC_a7a0_a7af[16]= {Lu,Ll,Lu,Ll,Lu,Ll,Lu,Ll,Lu,Ll,Lu,Lu,Lu,Lu,Cn,Cn,};
-static const unsigned char    UCD_GC_a7b0_a7bf[16]= {Lu,Lu,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,};
+static const unsigned char    UCD_GC_a7a0_a7af[16]= {Lu,Ll,Lu,Ll,Lu,Ll,Lu,Ll,Lu,Ll,Lu,Lu,Lu,Lu,Lu,Cn,};
+static const unsigned char    UCD_GC_a7b0_a7bf[16]= {Lu,Lu,Lu,Lu,Lu,Ll,Lu,Ll,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,};
 static const unsigned char    UCD_GC_a7f0_a7ff[16]= {Cn,Cn,Cn,Cn,Cn,Cn,Cn,Lo,Lm,Lm,Ll,Lo,Lo,Lo,Lo,Lo,};
 static const unsigned char * const UCD_GC_a700_a7ff[16]= {
     UCD_GC_02f0_02ff, /*  UCD_GC_a700_a70f  */
@@ -1499,9 +1503,9 @@ static const unsigned char * const UCD_GC_a700_a7ff[16]= {
     UCD_GC_a790_a79f,
     UCD_GC_a7a0_a7af,
     UCD_GC_a7b0_a7bf,
-    UCD_GC_0860_086f, /*  UCD_GC_a7c0_a7cf  */
-    UCD_GC_0860_086f, /*  UCD_GC_a7d0_a7df  */
-    UCD_GC_0860_086f, /*  UCD_GC_a7e0_a7ef  */
+    UCD_GC_0870_087f, /*  UCD_GC_a7c0_a7cf  */
+    UCD_GC_0870_087f, /*  UCD_GC_a7d0_a7df  */
+    UCD_GC_0870_087f, /*  UCD_GC_a7e0_a7ef  */
     UCD_GC_a7f0_a7ff,
 };
 static const unsigned char    UCD_GC_a800_a80f[16]= {Lo,Lo,Mn,Lo,Lo,Lo,Mn,Lo,Lo,Lo,Lo,Mn,Lo,Lo,Lo,Lo,};
@@ -1510,8 +1514,8 @@ static const unsigned char    UCD_GC_a830_a83f[16]= {No,No,No,No,No,No,So,So,Sc,
 static const unsigned char    UCD_GC_a870_a87f[16]= {Lo,Lo,Lo,Lo,Po,Po,Po,Po,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,};
 static const unsigned char    UCD_GC_a880_a88f[16]= {Mc,Mc,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,};
 static const unsigned char    UCD_GC_a8b0_a8bf[16]= {Lo,Lo,Lo,Lo,Mc,Mc,Mc,Mc,Mc,Mc,Mc,Mc,Mc,Mc,Mc,Mc,};
-static const unsigned char    UCD_GC_a8c0_a8cf[16]= {Mc,Mc,Mc,Mc,Mn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Po,Po,};
-static const unsigned char    UCD_GC_a8f0_a8ff[16]= {Mn,Mn,Lo,Lo,Lo,Lo,Lo,Lo,Po,Po,Po,Lo,Cn,Cn,Cn,Cn,};
+static const unsigned char    UCD_GC_a8c0_a8cf[16]= {Mc,Mc,Mc,Mc,Mn,Mn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Po,Po,};
+static const unsigned char    UCD_GC_a8f0_a8ff[16]= {Mn,Mn,Lo,Lo,Lo,Lo,Lo,Lo,Po,Po,Po,Lo,Po,Lo,Cn,Cn,};
 static const unsigned char * const UCD_GC_a800_a8ff[16]= {
     UCD_GC_a800_a80f,
     UCD_GC_05d0_05df, /*  UCD_GC_a810_a81f  */
@@ -1587,7 +1591,7 @@ static const unsigned char * const UCD_GC_aa00_aaff[16]= {
 static const unsigned char    UCD_GC_ab00_ab0f[16]= {Cn,Lo,Lo,Lo,Lo,Lo,Lo,Cn,Cn,Lo,Lo,Lo,Lo,Lo,Lo,Cn,};
 static const unsigned char    UCD_GC_ab10_ab1f[16]= {Cn,Lo,Lo,Lo,Lo,Lo,Lo,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,};
 static const unsigned char    UCD_GC_ab50_ab5f[16]= {Ll,Ll,Ll,Ll,Ll,Ll,Ll,Ll,Ll,Ll,Ll,Sk,Lm,Lm,Lm,Lm,};
-static const unsigned char    UCD_GC_ab60_ab6f[16]= {Cn,Cn,Cn,Cn,Ll,Ll,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,};
+static const unsigned char    UCD_GC_ab60_ab6f[16]= {Ll,Ll,Ll,Ll,Ll,Ll,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,};
 static const unsigned char    UCD_GC_abe0_abef[16]= {Lo,Lo,Lo,Mc,Mc,Mn,Mc,Mc,Mn,Mc,Mc,Po,Mc,Mn,Cn,Cn,};
 static const unsigned char * const UCD_GC_ab00_abff[16]= {
     UCD_GC_ab00_ab0f,
@@ -1597,11 +1601,11 @@ static const unsigned char * const UCD_GC_ab00_abff[16]= {
     UCD_GC_00e0_00ef, /*  UCD_GC_ab40_ab4f  */
     UCD_GC_ab50_ab5f,
     UCD_GC_ab60_ab6f,
-    UCD_GC_0860_086f, /*  UCD_GC_ab70_ab7f  */
-    UCD_GC_0860_086f, /*  UCD_GC_ab80_ab8f  */
-    UCD_GC_0860_086f, /*  UCD_GC_ab90_ab9f  */
-    UCD_GC_0860_086f, /*  UCD_GC_aba0_abaf  */
-    UCD_GC_0860_086f, /*  UCD_GC_abb0_abbf  */
+    UCD_GC_00e0_00ef, /*  UCD_GC_ab70_ab7f  */
+    UCD_GC_00e0_00ef, /*  UCD_GC_ab80_ab8f  */
+    UCD_GC_00e0_00ef, /*  UCD_GC_ab90_ab9f  */
+    UCD_GC_00e0_00ef, /*  UCD_GC_aba0_abaf  */
+    UCD_GC_00e0_00ef, /*  UCD_GC_abb0_abbf  */
     UCD_GC_05d0_05df, /*  UCD_GC_abc0_abcf  */
     UCD_GC_05d0_05df, /*  UCD_GC_abd0_abdf  */
     UCD_GC_abe0_abef,
@@ -1719,7 +1723,6 @@ static const unsigned char * const * const UCD_GC_e000_efff[16]= {
     UCD_GC_e000_e0ff, /*  UCD_GC_ee00_eeff  */
     UCD_GC_e000_e0ff, /*  UCD_GC_ef00_efff  */
 };
-static const unsigned char    UCD_GC_fad0_fadf[16]= {Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Cn,Cn,Cn,Cn,Cn,Cn,};
 static const unsigned char * const UCD_GC_fa00_faff[16]= {
     UCD_GC_05d0_05df, /*  UCD_GC_fa00_fa0f  */
     UCD_GC_05d0_05df, /*  UCD_GC_fa10_fa1f  */
@@ -1734,9 +1737,9 @@ static const unsigned char * const UCD_GC_fa00_faff[16]= {
     UCD_GC_05d0_05df, /*  UCD_GC_faa0_faaf  */
     UCD_GC_05d0_05df, /*  UCD_GC_fab0_fabf  */
     UCD_GC_05d0_05df, /*  UCD_GC_fac0_facf  */
-    UCD_GC_fad0_fadf,
-    UCD_GC_0860_086f, /*  UCD_GC_fae0_faef  */
-    UCD_GC_0860_086f, /*  UCD_GC_faf0_faff  */
+    UCD_GC_19c0_19cf, /*  UCD_GC_fad0_fadf  */
+    UCD_GC_0870_087f, /*  UCD_GC_fae0_faef  */
+    UCD_GC_0870_087f, /*  UCD_GC_faf0_faff  */
 };
 static const unsigned char    UCD_GC_fb00_fb0f[16]= {Ll,Ll,Ll,Ll,Ll,Ll,Ll,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,Cn,};
 static const unsigned char    UCD_GC_fb10_fb1f[16]= {Cn,Cn,Cn,Ll,Ll,Ll,Ll,Ll,Cn,Cn,Cn,Cn,Cn,Lo,Mn,Lo,};
@@ -1772,7 +1775,7 @@ static const unsigned char * const UCD_GC_fd00_fdff[16]= {
     UCD_GC_05d0_05df, /*  UCD_GC_fd10_fd1f  */
     UCD_GC_05d0_05df, /*  UCD_GC_fd20_fd2f  */
     UCD_GC_fd30_fd3f,
-    UCD_GC_0860_086f, /*  UCD_GC_fd40_fd4f  */
+    UCD_GC_0870_087f, /*  UCD_GC_fd40_fd4f  */
     UCD_GC_05d0_05df, /*  UCD_GC_fd50_fd5f  */
     UCD_GC_05d0_05df, /*  UCD_GC_fd60_fd6f  */
     UCD_GC_05d0_05df, /*  UCD_GC_fd70_fd7f  */
@@ -1781,12 +1784,11 @@ static const unsigned char * const UCD_GC_fd00_fdff[16]= {
     UCD_GC_05d0_05df, /*  UCD_GC_fda0_fdaf  */
     UCD_GC_05d0_05df, /*  UCD_GC_fdb0_fdbf  */
     UCD_GC_1870_187f, /*  UCD_GC_fdc0_fdcf  */
-    UCD_GC_0860_086f, /*  UCD_GC_fdd0_fddf  */
-    UCD_GC_0860_086f, /*  UCD_GC_fde0_fdef  */
+    UCD_GC_0870_087f, /*  UCD_GC_fdd0_fddf  */
+    UCD_GC_0870_087f, /*  UCD_GC_fde0_fdef  */
     UCD_GC_fdf0_fdff,
 };
 static const unsigned char    UCD_GC_fe10_fe1f[16]= {Po,Po,Po,Po,Po,Po,Po,Ps,Pe,Po,Cn,Cn,Cn,Cn,Cn,Cn,};
-static const unsigned char    UCD_GC_fe20_fe2f[16]= {Mn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Mn,Cn,Cn,};
 static const unsigned char    UCD_GC_fe30_fe3f[16]= {Po,Pd,Pd,Pc,Pc,Ps,Pe,Ps,Pe,Ps,Pe,Ps,Pe,Ps,Pe,Ps,};
 static const unsigned char    UCD_GC_fe40_fe4f[16]= {Pe,Ps,Pe,Ps,Pe,Po,Po,Ps,Pe,Po,Po,Po,Po,Pc,Pc,Pc,};
 static const unsigned char    UCD_GC_fe50_fe5f[16]= {Po,Po,Po,Cn,Po,Po,Po,Po,Pd,Ps,Pe,Ps,Pe,Ps,Pe,Po,};
@@ -1796,7 +1798,7 @@ static const unsigned char    UCD_GC_fef0_feff[16]= {Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,Lo,
 static const unsigned char * const UCD_GC_fe00_feff[16]= {
     UCD_GC_0300_030f, /*  UCD_GC_fe00_fe0f  */
     UCD_GC_fe10_fe1f,
-    UCD_GC_fe20_fe2f,
+    UCD_GC_0300_030f, /*  UCD_GC_fe20_fe2f  */
     UCD_GC_fe30_fe3f,
     UCD_GC_fe40_fe4f,
     UCD_GC_fe50_fe5f,
@@ -1882,36 +1884,36 @@ const char * ucdGeneralCategoryStr( int sym ) {
     static char scratch[20];
     switch( sym )
 	{
-	case Ps:	return "Ps";
-	case Cn:	return "Cn";
-	case Lu:	return "Lu";
-	case Me:	return "Me";
-	case Sc:	return "Sc";
-	case Zs:	return "Zs";
-	case Pe:	return "Pe";
-	case Cf:	return "Cf";
-	case Lm:	return "Lm";
-	case Mc:	return "Mc";
-	case So:	return "So";
-	case Pf:	return "Pf";
-	case Co:	return "Co";
-	case Nd:	return "Nd";
-	case Cs:	return "Cs";
-	case Pd:	return "Pd";
-	case Zl:	return "Zl";
-	case Sk:	return "Sk";
-	case Ll:	return "Ll";
-	case No:	return "No";
-	case Pi:	return "Pi";
-	case Nl:	return "Nl";
-	case Sm:	return "Sm";
-	case Po:	return "Po";
-	case Zp:	return "Zp";
-	case Lt:	return "Lt";
-	case Lo:	return "Lo";
 	case Cc:	return "Cc";
+	case Cf:	return "Cf";
+	case Cn:	return "Cn";
+	case Co:	return "Co";
+	case Cs:	return "Cs";
+	case Ll:	return "Ll";
+	case Lm:	return "Lm";
+	case Lo:	return "Lo";
+	case Lt:	return "Lt";
+	case Lu:	return "Lu";
+	case Mc:	return "Mc";
+	case Me:	return "Me";
 	case Mn:	return "Mn";
+	case Nd:	return "Nd";
+	case Nl:	return "Nl";
+	case No:	return "No";
 	case Pc:	return "Pc";
+	case Pd:	return "Pd";
+	case Pe:	return "Pe";
+	case Pf:	return "Pf";
+	case Pi:	return "Pi";
+	case Po:	return "Po";
+	case Ps:	return "Ps";
+	case Sc:	return "Sc";
+	case Sk:	return "Sk";
+	case Sm:	return "Sm";
+	case So:	return "So";
+	case Zl:	return "Zl";
+	case Zp:	return "Zp";
+	case Zs:	return "Zs";
 	default:
 	    sprintf( scratch, "%d", sym );
 	    return scratch;

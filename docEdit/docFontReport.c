@@ -18,8 +18,10 @@
 #   include	<psGlyphs.h>
 #   include	<uniUtf8.h>
 #   include	<ucdGeneralCategory.h>
+#   include	<ucdBidiClass.h>
 
 #   include	<docBuf.h>
+#   include	<docDocument.h>
 #   include	<docTreeNode.h>
 #   include	<docField.h>
 #   include	"docCopyNode.h"
@@ -34,8 +36,10 @@
 #   include	<sioGeneral.h>
 #   include	<fontDocFont.h>
 #   include	<fontDocFontList.h>
+#   include	<fontDocFontListImpl.h>
 #   include	<psFontInfo.h>
 #   include	<psFontFamily.h>
+#   include	<docMergeField.h>
 
 #   include	<appDebugon.h>
 
@@ -44,7 +48,6 @@
 typedef struct FontReport
     {
     const AfmFontInfo *	frAfi;
-    struct BufferDocument *	frBd;
 
     int			frBlockIndex;
     unsigned int	frPageFirst;
@@ -62,7 +65,7 @@ static int fontReportProvideData(	int *		pCalculated,
 					MemoryBuffer *	mbResult,
 					const char *	value )
     {
-    utilMemoryBufferAppendBytes( mbResult, (unsigned char *)value, strlen( value ) );
+    utilMemoryBufferAppendString( mbResult, value );
     *pCalculated= 1;
     return 0;
     }
@@ -112,11 +115,14 @@ static int docFontReportGetUnicode(	const FontReport *	fr,
     return fr->frPageFirst+ l;
     }
 
-static int fontReportFieldDataProvider(	int *		pCalculated,
-					MemoryBuffer *	mbResult,
-					const char *	fieldName,
-					void *		through )
+static int fontReportFieldDataProvider(
+				int *			pCalculated,
+				MemoryBuffer *		mbResult,
+				const MergeField *	mf,
+				const RecalculateFields * rf,
+				void *			through )
     {
+    const char *	fieldName= utilMemoryBufferGetString( &(mf->mfFieldName) );
     FontReport *	fr= (FontReport *)through;
     const AfmFontInfo *	afi= fr->frAfi;
 
@@ -209,8 +215,29 @@ static int fontReportFieldDataProvider(	int *		pCalculated,
     if  ( ! strncmp( fieldName, "Nr", 2 ) && isdigit( fieldName[2] ) )
 	{
 	int		uni= docFontReportGetUnicode( fr, fieldName, 2 );
+	int		use= uni < past;
 
-	if  ( uni < past && ! ucdIsCn( uni ) )
+	if  ( use && ucdIsC( uni ) && ! ucdIsCs( uni ) )
+	    { use= 0;	}
+	if  ( use && ( ucdIsZs( uni ) || ucdIsZl( uni ) || ucdIsZp( uni ) ) )
+	    { use= 0;	}
+	if  ( use && ( ucdIsMn( uni ) || ucdIsMe( uni ) ) )
+	    { use= 0;	}
+
+	if  ( use )
+	    {
+	    int		bidiClass= ucdBidiClass( uni );
+
+	    if  ( bidiClass == UCDbidi_NSM || bidiClass == UCDbidi_B )
+		{
+		int	cat= ucdGeneralCategory(uni);
+		XSSDEB(uni,
+		    ucdBidiClassStr(bidiClass),ucdGeneralCategoryStr(cat));
+		use= 0;
+		}
+	    }
+
+	if  ( use )
 	    {
 	    if  ( uni <= 0xff )
 		{ sprintf( scratch, "0x%02x", (unsigned)uni );	}
@@ -271,15 +298,15 @@ static int docSubstituteFontPage(	int *			pUsed,
 					RecalculateFields *	rf,
 					const FontReport *	fr )
     {
-    int			uni;
-    int			rval= 0;
-    int			used= 0;
+    int				uni;
+    int				rval= 0;
+    int				used= 0;
 
-    DocumentCopyJob	dcj;
-    EditOperation	eo;
+    DocumentCopyJob		dcj;
+    EditOperation		eo;
 
-    const AfmFontInfo *	afi= fr->frAfi;
-    struct BufferDocument *	bd= fr->frBd;
+    const AfmFontInfo *		afi= fr->frAfi;
+    struct BufferDocument *	bd= rf->rfDocument;
 
     docInitEditOperation( &eo );
     docInitDocumentCopyJob( &dcj );
@@ -324,7 +351,7 @@ static int docSubstituteFontPage(	int *			pUsed,
 	    if  ( ! bodySectNode )
 		{ XDEB(bodySectNode); rval= -1; goto ready;	}
 
-	    if  ( docRecalculateTextLevelFields( rf, bodySectNode ) )
+	    if  ( docRecalculateTextLevelFieldsInNode( rf, bodySectNode ) )
 		{ LDEB(1); rval= -1; goto ready;	}
 	    }
 	}
@@ -349,20 +376,23 @@ static int docSubstituteFontProperties(	const AfmFontInfo *		afi,
 					const struct SimpleLocale *	sl,
 					struct BufferDocument *		bd )
     {
+    int			rval= 0;
+
     FontReport		fr;
     RecalculateFields	rf;
     const UcdBlock *	ub;
 
+    docInitRecalculateFields( &rf );
+
     fr.frAfi= afi;
-    fr.frBd= bd;
     fr.frBlockIndex= 0;
     fr.frPageFirst= 0;
     fr.frPageLast= 0xff;
     fr.frCurrentSection= 0;
 
-    docInitRecalculateFields( &rf );
     rf.rfDocument= bd;
-    rf.rfUpdateFlags= FIELDdoDOC_INFO;
+    rf.rfTree= &(bd->bdBody);
+    rf.rfUpdateFlags= FIELDdoDOC_INFO | FIELDdoMERGE;
     rf.rfFieldDataProvider= fontReportFieldDataProvider;
     rf.rfMergeThrough= &fr;
 
@@ -387,7 +417,7 @@ static int docSubstituteFontProperties(	const AfmFontInfo *		afi,
 		{ fr.frPageLast=  ub->ubLast;	}
 
 	    if  ( docSubstituteFontPage( &used, &rf, &fr ) )
-		{ LDEB(1); return -1;	}
+		{ LDEB(1); rval= -1; goto ready;	}
 	    if  ( used )
 		{ fr.frCurrentSection++;	}
 
@@ -398,7 +428,11 @@ static int docSubstituteFontProperties(	const AfmFontInfo *		afi,
 	ub++;
 	}
 
-    return 0;
+  ready:
+
+    docCleanRecalculateFields( &rf );
+
+    return rval;
     }
 
 /************************************************************************/
@@ -419,7 +453,7 @@ static int docMakeFontExample(	const AfmFontInfo *		afi,
 
     SimpleInputStream *		sis= (SimpleInputStream *)0;
     SimpleOutputStream *	sos= (SimpleOutputStream *)0;
-    struct BufferDocument *		bd= (struct BufferDocument *)0;
+    struct BufferDocument *	bd= (struct BufferDocument *)0;
 
     const int			relativeIsFile= 0;
     unsigned char *		s;
@@ -431,8 +465,7 @@ static int docMakeFontExample(	const AfmFontInfo *		afi,
 
     if  ( utilMemoryBufferSetString( &relative, afi->afiFontName ) )
 	{ SDEB(afi->afiFontName); rval= -1; goto ready;	}
-    if  ( utilMemoryBufferAppendBytes( &relative,
-				    (const unsigned char *)".rtf", 4 ) )
+    if  ( utilMemoryBufferAppendString( &relative, ".rtf" ) )
 	{ LDEB(4); rval= -1; goto ready;	}
 
     s= relative.mbBytes;
@@ -556,7 +589,7 @@ int docFontsDocuments(		const PostScriptFontList *	psfl,
 		{ SDEB(relativeName); rval= -1; goto ready;	}
 
 	    if  ( afi->afiMetricsDeferred		&&
-		  psGetDeferredMetrics( afi )		)
+		  (*afi->afiResolveMetrics)( afi )	)
 		{ SDEB(afi->afiFontName); rval= -1; goto ready;	}
 
 	    if  ( docMakeFontExample( afi, sl, &absolute, outputDir ) )

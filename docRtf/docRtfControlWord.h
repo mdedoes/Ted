@@ -11,9 +11,6 @@
 /*									*/
 /*  Map control words to functions that handle them.			*/
 /*									*/
-/*  This structure will be gradually extended to also cover the		*/
-/*  Microsoft WordProcessingML markup language.				*/
-/*									*/
 /************************************************************************/
 
 struct RtfControlWord;
@@ -28,12 +25,54 @@ typedef int (*RtfCommitGroup)(	const struct RtfControlWord *	rcw,
 
 typedef enum RtfControlType
     {
+	/**
+	 *  The value is a property that requires special treatment.
+	 *  Ignoring a property is a spectial form of special treatment.
+	 */
     RTCtypeANY= 0,
+
+	/**
+	 *  The value is a destination.
+	 */
     RTCtypeDEST,
+
+	/**
+	 *  The value is translated to a symbol in the document. This
+	 *  is only used in the parser. The writer has its own way of producing
+	 *  output.
+	 */
     RTCtypeSYMBOL,
+
+	/**
+	 *  The value is an integer number.
+	 */
     RTCtypeNUMBER,
+
+	/**
+	 *  The value is a flag: It is only emitted if the property is set.
+	 *  I.E. If its integer value != 0
+	 */
     RTCtypeFLAG,
+
+	/**
+	 *  The value is an enumeration value: Several control words exist
+	 *  with the same property and another enumerated value.
+	 */
     RTCtypeENUM,
+
+	/**
+	 *  The value is an integer number that maps to the description of 
+	 *  a border. It is only emitted if the description describes an 
+	 *  actual border.
+	 */
+    RTCtypeBORDER_POSITIVE,
+
+	/**
+	 *  The value is an integer number that maps to the description of 
+	 *  a border. It is also emitted if the description says no border
+	 *  must be drawn
+	 */
+    RTCtypeBORDER_ANYWAY,
 
     RTCtype_COUNT
     } RtfControlType;
@@ -42,7 +81,7 @@ typedef enum RtfControlScope
     {
     	/**
 	 *  Not a control word that is used for writing RTF.
-	 *  Either a compatibility wordb or simply not (yet) 
+	 *  Either a compatibility word or simply not (yet) 
 	 *  used for that purpose.
 	 */
     RTCscopeANY= 0,
@@ -145,16 +184,19 @@ typedef struct RtfControlWord
 			 * Routine to apply the countrol word.
 			 */
     RtfApplyWord	rcwApply;
+
 			/**
 			 * Integer value that is the implicit argument to 
 			 * the control word.
 			 */
     int			rcwEnumValue;
+
 			/**
 			 * Routine to prepare for this word. It is used 
 			 * in combination with de detail words for borders.
 			 */
     RtfApplyWord	rcwPrepare;
+
 			/**
 			 * Method to handle text inside a group for this 
 			 * control word.

@@ -31,7 +31,8 @@ void docInitSelectionScope(	SelectionScope *	ss )
 /*  Decide whether the selection moved to a different scope.		*/
 /*									*/
 /*  NOTE: Only use the scope fields of the old selection as deletions	*/
-/*	or insertions of BufferItems may have invalidated the pointers.	*/
+/*	or insertions of document nodes may have invalidated the	*/
+/*	pointers.							*/
 /*									*/
 /************************************************************************/
 

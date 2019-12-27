@@ -1,46 +1,46 @@
 #####################################################################
 ##
-##   Look for pcre
+##   Look for pcre2
 ##
 #####################################################################
 
-AC_DEFUN(AC_PATH_PCRE,
+AC_DEFUN(AC_PATH_PCRE2,
 [
-    echo Checking for pcre...
+    echo Checking for pcre2...
 
-    PCRE_CFLAGS=
-    PCRE_LIBS=
+    LIBPCRE2_CFLAGS=
+    LIBPCRE2_LIBS=
 
-    PCRE_HEADERS_FOUND=NO
-    PCRE_LIBS_FOUND=NO
-    PCRE_FOUND=0
+    LIBPCRE2_HEADERS_FOUND=NO
+    LIBPCRE2_LIBS_FOUND=NO
+    LIBPCRE2_FOUND=0
 
-    if  ( pkg-config libpcre --cflags ) > /dev/null 2>&1
+    if  ( pkg-config libpcre2-8 --cflags ) > /dev/null 2>&1
     then
-	PCRE_CFLAGS=`pkg-config libpcre --cflags`
-	PCRE_HEADERS_FOUND=YES
+	LIBPCRE2_CFLAGS=`pkg-config libpcre2-8 --cflags`
+	LIBPCRE2_HEADERS_FOUND=YES
     fi
 
-    if  ( pkg-config libpcre --libs ) > /dev/null 2>&1
+    if  ( pkg-config libpcre2-8 --libs ) > /dev/null 2>&1
     then
-	PCRE_LIBS=`pkg-config libpcre --libs`
-	PCRE_LIBS_FOUND=YES
+	LIBPCRE2_LIBS=`pkg-config libpcre2-8 --libs`
+	LIBPCRE2_LIBS_FOUND=YES
     fi
 
     ########  The hard way
-    if test $PCRE_HEADERS_FOUND = NO -o $PCRE_LIBS_FOUND = NO
+    if test $LIBPCRE2_HEADERS_FOUND = NO -o $LIBPCRE2_LIBS_FOUND = NO
     then
 	h_so_tmp="$$.h_so_tmp"
 	trap "rm -f $h_so_tmp" 0
 	for h_so in \
-	    "/usr/include pcre.h /usr/lib64 pcre" \
-	    "/usr/include pcre.h /usr/lib pcre" \
-	    "/usr/local/include pcre.h /usr/local/lib pcre" \
-	    "/usr/local/include pcre.h /usr/lib pcre" \
-	    "/usr/pkg/include pcre.h /usr/pkg/lib pcre" \
-	    "/usr/include/pcre pcre.h /usr/lib/pcre pcre" \
-	    "/usr/local/include/pcre pcre.h /usr/local/lib/pcre pcre" \
-	    "/usr/apps/include pcre.h /usr/apps/lib pcre"
+	    "/usr/include pcre2.h /usr/lib64 pcre2" \
+	    "/usr/include pcre2.h /usr/lib pcre2" \
+	    "/usr/local/include pcre2.h /usr/local/lib pcre2" \
+	    "/usr/local/include pcre2.h /usr/lib pcre2" \
+	    "/usr/pkg/include pcre2.h /usr/pkg/lib pcre2" \
+	    "/usr/include/pcre2 pcre2.h /usr/lib/pcre2 pcre2" \
+	    "/usr/local/include/pcre2 pcre2.h /usr/local/lib/pcre2 pcre2" \
+	    "/usr/apps/include pcre2.h /usr/apps/lib pcre2"
 	do
 	    echo $h_so
 	done > ${h_so_tmp}
@@ -55,47 +55,231 @@ AC_DEFUN(AC_PATH_PCRE,
 		    : ok
 		    ;;
 		*)
-		    PCRE_CFLAGS=-I${hd}
+		    LIBPCRE2_CFLAGS=-I${hd}
 		    ;;
 		esac
 
 		case $sod in
 		/usr/lib|/lib|-)
-		    PCRE_LIBS=-l${so}
+		    LIBPCRE2_LIBS=-l${so}
 		    ;;
 		*)
-		    PCRE_LIBS="-L${sod} -l${so}"
+		    LIBPCRE2_LIBS="-L${sod} -l${so}"
 		    ;;
 		esac
 
-		PCRE_HEADERS_FOUND=YES
-		PCRE_LIBS_FOUND=YES
+		LIBPCRE2_HEADERS_FOUND=YES
+		LIBPCRE2_LIBS_FOUND=YES
 		break
 	    fi
 	done < ${h_so_tmp}
     fi
     ########
 
-    #echo Includes : $PCRE_CFLAGS
-    #echo Libraries: $PCRE_LIBS
+    AC_ARG_WITH( LIBPCRE2,
+	[ --with-LIBPCRE2 Use libpcre2 if available],
+	[
+	    if  test $withval = yes
+	    then
+		USE_LIBPCRE2=YES
+	    else
+		USE_LIBPCRE2=NO
+	    fi
+	],
+	[
+	    USE_LIBPCRE2=TEST;
+	])
 
-    if  test $PCRE_HEADERS_FOUND = NO
+    case $LIBPCRE2_HEADERS_FOUND.$LIBPCRE2_LIBS_FOUND in
+	YES.YES)
+	    LIBPCRE2_FOUND=1
+	    HAVE_LIBPCRE2=YES
+	    ;;
+	*)
+	    LIBPCRE2_FOUND=0
+	    # Try for ourselves
+	    AC_TRY_COMPILE([
+		#define PCRE2_CODE_UNIT_WIDTH 8
+		#include <pcre2.h>
+	    ],
+	      [int res= pcre2_config( PCRE2_CONFIG_UNICODE, (int *)0;],
+		HAVE_LIBPCRE2=YES,HAVE_LIBPCRE2=NO,)
+	    ;;
+    esac
+    #echo Includes : $LIBPCRE2_CFLAGS
+    #echo Libraries: $LIBPCRE2_LIBS
+
+    case $HAVE_LIBPCRE2.$USE_LIBPCRE2 in
+	YES.TEST|YES.YES)
+	    echo 'Using libpcre2'
+	    AC_DEFINE(HAVE_LIBPCRE2,1)
+	    AC_DEFINE(USE_LIBPCRE2,1)
+	    USE_LIBPCRE2=YES
+	    ;;
+	YES.NO)
+	    echo 'Avoiding libpcre2'
+	    AC_DEFINE(HAVE_LIBPCRE2,1)
+	    AC_DEFINE(USE_LIBPCRE2,0)
+	    LIBPCRE2_CFLAGS=
+	    LIBPCRE2_LIBS=
+	    ;;
+	NO.TEST)
+	    echo 'No libpcre2'
+	    AC_DEFINE(HAVE_LIBPCRE2,0)
+	    AC_DEFINE(USE_LIBPCRE2,0)
+	    USE_LIBPCRE2=NO
+	    ;;
+	NO.YES)
+	    echo '##### No libpcre2 found'
+	    AC_DEFINE(HAVE_LIBPCRE2,0)
+	    AC_DEFINE(USE_LIBPCRE2,0)
+	    ;;
+	*)
+	    ;;
+    esac
+
+    AC_SUBST(LIBPCRE2_CFLAGS)dnl
+    AC_SUBST(LIBPCRE2_LIBS)dnl
+])
+#####################################################################
+##
+##   Look for libjansson
+##
+#####################################################################
+
+AC_DEFUN(AC_PATH_JANSSON,
+[
+    echo Checking for libjansson...
+
+    LIBJANSSON_CFLAGS=
+    LIBJANSSON_LIBS=
+
+    LIBJANSSON_HEADERS_FOUND=NO
+    LIBJANSSON_LIBS_FOUND=NO
+    LIBJANSSON_FOUND=0
+
+    if  ( pkg-config libjansson --cflags ) > /dev/null 2>&1
     then
-	PCRE_FOUND=0
-	AC_DEFINE(HAVE_PCRE,0)
-    else
-	PCRE_FOUND=1
-	AC_DEFINE(HAVE_PCRE,1)
-
-	if  test "$PCRE_CFLAGS" = "-I/usr/include"
-	then
-	    PCRE_CFLAGS=
-	fi
+	LIBJANSSON_CFLAGS=`pkg-config libjansson --cflags`
+	LIBJANSSON_HEADERS_FOUND=YES
     fi
 
-    AC_SUBST(PCRE_CFLAGS)dnl
-    AC_SUBST(PCRE_LIBS)dnl
-    AC_SUBST(PCRE_FOUND)dnl
+    if  ( pkg-config libjansson --libs ) > /dev/null 2>&1
+    then
+	LIBJANSSON_LIBS=`pkg-config libjansson --libs`
+	LIBJANSSON_LIBS_FOUND=YES
+    fi
+
+    ########  The hard way
+    if test $LIBJANSSON_HEADERS_FOUND = NO -o $LIBJANSSON_LIBS_FOUND = NO
+    then
+	h_so_tmp="$$.h_so_tmp"
+	trap "rm -f $h_so_tmp" 0
+	for h_so in \
+	    "/usr/include jansson.h - jansson" \
+	    "/usr/include jansson.h /usr/lib64 jansson" \
+	    "/usr/include jansson.h /usr/lib jansson" \
+	    "/usr/local/include jansson.h /usr/local/lib jansson" \
+	    "/usr/pkg/include jansson.h /usr/pkg/lib jansson" \
+	    "/usr/apps/include jansson.h /usr/apps/lib jansson" \
+	    "/usr/sfw/include jansson.h /usr/sfw/lib jansson" \
+	    "/opt/sfw/include jansson.h /opt/sfw/lib jansson" \
+	    "/usr/local/include/jansson jansson.h /usr/local/lib/jansson jansson" \
+	    "/usr/local/include/libjansson jansson.h /usr/local/lib/libjansson jansson"
+	do
+	    echo $h_so
+	done > ${h_so_tmp}
+	while read hd h sod so
+	do
+	    if  test -f $hd/$h -a \
+		\( ${sod} = - -o -f ${sod}/lib${so}.so \
+		              -o -f ${sod}/lib${so}.dylib \)
+	    then
+		case $hd in
+		/usr/include)
+		    : ok
+		    ;;
+		*)
+		    LIBJANSSON_CFLAGS=-I${hd}
+		    ;;
+		esac
+
+		case $sod in
+		/usr/lib|/lib|-)
+		    LIBJANSSON_LIBS=-l${so}
+		    ;;
+		*)
+		    LIBJANSSON_LIBS="-L${sod} -l${so}"
+		    ;;
+		esac
+
+		LIBJANSSON_HEADERS_FOUND=YES
+		LIBJANSSON_LIBS_FOUND=YES
+		break
+	    fi
+	done < ${h_so_tmp}
+    fi
+    ########
+
+    AC_ARG_WITH( LIBJANSSON,
+	[ --with-LIBJANSSON Use libjansson if available],
+	[
+	    if  test $withval = yes
+	    then
+		USE_LIBJANSSON=YES
+	    else
+		USE_LIBJANSSON=NO
+	    fi
+	],
+	[
+	    USE_LIBJANSSON=TEST;
+	])
+
+    case $LIBJANSSON_HEADERS_FOUND.$LIBJANSSON_LIBS_FOUND in
+	YES.YES)
+	    LIBJANSSON_FOUND=1
+	    HAVE_LIBJANSSON=YES
+	    ;;
+	*)
+	    LIBJANSSON_FOUND=0
+	    # Try for ourselves
+	    AC_TRY_COMPILE([#include <jansson.h>],
+	      [json_t * one= json_integer( 1 ); json_decref( one );],
+		HAVE_LIBJANSSON=YES,HAVE_LIBJANSSON=NO,)
+	    ;;
+    esac
+
+    case $HAVE_LIBJANSSON.$USE_LIBJANSSON in
+	YES.TEST|YES.YES)
+	    echo 'Using libjansson'
+	    AC_DEFINE(HAVE_LIBJANSSON,1)
+	    AC_DEFINE(USE_LIBJANSSON,1)
+	    USE_LIBJANSSON=YES
+	    ;;
+	YES.NO)
+	    echo 'Avoiding libjansson'
+	    AC_DEFINE(HAVE_LIBJANSSON,1)
+	    AC_DEFINE(USE_LIBJANSSON,0)
+	    LIBJANSSON_CFLAGS=
+	    LIBJANSSON_LIBS=
+	    ;;
+	NO.TEST)
+	    echo 'No libjansson'
+	    AC_DEFINE(HAVE_LIBJANSSON,0)
+	    AC_DEFINE(USE_LIBJANSSON,0)
+	    USE_LIBJANSSON=NO
+	    ;;
+	NO.YES)
+	    echo '##### No libjansson found'
+	    AC_DEFINE(HAVE_LIBJANSSON,0)
+	    AC_DEFINE(USE_LIBJANSSON,0)
+	    ;;
+	*)
+	    ;;
+    esac
+
+    AC_SUBST(LIBJANSSON_CFLAGS)dnl
+    AC_SUBST(LIBJANSSON_LIBS)dnl
 ])
 #####################################################################
 ##

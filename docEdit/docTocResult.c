@@ -53,7 +53,6 @@
 /************************************************************************/
 
 static int docParaInsertTocEntry(	CalculateToc *		ct,
-					int			makeHyperlinks,
 					const TocEntry *	te,
 					const TextAttribute *	ta,
 					const SelectionScope *	ss,
@@ -72,6 +71,8 @@ static int docParaInsertTocEntry(	CalculateToc *		ct,
     docInitHyperlinkField( &hf );
     docInitRefField( &rf );
     docInitPagerefField( &pf );
+
+    int				makeHyperlinks= ct->ctTocField.tfHyperlinks;
 
     if  ( ! te->teMarkName						||
 	  utilCopyMemoryBuffer( &(hf.hfBookmark), te->teMarkName )	||
@@ -432,7 +433,7 @@ static int docCalculateTocField( CalculateToc *			ct,
 	if  ( ! paraNodeToc )
 	    { XDEB(paraNodeToc); return -1;	}
 
-	if  ( docParaInsertTocEntry( ct, ct->ctTocField.tfHyperlinks, te, ta,
+	if  ( docParaInsertTocEntry( ct, te, ta,
 				    &(dfToc->dfSelectionScope), paraNodeToc ) )
 	    { LDEB(entryNr); return -1;	}
 

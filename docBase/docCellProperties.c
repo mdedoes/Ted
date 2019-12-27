@@ -29,6 +29,9 @@ void docInitCellProperties(	CellProperties *	cp )
     cp->cpRightBorderNumber= 0;
     cp->cpBottomBorderNumber= 0;
 
+    cp->cpLtrDiagonalBorderNumber= 0;
+    cp->cpRtlDiagonalBorderNumber= 0;
+
     cp->cpShadingNumber= 0;
 
     /**/
@@ -133,6 +136,34 @@ int docUpdCellProperties(	PropertyMask *			pCpDoneMask,
 	    {
 	    cpTo->cpRightBorderNumber= fromNumber;
 	    PROPmaskADD( &cpDoneMask, CLpropRIGHT_BORDER );
+	    }
+	}
+
+    if  ( PROPmaskISSET( cpSetMask, CLpropLEFT_RIGHT_DIAGONAL ) )
+	{
+	int	fromNumber= cpFrom->cpLtrDiagonalBorderNumber;
+
+	if  ( fromNumber >= 0 && dam && dam->damBorderMap )
+	    { fromNumber= dam->damBorderMap[fromNumber];	}
+
+	if  ( cpTo->cpLtrDiagonalBorderNumber != fromNumber )
+	    {
+	    cpTo->cpLtrDiagonalBorderNumber= fromNumber;
+	    PROPmaskADD( &cpDoneMask, CLpropLEFT_RIGHT_DIAGONAL );
+	    }
+	}
+
+    if  ( PROPmaskISSET( cpSetMask, CLpropRIGHT_LEFT_DIAGONAL ) )
+	{
+	int	fromNumber= cpFrom->cpRtlDiagonalBorderNumber;
+
+	if  ( fromNumber >= 0 && dam && dam->damBorderMap )
+	    { fromNumber= dam->damBorderMap[fromNumber];	}
+
+	if  ( cpTo->cpRtlDiagonalBorderNumber != fromNumber )
+	    {
+	    cpTo->cpRtlDiagonalBorderNumber= fromNumber;
+	    PROPmaskADD( &cpDoneMask, CLpropRIGHT_LEFT_DIAGONAL );
 	    }
 	}
 
@@ -352,6 +383,28 @@ void docCellPropertyDifference(	PropertyMask *			pCpDifMask,
 	    { PROPmaskADD( &cpDifMask, CLpropRIGHT_BORDER ); }
 	}
 
+    if  ( PROPmaskISSET( cpCmpMask, CLpropLEFT_RIGHT_DIAGONAL ) )
+	{
+	int	fromNumber= cpFrom->cpLtrDiagonalBorderNumber;
+
+	if  ( fromNumber >= 0 && dam && dam->damBorderMap )
+	    { fromNumber= dam->damBorderMap[fromNumber];	}
+
+	if  ( cpTo->cpLtrDiagonalBorderNumber != fromNumber )
+	    { PROPmaskADD( &cpDifMask, CLpropLEFT_RIGHT_DIAGONAL ); }
+	}
+
+    if  ( PROPmaskISSET( cpCmpMask, CLpropRIGHT_LEFT_DIAGONAL ) )
+	{
+	int	fromNumber= cpFrom->cpRtlDiagonalBorderNumber;
+
+	if  ( fromNumber >= 0 && dam && dam->damBorderMap )
+	    { fromNumber= dam->damBorderMap[fromNumber];	}
+
+	if  ( cpTo->cpRtlDiagonalBorderNumber != fromNumber )
+	    { PROPmaskADD( &cpDifMask, CLpropRIGHT_LEFT_DIAGONAL ); }
+	}
+
     /**/
     if  ( PROPmaskISSET( cpCmpMask, CLpropSHADING ) )
 	{
@@ -497,6 +550,13 @@ int docSetCellProperty(		CellProperties *	cp,
 	    cp->cpRightBorderNumber= arg;
 	    break;
 
+	case CLpropLEFT_RIGHT_DIAGONAL:
+	    cp->cpLtrDiagonalBorderNumber= arg;
+	    break;
+	case CLpropRIGHT_LEFT_DIAGONAL:
+	    cp->cpRtlDiagonalBorderNumber= arg;
+	    break;
+
 	case CLpropSHADING:
 	    cp->cpShadingNumber= arg;
 	    break;
@@ -568,7 +628,6 @@ int docGetCellProperty(		const CellProperties *	cp,
 	{
 	case CLpropWIDTH:
 	    return cp->cpWide;
-	    break;
 
 	case CLpropTOP_BORDER:
 	    return cp->cpTopBorderNumber;
@@ -578,6 +637,11 @@ int docGetCellProperty(		const CellProperties *	cp,
 	    return cp->cpLeftBorderNumber;
 	case CLpropRIGHT_BORDER:
 	    return cp->cpRightBorderNumber;
+
+	case CLpropLEFT_RIGHT_DIAGONAL:
+	    return cp->cpLtrDiagonalBorderNumber;
+	case CLpropRIGHT_LEFT_DIAGONAL:
+	    return cp->cpRtlDiagonalBorderNumber;
 
 	case CLpropSHADING:
 	    return cp->cpShadingNumber;

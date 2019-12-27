@@ -8,7 +8,7 @@
 
 #   include	<stddef.h>
 
-#   include	"tedEdit.h"
+#   include	"tedEditOperation.h"
 #   include	"tedSelect.h"
 #   include	<tedDocFront.h>
 #   include	"tedDocument.h"
@@ -24,6 +24,7 @@
 #   include	<appEditDocument.h>
 #   include	<docTreeNode.h>
 #   include	<docBuf.h>
+#   include	<docTreeType.h>
 
 #   include	<appDebugon.h>
 
@@ -223,7 +224,7 @@ static DocumentField * tedGetSelectedNote(	DocumentNote **	pDn,
 						EditDocument *	ed )
     {
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    struct BufferDocument *		bd= td->tdDocument;
+    struct BufferDocument *	bd= td->tdDocument;
 
     DocumentSelection		ds;
     SelectionGeometry		sg;
@@ -323,6 +324,34 @@ void tedDocGotoNoteRef(		EditDocument *	ed )
 	{ LDEB(1);	}
 
     return;
+    }
+
+void tedGotoNoteOther(		EditDocument *			ed,
+				const DocumentField *		dfChftn,
+				const DocumentPosition *	dpClick )
+    {
+    TedDocument *		td= (TedDocument *)ed->edPrivateData;
+    struct BufferDocument *	bd= td->tdDocument;
+
+    if  ( dpClick->dpNode->biTreeType == DOCinBODY )
+	{
+	DocumentNote *	dn= docGetNoteOfField( dfChftn, bd );
+	tedGotoNoteDef( ed, dn );
+	}
+    else{
+	DocumentSelection	dsClick;
+	DocumentNote *		dn;
+	int			selInNote;
+	DocumentField *		dfNoteRef;
+
+	docSetIBarSelection( &dsClick, dpClick );
+
+	dfNoteRef= docGetSelectedNote( &dn, &selInNote, bd, &dsClick );
+	if  ( ! dfNoteRef )
+	    { XDEB(dfNoteRef); return;	}
+
+	tedGotoNoteRef( ed, dfNoteRef );
+	}
     }
 
 /************************************************************************/

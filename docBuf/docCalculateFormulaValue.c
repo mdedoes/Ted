@@ -42,11 +42,8 @@ int docFormulaGetNameAsSelection(	DocumentSelection *		ds,
 					const CalculateFormula *	cf )
     {
     struct BufferDocument *	bd= cf->cfRecalculateFields->rfDocument;
-    int				headPart;
-    int				tailPart;
 
-    (void) docFindBookmarkInDocument( ds, &headPart, &tailPart,
-						    bd, &(from->fvBuffer) );
+    (void) docFindBookmarkInDocument( ds, bd, &(from->fvBuffer) );
 
     if  ( ! docSelectionIsSet( ds ) && cf->cfRowNode )
 	{

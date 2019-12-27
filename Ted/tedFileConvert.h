@@ -45,4 +45,10 @@ extern int tedConcatenateText(	struct EditApplication *	ea,
 				int				argc,
 				char **				argv );
 
+extern int tedMergeJson(	struct EditApplication *	ea,
+				const char *			prog,
+				const char *			call,
+				int				argc,
+				char **				argv );
+
 #   endif	/*  TED_FILE_CONVERT_H	*/

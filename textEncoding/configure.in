@@ -8,7 +8,9 @@ AC_PROG_RANLIB
 AC_HEADER_STDC
 
 AC_PATH_ICONV
-AC_PATH_PCRE
+AC_PATH_PCRE2
+dnl Actually this is not the right library
+AC_PATH_JANSSON
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 

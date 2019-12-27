@@ -32,7 +32,7 @@ WFLAGS=	-Wall			\
 
 #CFLAGS= $(WFLAGS) -g -O2 $(INCLUDES)
 
-# 66!!obs
+# 67!!obs
 OBS	=	\
 		xmlWriter.o\
 		utilX11FontNames.o\
@@ -81,6 +81,7 @@ OBS	=	\
 		sioLzw.o\
 		sioIn.o\
 		sioHttp.o\
+		sioHexedMemory.o\
 		sioHex.o\
 		sioFork.o\
 		sioFlate.o\
@@ -128,7 +129,7 @@ configure: aclocal.m4 configure.in
 	rm -rf config.cache autom4te.cache
 	autoconf
 
-# deps -I../include -I../appUtil
+# deps -I../include
 ################################# !! sh
 
 appCgiIn.o: \
@@ -273,6 +274,16 @@ sioHex.o: \
     sioGeneral.h \
     sioHex.h \
     sioHex.c
+
+sioHexedMemory.o: \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    sioGeneral.h \
+    sioHexedMemory.h \
+    sioHex.h \
+    sioMemory.h \
+    sioHexedMemory.c
 
 sioHttp.o: \
     appSystem.h \
@@ -633,7 +644,12 @@ utilX11FontNames.o: \
 
 xmlWriter.o: \
     appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    sioBase64.h \
     sioGeneral.h \
+    sioHexedMemory.h \
+    sioUtil.h \
     utilColor.h \
     utilMemoryBuffer.h \
     xmlWriter.h \

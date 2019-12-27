@@ -16,6 +16,7 @@
 #   include	<docTextParticule.h>
 #   include	<geoRectangle.h>
 #   include	"docLayout.h"
+#   include	"layoutContext.h"
 #   include	"docLineRectangles.h"
 #   include	<docParaProperties.h>
 

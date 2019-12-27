@@ -120,8 +120,6 @@ static int docCheckFieldTailParticule(	int			part,
 void docCheckFieldOffsets(	const struct BufferDocument *	bd,
 				const struct BufferItem *	node )
     {
-    const DocumentFieldList *	dfl= &(bd->bdFieldList);
-
     switch( node->biLevel )
 	{
 	int			i;
@@ -150,7 +148,7 @@ void docCheckFieldOffsets(	const struct BufferDocument *	bd,
 		      tp->tpKind != TPkindFIELDHEAD	)
 		    { continue;	}
 
-		df= docGetFieldByNumber( dfl, tp->tpObjectNumber );
+		df= docGetFieldByNumber( bd, tp->tpObjectNumber );
 		if  ( ! df )
 		    { SLXDEB("####",tp->tpObjectNumber,df); continue;	}
 
@@ -600,7 +598,7 @@ void docListFieldsOfDocument(	const struct BufferDocument *	bd )
     }
 
 static void docScanNotes(	const struct BufferDocument *	bd,
-				int			treeType )
+				int				treeType )
     {
     DocumentField *	dfNote;
     DocumentNote *	dn;

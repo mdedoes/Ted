@@ -1,7 +1,5 @@
 /************************************************************************/
 /*									*/
-/*  Save a struct BufferDocument into an HTML file.				*/
-/*									*/
 /*  Writes RTF attributes as CSS styles.				*/
 /*									*/
 /************************************************************************/
@@ -26,8 +24,131 @@
 #   include	<textAttribute.h>
 #   include	<fontDocFont.h>
 #   include	<docAttributes.h>
+#   include	<fontDocFontList.h>
 
 #   include	<appDebugon.h>
+
+int docCssWriteProperty(	int *			pCol,
+				SimpleOutputStream *	sos,
+				const char *		property,
+				const char *		value )
+    {
+    sioOutPutString( property, sos );
+    sioOutPutString( ": ", sos );
+    sioOutPutString( value, sos );
+    sioOutPutString( ";", sos );
+
+    if  ( pCol )
+	{
+	(*pCol) += strlen( property )+ 2+ strlen( value )+ 1;
+	}
+
+    return 0;
+    }
+
+int docCssWriteDimension(	int *			pCol,
+				SimpleOutputStream *	sos,
+				const char *		property,
+				int			value,
+				const char *		unit )
+    {
+    char			scratch[40];
+
+    sprintf( scratch, "%d%s", value, unit );
+
+    docCssWriteProperty( pCol, sos, property, scratch );
+
+    return 0;
+    }
+
+int docCssWriteNumber(		int *			pCol,
+				SimpleOutputStream *	sos,
+				const char *		property,
+				int			value )
+    {
+    char			scratch[40];
+
+    sprintf( scratch, "%d", value );
+
+    docCssWriteProperty( pCol, sos, property, scratch );
+
+    return 0;
+    }
+
+int docCssWriteRgb8Color(	int *			pCol,
+				SimpleOutputStream *	sos,
+				const char *		property,
+				const RGB8Color *	rgb8 )
+    {
+    char			scratch[50];
+
+    sprintf( scratch, "#%02x%02x%02x",
+			    rgb8->rgb8Red, rgb8->rgb8Green, rgb8->rgb8Blue );
+
+    docCssWriteProperty( pCol, sos, property, scratch );
+
+    return 0;
+    }
+
+int docCssWritelnProperty(	SimpleOutputStream *	sos,
+				int			indent,
+				const char *		property,
+				const char *		value )
+    {
+    if  ( indent > 0 )
+	{ sioOutPrintf( sos, "%*s", indent, "" );	}
+
+    if  ( docCssWriteProperty( (int *)0, sos, property, value ) )
+	{ SSDEB(property,value); return -1;	}
+
+    sioOutPutString( "\r\n", sos );
+
+    return 0;
+    }
+
+int docCssWritelnDimension(	SimpleOutputStream *	sos,
+				int			indent,
+				const char *		property,
+				int			value,
+				const char *		unit )
+    {
+    char			scratch[40];
+
+    sprintf( scratch, "%d%s", value, unit );
+
+    docCssWritelnProperty( sos, indent, property, scratch );
+
+    return 0;
+    }
+
+int docCssWritelnNumber(	SimpleOutputStream *	sos,
+				int			indent,
+				const char *		property,
+				int			value )
+    {
+    char			scratch[40];
+
+    sprintf( scratch, "%d", value );
+
+    docCssWritelnProperty( sos, indent, property, scratch );
+
+    return 0;
+    }
+
+int docCssWritelnRgb8Color(	SimpleOutputStream *	sos,
+				int			indent,
+				const char *		property,
+				const RGB8Color *	rgb8 )
+    {
+    char			scratch[50];
+
+    sprintf( scratch, "#%02x%02x%02x",
+			    rgb8->rgb8Red, rgb8->rgb8Green, rgb8->rgb8Blue );
+
+    docCssWritelnProperty( sos, indent, property, scratch );
+
+    return 0;
+    }
 
 /************************************************************************/
 /*									*/
@@ -36,7 +157,7 @@
 /************************************************************************/
 
 int docCssUseBackgroundStyle(	const ItemShading *		is,
-				const struct BufferDocument *		bd )
+				const struct BufferDocument *	bd )
     {
     int				isFilled= 0;
     RGB8Color			rgb8;
@@ -54,13 +175,11 @@ int docCssUseBackgroundStyle(	const ItemShading *		is,
 
 void docCssEmitBackgroundStyle( int *				pCol,
 				SimpleOutputStream *		sos,
-				const struct BufferDocument *		bd,
+				const struct BufferDocument *	bd,
 				const ItemShading *		is )
     {
     int				isFilled= 0;
     RGB8Color			rgb8;
-
-    char			scratch[50];
 
     if  ( is->isPattern == DOCspSOLID )
 	{
@@ -68,13 +187,7 @@ void docCssEmitBackgroundStyle( int *				pCol,
 	    { LDEB(1);	}
 
 	if  ( isFilled )
-	    {
-	    sprintf( scratch, "background-color: #%02x%02x%02x;",
-			    rgb8.rgb8Red, rgb8.rgb8Green, rgb8.rgb8Blue );
-
-	    sioOutPutString( scratch, sos );
-	    (*pCol) += strlen( scratch );
-	    }
+	    { docCssWriteRgb8Color( pCol, sos, "background-color", &rgb8 ); }
 	}
 
     return;
@@ -184,10 +297,12 @@ static int docCssSaveTextAttributeStyle(
     int					size;
     int					fontSize;
 
-    const struct BufferDocument *		bd= at->atDocument;
+    const struct BufferDocument *	bd= at->atDocument;
     const DocumentProperties *		dp= bd->bdProperties;
-    const DocumentFontList *		dfl= dp->dpFontList;
+    const struct DocumentFontList *	dfl= dp->dpFontList;
     const DocumentFont *		df;
+
+    const int				indent= 2;
 
     /*  1  */
     fontSize= ta->taFontSizeHalfPoints;
@@ -203,16 +318,8 @@ static int docCssSaveTextAttributeStyle(
 
     if  ( ta->taTextColorNumber > 0 )
 	{
-	const RGB8Color *	rgb8= dp->dpColorPalette->cpColors+ ta->taTextColorNumber;
-
-	sprintf( scratch, "#%02x%02x%02x",
-					rgb8->rgb8Red,
-					rgb8->rgb8Green,
-					rgb8->rgb8Blue );
-
-	sioOutPutString( "  color: ", at->atSos );
-	sioOutPutString( scratch, at->atSos );
-	sioOutPutString( ";\n", at->atSos );
+	docCssWritelnRgb8Color( at->atSos, indent, "color",
+		    dp->dpColorPalette->cpColors+ ta->taTextColorNumber );
 	}
 
     size= cssFontFamilyIndicator( scratch, sizeof(scratch)- 1,
@@ -221,53 +328,47 @@ static int docCssSaveTextAttributeStyle(
 	{ LDEB(size);	}
     if  ( size > 0 )
 	{
-	sioOutPutString( "  font-family: ", at->atSos );
-	sioOutPutString( scratch, at->atSos );
-	sioOutPutString( ";\n", at->atSos );
+	docCssWritelnProperty( at->atSos, indent, "font-family", scratch );
 	}
 
     if  ( ta->taFontIsBold )
 	{
-	sioOutPutString( "  font-weight: bold", at->atSos );
-	sioOutPutString( ";\n", at->atSos );
+	docCssWritelnProperty( at->atSos, indent, "font-weight", "bold" );
 	}
 
     if  ( ta->taFontIsSlanted )
 	{
-	sioOutPutString( "  font-style: italic", at->atSos );
-	sioOutPutString( ";\n", at->atSos );
+	docCssWritelnProperty( at->atSos, indent, "font-style", "italic" );
 	}
 
     if  ( ta->taTextIsUnderlined )
 	{
-	sioOutPutString( "  text-decoration: underline", at->atSos );
-	sioOutPutString( ";\n", at->atSos );
+	docCssWritelnProperty( at->atSos, indent,
+					"text-decoration", "underline" );
 	}
 
     if  ( ta->taHasStrikethrough )
 	{
-	sioOutPutString( "  text-decoration: line-through", at->atSos );
-	sioOutPutString( ";\n", at->atSos );
+	docCssWritelnProperty( at->atSos, indent,
+					"text-decoration", "line-through" );
 	}
 
     if  ( ta->taSmallCaps )
 	{
-	sioOutPutString( "  font-variant: small-caps", at->atSos );
-	sioOutPutString( ";\n", at->atSos );
+	docCssWritelnProperty( at->atSos, indent,
+					"font-variant", "small-caps" );
 	}
 
     if  ( ta->taSuperSub == TEXTvaSUPERSCRIPT )
 	{
-	sioOutPutString( "  vertical-align: super", at->atSos );
-	sioOutPutString( ";\n", at->atSos );
+	docCssWritelnProperty( at->atSos, indent, "vertical-align", "super" );
 
 	fontSize= SUPERSUB_SIZE( fontSize );
 	}
 
     if  ( ta->taSuperSub == TEXTvaSUBSCRIPT )
 	{
-	sioOutPutString( "  vertical-align: sub", at->atSos );
-	sioOutPutString( ";\n", at->atSos );
+	docCssWritelnProperty( at->atSos, indent, "vertical-align", "sub" );
 
 	fontSize= SUPERSUB_SIZE( fontSize );
 	}
@@ -294,17 +395,15 @@ static int docCssSaveTextAttributeStyle(
 	}
 
     sprintf( scratch, "%d%spt", fontSize/ 2, (fontSize % 2)?".5":"" );
-    sioOutPutString( "  font-size: ", at->atSos );
-    sioOutPutString( scratch, at->atSos );
-    sioOutPutString( ";\n", at->atSos );
+    docCssWritelnProperty( at->atSos, indent, "font-size", scratch );
 
     sioOutPutString( "  }\n", at->atSos );
 
     return 0;
     }
 
-int docCssSaveTextAttributeStyles(	SimpleOutputStream *	sos,
-					const IndexSet *	used,
+int docCssSaveTextAttributeStyles(	SimpleOutputStream *		sos,
+					const IndexSet *		used,
 					const struct BufferDocument *	bd )
     {
     AttributesThrough			at;

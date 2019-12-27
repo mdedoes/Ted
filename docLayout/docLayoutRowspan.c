@@ -12,7 +12,7 @@
 #   include	<docTreeNode.h>
 #   include	<docRowProperties.h>
 #   include	<docCellProperties.h>
-#   include	<docBuf.h>
+#   include	<docNodeTree.h>
 
 #   include	<appDebugon.h>
 
@@ -93,9 +93,9 @@ static void docLayoutTopOfRowspan(
 /*									*/
 /************************************************************************/
 
-void docRowLayoutRowspanAdmin(	struct BufferItem *			cellNode,
-				const struct BufferItem *		rowNode,
-				const struct BufferItem *		nextRowNode,
+void docRowLayoutRowspanAdmin(	struct BufferItem *		cellNode,
+				const struct BufferItem *	rowNode,
+				const struct BufferItem *	nextRowNode,
 				int				nextRow,
 				ParagraphLayoutJob *		plj )
 

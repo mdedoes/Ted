@@ -12,7 +12,6 @@
 #   include	<docScanner.h>
 #   include	<docLayoutPosition.h>
 #   include	"docTreeNode.h"
-#   include	"docBuf.h"
 #   include	<docTextParticule.h>
 #   include	<docTextLine.h>
 #   include	"docTextRun.h"
@@ -290,18 +289,26 @@ static int docVisitField(	const ParagraphScanner *	ps,
 				VisitParticule *		vp )
     {
     int				res;
-    struct DocumentField *	df;
 
-    df= docGetFieldByNumber( &(vp->vpDocument->bdFieldList),
+    if  ( vp->vpTextParticule->tpObjectNumber < 0 )
+	{
+	LDEB(vp->vpTextParticule->tpObjectNumber);
+	res= 0;
+	}
+    else{
+	struct DocumentField *	df;
+
+	df= docGetFieldByNumber( vp->vpDocument,
 					vp->vpTextParticule->tpObjectNumber );
-    if  ( ! df )
-	{ LXDEB(vp->vpTextParticule->tpObjectNumber,df); return -1; }
+	if  ( ! df )
+	    { LXDEB(vp->vpTextParticule->tpObjectNumber,df); return -1; }
 
-    vp->vpTextAttributeNr= docGetEffectiveTextAttributes(
+	vp->vpTextAttributeNr= docGetEffectiveTextAttributes(
 			&(vp->vpTextAttribute),
 			vp->vpDocument, vp->vpParaNode, vp->vpParticule );
 
-    res= (*ps->psVisitField)( vp, df, ps->psThrough );
+	res= (*ps->psVisitField)( vp, df, ps->psThrough );
+	}
 
     return res;
     }

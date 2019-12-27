@@ -10,6 +10,7 @@
 #   include	<utilPagedList.h>
 #   include	"fontEncodedFont.h"
 #   include	"fontDocFontList.h"
+#   include	"fontDocFontListImpl.h"
 #   include	"fontDocFont.h"
 
 #   include	<appDebugon.h>

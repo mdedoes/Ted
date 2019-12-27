@@ -11,6 +11,7 @@
 #   include		<docEditRange.h>
 #   include		<utilIndexSet.h>
 #   include		<docSelect.h>
+#   include		<textAttribute.h>
 
 struct BufferItem;
 struct DocumentField;
@@ -45,7 +46,16 @@ typedef struct EditOperation
     {
     SelectionScope		eoSelectionScope;
     struct BufferItem *		eoBodySectNode;
+
+				/**
+				 *  Field (if any) that fully holds the
+				 *  initial selection for this edit operation.
+				 *  The assumption is that it will not be 
+				 *  deleted and that it will be the parent
+				 * of new fields.
+				 */
     struct DocumentField *	eoBottomField;
+
 				/**
 				 *  Set where an edit operation is the 
 				 *  evaluation of a read-only field.
@@ -53,17 +63,20 @@ typedef struct EditOperation
 				 *  the whole field as it is read-only.
 				 */
     int				eoIsFieldBalanced;
-				    /************************************/
-				    /*  Field (if any) that fully holds	*/
-				    /*  the initial selection for this	*/
-				    /*  edit operation. The assumption	*/
-				    /*	is that it will not be deleted	*/
-				    /*  and that it will be the parent	*/
-				    /*  of new fields.			*/
-				    /************************************/
 
     unsigned char		eoIBarSelectionOld;
     unsigned char		eoMultiParagraphSelectionOld;
+
+				/**
+				 *  The text attribute that we keep on behalf 
+				 *  of the application.
+				 */
+    TextAttribute		eoSavedTextAttribute;
+				/**
+				 *  The attribute number for the application.
+				 *  matches eoSavedTextAttribute.
+				 */
+    int				eoSavedTextAttributeNumber;
 
     /**/
     int				eoParaAdjustParagraphNumber;
@@ -82,7 +95,7 @@ typedef struct EditOperation
 				 *  The selection at the beginning of the 
 				 *  edit operation. If needed, it is updated 
 				 *  along the way to make it possible to 
-				 *  select the same content after  the 
+				 *  select the same content after the 
 				 *  operation.
 				 */
     EditRange			eoSelectedRange;

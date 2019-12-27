@@ -739,7 +739,7 @@ int bidiHandleImplicitClass(	const struct BidiScanner * bs,
 	    return 0;
 
 	default:
-	    LSDEB(offset,ucdBidiClassStr(klass)); return -1;
+	    LSDEB(offset,ucdBidiClassStr(klass)); return 0;
 	}
 
     return 0;

@@ -17,8 +17,8 @@
 #   include	<docStripFrame.h>
 #   include	<docBlockFrame.h>
 #   include	<docObject.h>
-#   include	<docBuf.h>
 #   include	<docShapeGeometry.h>
+#   include	<docNodeTree.h>
 
 #   include	<appDebugon.h>
 
@@ -143,7 +143,7 @@ int docShapeCheckTextLayout(
 			const DocumentRectangle *	drInside,
 			DocumentRectangle *		drChanged,
 			const struct BufferItem *	bodySectNode,
-			const LayoutContext *		lc,
+			const struct LayoutContext *	lc,
 			START_TREE_LAYOUT		startTreeLayout )
     {
     /*  We do not expect the tree to change height here	*/
@@ -195,7 +195,7 @@ int docShapeCheckTextLayout(
 
 int docShapePrelayout(	InsertedObject *		io,
 			const struct BufferItem *	bodySectNode,
-			const LayoutContext *		lc )
+			const struct LayoutContext *	lc )
     {
     DrawingShape *	ds= io->ioDrawingShape;
     ShapeProperties *	sp= &(ds->dsShapeProperties);

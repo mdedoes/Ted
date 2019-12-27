@@ -21,7 +21,11 @@
 #   include	"docSelect.h"
 #   include	"docTreeNode.h"
 #   include	<docTextParticule.h>
+#   include	<utilMemoryBufferPrintf.h>
 #   include	"docAttributes.h"
+#   include	"docFields.h"
+#   include	<docNotesProperties.h>
+#   include	<docDocumentProperties.h>
 
 #   include	"docDebug.h"
 #   include	<appDebugon.h>
@@ -163,7 +167,7 @@ DocumentField * docGetSelectedNote(
     if  ( ds->dsSelectionScope.ssTreeType == DOCinFOOTNOTE	||
 	  ds->dsSelectionScope.ssTreeType == DOCinENDNOTE	)
 	{
-	struct BufferItem *		node= ds->dsHead.dpNode;
+	struct BufferItem *	node= ds->dsHead.dpNode;
 	int			ownerNumber;
 
 	node= docGetSectNode( ds->dsHead.dpNode );
@@ -171,7 +175,7 @@ DocumentField * docGetSelectedNote(
 	    { XDEB(node); return (DocumentField *)0;		}
 
 	ownerNumber= node->biSectSelectionScope.ssOwnerNumber;
-	dfNote= docGetFieldByNumber( &(bd->bdFieldList), ownerNumber );
+	dfNote= docGetFieldByNumber( bd, ownerNumber );
 	dn= docGetNoteOfField( dfNote, bd );
 	if  ( ! dn )
 	    { XDEB(dn); return (DocumentField *)0;	}
@@ -214,8 +218,11 @@ DocumentField * docGetSelectedNote(
     if  ( ! dn || ! dfNote )
 	{ /* XXDEB(dn,dfNote); */ return (DocumentField *)0;	}
 
-    *pDn= dn;
-    *pSelInNote= selInNote;
+    if  ( pDn )
+	{ *pDn= dn;			}
+    if  ( pSelInNote )
+	{ *pSelInNote= selInNote;	}
+
     return dfNote;
     }
 
@@ -387,7 +394,7 @@ DocumentNote *	docGetNoteOfField(	const DocumentField *	dfNote,
 	{
 	DocumentField *	dfOwner;
 
-	dfOwner= docGetFieldByNumber( &(bd->bdFieldList),
+	dfOwner= docGetFieldByNumber( bd,
 				dfNote->dfSelectionScope.ssOwnerNumber );
 
 	if  ( dfOwner->dfNoteIndex < 0			||
@@ -404,3 +411,88 @@ DocumentNote *	docGetNoteOfField(	const DocumentField *	dfNote,
     return (DocumentNote *)0;
     }
 
+int docSetNoteLinks(	MemoryBuffer *			mbTarget,
+			MemoryBuffer *			mbSource,
+			BufferItem *			paraNode,
+			const DocumentField *		dfChftn )
+    {
+    const char *	formatRef= "_NREF_%d";
+    const char *	formatDef= "_NDEF_%d";
+
+    if  ( paraNode->biTreeType != DOCinBODY )
+	{
+	struct BufferItem *	rootNode= docGetSectNode( paraNode );
+
+	if  ( ! rootNode )
+	    { XDEB(rootNode); return -1;	}
+	else{
+	    int	fieldNumber= rootNode->biSectSelectionScope.ssOwnerNumber;
+
+	    utilMemoryBufferPrintf( mbTarget, formatRef, fieldNumber+ 1 );
+	    utilMemoryBufferPrintf( mbSource, formatDef, fieldNumber+ 1 );
+
+	    return 0;
+	    }
+	}
+    else{
+	int	fieldNumber= dfChftn->dfFieldNumber;
+
+	utilMemoryBufferPrintf( mbTarget, formatDef, fieldNumber+ 1 );
+	utilMemoryBufferPrintf( mbSource, formatRef, fieldNumber+ 1 );
+
+	return 0;
+	}
+    }
+
+int docCollectNoteTitle(	MemoryBuffer *		mbTitle,
+				const DocumentNote *	dn,
+				struct BufferDocument *	bd )
+    {
+    DocumentPosition	dpLast;
+    DocumentSelection	dsTail;
+
+    if  ( docTailPosition( &dpLast, dn->dnDocumentTree.dtRoot ) )
+	{ LDEB(1); return -1;	}
+    else{
+	int	paraNr= docNumberOfParagraph( dpLast.dpNode );
+
+	if  ( paraNr == 1 )
+	    {
+	    dpLast.dpStroff= 0;
+	    docAvoidParaHeadField( &dpLast, (int *)0, bd );
+
+	    docSetParaSelection( &dsTail,
+		    dpLast.dpNode, 1,
+		    dpLast.dpStroff,
+		    docParaStrlen( dpLast.dpNode )- dpLast.dpStroff );
+
+	    if  ( docCollectReference( mbTitle, &dsTail, bd ) )
+		{ LDEB(1); return -1;	}
+	    }
+	}
+
+    return 0;
+    }
+
+int docGetNotePosition(		DocumentNote *		dn,
+				BufferDocument *	bd )
+    {
+    switch( dn->dnNoteProperties.npTreeType )
+	{
+	case DOCinFOOTNOTE:
+	    return FTNplacePAGE_END;
+
+	case DOCinENDNOTE:
+	    return bd->bdProperties->dpNotesProps.fepEndnotesProps.npPlacement;
+
+	default:
+	    LDEB(dn->dnNoteProperties.npTreeType); return -1;
+	}
+
+    return -1;
+    }
+
+int docGetEndnotePlacement(	BufferDocument *	bd )
+    {
+    return bd->bdProperties->dpNotesProps.fepEndnotesProps.npPlacement;
+    }

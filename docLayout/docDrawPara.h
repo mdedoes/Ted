@@ -11,6 +11,8 @@ typedef struct ParagraphDrawingStrip
     int			pdsAtParaTop;
     int			pdsAtParaBottom;
 
+    int			pdsBreakKind;
+
     LayoutPosition	pdsShadeTop;
     LayoutPosition	pdsShadeBelow;
     } ParagraphDrawingStrip;

@@ -4,6 +4,7 @@
 #   include	"docDrawPara.h"
 #   include	"docSelectLayout.h"
 #   include	"docLayout.h"
+#   include	"layoutContext.h"
 #   include	<docPageGrid.h>
 #   include	<docTreeType.h>
 #   include	<docTreeNode.h>
@@ -18,6 +19,7 @@
 #   include	<docSelect.h>
 #   include	<docScanner.h>
 #   include	<docBlockOrnaments.h>
+#   include	<docBreakKind.h>
 
 #   include	<docDebug.h>
 #   include	<appDebugon.h>
@@ -41,7 +43,7 @@ static int docDrawParaOrnaments( void *				through,
 				DrawingContext *		dc,
 				const BlockOrigin *		bo )
     {
-    const LayoutContext *		lc= &(dc->dcLayoutContext);
+    const LayoutContext *		lc= dc->dcLayoutContext;
     const struct BufferDocument *	bd= lc->lcDocument;
 
     LayoutPosition			lpTop;
@@ -52,14 +54,14 @@ static int docDrawParaOrnaments( void *				through,
     DocumentRectangle			drOutside;
     DocumentRectangle			drInside;
 
-    int					paraLeftIndentTwips;
+    int					paraFirstIndentTwips;
 
     docInitBlockOrnaments( &ornaments );
 
     drPara= pf->pfParaContentRect;
-    paraLeftIndentTwips= paraNode->biParaProperties->ppLeftIndentTwips;
-    if  ( paraLeftIndentTwips < 0 )
-	{ drPara.drX0 += paraLeftIndentTwips;	}
+    paraFirstIndentTwips= paraNode->biParaProperties->ppFirstIndentTwips;
+    if  ( paraFirstIndentTwips < 0 )
+	{ drPara.drX0 += paraFirstIndentTwips;	}
 
     docShiftPosition( &lpTop, bo, &(pds->pdsShadeTop) );
     docShiftPosition( &lpBelow, bo, &(pds->pdsShadeBelow) );
@@ -103,7 +105,7 @@ static int docDrawParaOrnaments( void *				through,
 
 /************************************************************************/
 /*									*/
-/*  Count the number of lines on the current page.			*/
+/*  Count the number of lines in this paragraph on the current page.	*/
 /*									*/
 /************************************************************************/
 
@@ -122,6 +124,7 @@ static int docDelimitParagraphDrawingStrip(
 
     LayoutPosition	lpBelow= *lpShadeTop;
     int			lineUpto= paraNode->biParaLineCount;
+    int			breakKind= DOCibkNONE;
 
     line= docParaFindLastLineInFrame( paraNode, lineFrom, lpThisFrame, bo );
     if  ( line < lineFrom )
@@ -136,18 +139,21 @@ static int docDelimitParagraphDrawingStrip(
     if  ( line < paraNode->biParaLineCount )
 	{
 	const TextLine *	tl= paraNode->biParaLines+ line;
+	const TextParticule *	tpLast;
+
+	tpLast= paraNode->biParaParticules+
+				tl->tlFirstParticule+ tl->tlParticuleCount -1;
+
+	if  ( tpLast->tpKind == TPkindPAGEBREAK )
+	    { breakKind= DOCibkPAGE;	}
+	if  ( tpLast->tpKind == TPkindCOLUMNBREAK )
+	    { breakKind= DOCibkCOL;	}
 
 	docTextLineGetShiftedNextLineTop( &lpBelow, bo, tl );
 
 	if  ( line+ 1 == paraNode->biParaLineCount )
 	    {
-	    int		afterPageBreak;
-
-	    afterPageBreak= paraNode->biParaParticules[
-			tl->tlFirstParticule+ tl->tlParticuleCount -1].tpKind ==
-			TPkindPAGEBREAK;
-
-	    if  ( ! afterPageBreak )
+	    if  ( breakKind != DOCibkNONE )
 		{
 		LayoutPosition	lp;
 
@@ -172,6 +178,8 @@ static int docDelimitParagraphDrawingStrip(
     pds->pdsLineUpto= lineUpto;
     pds->pdsAtParaTop= atTop;
     pds->pdsAtParaBottom= atBottom;
+
+    pds->pdsBreakKind= breakKind;
 
     pds->pdsShadeTop= *lpShadeTop;
     pds->pdsShadeBelow= lpBelow;
@@ -221,6 +229,10 @@ int docDrawParagraphStrip(		void *			through,
 /*									*/
 /************************************************************************/
 
+static const char DRAW_LINE_BREAK_FLOW[]= "paragraph flow";
+static const char DRAW_LINE_BREAK_PAGE[]= "page break";
+static const char DRAW_LINE_BREAK_COLUMN[]=  "column break";
+
 int docDrawParaNode(		LayoutPosition *		lpBelow,
 				struct BufferItem *		paraNode,
 				void *				through,
@@ -229,19 +241,19 @@ int docDrawParaNode(		LayoutPosition *		lpBelow,
     {
     int				rval= 0;
     ParagraphFrame		pf;
-    int				line= 0;
 
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
     struct BufferDocument *	bd= lc->lcDocument;
 
     BlockFrame			bf;
     LayoutPosition		lpTop;
     LayoutPosition		lpShadeTop;
 
+    int				line= 0;
+
     docLayoutInitBlockFrame( &bf );
     docParaBlockFrameTwips( &bf, paraNode, dc->dcBodySectNode, bd,
-					    paraNode->biTopPosition.lpPage,
-					    paraNode->biTopPosition.lpColumn );
+					    &(paraNode->biTopPosition) );
 
     docParagraphFrameTwips( &pf, &bf, paraNode );
 
@@ -270,9 +282,7 @@ int docDrawParaNode(		LayoutPosition *		lpBelow,
 
 	line= pds.pdsLineUpto;
 	if  ( lpBelow )
-	    {
-	    docLayoutPushBottomDown( lpBelow, &(pds.pdsShadeBelow) );
-	    }
+	    { docLayoutPushBottomDown( lpBelow, &(pds.pdsShadeBelow) );	}
 
 	/*  1  */
 if  ( paraNode->biTreeType == DOCinSHPTXT )
@@ -283,16 +293,34 @@ if  ( paraNode->biTreeType == DOCinSHPTXT )
 	    {
 	    int			ret;
 	    struct BufferItem *	bodyNode= paraNode;
+	    const char *	breakWhy;
 
 	    if  ( paraNode->biTreeType != DOCinBODY )
 		{
+		/* TODO Why not dc->dcBodySectNode? */
 		bodyNode= docGetBodySectNode( paraNode, bd );
 		if  ( ! bodyNode )
 		    { XDEB(bodyNode); return -1;	}
 		}
 
+	    switch( pds.pdsBreakKind )
+		{
+		default:
+		    LDEB(pds.pdsBreakKind);
+		    /*fallthrough*/
+		case DOCibkNONE:
+		    breakWhy= DRAW_LINE_BREAK_FLOW;
+		    break;
+		case DOCibkCOL:
+		    breakWhy= DRAW_LINE_BREAK_COLUMN;
+		    break;
+		case DOCibkPAGE:
+		    breakWhy= DRAW_LINE_BREAK_PAGE;
+		    break;
+		}
+
 	    ret= docDrawToNextColumn( bodyNode, bodyNode,
-					    through, &lpTop, &bf, dc );
+				through, &lpTop, &bf, dc, breakWhy );
 	    if  ( ret < 0 )
 		{
 		SLDEB(docLevelStr(paraNode->biLevel),ret);
@@ -345,7 +373,7 @@ int docDrawTextLines(	void *				through,
 			DrawingContext *		dc,
 			const BlockOrigin *		bo )
     {
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
     int				pastSelectionEnd= 0;
 
     int				line= pds->pdsLineFrom;

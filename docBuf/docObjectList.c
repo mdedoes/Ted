@@ -113,3 +113,8 @@ InsertedObject * docClaimObjectCopy(	struct BufferDocument *	bd,
     return ioTo;
     }
 
+InsertedObject * docGetObject(	const struct BufferDocument *	bd,
+				int				n )
+    {
+    return docGetObjectByNumber( &((bd)->bdObjectList), (n) );
+    }

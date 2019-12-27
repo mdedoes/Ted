@@ -484,6 +484,10 @@ static int bidiTraverseFindChild(	const BidiNode *	bn,
 /*  1)  No overlap: Do nothing.						*/
 /*  2)  Find the top node in the root that holds the complete selection	*/
 /*									*/
+/*  Return:								*/
+/*  0)  On success (Callback returned 0 on all occasions)		*/
+/*  1)  On success (Callback returned 1: scanning has stopped.		*/
+/*  -1) On error							*/
 /************************************************************************/
 
 int bidiTraverseNodeDisplayOrder(

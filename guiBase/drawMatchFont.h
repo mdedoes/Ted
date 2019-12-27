@@ -47,8 +47,6 @@ extern const struct AfmFontInfo * drawGetFontInfoForAttribute(
 				const struct DocumentFontList *		dfl,
 				const struct PostScriptFontList *	psfl );
 
-extern int drawFcGetFontMetrics(	struct AfmFontInfo *		afi );
-
 extern int drawGetDeferredFontMetrics(	struct AfmFontInfo *		afi );
 extern int drawGetDeferredFontMetricsForList(
 					struct PostScriptFontList *	psfl );

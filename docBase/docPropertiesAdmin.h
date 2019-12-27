@@ -8,7 +8,7 @@
 #   define	DOC_PROPERTY_ADMIN_H
 
 #   include	<utilNumberedPropertiesAdmin.h>
-#   include	<fontDocFontList.h>
+#   include	<fontDocFontListImpl.h>
 #   include	<utilPalette.h>
 
 #   include	"docListAdmin.h"

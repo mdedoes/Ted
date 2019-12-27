@@ -6,7 +6,6 @@
 
 #   include	"docLayoutConfig.h"
 
-#   include	<docBuf.h>
 #   include	<docTreeNode.h>
 #   include	<docBlockOrnaments.h>
 #   include	<docBorderProperties.h>
@@ -15,6 +14,8 @@
 #   include	<docCellProperties.h>
 #   include	<geoRectangle.h>
 #   include	<docAttributes.h>
+#   include	<docNodeTree.h>
+#   include	<docTreeType.h>
 
 #   include	<docDebug.h>
 #   include	<appDebugon.h>
@@ -660,10 +661,18 @@ void docLayoutCalculateRowTopInset(
     /*  1  */
     for ( col= 0; col < rowNode->biChildCount; col++ )
 	{
-	const struct BufferItem *	cellNode= rowNode->biChildren[col];
+	/*const*/ struct BufferItem *	cellNode= rowNode->biChildren[col];
 	int				useAbove= 0;
 	const BorderProperties *	bpTop;
 	int				topNr;
+
+	/* TODO: What is wrong in the RTF parser? */
+	if  ( ! cellNode->biCellProperties )
+	    {
+	    XDEB(cellNode->biCellProperties);
+	    LDEB(1);docListNode(0,rowNode,0);
+	    cellNode->biCellProperties= rowNode->biRowProperties->rpCells+ col;
+	    }
 
 	if  ( docIsRowNode( rowNode )			&&
 	      CELL_MERGED( cellNode->biCellProperties )	)

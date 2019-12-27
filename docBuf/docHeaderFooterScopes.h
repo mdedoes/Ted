@@ -7,6 +7,10 @@
 #   ifndef	DOC_HDFT_SCOPES_H
 #   define	DOC_HDFT_SCOPES_H
 
+struct DocumentTree;
+struct BufferItem;
+struct BufferDocument;
+
 /************************************************************************/
 /*									*/
 /*  Headers and/or footers appear on different pages, depending on	*/
@@ -39,5 +43,29 @@ extern const int DOC_FooterScopes[PAGES__COUNT];
 /*  Routine declarations.						*/
 /*									*/
 /************************************************************************/
+
+extern int docDrawWhatPageHeader( struct DocumentTree **	pTree,
+				int *				pIsEmpty,
+				const struct BufferItem *	bodySectNode,
+				int				page,
+				const struct BufferDocument *	bd );
+
+extern int docDrawWhatPageFooter( struct DocumentTree **		pTree,
+				int *				pIsEmpty,
+				const struct BufferItem *	bodySectNode,
+				int				page,
+				const struct BufferDocument *	bd );
+
+extern int docLayoutWhatPageHeader( struct DocumentTree **	pTree,
+				int *				pIsEmpty,
+				const struct BufferItem *	bodySectNode,
+				int				page,
+				const struct BufferDocument *	bd );
+
+extern int docLayoutWhatPageFooter( struct DocumentTree **	pTree,
+				int *				pIsEmpty,
+				const struct BufferItem *	bodySectNode,
+				int				page,
+				const struct BufferDocument *	bd );
 
 #   endif

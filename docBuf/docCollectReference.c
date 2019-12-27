@@ -21,14 +21,12 @@
 typedef struct CollectReference
     {
 			/**
-			 *  The document that we are collecting material
-			 *  from.
+			 *  The document that we are collecting material from.
 			 */
     struct BufferDocument *	crDocument;
 
 			/**
-			 *  The collected byes in the referenced 
-			 *  selection.
+			 *  The collected byes in the referenced selection.
 			 */
     MemoryBuffer *	crResult;
 
@@ -83,7 +81,7 @@ static int docCollectReferencedRun(
     {
     CollectReference *	cr= (CollectReference *)vcr;
 
-    if  ( cr->crSkipping )
+    if  ( cr->crSkipping && ! utilMemoryBufferIsEmpty( cr->crResult ) )
 	{ utilMemoryBufferAppendString( cr->crResult, " " );	}
 
     utilMemoryBufferAppendBytes( cr->crResult,

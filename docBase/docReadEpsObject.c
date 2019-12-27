@@ -8,8 +8,7 @@
 
 #   include	<stdio.h>
 
-#   include	<sioMemory.h>
-#   include	<sioHex.h>
+#   include	<sioHexedMemory.h>
 
 #   include	<psPrint.h>
 #   include	<geoRectangle.h>
@@ -35,17 +34,13 @@ int docReadEpsObject(	const MemoryBuffer *	fullName,
 
     DocumentRectangle		drBBox;
 
-    SimpleOutputStream *	sosBuffer= (SimpleOutputStream *)0;
-    SimpleOutputStream *	sosHex= (SimpleOutputStream *)0;
+    SimpleOutputStream *	sosData= (SimpleOutputStream *)0;
 
-    sosBuffer= sioOutMemoryOpen( &(io->ioResultData) );
-    if  ( ! sosBuffer )
-	{ XDEB(sosBuffer); rval= -1; goto ready;	}
-    sosHex= sioOutHexOpen( sosBuffer );
-    if  ( ! sosHex )
-	{ XDEB(sosHex); rval= -1; goto ready;		}
+    sosData= sioOutHexedMemoryOpen( &(io->ioResultData) );
+    if  ( ! sosData )
+	{ XDEB(sosData); rval= -1; goto ready;	}
 
-    res= psSaveEpsFile( sosHex, &drBBox, fullName );
+    res= psSaveEpsFile( sosData, &drBBox, fullName );
     if  ( res )
 	{ LDEB(res); rval= -1; goto ready;	}
 
@@ -66,10 +61,8 @@ int docReadEpsObject(	const MemoryBuffer *	fullName,
 
  ready:
 
-    if  ( sosHex )
-	{ sioOutClose( sosHex );	}
-    if  ( sosBuffer )
-	{ sioOutClose( sosBuffer );	}
+    if  ( sosData )
+	{ sioOutClose( sosData );	}
 
     return rval;
     }

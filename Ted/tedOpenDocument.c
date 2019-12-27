@@ -35,6 +35,7 @@
 #   include	<appEditDocument.h>
 #   include	<sioGeneral.h>
 #   include	<docBuf.h>
+#   include	<docDocument.h>
 
 #   include	<appDebugon.h>
 
@@ -212,7 +213,7 @@ typedef struct FindDigest
     EditTrace *			fdEditTrace;
     EditApplication *		fdApplication;
     MemoryBuffer		fdDocumentName;
-    struct BufferDocument *		fdDocument;
+    struct BufferDocument *	fdDocument;
     } FindDigest;
 
 static void tedInitFindDigest(	FindDigest *	fd )
@@ -236,7 +237,7 @@ static void tedCleanFindDigest(	FindDigest *	fd )
 	{ docFreeDocument( fd->fdDocument );	}
     }
 
-static int tedFindDigest(	const TraceStep *	ts,
+static int docTraceFindDigest(	const TraceStep *	ts,
 				EditStep *		es,
 				int			step,
 				void *			voidfd )
@@ -280,7 +281,7 @@ static int tedRemebmerTraceStep(	const TraceStep *	ts,
     FindDigest *	fd= (FindDigest *)voidfd;
     TraceStep *		tsNew;
 
-    if  ( tedFindDigest( ts, es, step, voidfd ) < 0 )
+    if  ( docTraceFindDigest( ts, es, step, voidfd ) < 0 )
 	{ LDEB(step); return -1;	}
 
     tsNew= utilPagedListClaimItem( &(fd->fdEditTrace->etTraceSteps), step );
@@ -313,7 +314,7 @@ static int tedCheckTracedDocument(	FindDigest *		fd,
 
     unsigned char		digest[MD5_DIGEST_SIZE_BYTES];
     int				format= -1;
-    struct BufferDocument *		bd= (struct BufferDocument *)0;
+    struct BufferDocument *	bd= (struct BufferDocument *)0;
 
     format= utilDocumentGetOpenFormat( (int *)0,
 		    ea->eaFileExtensions, ea->eaFileExtensionCount,
@@ -448,7 +449,7 @@ static int tedFindBaseVersion(	EditApplication *	ea,
     if  ( ! sisTrace )
 	{ XDEB(sisTrace); rval= -1; goto ready;	}
 
-    if  ( docRtfScanEditTrace( sisTrace, tedFindDigest, (void *)&fd,
+    if  ( docRtfScanEditTrace( sisTrace, docTraceFindDigest, (void *)&fd,
 				    (const IndexMapping *)0, td->tdDocument ) )
 	{ LDEB(1); fd.fdBase= -1;	}
 

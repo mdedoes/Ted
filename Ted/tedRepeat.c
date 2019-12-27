@@ -10,6 +10,7 @@
 #   include	<ctype.h>
 
 #   include	"tedEdit.h"
+#   include	"tedEditOperation.h"
 #   include	"tedSelect.h"
 #   include	<tedDocFront.h>
 #   include	"tedDocument.h"
@@ -31,6 +32,7 @@
 #   include	<docEditStep.h>
 #   include	<appEditDocument.h>
 #   include	<docBuf.h>
+#   include	<docTreeType.h>
 
 #   include	<appDebugon.h>
 

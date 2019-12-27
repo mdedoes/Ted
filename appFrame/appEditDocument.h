@@ -33,8 +33,16 @@ typedef struct SelectRectangle
 #				define DOCselW		4
 
     DocumentRectangle		srSelected;
-    DocumentRectangle		srLTM; /* left/top margins */
-    DocumentRectangle		srRBM; /* right/bottom margins */
+
+				/**
+				 * left/top margins
+				 */
+    DocumentRectangle		srLTM;
+
+				/**
+				 * right/bottom margins
+				 */
+    DocumentRectangle		srRBM;
     } SelectRectangle;
 
 typedef struct EditDocument

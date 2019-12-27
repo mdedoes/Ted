@@ -400,8 +400,11 @@ static int docScanNode(	TreeScanner *			ts,
 	    {
 	    const CellProperties *	cp= &(rp->rpCells[i]);
 
-	    if  ( ! ( ts->tsFlags & FLAGtsSCAN_MERGED_CELLS )		&&
-		  CELL_MERGED( cp )					)
+	    if  ( i >= rp->rpCellCount )
+		{ LLDEB(i,rp->rpCellCount); continue;	}
+
+	    if  ( ! ( ts->tsFlags & FLAGtsSCAN_MERGED_CELLS )	&&
+		  CELL_MERGED( cp )				)
 		{ continue;	}
 
 	    ret= docCompareCellPositionToSelection( &selected,

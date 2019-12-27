@@ -17,6 +17,7 @@
 #   include	"docDocumentNote.h"
 #   include	"docSelect.h"
 #   include	<docDocumentProperties.h>
+#   include	"docFields.h"
 
 #   include	"docDebug.h"
 #   include	<appDebugon.h>
@@ -235,7 +236,7 @@ static int docFindNextHeaderFooter(	DocumentPosition *	dpNew,
 		{ continue;	}
 
 	    page= docSectionHeaderFooterFirstPage( &usedInDoc, bodySectNode,
-					    DOC_HeaderFooterTypes[hf], dp );
+					    DOC_HeaderFooterTypes[hf], bd );
 
 	    if  ( page < 0 || ! usedInDoc )
 		{ continue;	}
@@ -424,8 +425,7 @@ static int docFindNextNextTree(	DocumentPosition *		dp,
 
 	    phaseFrom= 2;
 	    phaseTo= 2;
-	    dfNote= docGetFieldByNumber( &(bd->bdFieldList),
-							ss->ssOwnerNumber );
+	    dfNote= docGetFieldByNumber( bd, ss->ssOwnerNumber );
 
 	    break;
 
@@ -539,7 +539,7 @@ static int docFindPrevHeaderFooter(
 		{ continue;	}
 
 	    page= docSectionHeaderFooterFirstPage( &usedInDoc, bodySectNode,
-					    DOC_HeaderFooterTypes[hf], dp );
+					    DOC_HeaderFooterTypes[hf], bd );
 
 	    if  ( page < 0 || ! usedInDoc )
 		{ continue;	}
@@ -697,8 +697,7 @@ static int docFindPrevPrevTree(	DocumentPosition *		dp,
 
 	    phaseFrom= 2;
 	    phaseTo= 2;
-	    dfNote= docGetFieldByNumber(
-				&(bd->bdFieldList), ss->ssOwnerNumber );
+	    dfNote= docGetFieldByNumber( bd, ss->ssOwnerNumber );
 	    break;
 
 	case DOCinFTNSEP:	case DOCinAFTNSEP:
@@ -990,7 +989,7 @@ int docFindFindNextInCurrentTree(
 
 /************************************************************************/
 /*									*/
-/*  Navigation betweem external items with the PageUp/PageDown keys.	*/
+/*  Navigation between trees with the PageUp/PageDown keys.		*/
 /*									*/
 /************************************************************************/
 
@@ -998,10 +997,10 @@ int docNextSimilarTree(		DocumentPosition *	dp,
 				struct DocumentTree **	pTree,
 				struct BufferDocument *	bd )
     {
-    int			page= dp->dpNode->biTopPosition.lpPage;
-    int			column= dp->dpNode->biTopPosition.lpColumn;
-    const int		samePhase= 1;
-    struct DocumentTree *	tree;
+    int				page= dp->dpNode->biTopPosition.lpPage;
+    int				column= dp->dpNode->biTopPosition.lpColumn;
+    const int			samePhase= 1;
+    struct DocumentTree *	tree= (struct DocumentTree *)0;
 
     int ret= docFindNextNextTree( dp, &tree, &page, &column, samePhase, bd );
 
@@ -1016,10 +1015,10 @@ int docPrevSimilarTree(		DocumentPosition *	dp,
 				struct DocumentTree **		pTree,
 				struct BufferDocument *	bd )
     {
-    int			page= dp->dpNode->biTopPosition.lpPage;
-    int			column= dp->dpNode->biTopPosition.lpColumn;
-    const int		samePhase= 1;
-    struct DocumentTree *	tree;
+    int				page= dp->dpNode->biTopPosition.lpPage;
+    int				column= dp->dpNode->biTopPosition.lpColumn;
+    const int			samePhase= 1;
+    struct DocumentTree *	tree= (struct DocumentTree *)0;
 
     int ret= docFindPrevPrevTree( dp, &tree, &page, &column, samePhase, bd );
 

@@ -6,7 +6,6 @@
 
 #   include	"docEditConfig.h"
 
-#   include	<docBuf.h>
 #   include	<docTreeNode.h>
 #   include	<docNodeTree.h>
 #   include	"docEdit.h"
@@ -20,6 +19,7 @@
 #   include	<docObjects.h>
 
 #   include	<appDebugon.h>
+#   include	<docDebug.h>
 
 #   define	VALIDATE_TREE	0
 
@@ -87,12 +87,12 @@ int docRemoveSelectionTail(	EditOperation *	eo )
 	struct BufferItem *	parent= lastParaNode->biParent;
 	struct BufferItem *	prevParaNode= docPrevParagraph( lastParaNode );
 
-	int		sectionsDeleted= 0;
-	int		firstParaDeleted= -1;
-	int		paragraphsDeleted= 0;
+	int			sectionsDeleted= 0;
+	int			firstParaDeleted= -1;
+	int			paragraphsDeleted= 0;
 
-	int		from;
-	int		count;
+	int			from;
+	int			count;
 
 	while( prevParaNode					&&
 	       prevParaNode != eo->eoTailDp.dpNode		&&
@@ -145,14 +145,20 @@ int docRemoveSelectionTail(	EditOperation *	eo )
 
     if  ( mergeTail )
 	{
-	lastParaNode= docNextParagraph( eo->eoTailDp.dpNode );
-	if  ( lastParaNode )
+	struct BufferItem *	lParaNode= docNextParagraph( eo->eoTailDp.dpNode );
+
+	if  ( lParaNode						&&
+	      lParaNode->biParaProperties->ppTableNesting ==
+		eo->eoTailDp.dpNode->biParaProperties->ppTableNesting	)
 	    {
 	    int			sectionsDeleted;
 	    struct BufferItem *	lastParent;
 
-	    lastParent= lastParaNode->biParent;
+	    lastParent= lParaNode->biParent;
 
+LDEB(eo->eoTailDp.dpNode->biParaProperties->ppTableNesting);
+LDEB(lParaNode->biParaProperties->ppTableNesting);
+SDEB(docLevelStr(eo->eoTailDp.dpNode->biParent->biLevel));
 	    if  ( docMergeGroupNodes( eo->eoTailDp.dpNode->biParent,
 							    lastParent ) )
 		{ LDEB(mergeTail); return -1;	}
@@ -195,7 +201,7 @@ void docEditDeleteNodes(	EditOperation *		eo,
 				int *			pSectionsDeleted,
 				int *			pFirstParaDeleted,
 				int *			pParagraphsDeleted,
-				struct BufferItem *		parentNode,
+				struct BufferItem *	parentNode,
 				int			first,
 				int			count )
     {
@@ -353,7 +359,7 @@ int docSectionParagraph(
 /************************************************************************/
 
 int docRollNodeChildren(	EditOperation *		eo,
-				struct BufferItem *		parentNode,
+				struct BufferItem *	parentNode,
 				int			from,
 				int			upto,
 				int			by )
@@ -362,6 +368,9 @@ int docRollNodeChildren(	EditOperation *		eo,
     int				del0= upto;
     int				del1= upto;
     int				count= upto- from;
+
+    int				inTable;
+    const int			recursively= 0;
 
     DocumentCopyJob		dcj;
 
@@ -385,6 +394,9 @@ int docRollNodeChildren(	EditOperation *		eo,
 
     if  ( docSet1DocumentCopyJob( &dcj, eo, CFH_COPY ) )
 	{ LDEB(1); rval= -1; goto ready;	}
+
+    inTable= docIsRowNode( parentNode->biChildren[from] ) ||
+	     docIsRowNode( parentNode->biChildren[upto -1] );
 
     if  ( by > 0 )
 	{
@@ -416,6 +428,9 @@ int docRollNodeChildren(	EditOperation *		eo,
 	del1= from- by- 1;
 	}
 
+    if  ( inTable )
+	{ docDelimitTables( parentNode, recursively );	}
+
     if  ( docHeadPosition( &(dsClean.dsHead), parentNode->biChildren[del0] ) )
 	{ LDEB(del0); rval= -1; goto ready;	}
     if  ( docTailPosition( &(dsClean.dsTail), parentNode->biChildren[del1] ) )
@@ -433,6 +448,9 @@ int docRollNodeChildren(	EditOperation *		eo,
 				&firstParaDeleted, &paragraphsDeleted,
 				parentNode, del0, del1- del0+ 1 );
     }
+
+    if  ( inTable )
+	{ docDelimitTables( parentNode, recursively );	}
 
 #   if VALIDATE_TREE
     if  ( docCheckNode( parentNode ) )

@@ -91,7 +91,8 @@ int docReplaceSelection(	EditOperation *			eo,
 
 	    /*  tail of EO is after insert */
 	    if  ( docParaInsertTail( &dcjTail, paraNrBegin,
-				&(eo->eoTailDp), &tailDp, &(eo->eoTailDp) ) )
+				&(eo->eoTailDp), &tailDp,
+				&(eo->eoTailDp), (DocumentPosition *)0 ) )
 		{ LDEB(eo->eoTailDp.dpStroff); rval= -1; goto ready;	}
 	    }
 	else{
@@ -185,7 +186,7 @@ int docEditCleanParticules(	EditOperation *		eo,
 		{
 		const DocumentField *	df;
 
-		df= docGetFieldByNumber( &(eo->eoDocument->bdFieldList),
+		df= docGetFieldByNumber( eo->eoDocument,
 						    tp->tpObjectNumber );
 		if  ( df && df->dfFieldNumber >= 0 )
 		    {

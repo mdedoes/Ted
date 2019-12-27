@@ -54,7 +54,7 @@ extern int utilMemoryCompareBuffers(	const MemoryBuffer *	mb1,
 
 extern int utilMemoryAppendBuffer(	MemoryBuffer *		to,
 					const MemoryBuffer *	from );
-extern int utilMemoryBufferAppendString(	MemoryBuffer *		to,
+extern int utilMemoryBufferAppendString( MemoryBuffer *		to,
 					const char *		s );
 extern int utilMemoryBufferAppendBytes(	MemoryBuffer *		mb,
 					const unsigned char *	bytes,

@@ -12,6 +12,7 @@
 #   include	<docTreeType.h>
 #   include	<docDocumentField.h>
 #   include	<docFieldKind.h>
+#   include	<docFields.h>
 #   include	<docRecalculateFields.h>
 
 #   include	<appDebugon.h>
@@ -40,7 +41,7 @@ int docRecalculateTocFields( RecalculateFields *		rf )
     /*  3  */
     for ( fieldNr= 0; fieldNr < dfl->dflPagedList.plItemCount; fieldNr++ )
 	{
-	DocumentField *		df= docGetFieldByNumber( dfl, fieldNr );
+	DocumentField *		df= docGetFieldByNumber( bdDoc, fieldNr );
 
 	if  ( ! df						||
 	      df->dfKind != DOCfkTOC				||

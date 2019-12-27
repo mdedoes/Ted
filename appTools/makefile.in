@@ -207,6 +207,7 @@ appFontTool.o: \
     ../docFont/docExpandedTextAttribute.h \
     ../docFont/fontDocFont.h \
     ../docFont/fontDocFontList.h \
+    ../docFont/fontDocFontListImpl.h \
     ../guiBase/drawDrawingSurfacePrivate.h \
     ../guiBase/drawMatchFont.h \
     ../guiBase/guiBaseGtk.h \
@@ -486,6 +487,7 @@ appPrintDialog.o: \
     ../appFrame/appFrameConfig.h \
     ../appFrame/appGuiDocument.h \
     ../appFrame/appGuiResource.h \
+    ../appFrame/appPrintDocument.h \
     ../appFrame/appPrintJob.h \
     appPaperChooser.h \
     appPrintDialog.h \
@@ -577,16 +579,13 @@ appSpellTool.o: \
     appSpellTool.h \
     appToolsConfig.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
-    ../bitmap/bmcolor.h \
-    ../guiBase/drawColors.h \
-    ../guiBase/drawUtilMotif.h \
     ../guiBase/guiBaseGtk.h \
     ../guiBase/guiBase.h \
     ../guiBase/guiBaseMotif.h \
     ../guiBase/guiOptionmenu.h \
     ../guiBase/guiTextUtil.h \
+    ../guiBase/guiTextValidate.h \
     ../guiBase/guiToolUtil.h \
     ../guiBase/guiWidgets.h \
     ../guiInterface/drawDrawingSurface.h \
@@ -619,6 +618,7 @@ appSymbolPicker.o: \
     ../docFont/docExpandedTextAttribute.h \
     ../docFont/fontDocFont.h \
     ../docFont/fontDocFontList.h \
+    ../docFont/fontDocFontListImpl.h \
     ../guiBase/drawMatchFont.h \
     ../guiBase/guiBaseGtk.h \
     ../guiBase/guiBase.h \

@@ -9,6 +9,7 @@
 #   include	<docBuf.h>
 #   include	"docLayout.h"
 #   include	"docStripLayoutJob.h"
+#   include	"layoutContext.h"
 #   include	<docPageGrid.h>
 #   include	<docTreeType.h>
 #   include	<docTreeNode.h>
@@ -27,7 +28,7 @@ void docLayoutBlockFrame(	BlockFrame *			bf,
 				int				page,
 				int				column )
     {
-    const LayoutContext *	lc= &(lj->ljContext);
+    const LayoutContext *	lc= lj->ljContext;
     struct BufferDocument *	bd= lc->lcDocument;
 
     docBlockFrameTwips( bf, node, bd, page, column );
@@ -102,7 +103,7 @@ void docLayoutToNextColumn(	LayoutPosition *	lpTop,
 				struct BufferItem *	node,
 				const LayoutJob *	lj )
     {
-    const LayoutContext *	lc= &(lj->ljContext);
+    const LayoutContext *	lc= lj->ljContext;
     const struct BufferDocument * bd= lc->lcDocument;
     struct BufferItem *		bodyNode= bd->bdBody.dtRoot;
     struct BufferItem *		bodySectNode;

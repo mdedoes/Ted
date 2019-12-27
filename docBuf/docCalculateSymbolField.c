@@ -11,13 +11,11 @@
 #   include	<uniUtf8.h>
 #   include	<textAttribute.h>
 
-#   include	"docBuf.h"
+#   include	"docAttributes.h"
 #   include	"docParaBuilderImpl.h"
 #   include	"docRecalculateFields.h"
 #   include	"docEvalField.h"
-#   include	<docDocumentProperties.h>
 #   include	<utilPropMask.h>
-#   include	<fontDocFontList.h>
 
 #   include	<appDebugon.h>
 
@@ -135,13 +133,12 @@ int docRecalculateParaSymbolTextParticules(
 	if  ( ! utilMemoryBufferIsEmpty( &(sf.sfFontName) ) )
 	    {
 	    int				fontNumber;
-	    DocumentProperties *	dp= rf->rfDocument->bdProperties;
 
 	    allocated= utilMemoryStrdup( &(sf.sfFontName) );
 	    if  ( ! allocated )
 		{ XDEB(allocated); partTail= -1; goto ready;	}
 
-	    fontNumber= fontListGetFontByName( dp->dpFontList, allocated );
+	    fontNumber= docGetFontByName( rf->rfDocument, allocated );
 	    if  ( fontNumber < 0 )
 		{ SLDEB(allocated,fontNumber);	}
 	    else{

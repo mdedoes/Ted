@@ -317,7 +317,7 @@ static int appPrintStartCommandRun(	EditApplication *	ea,
     if  ( ea->eaSuggestPageSetup )
 	{ (*ea->eaSuggestPageSetup)( pg, pj->pjPrivateData, sheetSize ); }
 
-    if  ( (*ea->eaLayoutDocument)( &drScreenIgnored, &drVisibleIgnored,
+    if  ( (*ea->eaLayoutDocument)( ea, &drScreenIgnored, &drVisibleIgnored,
 					    pj->pjPrivateData, pj->pjFormat,
 					    (DrawingSurface)0,
 					    &(ea->eaPostScriptFontList),
@@ -414,7 +414,7 @@ int appSaveToPs(		EditApplication *	ea,
     if  ( ea->eaSuggestPageSetup )
 	{ (*ea->eaSuggestPageSetup)( &pg, pj.pjPrivateData, sheetSize ); }
 
-    if  ( (*ea->eaLayoutDocument)( &drScreenIgnored, &drVisibleIgnored,
+    if  ( (*ea->eaLayoutDocument)( ea, &drScreenIgnored, &drVisibleIgnored,
 					    pj.pjPrivateData, pj.pjFormat,
 					    (DrawingSurface)0,
 					    &(ea->eaPostScriptFontList),

@@ -12,6 +12,7 @@
 #   include	"docLayoutStopCode.h"
 #   include	"docParagraphLayout.h"
 #   include	"docStripLayoutJob.h"
+#   include	"layoutContext.h"
 #   include	<docTreeType.h>
 #   include	<docTreeNode.h>
 #   include	<docNodeTree.h>
@@ -91,6 +92,7 @@ int docLayoutCellNode(	LayoutPosition *	lpBelow,
     *lpBelow= plj.pljPos.plpPos;
 
   ready:
+
     docCleanParagraphLayoutJob( &plj );
 
     return rval;
@@ -139,7 +141,7 @@ static int docLayoutBodyNode(	LayoutPosition *	lpBelow,
 				BlockFrame *		bf,
 				LayoutJob *		lj )
     {
-    const LayoutContext *	lc= &(lj->ljContext);
+    const LayoutContext *	lc= lj->ljContext;
     struct BufferDocument *	bd= lc->lcDocument;
     const DocumentProperties *	dp= bd->bdProperties;
     const NotesProperties *	npEndnotes= &(dp->dpNotesProps.fepEndnotesProps);
@@ -271,7 +273,7 @@ int docLayoutNodeImplementation(	LayoutPosition *	lpBelow,
 					BlockFrame *		bf,
 					LayoutJob *		lj )
     {
-    const LayoutContext *	lc= &(lj->ljContext);
+    const LayoutContext *	lc= lj->ljContext;
 
     LayoutPosition		lpHere= *lpTop;
 
@@ -365,7 +367,7 @@ int docLayoutNodeAndParents(	struct BufferItem *	node,
     int				rval= 0;
     BlockFrame			bf;
     LayoutPosition		lpHere;
-    const LayoutContext *	lc= &(lj->ljContext);
+    const LayoutContext *	lc= lj->ljContext;
     const struct BufferItem *	bodyNode= lc->lcDocument->bdBody.dtRoot;
     const struct BufferItem *	sectNode= docGetSectNode( node );
 

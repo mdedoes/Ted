@@ -10,36 +10,17 @@
 #   include	<string.h>
 #   include	<ctype.h>
 
-#   include	<psDocumentFontStyle.h>
 #   include	"docRtfWriterImpl.h"
+#   include	"docRtfControlWord.h"
 #   include	<fontEncodedFont.h>
 #   include	"docRtfFlags.h"
 #   include	<fontDocFont.h>
 #   include	<docBuf.h>
 #   include	<fontDocFontList.h>
+#   include	<fontDocFontListImpl.h>
 #   include	<docDocumentProperties.h>
 
 #   include	<appDebugon.h>
-
-/************************************************************************/
-
-static const char * docRtfFontFamilyStyleTag(	int styleInt )
-    {
-    switch( styleInt )
-	{
-	case DFstyleFNIL:	return "fnil";
-	case DFstyleFROMAN:	return "froman";
-	case DFstyleFSWISS:	return "fswiss";
-	case DFstyleFMODERN:	return "fmodern";
-	case DFstyleFSCRIPT:	return "fscript";
-	case DFstyleFDECOR:	return "fdecor";
-	case DFstyleFTECH:	return "ftech";
-	case DFstyleFBIDI:	return "fbidi";
-
-	default:
-	    LDEB(styleInt); return "fnil";
-	}
-    }
 
 /************************************************************************/
 /*									*/
@@ -47,20 +28,28 @@ static const char * docRtfFontFamilyStyleTag(	int styleInt )
 /*									*/
 /************************************************************************/
 
-static void docRtfWriteEncodedFont(	RtfWriter *		rw,
+static int docRtfWriteEncodedFont(	RtfWriter *		rw,
 					const DocumentFont *	df,
 					const char *		suffix,
 					int			fontnum,
 					int			charset )
     {
+    const int	scope= RTCscopeFONT;
+
     docRtfWriteArgDestinationBegin( rw, "f", fontnum );
 
-    docRtfWriteTag( rw, docRtfFontFamilyStyleTag( df->dfStyleInt ) );
+    if  ( docRtfWriteProperty( rw, scope,
+				DFpropFAMILY_STYLE, df->dfStyleInt ) )
+	{ LLLDEB(scope,DFpropFAMILY_STYLE,df->dfStyleInt); return -1; }
 
-    docRtfWriteArgTag( rw, "fcharset", charset );
+    if  ( docRtfWriteProperty( rw, scope, DFpropCHARSET, charset ) )
+	{ LLLDEB(scope,DFpropCHARSET,charset); return -1; }
 
     if  ( df->dfPitch != FONTpitchDEFAULT )
-	{ docRtfWriteArgTag( rw, "fprq", df->dfPitch ); }
+	{
+	if  ( docRtfWriteProperty( rw, scope, DFpropPITCH, df->dfPitch ) )
+	    { LLLDEB(scope,DFpropPITCH,df->dfPitch); return -1; }
+	}
 
     if  ( df->dfPanose[0] )
 	{
@@ -97,7 +86,7 @@ static void docRtfWriteEncodedFont(	RtfWriter *		rw,
 
     docRtfWriteDestinationEnd( rw );
 
-    return;
+    return 0;
     }
 
 int docRtfWriteGetCharset(	RtfWriter *		rw,

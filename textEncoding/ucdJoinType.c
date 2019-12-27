@@ -3,12 +3,12 @@
 #   include "ucdIntern.h"
 #   include "ucdJoinType.h"
 
-#   define R	UCDjoin_R
 #   define C	UCDjoin_C
-#   define T	UCDjoin_T
 #   define D	UCDjoin_D
-#   define U	UCDjoin_U
 #   define L	UCDjoin_L
+#   define R	UCDjoin_R
+#   define T	UCDjoin_T
+#   define U	UCDjoin_U
 
 static const unsigned char    UCD_JT_0000_000f[16]= {U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,U,};
 static const unsigned char    UCD_JT_00a0_00af[16]= {U,U,U,U,U,U,U,U,U,U,U,U,U,T,U,U,};
@@ -170,11 +170,13 @@ static const unsigned char * const UCD_JT_0700_07ff[16]= {
 };
 static const unsigned char    UCD_JT_0810_081f[16]= {U,U,U,U,U,U,T,T,T,T,U,T,T,T,T,T,};
 static const unsigned char    UCD_JT_0820_082f[16]= {T,T,T,T,U,T,T,T,U,T,T,T,T,T,U,U,};
-static const unsigned char    UCD_JT_0840_084f[16]= {R,D,D,D,D,D,R,D,D,R,D,D,D,D,D,R,};
+static const unsigned char    UCD_JT_0840_084f[16]= {R,D,D,D,D,D,R,R,D,R,D,D,D,D,D,D,};
 static const unsigned char    UCD_JT_0850_085f[16]= {D,D,D,D,R,D,U,U,U,T,T,T,U,U,U,U,};
+static const unsigned char    UCD_JT_0860_086f[16]= {D,U,D,D,D,D,U,R,D,R,R,U,U,U,U,U,};
 static const unsigned char    UCD_JT_08a0_08af[16]= {D,D,D,D,D,D,D,D,D,D,R,R,R,U,R,D,};
-static const unsigned char    UCD_JT_08b0_08bf[16]= {D,R,R,U,U,U,U,U,U,U,U,U,U,U,U,U,};
-static const unsigned char    UCD_JT_08e0_08ef[16]= {U,U,U,U,T,T,T,T,T,T,T,T,T,T,T,T,};
+static const unsigned char    UCD_JT_08b0_08bf[16]= {D,R,R,D,D,U,D,D,D,R,D,D,D,D,U,U,};
+static const unsigned char    UCD_JT_08d0_08df[16]= {U,U,U,U,T,T,T,T,T,T,T,T,T,T,T,T,};
+static const unsigned char    UCD_JT_08e0_08ef[16]= {T,T,U,T,T,T,T,T,T,T,T,T,T,T,T,T,};
 static const unsigned char * const UCD_JT_0800_08ff[16]= {
     UCD_JT_0000_000f, /*  UCD_JT_0800_080f  */
     UCD_JT_0810_081f,
@@ -182,14 +184,14 @@ static const unsigned char * const UCD_JT_0800_08ff[16]= {
     UCD_JT_0000_000f, /*  UCD_JT_0830_083f  */
     UCD_JT_0840_084f,
     UCD_JT_0850_085f,
-    UCD_JT_0000_000f, /*  UCD_JT_0860_086f  */
+    UCD_JT_0860_086f,
     UCD_JT_0000_000f, /*  UCD_JT_0870_087f  */
     UCD_JT_0000_000f, /*  UCD_JT_0880_088f  */
     UCD_JT_0000_000f, /*  UCD_JT_0890_089f  */
     UCD_JT_08a0_08af,
     UCD_JT_08b0_08bf,
     UCD_JT_0000_000f, /*  UCD_JT_08c0_08cf  */
-    UCD_JT_0000_000f, /*  UCD_JT_08d0_08df  */
+    UCD_JT_08d0_08df,
     UCD_JT_08e0_08ef,
     UCD_JT_0300_030f, /*  UCD_JT_08f0_08ff  */
 };
@@ -223,6 +225,7 @@ static const unsigned char    UCD_JT_0a00_0a0f[16]= {U,T,T,U,U,U,U,U,U,U,U,U,U,U
 static const unsigned char    UCD_JT_0a40_0a4f[16]= {U,T,T,U,U,U,U,T,T,U,U,T,T,T,U,U,};
 static const unsigned char    UCD_JT_0a70_0a7f[16]= {T,T,U,U,U,T,U,U,U,U,U,U,U,U,U,U,};
 static const unsigned char    UCD_JT_0ac0_0acf[16]= {U,T,T,T,T,T,U,T,T,U,U,U,U,T,U,U,};
+static const unsigned char    UCD_JT_0af0_0aff[16]= {U,U,U,U,U,U,U,U,U,U,T,T,T,T,T,T,};
 static const unsigned char * const UCD_JT_0a00_0aff[16]= {
     UCD_JT_0a00_0a0f,
     UCD_JT_0000_000f, /*  UCD_JT_0a10_0a1f  */
@@ -239,7 +242,7 @@ static const unsigned char * const UCD_JT_0a00_0aff[16]= {
     UCD_JT_0ac0_0acf,
     UCD_JT_0000_000f, /*  UCD_JT_0ad0_0adf  */
     UCD_JT_0960_096f, /*  UCD_JT_0ae0_0aef  */
-    UCD_JT_0000_000f, /*  UCD_JT_0af0_0aff  */
+    UCD_JT_0af0_0aff,
 };
 static const unsigned char    UCD_JT_0b30_0b3f[16]= {U,U,U,U,U,U,U,U,U,U,U,U,T,U,U,T,};
 static const unsigned char    UCD_JT_0b50_0b5f[16]= {U,U,U,U,U,U,T,U,U,U,U,U,U,U,U,U,};
@@ -285,13 +288,15 @@ static const unsigned char * const UCD_JT_0c00_0cff[16]= {
     UCD_JT_0960_096f, /*  UCD_JT_0ce0_0cef  */
     UCD_JT_0000_000f, /*  UCD_JT_0cf0_0cff  */
 };
+static const unsigned char    UCD_JT_0d00_0d0f[16]= {T,T,U,U,U,U,U,U,U,U,U,U,U,U,U,U,};
+static const unsigned char    UCD_JT_0d30_0d3f[16]= {U,U,U,U,U,U,U,U,U,U,U,T,T,U,U,U,};
 static const unsigned char    UCD_JT_0dc0_0dcf[16]= {U,U,U,U,U,U,U,U,U,U,T,U,U,U,U,U,};
 static const unsigned char    UCD_JT_0dd0_0ddf[16]= {U,U,T,T,T,U,T,U,U,U,U,U,U,U,U,U,};
 static const unsigned char * const UCD_JT_0d00_0dff[16]= {
-    UCD_JT_0980_098f, /*  UCD_JT_0d00_0d0f  */
+    UCD_JT_0d00_0d0f,
     UCD_JT_0000_000f, /*  UCD_JT_0d10_0d1f  */
     UCD_JT_0000_000f, /*  UCD_JT_0d20_0d2f  */
-    UCD_JT_0000_000f, /*  UCD_JT_0d30_0d3f  */
+    UCD_JT_0d30_0d3f,
     UCD_JT_09c0_09cf, /*  UCD_JT_0d40_0d4f  */
     UCD_JT_0000_000f, /*  UCD_JT_0d50_0d5f  */
     UCD_JT_0960_096f, /*  UCD_JT_0d60_0d6f  */
@@ -434,7 +439,7 @@ static const unsigned char * const UCD_JT_1700_17ff[16]= {
 };
 static const unsigned char    UCD_JT_1800_180f[16]= {U,U,U,U,U,U,U,D,U,U,C,T,T,T,U,U,};
 static const unsigned char    UCD_JT_1870_187f[16]= {D,D,D,D,D,D,D,D,U,U,U,U,U,U,U,U,};
-static const unsigned char    UCD_JT_1880_188f[16]= {U,U,U,U,U,U,U,D,D,D,D,D,D,D,D,D,};
+static const unsigned char    UCD_JT_1880_188f[16]= {U,U,U,U,U,T,T,D,D,D,D,D,D,D,D,D,};
 static const unsigned char    UCD_JT_18a0_18af[16]= {D,D,D,D,D,D,D,D,D,T,D,U,U,U,U,U,};
 static const unsigned char * const UCD_JT_1800_18ff[16]= {
     UCD_JT_1800_180f,
@@ -500,7 +505,6 @@ static const unsigned char * const UCD_JT_1a00_1aff[16]= {
 static const unsigned char    UCD_JT_1b00_1b0f[16]= {T,T,T,T,U,U,U,U,U,U,U,U,U,U,U,U,};
 static const unsigned char    UCD_JT_1b30_1b3f[16]= {U,U,U,U,T,U,T,T,T,T,T,U,T,U,U,U,};
 static const unsigned char    UCD_JT_1b60_1b6f[16]= {U,U,U,U,U,U,U,U,U,U,U,T,T,T,T,T,};
-static const unsigned char    UCD_JT_1b80_1b8f[16]= {T,T,U,U,U,U,U,U,U,U,U,U,U,U,U,U,};
 static const unsigned char    UCD_JT_1ba0_1baf[16]= {U,U,T,T,T,T,U,U,T,T,U,T,T,T,U,U,};
 static const unsigned char    UCD_JT_1be0_1bef[16]= {U,U,U,U,U,U,T,U,T,T,U,U,U,T,U,T,};
 static const unsigned char * const UCD_JT_1b00_1bff[16]= {
@@ -512,14 +516,14 @@ static const unsigned char * const UCD_JT_1b00_1bff[16]= {
     UCD_JT_0000_000f, /*  UCD_JT_1b50_1b5f  */
     UCD_JT_1b60_1b6f,
     UCD_JT_1b00_1b0f, /*  UCD_JT_1b70_1b7f  */
-    UCD_JT_1b80_1b8f,
+    UCD_JT_0d00_0d0f, /*  UCD_JT_1b80_1b8f  */
     UCD_JT_0000_000f, /*  UCD_JT_1b90_1b9f  */
     UCD_JT_1ba0_1baf,
     UCD_JT_0000_000f, /*  UCD_JT_1bb0_1bbf  */
     UCD_JT_0000_000f, /*  UCD_JT_1bc0_1bcf  */
     UCD_JT_0000_000f, /*  UCD_JT_1bd0_1bdf  */
     UCD_JT_1be0_1bef,
-    UCD_JT_1b80_1b8f, /*  UCD_JT_1bf0_1bff  */
+    UCD_JT_0d00_0d0f, /*  UCD_JT_1bf0_1bff  */
 };
 static const unsigned char    UCD_JT_1c20_1c2f[16]= {U,U,U,U,U,U,U,U,U,U,U,U,T,T,T,T,};
 static const unsigned char    UCD_JT_1c30_1c3f[16]= {T,T,T,T,U,U,T,T,U,U,U,U,U,U,U,U,};
@@ -544,7 +548,7 @@ static const unsigned char * const UCD_JT_1c00_1cff[16]= {
     UCD_JT_1ce0_1cef,
     UCD_JT_1cf0_1cff,
 };
-static const unsigned char    UCD_JT_1df0_1dff[16]= {T,T,T,T,T,T,U,U,U,U,U,U,T,T,T,T,};
+static const unsigned char    UCD_JT_1df0_1dff[16]= {T,T,T,T,T,T,T,T,T,T,U,T,T,T,T,T,};
 static const unsigned char * const UCD_JT_1d00_1dff[16]= {
     UCD_JT_0000_000f, /*  UCD_JT_1d00_1d0f  */
     UCD_JT_0000_000f, /*  UCD_JT_1d10_1d1f  */
@@ -618,7 +622,7 @@ static const unsigned char * const UCD_JT_2c00_2cff[16]= {
     UCD_JT_0000_000f, /*  UCD_JT_2cc0_2ccf  */
     UCD_JT_0000_000f, /*  UCD_JT_2cd0_2cdf  */
     UCD_JT_0700_070f, /*  UCD_JT_2ce0_2cef  */
-    UCD_JT_1b80_1b8f, /*  UCD_JT_2cf0_2cff  */
+    UCD_JT_0d00_0d0f, /*  UCD_JT_2cf0_2cff  */
 };
 static const unsigned char * const UCD_JT_2d00_2dff[16]= {
     UCD_JT_0000_000f, /*  UCD_JT_2d00_2d0f  */
@@ -723,17 +727,17 @@ static const unsigned char * const UCD_JT_a600_a6ff[16]= {
     UCD_JT_0700_070f, /*  UCD_JT_a660_a66f  */
     UCD_JT_a670_a67f,
     UCD_JT_0000_000f, /*  UCD_JT_a680_a68f  */
-    UCD_JT_0700_070f, /*  UCD_JT_a690_a69f  */
+    UCD_JT_0c30_0c3f, /*  UCD_JT_a690_a69f  */
     UCD_JT_0000_000f, /*  UCD_JT_a6a0_a6af  */
     UCD_JT_0000_000f, /*  UCD_JT_a6b0_a6bf  */
     UCD_JT_0000_000f, /*  UCD_JT_a6c0_a6cf  */
     UCD_JT_0000_000f, /*  UCD_JT_a6d0_a6df  */
     UCD_JT_0000_000f, /*  UCD_JT_a6e0_a6ef  */
-    UCD_JT_1b80_1b8f, /*  UCD_JT_a6f0_a6ff  */
+    UCD_JT_0d00_0d0f, /*  UCD_JT_a6f0_a6ff  */
 };
 static const unsigned char    UCD_JT_a800_a80f[16]= {U,U,T,U,U,U,T,U,U,U,U,T,U,U,U,U,};
 static const unsigned char    UCD_JT_a870_a87f[16]= {D,D,L,U,U,U,U,U,U,U,U,U,U,U,U,U,};
-static const unsigned char    UCD_JT_a8c0_a8cf[16]= {U,U,U,U,T,U,U,U,U,U,U,U,U,U,U,U,};
+static const unsigned char    UCD_JT_a8c0_a8cf[16]= {U,U,U,U,T,T,U,U,U,U,U,U,U,U,U,U,};
 static const unsigned char * const UCD_JT_a800_a8ff[16]= {
     UCD_JT_a800_a80f,
     UCD_JT_0000_000f, /*  UCD_JT_a810_a81f  */
@@ -750,7 +754,7 @@ static const unsigned char * const UCD_JT_a800_a8ff[16]= {
     UCD_JT_a8c0_a8cf,
     UCD_JT_0000_000f, /*  UCD_JT_a8d0_a8df  */
     UCD_JT_0300_030f, /*  UCD_JT_a8e0_a8ef  */
-    UCD_JT_1b80_1b8f, /*  UCD_JT_a8f0_a8ff  */
+    UCD_JT_0d00_0d0f, /*  UCD_JT_a8f0_a8ff  */
 };
 static const unsigned char    UCD_JT_a920_a92f[16]= {U,U,U,U,U,U,T,T,T,T,T,T,T,T,U,U,};
 static const unsigned char    UCD_JT_a940_a94f[16]= {U,U,U,U,U,U,U,T,T,T,T,T,T,T,T,T,};
@@ -762,7 +766,7 @@ static const unsigned char * const UCD_JT_a900_a9ff[16]= {
     UCD_JT_a920_a92f,
     UCD_JT_0000_000f, /*  UCD_JT_a930_a93f  */
     UCD_JT_a940_a94f,
-    UCD_JT_1b80_1b8f, /*  UCD_JT_a950_a95f  */
+    UCD_JT_0d00_0d0f, /*  UCD_JT_a950_a95f  */
     UCD_JT_0000_000f, /*  UCD_JT_a960_a96f  */
     UCD_JT_0000_000f, /*  UCD_JT_a970_a97f  */
     UCD_JT_0900_090f, /*  UCD_JT_a980_a98f  */
@@ -853,11 +857,10 @@ static const unsigned char * const UCD_JT_fb00_fbff[16]= {
     UCD_JT_0000_000f, /*  UCD_JT_fbe0_fbef  */
     UCD_JT_0000_000f, /*  UCD_JT_fbf0_fbff  */
 };
-static const unsigned char    UCD_JT_fe20_fe2f[16]= {T,T,T,T,T,T,T,T,T,T,T,T,T,T,U,U,};
 static const unsigned char * const UCD_JT_fe00_feff[16]= {
     UCD_JT_0300_030f, /*  UCD_JT_fe00_fe0f  */
     UCD_JT_0000_000f, /*  UCD_JT_fe10_fe1f  */
-    UCD_JT_fe20_fe2f,
+    UCD_JT_0300_030f, /*  UCD_JT_fe20_fe2f  */
     UCD_JT_0000_000f, /*  UCD_JT_fe30_fe3f  */
     UCD_JT_0000_000f, /*  UCD_JT_fe40_fe4f  */
     UCD_JT_0000_000f, /*  UCD_JT_fe50_fe5f  */
@@ -935,12 +938,12 @@ const char * ucdJoinTypeStr( int sym ) {
     static char scratch[20];
     switch( sym )
 	{
-	case R:	return "R";
 	case C:	return "C";
-	case T:	return "T";
 	case D:	return "D";
-	case U:	return "U";
 	case L:	return "L";
+	case R:	return "R";
+	case T:	return "T";
+	case U:	return "U";
 	default:
 	    sprintf( scratch, "%d", sym );
 	    return scratch;

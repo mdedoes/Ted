@@ -10,61 +10,28 @@
 
 #   include	"bmObjectReader.h"
 
-#   include	<sioHex.h>
-#   include	<sioMemory.h>
 #   include	"bitmap.h"
 #   include	"bmio.h"
 #   include	<sioGeneral.h>
 #   include	<sioUtil.h>
+#   include	<sioHexedMemory.h>
 
 #   include	<appDebugon.h>
-
-void bmInitObjectReader(	ObjectReader *		or )
-    {
-    or->orSisMem= (SimpleInputStream *)0;
-    or->orSisHex= (SimpleInputStream *)0;
-
-    return;
-    }
-
-void bmCleanObjectReader(	ObjectReader *		or )
-    {
-    if  ( or->orSisHex )
-	{ sioInClose( or->orSisHex );	}
-
-    if  ( or->orSisMem )
-	{ sioInClose( or->orSisMem );	}
-    }
-
-int bmOpenObjectReader(	ObjectReader *			or,
-			const struct MemoryBuffer *	mb )
-    {
-    or->orSisMem= sioInMemoryOpen( mb );
-    if  ( ! or->orSisMem )
-	{ XDEB(or->orSisMem); return -1;	}
-
-    or->orSisHex= sioInHexOpen( or->orSisMem );
-    if  ( ! or->orSisHex )
-	{ XDEB(or->orSisHex); return -1;	}
-
-    return 0;
-    }
 
 int bmReadRasterObject(	RasterImage *			ri,
 			bmReadBitmap			readRaster,
 			const char *			suggestedExtension,
 			const struct MemoryBuffer *	mb )
     {
-    int			rval= 0;
+    int				rval= 0;
 
-    ObjectReader	or;
+    SimpleInputStream *		sisData= (SimpleInputStream *)0;
 
-    bmInitObjectReader( &or );
+    sisData= sioInHexedMemoryOpen( mb );
+    if  ( ! sisData )
+	{ XDEB(sisData); rval= -1; goto ready;	}
 
-    if  ( bmOpenObjectReader( &or, mb ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-
-    if  ( (*readRaster)( &(ri->riDescription), &(ri->riBytes), or.orSisHex ) )
+    if  ( (*readRaster)( &(ri->riDescription), &(ri->riBytes), sisData ) )
 	{
 	if  ( getenv( "TED_SAVE_FAULTY_IMAGES" ) )
 	    {
@@ -72,15 +39,16 @@ int bmReadRasterObject(	RasterImage *			ri,
 
 	    static int	imageNumber= 0;
 
-	    bmCleanObjectReader( &or );
-	    bmInitObjectReader( &or );
+	    sioInClose( sisData );
+	    sisData= (SimpleInputStream *)0;
 
-	    if  ( bmOpenObjectReader( &or, mb ) )
-		{ LDEB(1); rval= -1; goto ready;	}
+	    sisData= sioInHexedMemoryOpen( mb );
+	    if  ( ! sisData )
+		{ XDEB(sisData); rval= -1; goto ready;	}
 
 	    sprintf( scratch, "/tmp/failed_image_%d.%s",
 					    imageNumber++, suggestedExtension );
-	    sioCopyInputStreamToFile( scratch, or.orSisHex );
+	    sioCopyInputStreamToFile( scratch, sisData );
 	    }
 
 	LDEB(1); rval= -1; goto ready;
@@ -88,7 +56,8 @@ int bmReadRasterObject(	RasterImage *			ri,
 
   ready:
 
-    bmCleanObjectReader( &or );
+    if  ( sisData )
+	{ sioInClose( sisData );	}
 
     return rval;
     }

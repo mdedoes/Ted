@@ -13,7 +13,7 @@
 #   include	<docRtfTrace.h>
 #   include	<docLayout.h>
 #   include	<docEditCommand.h>
-#   include	"tedEdit.h"
+#   include	"tedEditOperation.h"
 #   include	<tedDocFront.h>
 #   include	<docParaNodeProperties.h>
 #   include	<docParaProperties.h>
@@ -53,7 +53,7 @@ static int tedSplitParaNode(	TedEditOperation *		teo,
     docNodeRectangle( &drPara, oldParaNode, lc, (const BlockOrigin *)0 );
 
     /*  1  */
-    if  ( docSplitParaNode( &newParaNode, &(teo->teoEo), splitLevel ) )
+    if  ( docEditSplitParaNode( &newParaNode, &(teo->teoEo), splitLevel ) )
 	{ LDEB(1); return -1;	}
 
     if  ( newParaNode->biParaProperties->ppTableNesting != 0 )
@@ -96,7 +96,7 @@ void tedDocSplitParagraph(	struct EditDocument *	ed,
     if  ( tedEditStartReplace( &dsTraced, &teo, editCommand, DOClevSPAN, 0 ) )
 	{ LDEB(1); goto ready;	}
 
-    if  ( tedEditDeleteSelection( &teo ) )
+    if  ( docDeleteSelection( &(teo.teoEo) ) )
 	{ LDEB(1); goto ready;	}
 
     if  ( tedSplitParaNode( &teo, DOClevPARA, breakKind ) )
@@ -180,7 +180,7 @@ int tedDocInsertSectBreak(	struct EditDocument *	ed,
 					EDITcmdSPLIT_SECT, DOClevSPAN, 0 ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( tedEditDeleteSelection( &teo ) )
+    if  ( docDeleteSelection( eo ) )
 	{ rval= -1; goto ready;	}
 
     if  ( docFindParticuleOfPosition( (int *)0, &pastFlags,

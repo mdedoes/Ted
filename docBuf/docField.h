@@ -58,6 +58,7 @@ typedef int (*CALCULATE_TEXT_STRING)(
 #   define	FIELDdoSEQ		(1<<6)
 #   define	FIELDdoTOC		(1<<7) /* Have their own call */
 #   define	FIELDdoINCLUDETEXT	(1<<8) /* Have their own call */
+#   define	FIELDdoMERGE		(1<<9) /* Have their own call */
 
 typedef struct FieldKindInformation
     {

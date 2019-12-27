@@ -12,6 +12,7 @@
 #   include	"docSelect.h"
 #   include	"docTreeNode.h"
 #   include	<docTextLine.h>
+#   include	<docTreeType.h>
 
 #   include	"docDebug.h"
 #   include	<appDebugon.h>
@@ -105,7 +106,10 @@ int docFindLineOfPosition(	int *				pLine,
     const int		paraStrlen= docParaStrlen( paraNode );
 
     if  ( r <= 0 )
-	{ LSDEB(r,docTreeTypeStr(paraNode->biTreeType)); return -1;	}
+	{
+	SLDEB(docTreeTypeStr(paraNode->biTreeType),paraNode->biParaLineCount);
+	return -1;
+	}
     if  ( stroff < 0 || stroff > paraStrlen )
 	{ LDEB(stroff); return -1;	}
 

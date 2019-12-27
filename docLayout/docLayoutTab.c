@@ -10,6 +10,7 @@
 
 #   include	"docLayout.h"
 #   include	"docLayoutLine.h"
+#   include	"layoutContext.h"
 
 #   include	<docTreeNode.h>
 #   include	<textAttribute.h>

@@ -25,11 +25,11 @@
 #   include	<docParaProperties.h>
 #   include	<docTreeNode.h>
 #   include	<docTextParticule.h>
-#   include	<utilPropMask.h>
 #   include	<docObjects.h>
 #   include	<docFields.h>
 #   include	<docParaParticuleAdmin.h>
 #   include	<docParaBuilder.h>
+#   include	<docParaParticules.h>
 
 #   include	<docDebug.h>
 #   include	<appDebugon.h>
@@ -51,17 +51,17 @@ static DocumentField * docStartFieldCopy(
 				int				obnrFrom )
     {
     EditOperation *		eo= dcj->dcjEditOperation;
-    struct BufferDocument *		bdTo= eo->eoDocument;
+    struct BufferDocument *	bdTo= eo->eoDocument;
     const DocumentFieldList *	dflFrom= &(dcj->dcjSourceDocument->bdFieldList);
     const int			fieldCount= dflFrom->dflPagedList.plItemCount;
 
     DocumentField *		dfFrom;
     DocumentField *		dfTo;
 
-    dfFrom= docGetFieldByNumber( dflFrom, obnrFrom );
+    dfFrom= docGetFieldByNumber( dcj->dcjSourceDocument, obnrFrom );
 
     dfTo= docClaimFieldCopy( &(bdTo->bdFieldList), dfFrom,
-					&(dcj->dcjTargetSelectionScope), epStart );
+				&(dcj->dcjTargetSelectionScope), epStart );
     if  ( ! dfTo )
 	{ XDEB(dfTo); return (DocumentField *)0;	}
 
@@ -69,6 +69,7 @@ static DocumentField * docStartFieldCopy(
 	{ LDEB(obnrFrom); }
     else{
 	dcj->dcjFieldMap[obnrFrom]= dfTo->dfFieldNumber;
+	/*appDebug("FIELDMAP: @%3d= %3d\n", obnrFrom, dfTo->dfFieldNumber );*/
 	}
 
     if  ( docPushFieldOnCopyStack( dcj, dfTo, FSpieceFLDRSLT ) )
@@ -130,7 +131,7 @@ static int docFinishFieldCopy(	DocumentCopyJob *		dcj,
 				int				obnrFrom )
     {
     EditOperation *		eo= dcj->dcjEditOperation;
-    struct BufferDocument *		bdTo= eo->eoDocument;
+    struct BufferDocument *	bdTo= eo->eoDocument;
     const DocumentFieldList *	dflFrom= &(dcj->dcjSourceDocument->bdFieldList);
     const int			fieldCount= dflFrom->dflPagedList.plItemCount;
 
@@ -142,6 +143,8 @@ static int docFinishFieldCopy(	DocumentCopyJob *		dcj,
     if  ( obnrFrom < 0			||
 	  obnrFrom >= fieldCount	)
 	{ LLDEB(obnrFrom,fieldCount); return -1;	}
+
+    /*appDebug("FIELDMAP: @%3d? %3d\n", obnrFrom, dcj->dcjFieldMap[obnrFrom] );*/
 
     if  ( dcj->dcjFieldMap[obnrFrom] < 0 )
 	{
@@ -155,7 +158,7 @@ static int docFinishFieldCopy(	DocumentCopyJob *		dcj,
 	}
 
     obnrTo= dcj->dcjFieldMap[obnrFrom];
-    dfTo= docGetFieldByNumber( &(bdTo->bdFieldList), obnrTo );
+    dfTo= docGetFieldByNumber( bdTo, obnrTo );
     docSetFieldTail( dfTo, epTail );
 
     res= docFieldStackPopLevel( &(dcj->dcjFieldStack), dcj->dcjTargetTree );
@@ -166,6 +169,7 @@ static int docFinishFieldCopy(	DocumentCopyJob *		dcj,
 
     /*  Head and tail copied */
     dcj->dcjFieldMap[obnrFrom]= -2;
+    /*appDebug("FIELDMAP: @%3d# %3d\n", obnrFrom, dcj->dcjFieldMap[obnrFrom] );*/
 
     return obnrTo;
     }
@@ -180,12 +184,12 @@ static int docFinishFieldCopy(	DocumentCopyJob *		dcj,
 /************************************************************************/
 
 static int docCopyParticuleData(	DocumentCopyJob *	dcj,
-					struct BufferItem *		nodeTo,
+					struct BufferItem *	nodeTo,
 					TextParticule *		tpTo,
 					TextParticule *		tpFrom )
     {
     EditOperation *		eo= dcj->dcjEditOperation;
-    struct BufferDocument *		bdTo= eo->eoDocument;
+    struct BufferDocument *	bdTo= eo->eoDocument;
     int				paraNr= docNumberOfParagraph( nodeTo );
 
     switch( tpFrom->tpKind )
@@ -247,9 +251,9 @@ static int docCopyParticuleData(	DocumentCopyJob *	dcj,
 	    if  ( dcj->dcjCopyFields )
 		{
 		tpTo->tpObjectNumber= docFinishFieldCopy( dcj, &epTail,
-							    tpFrom->tpObjectNumber );
+						    tpFrom->tpObjectNumber );
 		if  ( tpTo->tpObjectNumber < 0 )
-		    { LDEB(tpTo->tpObjectNumber);	}
+		    { LDEB(tpTo->tpObjectNumber); return -1;	}
 		}
 	    else{
 		tpTo->tpObjectNumber= tpFrom->tpObjectNumber;
@@ -262,8 +266,7 @@ static int docCopyParticuleData(	DocumentCopyJob *	dcj,
 
 		    tpFrom->tpObjectNumber= -1;
 
-		    dfTo= docGetFieldByNumber( &(bdTo->bdFieldList),
-							tpTo->tpObjectNumber );
+		    dfTo= docGetFieldByNumber( bdTo, tpTo->tpObjectNumber );
 		    if  ( ! dfTo )
 			{ LXDEB(tpTo->tpObjectNumber,dfTo);	}
 		    else{ docSetFieldTail( dfTo, &epTail );	}
@@ -299,8 +302,7 @@ static int docCopyParticuleData(	DocumentCopyJob *	dcj,
 
 		    tpFrom->tpObjectNumber= -1;
 
-		    dfTo= docGetFieldByNumber( &(bdTo->bdFieldList),
-							tpTo->tpObjectNumber );
+		    dfTo= docGetFieldByNumber( bdTo, tpTo->tpObjectNumber );
 		    if  ( ! dfTo )
 			{ LXDEB(tpTo->tpObjectNumber,dfTo);	}
 		    else{ docSetFieldHead( dfTo, &epHead );	}
@@ -431,7 +433,7 @@ int docCopyParticules(	DocumentCopyJob *		dcj,
 	tpTo->tpTextAttrNr= textAttributeNumberTo;
 
 	if  ( docCopyParticuleData( dcj, nodeTo, tpTo, tpFrom ) )
-	    { LLDEB(partTo,i); return -1;	}
+	    { LLLDEB(partTo,i,countFrom); return -1;	}
 
 	stroffTo += tpTo->tpStrlen;
 	}
@@ -444,7 +446,7 @@ int docCopyParticules(	DocumentCopyJob *		dcj,
 
 int docCopyParticuleAndData(		TextParticule **	pTpTo,
 					DocumentCopyJob *	dcj,
-					struct BufferItem *		paraNodeTo,
+					struct BufferItem *	tgtParaNode,
 					int			partTo,
 					int			stroffTo,
 					int			strlenTo,
@@ -464,18 +466,18 @@ int docCopyParticuleAndData(		TextParticule **	pTpTo,
 	{ LDEB(textAttributeNumberTo); return -1;	}
 
     if  ( partTo < 0 )
-	{ partTo= paraNodeTo->biParaParticuleCount;	}
+	{ partTo= tgtParaNode->biParaParticuleCount;	}
 
-    tpTo= docInsertTextParticule( paraNodeTo, partTo,
+    tpTo= docInsertTextParticule( tgtParaNode, partTo,
 					    stroffTo, strlenTo,
 					    tpSaved.tpKind,
 					    textAttributeNumberTo );
     if  ( ! tpTo )
 	{ LXDEB(partTo,tpTo); return -1;	}
 
-    if  ( docCopyParticuleData( dcj, paraNodeTo, tpTo, &tpSaved ) )
+    if  ( docCopyParticuleData( dcj, tgtParaNode, tpTo, &tpSaved ) )
 	{
-	docDeleteParticules( paraNodeTo, partTo, 1 );
+	docDeleteParticules( tgtParaNode, partTo, 1 );
 	LDEB(partTo); return -1;
 	}
 
@@ -532,24 +534,59 @@ struct BufferItem * docCopyParaNode(
 				const SelectionScope *		ssRoot,
 				struct BufferItem *		biCellTo,
 				int				n,
-				const struct BufferItem *	paraNodeFrom )
+				const struct BufferItem *	srcParaNode,
+				const DocumentSelection *	ds )
     {
-    EditOperation *	eo= dcj->dcjEditOperation;
+    EditOperation *		eo= dcj->dcjEditOperation;
     struct BufferDocument *	bdTo= eo->eoDocument;
-    struct BufferItem *	paraNodeTo;
+    struct BufferItem *		tgtParaNode= (struct BufferItem *)0;
+    struct BufferItem *		rval= (struct BufferItem *)0;
 
-    const int		partTo= 0;
-    int			partFrom= 0;
+    const int			partTo= 0;
+    int				partFrom= 0;
+    int				partUpto= srcParaNode->biParaParticuleCount;
 
-    PropertyMask	ppChgMask;
-    PropertyMask	ppUpdMask;
+    if  ( ds )
+	{
+	if  ( ds->dsHead.dpNode == srcParaNode	&&
+	      ds->dsHead.dpStroff > 0		)
+	    {
+	    int	flags= 0;
+
+	    if  ( docFindParticuleOfPosition( &partFrom, &flags,
+						&(ds->dsHead), PARAfindLAST ) )
+		{ LDEB(ds->dsHead.dpStroff); goto ready;	}
+
+	    if  ( ! ( flags & POSflagPART_HEAD ) )
+		{
+		LLDEB(ds->dsHead.dpStroff,docParaStrlen(srcParaNode));
+		XDEB(flags);
+		}
+	    }
+
+	if  ( ds->dsTail.dpNode == srcParaNode			&&
+	      ds->dsTail.dpStroff < docParaStrlen( srcParaNode )	)
+	    {
+	    int	flags= 0;
+
+	    if  ( docFindParticuleOfPosition( &partUpto, &flags,
+						&(ds->dsTail), PARAfindLAST ) )
+		{ LDEB(ds->dsTail.dpStroff); goto ready;	}
+	    if  ( ! ( flags & POSflagPART_HEAD ) )
+		{
+		LLDEB(ds->dsTail.dpStroff,docParaStrlen(srcParaNode));
+		XDEB(flags);
+		}
+	    }
+
+	}
 
     /*  1  */
-    paraNodeTo= docInsertNode( bdTo, biCellTo, n, DOClevPARA );
-    if  ( ! paraNodeTo )
-	{ XDEB(paraNodeTo); return paraNodeTo;	}
+    tgtParaNode= docInsertNode( bdTo, biCellTo, n, DOClevPARA );
+    if  ( ! tgtParaNode )
+	{ XDEB(tgtParaNode); goto ready;	}
 
-    docSetParaTableNesting( paraNodeTo, bdTo );
+    docSetParaTableNesting( tgtParaNode, bdTo );
 
     if  ( ! eo->eoParagraphBuilder )
 	{
@@ -558,8 +595,8 @@ struct BufferItem * docCopyParaNode(
 	}
 
     if  ( docParaBuilderStartExistingParagraph( eo->eoParagraphBuilder,
-					paraNodeTo, 0 ) )
-	{ LDEB(0); return (struct BufferItem *)0;	}
+					tgtParaNode, 0 ) )
+	{ LDEB(0); goto ready;	}
 
     /*  2  */
     {
@@ -568,14 +605,14 @@ struct BufferItem * docCopyParaNode(
     const int	sectShift= 0;
     const int	paraShift= 1;
 
-    paraNr= docNumberOfParagraph( paraNodeTo );
+    paraNr= docNumberOfParagraph( tgtParaNode );
 
     docEditShiftReferences( eo, ssRoot, paraNr, stroff,
 					sectShift, paraShift, -stroff );
     }
 
     /*  3  */
-    if  ( paraNodeFrom->biParaProperties->ppListOverride > 0 )
+    if  ( srcParaNode->biParaProperties->ppListOverride > 0 )
 	{
 	DocumentField *		dfHead= (DocumentField *)0;
 	DocumentSelection	dsInsideHead;
@@ -585,7 +622,7 @@ struct BufferItem * docCopyParaNode(
 
 	if  ( docDelimitParaHeadField( &dfHead, &dsInsideHead, &dsAroundHead,
 					&bulletPartHead, &bulletPartTail,
-					paraNodeFrom, dcj->dcjSourceDocument ) )
+					srcParaNode, dcj->dcjSourceDocument ) )
 	    { LDEB(1);	}
 
 	if  ( partFrom <= bulletPartTail )
@@ -593,53 +630,50 @@ struct BufferItem * docCopyParaNode(
 	}
 
     /*  4  */
-    if  ( partFrom < paraNodeFrom->biParaParticuleCount )
+    if  ( partFrom < partUpto )
 	{
 	int		particulesInserted= 0;
 	int		charactersCopied= 0;
 
-	if  ( docCopyParticules( dcj, paraNodeTo, paraNodeFrom, partTo,
-			partFrom, paraNodeFrom->biParaParticuleCount- partFrom,
+	if  ( docCopyParticules( dcj, tgtParaNode, srcParaNode, partTo,
+			partFrom, partUpto- partFrom,
 			&particulesInserted, &charactersCopied ) )
-	    {
-	    LDEB(paraNodeFrom->biParaParticuleCount);
-	    docDeleteNode( eo->eoDocument, eo->eoTree, paraNodeTo );
-	    return (struct BufferItem *)0;
-	    }
+	    { LLDEB(partUpto,partFrom); goto ready;	}
 	}
     else{
 	int			textAttributeNumberTo;
 	const TextParticule *	tpFrom;
 
-	tpFrom= paraNodeFrom->biParaParticules+
-				    paraNodeFrom->biParaParticuleCount- 1;
+	if  ( partUpto == 0 )
+	    { tpFrom= srcParaNode->biParaParticules;			}
+	else{ tpFrom= srcParaNode->biParaParticules+ partUpto- 1;	}
 
 	textAttributeNumberTo= docMapTextAttributeNumber( dcj,
 							tpFrom->tpTextAttrNr );
 	if  ( textAttributeNumberTo < 0 )
-	    { LDEB(textAttributeNumberTo); return (struct BufferItem *)0; }
+	    { LDEB(textAttributeNumberTo); goto ready; }
 
-	if  ( ! docInsertTextParticule( paraNodeTo, 0, 0, 0,
+	if  ( ! docInsertTextParticule( tgtParaNode, 0, 0, 0,
 					TPkindSPAN, textAttributeNumberTo ) )
-	    { LDEB(1); return (struct BufferItem *)0;	}
+	    { LDEB(1); goto ready;	}
 	}
 
     /*  5  */
-    utilPropMaskClear( &ppChgMask );
-
-    utilPropMaskClear( &ppUpdMask );
-    utilPropMaskFill( &ppUpdMask, PPprop_FULL_COUNT );
-    PROPmaskUNSET( &ppUpdMask, PPpropTABLE_NESTING );
-
-    if  ( docEditUpdParaProperties( eo, &ppChgMask, paraNodeTo, &ppUpdMask,
-				paraNodeFrom->biParaProperties,
-				&(dcj->dcjAttributeMap) ) )
-	{ LDEB(1); return (struct BufferItem *)0;	}
+    if  ( docEditTransferParaProperties( eo, tgtParaNode,
+				srcParaNode, 0, &(dcj->dcjAttributeMap) ) )
+	{ LDEB(1); goto ready;	}
 
     eo->eoParagraphsInserted++;
-    if  ( paraNodeTo->biParaProperties->ppListOverride > 0 )
+    if  ( tgtParaNode->biParaProperties->ppListOverride > 0 )
 	{ dcj->dcjBulletsCopied++;	}
 
-    return paraNodeTo;
+    rval= tgtParaNode; tgtParaNode= (BufferItem *)0; /* steal */
+
+  ready:
+
+    if  ( tgtParaNode )
+	{ docDeleteNode( eo->eoDocument, eo->eoTree, tgtParaNode );	}
+
+    return rval;
     }
 

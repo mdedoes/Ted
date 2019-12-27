@@ -36,7 +36,7 @@ int bmSelect(	RasterImage *			riOut,
 	}
 
     /************************************************************/
-    /*  Derive properties of output bitmap from input.		*/
+    /*  Derive properties of output raster from input.		*/
     /************************************************************/
     bmCopyDescription( &(ri.riDescription), bdIn );
     ri.riDescription.bdPixelsWide= drSel->drX1- drSel->drX0+ 1;

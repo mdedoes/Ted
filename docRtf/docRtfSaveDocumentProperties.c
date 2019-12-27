@@ -11,12 +11,13 @@
 
 #   include	"docRtfWriterImpl.h"
 #   include	"docRtfTags.h"
+#   include	"docRtfControlWord.h"
 #   include	<utilMemoryBuffer.h>
 #   include	<docDocumentProperties.h>
 #   include	<docBuf.h>
 #   include	<utilPropMask.h>
 #   include	<docListAdmin.h>
-#   include	<fontDocFontList.h>
+#   include	<fontDocFontListImpl.h>
 #   include	<utilPalette.h>
 
 #   include	<appDebugon.h>
@@ -61,16 +62,48 @@ int docRtfSaveDate(	RtfWriter *		rw,
     return 0;
     }
 
-int docRtfSaveDocumentProperties(	RtfWriter *			rw,
-					int				fet,
-					const PropertyMask *		dpMask,
-					const DocumentProperties *	dp )
+static const int DocRegularProperties[]=
+{
+    DGpropPAGE_WIDTH,
+    DGpropPAGE_HEIGHT,
+    DGpropLEFT_MARGIN,
+    DGpropRIGHT_MARGIN,
+    DGpropTOP_MARGIN,
+    DGpropBOTTOM_MARGIN,
+    DGpropGUTTER,
+    DGpropMARGMIR,
+    DPpropFACING_PAGES,
+    DPpropGUTTER_HORIZONTAL,
+    DPpropWIDOWCTRL,
+    DPpropTWO_ON_ONE,
+    DPpropDOCTEMP,
+};
+
+static const int DocRegularPropertyCount=
+			sizeof(DocRegularProperties)/sizeof(int);
+
+static const int DocRegularBorders[]=
+{
+    DPpropTOP_BORDER,
+    DPpropBOTTOM_BORDER,
+    DPpropLEFT_BORDER,
+    DPpropRIGHT_BORDER,
+    DPpropHEAD_BORDER,
+    DPpropFOOT_BORDER,
+};
+
+static const int DocRegularBorderCount=
+			sizeof(DocRegularBorders)/sizeof(int);
+
+int docRtfSaveDocumentProperties( RtfWriter *			rw,
+				int				fet,
+				const PropertyMask *		dpSetMask,
+				const DocumentProperties *	dpSet )
     {
-    const int			anyway= 1;
-    const DocumentGeometry *	dg= &(dp->dpGeometry);
+    const int			scope= RTCscopeDOC;
 
     /* NO! We always write ansi 1252 documents
-    int				ansicpg= dp->dpAnsiCodepage;
+    int				ansicpg= dpSet->dpAnsiCodepage;
 
     if  ( ansicpg >= 0 )
 	{
@@ -79,143 +112,116 @@ int docRtfSaveDocumentProperties(	RtfWriter *			rw,
 	}
     */
 
-    if  ( PROPmaskISSET( dpMask, DPpropDEFF ) )
+    if  ( PROPmaskISSET( dpSetMask, DPpropDEFF ) )
 	{
-	int	deff= docRtfWriteGetDefaultFont( rw, dp->dpDefaultFont );
+	int	deff= docRtfWriteGetDefaultFont( rw, dpSet->dpDefaultFont );
 
 	if  ( deff >= 0 )
 	    { docRtfWriteArgTag( rw, "deff", deff );	}
 	}
 
-    if  ( PROPmaskISSET( dpMask, DPpropDEFLANG ) )
-	{ docRtfWriteArgTag( rw, "deflang", dp->dpDefaultLocaleId );	}
+    if  ( PROPmaskISSET( dpSetMask, DPpropDEFLANG ) )
+	{ docRtfWriteArgTag( rw, "deflang", dpSet->dpDefaultLocaleId );	}
 
-    if  ( PROPmaskISSET( dpMask, DPpropRTOL ) )
+    if  ( PROPmaskISSET( dpSetMask, DPpropRTOL ) )
 	{
-	docRtfWriteAltTag( rw, "rtldoc", "ltrdoc", dp->dpRToL );
+	docRtfWriteAltTag( rw, "rtldoc", "ltrdoc", dpSet->dpRToL );
 	}
 
     /* Strictly spoken, this is not a document property */
     docRtfWriteArgTag( rw, "uc", 1 );
 
-    if  ( PROPmaskISSET( dpMask, DPpropFONTTABLE ) )
+    if  ( PROPmaskISSET( dpSetMask, DPpropFONTTABLE ) )
 	{
 	docRtfWriteNextLine( rw );
 	docRtfWriteFontTable( rw );
 	}
 
-    if  ( PROPmaskISSET( dpMask, DPpropCOLORTABLE ) )
+    if  ( PROPmaskISSET( dpSetMask, DPpropCOLORTABLE ) )
 	{
 	docRtfWriteNextLine( rw );
-	docRtfWriteColorTable( rw, dp );
+	docRtfWriteColorTable( rw, dpSet );
 	}
 
-    if  ( PROPmaskISSET( dpMask, DPpropSTYLESHEET ) )
+    if  ( PROPmaskISSET( dpSetMask, DPpropSTYLESHEET ) )
 	{
 	docRtfWriteNextLine( rw );
 	docRtfWriteStyleSheet( rw, &(rw->rwDocument->bdStyleSheet) );
 	}
 
-    if  ( PROPmaskISSET( dpMask, DPpropLISTTABLE ) )
+    if  ( PROPmaskISSET( dpSetMask, DPpropLISTTABLE ) )
 	{
 	docRtfWriteNextLine( rw );
-	docRtfWriteListTable( rw, &(dp->dpListAdmin->laListTable) );
+	docRtfWriteListTable( rw, &(dpSet->dpListAdmin->laListTable) );
 	}
 
-    if  ( PROPmaskISSET( dpMask, DPpropLISTOVERRIDETABLE ) )
+    if  ( PROPmaskISSET( dpSetMask, DPpropLISTOVERRIDETABLE ) )
 	{
 	docRtfWriteNextLine( rw );
 	docRtfWriteListOverrideTable( rw,
-				    &(dp->dpListAdmin->laListOverrideTable) );
+				    &(dpSet->dpListAdmin->laListOverrideTable) );
 	}
 
-    if  ( PROPmaskISSET( dpMask, DPpropGENERATOR ) )
-	{ docRtfSaveInfo( rw, RTFtag__generator, &(dp->dpGeneratorWrite) ); }
+    if  ( PROPmaskISSET( dpSetMask, DPpropGENERATOR ) )
+	{ docRtfSaveInfo( rw, RTFtag__generator, &(dpSet->dpGeneratorWrite) ); }
 
-    if  ( PROPmaskISSET( dpMask, DPpropTITLE )		||
-	  PROPmaskISSET( dpMask, DPpropAUTHOR )		||
-	  PROPmaskISSET( dpMask, DPpropCOMPANY )	||
-	  PROPmaskISSET( dpMask, DPpropSUBJECT )	||
-	  PROPmaskISSET( dpMask, DPpropKEYWORDS )	||
-	  PROPmaskISSET( dpMask, DPpropDOCCOMM )	||
-	  PROPmaskISSET( dpMask, DPpropHLINKBASE )	||
-	  PROPmaskISSET( dpMask, DPpropCREATIM )	||
-	  PROPmaskISSET( dpMask, DPpropREVTIM )		||
-	  PROPmaskISSET( dpMask, DPpropPRINTIM )	)
+    if  ( PROPmaskISSET( dpSetMask, DPpropTITLE )	||
+	  PROPmaskISSET( dpSetMask, DPpropAUTHOR )	||
+	  PROPmaskISSET( dpSetMask, DPpropCOMPANY )	||
+	  PROPmaskISSET( dpSetMask, DPpropSUBJECT )	||
+	  PROPmaskISSET( dpSetMask, DPpropKEYWORDS )	||
+	  PROPmaskISSET( dpSetMask, DPpropDOCCOMM )	||
+	  PROPmaskISSET( dpSetMask, DPpropHLINKBASE )	||
+	  PROPmaskISSET( dpSetMask, DPpropCREATIM )	||
+	  PROPmaskISSET( dpSetMask, DPpropREVTIM )	||
+	  PROPmaskISSET( dpSetMask, DPpropPRINTIM )	)
 	{
 	docRtfWriteNextLine( rw );
 	docRtfWriteDestinationBegin( rw, "info" );
 	docRtfWriteNextLine( rw );
 
-	if  ( PROPmaskISSET( dpMask, DPpropTITLE ) )
-	    { docRtfSaveInfo( rw, "title",	&(dp->dpTitle) );	}
-	if  ( PROPmaskISSET( dpMask, DPpropAUTHOR ) )
-	    { docRtfSaveInfo( rw, "author",	&(dp->dpAuthor) );	}
-	if  ( PROPmaskISSET( dpMask, DPpropCOMPANY ) )
-	    { docRtfSaveInfo( rw, "company",	&(dp->dpCompany) );	}
-	if  ( PROPmaskISSET( dpMask, DPpropSUBJECT ) )
-	    { docRtfSaveInfo( rw, "subject",	&(dp->dpSubject) );	}
-	if  ( PROPmaskISSET( dpMask, DPpropKEYWORDS ) )
-	    { docRtfSaveInfo( rw, "keywords",	&(dp->dpKeywords) );	}
-	if  ( PROPmaskISSET( dpMask, DPpropDOCCOMM ) )
-	    { docRtfSaveInfo( rw, "doccomm",	&(dp->dpDoccomm) );	}
-	if  ( PROPmaskISSET( dpMask, DPpropHLINKBASE ) )
-	    { docRtfSaveInfo( rw, RTFtag_hlinkbase, &(dp->dpHlinkbase) );	}
+	if  ( PROPmaskISSET( dpSetMask, DPpropTITLE ) )
+	    { docRtfSaveInfo( rw, "title", &(dpSet->dpTitle) );	}
+	if  ( PROPmaskISSET( dpSetMask, DPpropAUTHOR ) )
+	    { docRtfSaveInfo( rw, "author", &(dpSet->dpAuthor) );	}
+	if  ( PROPmaskISSET( dpSetMask, DPpropCOMPANY ) )
+	    { docRtfSaveInfo( rw, "company", &(dpSet->dpCompany) );	}
+	if  ( PROPmaskISSET( dpSetMask, DPpropSUBJECT ) )
+	    { docRtfSaveInfo( rw, "subject", &(dpSet->dpSubject) );	}
+	if  ( PROPmaskISSET( dpSetMask, DPpropKEYWORDS ) )
+	    { docRtfSaveInfo( rw, "keywords", &(dpSet->dpKeywords) );	}
+	if  ( PROPmaskISSET( dpSetMask, DPpropDOCCOMM ) )
+	    { docRtfSaveInfo( rw, "doccomm", &(dpSet->dpDoccomm) );	}
+	if  ( PROPmaskISSET( dpSetMask, DPpropHLINKBASE ) )
+	    { docRtfSaveInfo( rw, RTFtag_hlinkbase, &(dpSet->dpHlinkbase) );	}
 
-	if  ( PROPmaskISSET( dpMask, DPpropCREATIM ) )
-	    { docRtfSaveDate( rw, "creatim",	&(dp->dpCreatim) );	}
-	if  ( PROPmaskISSET( dpMask, DPpropREVTIM ) )
-	    { docRtfSaveDate( rw, RTFtag_revtim, &(dp->dpRevtim) );	}
-	if  ( PROPmaskISSET( dpMask, DPpropPRINTIM ) )
-	    { docRtfSaveDate( rw, "printim",	&(dp->dpPrintim) );	}
+	if  ( PROPmaskISSET( dpSetMask, DPpropCREATIM ) )
+	    { docRtfSaveDate( rw, "creatim", &(dpSet->dpCreatim) );	}
+	if  ( PROPmaskISSET( dpSetMask, DPpropREVTIM ) )
+	    { docRtfSaveDate( rw, RTFtag_revtim, &(dpSet->dpRevtim) );	}
+	if  ( PROPmaskISSET( dpSetMask, DPpropPRINTIM ) )
+	    { docRtfSaveDate( rw, "printim", &(dpSet->dpPrintim) );	}
 
 	docRtfWriteDestinationEnd( rw );
 	}
 
     docRtfWriteNextLine( rw );
 
-    if  ( PROPmaskISSET( dpMask, DGpropPAGE_WIDTH ) )
-    	{ docRtfWriteArgTag( rw, "paperw", dg->dgPageWideTwips );	}
-    if  ( PROPmaskISSET( dpMask, DGpropPAGE_HEIGHT ) )
-    	{ docRtfWriteArgTag( rw, "paperh", dg->dgPageHighTwips );	}
+    if  ( docRtfWriteItemProperties( rw, scope, dpSet,
+			(RtfGetIntProperty)docGetDocumentProperty, dpSetMask,
+			DocRegularProperties, DocRegularPropertyCount ) )
+	{ LLDEB(scope,DocRegularPropertyCount); return -1;	}
 
-    if  ( PROPmaskISSET( dpMask, DGpropLEFT_MARGIN ) )
-    	{ docRtfWriteArgTag( rw, "margl", dg->dgMargins.roLeftOffset );	}
-    if  ( PROPmaskISSET( dpMask, DGpropRIGHT_MARGIN ) )
-    	{ docRtfWriteArgTag( rw, "margr", dg->dgMargins.roRightOffset );	}
-    if  ( PROPmaskISSET( dpMask, DGpropTOP_MARGIN ) )
-    	{ docRtfWriteArgTag( rw, "margt", dg->dgMargins.roTopOffset );	}
-    if  ( PROPmaskISSET( dpMask, DGpropBOTTOM_MARGIN ) )
-    	{ docRtfWriteArgTag( rw, "margb", dg->dgMargins.roBottomOffset );	}
-
-    if  ( PROPmaskISSET( dpMask, DGpropGUTTER ) )
-	{ docRtfWriteArgTag( rw, "gutter", dg->dgGutterTwips ); }
-    if  ( PROPmaskISSET( dpMask, DGpropMARGMIR ) )
-	{ docRtfWriteTag( rw, "margmirror" ); }
-
-    if  ( PROPmaskISSET( dpMask, DPpropFACING_PAGES ) )
-	{ docRtfWriteFlagTag( rw, "facingp", dp->dpHasFacingPages );	}
-    if  ( PROPmaskISSET( dpMask, DPpropGUTTER_HORIZONTAL ) )
-	{ docRtfWriteFlagTag( rw, "gutterprl", dp->dpGutterHorizontal ); }
-
-    if  ( PROPmaskISSET( dpMask, DPpropWIDOWCTRL ) )
-	{ docRtfWriteFlagTag( rw, "widowctrl", dp->dpWidowControl );	}
-
-    if  ( PROPmaskISSET( dpMask, DPpropTWO_ON_ONE ) )
-	{ docRtfWriteFlagTag( rw, "twoonone", dp->dpTwoOnOne );	}
-    if  ( PROPmaskISSET( dpMask, DPpropDOCTEMP ) )
-	{ docRtfWriteFlagTag( rw, "doctemp", dp->dpIsDocumentTemplate ); }
-
-    if  ( dp->dpTabIntervalTwips > 0 && dp->dpTabIntervalTwips != 720 )
-	{ docRtfWriteArgTag( rw, "deftab", dp->dpTabIntervalTwips ); }
+    if  ( dpSet->dpTabIntervalTwips > 0 && dpSet->dpTabIntervalTwips != 720 )
+	{ docRtfWriteArgTag( rw, "deftab", dpSet->dpTabIntervalTwips ); }
 
     docRtfWriteNextLine( rw );
 
     if  ( fet >= 0 )
 	{ docRtfWriteArgTag( rw, RTFtag_fet, fet );	}
 
-    docRtfSaveNotesProperties( rw, dpMask,
-			    &(dp->dpNotesProps.fepFootnotesProps),
+    docRtfSaveNotesProperties( rw, dpSetMask,
+			    &(dpSet->dpNotesProps.fepFootnotesProps),
 			    DOCdocFOOTNOTE_PROP_MAP, "ftnstart",
 			    DOCrtf_DocFootNotesJustificationTags,
 			    DOCrtf_DocFootNotesJustificationTagCount,
@@ -226,8 +232,8 @@ int docRtfSaveDocumentProperties(	RtfWriter *			rw,
 			    DOCrtf_DocFootNotesNumberStyleTags,
 			    DOCrtf_DocFootNotesNumberStyleTagCount );
 
-    docRtfSaveNotesProperties( rw, dpMask,
-			    &(dp->dpNotesProps.fepEndnotesProps),
+    docRtfSaveNotesProperties( rw, dpSetMask,
+			    &(dpSet->dpNotesProps.fepEndnotesProps),
 			    DOCdocENDNOTE_PROP_MAP, "aftnstart",
 			    DOCrtf_DocEndNotesJustificationTags,
 			    DOCrtf_DocEndNotesJustificationTagCount,
@@ -238,36 +244,10 @@ int docRtfSaveDocumentProperties(	RtfWriter *			rw,
 			    DOCrtf_DocEndNotesNumberStyleTags,
 			    DOCrtf_DocEndNotesNumberStyleTagCount );
 
-    if  ( PROPmaskISSET( dpMask, DPpropTOP_BORDER ) )
-	{
-	docRtfSaveBorderByNumber( rw, "pgbrdrt",
-					dp->dpTopBorderNumber, anyway );
-	}
-    if  ( PROPmaskISSET( dpMask, DPpropBOTTOM_BORDER ) )
-	{
-	docRtfSaveBorderByNumber( rw, "pgbrdrb",
-					dp->dpBottomBorderNumber, anyway );
-	}
-    if  ( PROPmaskISSET( dpMask, DPpropLEFT_BORDER ) )
-	{
-	docRtfSaveBorderByNumber( rw, "pgbrdrl",
-					dp->dpLeftBorderNumber, anyway );
-	}
-    if  ( PROPmaskISSET( dpMask, DPpropRIGHT_BORDER ) )
-	{
-	docRtfSaveBorderByNumber( rw, "pgbrdrr",
-					dp->dpRightBorderNumber, anyway );
-	}
-    if  ( PROPmaskISSET( dpMask, DPpropHEAD_BORDER ) )
-	{
-	docRtfSaveBorderByNumber( rw, "pgbrdrhead",
-					dp->dpHeadBorderNumber, anyway );
-	}
-    if  ( PROPmaskISSET( dpMask, DPpropFOOT_BORDER ) )
-	{
-	docRtfSaveBorderByNumber( rw, "pgbrdrfoot",
-					dp->dpFootBorderNumber, anyway );
-	}
+    if  ( docRtfWriteItemProperties( rw, scope, dpSet,
+			(RtfGetIntProperty)docGetDocumentProperty, dpSetMask,
+			DocRegularBorders, DocRegularBorderCount ) )
+	{ LLDEB(scope,DocRegularBorderCount); return -1;	}
 
     docRtfWriteNextLine( rw );
 

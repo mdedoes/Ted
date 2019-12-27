@@ -160,3 +160,21 @@ void docBeginParagraphLayoutProgress(
 
     return;
     }
+
+int docCompareLayoutProgress(
+			const ParagraphLayoutPosition *	plp0,
+			const ParagraphLayoutPosition *	plp1 )
+    {
+    if  ( plp1->pspChild > plp0->pspChild )
+	{ return  1;	}
+    if  ( plp1->pspChild < plp0->pspChild )
+	{ return -1;	}
+
+    if  ( plp1->pspPart > plp0->pspPart )
+	{ return  1;	}
+    if  ( plp1->pspPart < plp0->pspPart )
+	{ return -1;	}
+
+    return 0;
+    }
+

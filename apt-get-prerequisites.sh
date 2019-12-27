@@ -1,7 +1,7 @@
 apt-get install	\
     build-essential \
     zlib1g-dev \
-    libpcre3-dev \
+    libpcre2-dev \
     libx11-dev \
     libxpm-dev \
     libjpeg-dev \
@@ -11,6 +11,7 @@ apt-get install	\
     libgtk2.0-dev \
     libpaper-dev  \
     libenchant-dev  \
+    libjansson-dev  \
     lintian \
     fakeroot
 

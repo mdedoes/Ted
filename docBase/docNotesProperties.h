@@ -17,17 +17,36 @@ struct PropertyMask;
 /*									*/
 /*  Placement of notes.							*/
 /*									*/
-/*  Experimentation shows that if multiple sections in a document	*/
-/*  are on the same page, that \sftntj placement places the notes at	*/
-/*  the bottom of the section and that \sftnbj places them at the	*/
-/*  bottom of the page.							*/
-/*									*/
 /************************************************************************/
 
 typedef enum NotesJustification
     {
-    FTNjustifyBELOW_TEXT= 0,	/*  [s][a]ftntj				*/
-    FTNjustifyPAGE_BOTTOM,	/*  [s][a]ftnbj				*/
+	    /**
+	     * Place notes below the text (I.E. Top adjusted in the 
+	     * space between the bottom the text and the bottom of the page.)
+	     *
+	     * sftntj
+	     * saftntj
+	     *    Also: If multiple sections in a document are on the same page,
+	     *    place the notes at the bottom of the section.
+	     * ftntj
+	     * aftntj
+	     */
+    FTNjustifyBELOW_TEXT= 0,
+
+	    /**
+	     * Place notes at the bottom of the page  (I.E. Bottom adjusted 
+	     * in the space between the bottom the text and the bottom of 
+	     * the page.)
+	     *
+	     * sftnbj
+	     * saftnbj
+	     *    Also: If multiple sections in a document are on the same page,
+	     *    place the notes at the bottom of the page.
+	     * ftnbj
+	     * aftnbj
+	     */
+    FTNjustifyPAGE_BOTTOM,
 
     FTNjustify_COUNT
     } NotesJustification;

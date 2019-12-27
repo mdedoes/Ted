@@ -271,8 +271,6 @@ int docGetRootOfSelectionScope(	struct DocumentTree **		pTree,
 				struct BufferDocument *		bd,
 				const SelectionScope *		ss )
     {
-    const DocumentFieldList *	dfl= &(bd->bdFieldList);
-    const int			fieldCount= dfl->dflPagedList.plItemCount;
     struct BufferItem *		bodySectNode= (struct BufferItem *)0;
     struct DocumentTree *	dt;
 
@@ -305,14 +303,9 @@ int docGetRootOfSelectionScope(	struct DocumentTree **		pTree,
 
 	case DOCinFOOTNOTE:
 	case DOCinENDNOTE:
-	    if  ( ss->ssOwnerNumber < 0			||
-		  ss->ssOwnerNumber >= fieldCount	)
-		{
-		LLDEB(ss->ssOwnerNumber,fieldCount);
-		return -1;
-		}
-	    dfNote= docGetFieldByNumber( &(bd->bdFieldList),
-							ss->ssOwnerNumber );
+	    dfNote= docGetFieldByNumber( bd, ss->ssOwnerNumber );
+	    if  ( ! dfNote )
+		{ LXDEB(ss->ssOwnerNumber,dfNote); return -1;	}
 	    dn= docGetNoteOfField( dfNote, bd );
 	    if  ( ! dn )
 		{ XDEB(dn); return -1;	}

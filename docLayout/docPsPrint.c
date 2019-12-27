@@ -23,8 +23,8 @@
 #   include	"docLayout.h"
 #   include	"docPsPrintImpl.h"
 #   include	"docPsPrint.h"
+#   include	"layoutContext.h"
 #   include	<docTreeNode.h>
-#   include	<docPageGrid.h>
 #   include	<docDocumentProperties.h>
 #   include	<docSectProperties.h>
 #   include	<sioGeneral.h>
@@ -32,6 +32,7 @@
 #   include	<psFace.h>
 #   include	<docBuf.h>
 #   include	<psPrint.h>
+#   include	<docHeaderFooterScopes.h>
 
 #   include	<appDebugon.h>
 
@@ -72,7 +73,7 @@ static int docPsSetFont(	DrawingContext *	dc,
 				int			textAttrNumber,
 				const TextAttribute *	ta )
     {
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
     PrintingState *		ps= (PrintingState *)vps;
     const struct AfmFontInfo *	afi;
 
@@ -109,9 +110,7 @@ static void docPsPageBoxes(	DrawingContext *		dc,
     geoDocumentGeometryGetHeaderRect( &drHead, dg );
     geoDocumentGeometryGetFooterRect( &drFoot, dg );
 
-    rgb8.rgb8Red= 255;
-    rgb8.rgb8Green= 199;
-    rgb8.rgb8Blue= 199;
+    utilRGB8SolidRGB( 255, 199, 199 );
     docPsSetColorRgb( dc, vps, &rgb8 );
     sioOutPrintf( ps->psSos, "newpath" );
     sioOutPrintf( ps->psSos, " %d %d moveto", drHead.drX0, drHead.drY0 );
@@ -121,9 +120,7 @@ static void docPsPageBoxes(	DrawingContext *		dc,
     sioOutPrintf( ps->psSos, " %d %d lineto", drHead.drX0, drHead.drY0 );
     sioOutPrintf( ps->psSos, " fill\n" );
 
-    rgb8.rgb8Red= 199;
-    rgb8.rgb8Green= 199;
-    rgb8.rgb8Blue= 255;
+    utilRGB8SolidRGB( 199, 199, 255 );
     docPsSetColorRgb( dc, vps, &rgb8 );
     sioOutPrintf( ps->psSos, "newpath" );
     sioOutPrintf( ps->psSos, " %d %d moveto", drFoot.drX0, drFoot.drY0 );
@@ -133,9 +130,7 @@ static void docPsPageBoxes(	DrawingContext *		dc,
     sioOutPrintf( ps->psSos, " %d %d lineto", drFoot.drX0, drFoot.drY0 );
     sioOutPrintf( ps->psSos, " fill\n" );
 
-    rgb8.rgb8Red= 199;
-    rgb8.rgb8Green= 255;
-    rgb8.rgb8Blue= 199;
+    utilRGB8SolidRGB( 199, 255, 199 );
     docPsSetColorRgb( dc, vps, &rgb8 );
     sioOutPrintf( ps->psSos, "newpath" );
     sioOutPrintf( ps->psSos, " %d %d moveto", drBody.drX0, drBody.drY0 );
@@ -145,9 +140,7 @@ static void docPsPageBoxes(	DrawingContext *		dc,
     sioOutPrintf( ps->psSos, " %d %d lineto", drBody.drX0, drBody.drY0 );
     sioOutPrintf( ps->psSos, " fill\n" );
 
-    rgb8.rgb8Red= 0;
-    rgb8.rgb8Green= 255;
-    rgb8.rgb8Blue= 0;
+    utilRGB8SolidRGB( 0, 255, 0 );
     docPsSetColorRgb( dc, vps, &rgb8 );
     sioOutPrintf( ps->psSos, "newpath" );
     sioOutPrintf( ps->psSos, " %d %d moveto", drBBox.drX0, drBBox.drY0 );
@@ -184,7 +177,7 @@ static void docPsPageBoxes(	DrawingContext *		dc,
 
 static int docPsFinishPage(	void *				vps,
 				DrawingContext *		dc,
-				struct BufferItem *			bodySectNode,
+				struct BufferItem *		bodySectNode,
 				int				page,
 				int				asLast )
     {
@@ -238,10 +231,10 @@ static int docPsFinishPage(	void *				vps,
     /*  4  */
     if  ( ! pageIsMarked )
 	{
-	const LayoutContext *	lc= &(dc->dcLayoutContext);
+	const LayoutContext *		lc= dc->dcLayoutContext;
 	const struct BufferDocument *	bd= lc->lcDocument;
 
-	struct DocumentTree *			tree;
+	struct DocumentTree *		tree;
 	int				isEmpty;
 
 	if  ( dc->dcDocHasPageHeaders )
@@ -276,6 +269,9 @@ static int docPsFinishPage(	void *				vps,
     if  ( skip )
 	{ psAbortPage( ps, page, asLast );	}
     else{
+	if  ( psSetPageProperty( ps, "TedEmpty", pageIsMarked?"false":"true" ) )
+	    { LDEB(1); return -1;	}
+
 	if  ( psFinishPage( ps, page, asLast ) )
 	    { LDEB(page); return -1;	}
 	}
@@ -286,6 +282,7 @@ static int docPsFinishPage(	void *				vps,
 static int docPsPrintStartPage(	void *				vps,
 				const DocumentGeometry *	dgPage,
 				DrawingContext *		dc,
+				const char *			why,
 				int				page )
     {
     PrintingState *	ps= (PrintingState *)vps;
@@ -297,6 +294,9 @@ static int docPsPrintStartPage(	void *				vps,
 
     if  ( psStartPage( ps, page ) )
 	{ LDEB(page); return -1;	}
+
+    if  ( psSetPageProperty( ps, "TedWhy", why ) )
+	{ LDEB(1); return -1;	}
 
 #   if SHOW_PAGE_GRID
     docPsPageBoxes( dc, vps,
@@ -314,33 +314,26 @@ static int docPsPrintStartPage(	void *				vps,
 
 static int docPsPrintPageRange(	PrintingState *		ps,
 				DrawingContext *	dc,
-				struct BufferItem *		bodyNode,
+				struct BufferItem *	bodyNode,
 				int			firstPage,
 				int			lastPage,
 				int			asLast )
     {
-    int				i;
     LayoutPosition		lpBelow;
+    struct BufferItem *		sectNode;
 
     docInitLayoutPosition( &lpBelow );
 
-    for ( i= 0; i < bodyNode->biChildCount; i++ )
-	{
-	if  ( bodyNode->biChildren[i]->biBelowPosition.lpPage >= firstPage )
-	    { break;	}
-	}
+    sectNode= docFindFirstSectionOnPage( bodyNode, firstPage );
+    if  ( ! sectNode )
+	{ LXDEB(firstPage,sectNode); return -1;	}
 
-    if  ( i >= bodyNode->biChildCount )
-	{ LDEB(i); return -1; }
-
-    if  ( docPsPrintStartPage( (void *)ps,
-	    &(bodyNode->biChildren[i]->biSectDocumentGeometry), dc, firstPage ) )
+    if  ( docPsPrintStartPage( (void *)ps, &(sectNode->biSectDocumentGeometry),
+						    dc, "start", firstPage ) )
 	{ LDEB(firstPage); return -1;	}
 
     if  ( ! dc->dcPostponeHeadersFooters )
-	{
-	docDrawPageHeader( bodyNode->biChildren[i], (void *)ps, dc, firstPage );
-	}
+	{ docDrawPageHeader( sectNode, (void *)ps, dc, firstPage );	}
 
     if  ( docDrawShapesForPage( (void *)ps, dc, 1, firstPage ) )
 	{ LDEB(firstPage);	}
@@ -350,25 +343,17 @@ static int docPsPrintPageRange(	PrintingState *		ps,
     if  ( lastPage < 0 )
 	{ lastPage= bodyNode->biBelowPosition.lpPage;	}
 
-    for ( i= bodyNode->biChildCount- 1; i >= 0; i-- )
-	{
-	if  ( bodyNode->biChildren[i]->biTopPosition.lpPage <= lastPage )
-	    { break;	}
-	}
-
-    if  ( i < 0 )
-	{ LDEB(i); return -1;	}
+    sectNode= docFindLastSectionOnPage( bodyNode, lastPage );
+    if  ( ! sectNode )
+	{ LXDEB(lastPage,sectNode); return -1;	}
 
     if  ( docDrawShapesForPage( (void *)ps, dc, 0, lastPage ) )
 	{ LDEB(lastPage);	}
 
     if  ( ! dc->dcPostponeHeadersFooters )
-	{
-	docDrawPageFooter( bodyNode->biChildren[i], (void *)ps, dc, lastPage );
-	}
+	{ docDrawPageFooter( sectNode, (void *)ps, dc, lastPage );	}
 
-    docPsFinishPage( (void *)ps, dc, bodyNode->biChildren[i],
-						    lastPage, asLast );
+    docPsFinishPage( (void *)ps, dc, sectNode, lastPage, asLast );
 
     return 0;
     }
@@ -436,7 +421,7 @@ int docPsPrintDocument(	struct SimpleOutputStream *	sos,
     dc.dcStartPage= docPsPrintStartPage;
     dc.dcStartTreeLayout= startTreeLayout;
 
-    dc.dcLayoutContext= *lc;
+    dc.dcLayoutContext= lc;
 
     dc.dcFirstPage= pg->pgFirstPage;
     dc.dcLastPage= pg->pgLastPage;

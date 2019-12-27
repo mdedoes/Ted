@@ -28,6 +28,7 @@
 #   include	<appGuiApplication.h>
 #   include	<appEditDocument.h>
 #   include	<docBuf.h>
+#   include	<docDocument.h>
 #   include	<appPrintDialog.h>
 #   include	<bitmap.h>
 
@@ -85,6 +86,10 @@ void tedDetermineDefaultSettings(	TedAppResources *	tar )
     if  ( appDetermineBoolean( &(tar->tarInlineHtmlImagesInt),
 					    tar->tarInlineHtmlImagesString ) )
 	{ SDEB(tar->tarInlineHtmlImagesString);	}
+
+    if  ( appDetermineBoolean( &(tar->tarHonourSpecialSectBreaksInt),
+				    tar->tarHonourSpecialSectBreaksString ) )
+	{ SDEB(tar->tarHonourSpecialSectBreaksString);	}
 
     return;
     }

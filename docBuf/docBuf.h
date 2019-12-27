@@ -17,7 +17,6 @@ struct BufferDocument;
 struct BufferItem;
 struct DocumentNote;
 struct DocumentPropertyLists;
-struct LayoutPosition;
 struct TextAttribute;
 struct SectionProperties;
 struct CellProperties;
@@ -25,11 +24,9 @@ struct TableRectangle;
 struct DocumentPosition;
 struct DocumentSelection;
 struct SelectionScope;
-struct PostScriptFontList;
 struct DocumentProperties;
 struct ListOverride;
 struct DocumentGeometry;
-struct PropertyMask;
 struct DocumentList;
 struct MemoryBuffer;
 
@@ -153,28 +150,11 @@ typedef struct BufferDocument
 /*									*/
 /************************************************************************/
 
-extern BufferDocument * docNewFile(
-				struct TextAttribute *		taDefault,
-				const char *			defaultFontName,
-				int				defaultFontSize,
-				const struct PostScriptFontList *	psfl,
-				const struct DocumentGeometry * 	dg );
-
-extern void docFreeDocument( BufferDocument *	bd );
-extern BufferDocument * docNewDocument( const BufferDocument *	bdRef );
-
 extern void docDeleteDocumentTree(	BufferDocument *	bd,
 					DocumentTree *		dt );
 
 extern void docEraseDocumentTree(	BufferDocument *	bd,
 					DocumentTree *		dt );
-
-extern void docTableDetermineCellspans(	int *			pRowspan,
-					int *			pColspan,
-					const struct BufferItem *	cellNode );
-
-extern int docGetCellBottom(	struct LayoutPosition *		lpBottom,
-				const struct BufferItem *	cellNode );
 
 extern int docWhatPagesForHeaderFooter(
 				const struct DocumentProperties *	dp,
@@ -232,8 +212,6 @@ extern int docMergeColorTables(	int **				pColorMap,
 
 extern int docFindBookmarkInDocument(
 				struct DocumentSelection *	dsInside,
-				int *				pHeadPart,
-				int *				pTailPart,
 				const BufferDocument *		bd,
 				const struct MemoryBuffer *	markName );
 
@@ -267,13 +245,7 @@ extern int docSectionHeaderFooterFirstPage(
 				int *				pUsedInDocument,
 				const struct BufferItem *	bodySectNode,
 				int				treeType,
-				const struct DocumentProperties *	dp );
-
-extern void docSetTreeTypeOfNode(	struct BufferItem *		node,
-					int			treeType );
-
-extern void docDelimitTables(		struct BufferItem *	parentNode,
-					int			recursively );
+				const struct BufferDocument *	bd );
 
 extern int docGetListOfParagraph(	struct ListOverride **	pLo,
 					struct DocumentList **	pDl,
@@ -312,46 +284,17 @@ extern int docAdaptParagraphToListLevel(
 				struct BufferItem *		paraNode,
 				const BufferDocument *		bd );
 
-extern int docGetMatchingCell(	const struct BufferItem *	rowNode,
-				const struct BufferItem *	cellNode );
-
-extern int docFindSetPattern(		void **			pProg,
-					const char *		pattern,
-					int			useRegex,
-					int			asWord,
-					int			caseSensitive );
-
-extern int docGetCharsUsed(		BufferDocument *	bd );
+extern int docGetCharsUsed(	struct BufferDocument *		bd );
 
 extern const char * docGetEncodingName(
 				struct BufferDocument *		bd,
 				struct TextAttribute *		ta,
 				int				charset );
 
-extern int docChangeParticuleAttributes( int *			pChanged,
-				struct PropertyMask *		pTaAllMask,
-				BufferDocument *		bd,
-				struct BufferItem *		paraNode,
-				int				part,
-				int				partUpto,
-				const struct TextAttribute *	taSet,
-				const struct PropertyMask *	taSetMask );
-
-extern int docNodeAtExtremity(	int *				pAtExtremity,
-				const struct BufferItem *	parentNode,
-				const struct BufferItem *	paraNode,
-				int				after );
-
 extern int docHeaderFooterPage(	const BufferDocument *		bd,
 				const struct BufferItem *	bodySectNode,
 				int				currentPage,
 				int				treeType );
-
-extern void docInvalidateSectHeaderFooterLayout(
-				struct BufferItem *		sectNode );
-
-extern void docInvalidateParagraphLayout( struct BufferItem *	paraNode );
-extern void docInvalidateNodeLayout(	struct BufferItem *	node );
 
 extern void docOverridePaperSize(	struct BufferDocument *		bd,
 					const struct DocumentGeometry *	dgFrom );
@@ -361,11 +304,5 @@ extern void docGetCellRectangleProperties(
 				const struct BufferItem *	rowNode,
 				const struct TableRectangle *		tr,
 				const struct DocumentAttributeMap *	dam );
-
-extern int docGetSelectionAttributes(
-				struct TextAttribute *		ta,
-				struct PropertyMask *		pUpdMask,
-				struct BufferDocument *		bd,
-				const struct DocumentSelection * ds );
 
 #   endif

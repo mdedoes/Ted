@@ -22,8 +22,7 @@
 #   include	<sioGeneral.h>
 #   include	<docShapeProp.h>
 #   include	<docObjectProperties.h>
-#   include	<sioMemory.h>
-#   include	<sioHex.h>
+#   include	<sioHexedMemory.h>
 #   include	<geoUnits.h>
 #   include	<geo2DInteger.h>
 
@@ -39,9 +38,6 @@ static int docRtfSaveShapeProperties(
     PropertyMask	spCmpMask;
     PropertyMask	spDifMask;
 
-    const int		scope= RTCscopeROOT_SHAPE;
-    int			prop;
-
     utilPropMaskClear( &spCmpMask );
     utilPropMaskFill( &spCmpMask, SHPprop_COUNT );
     utilPropMaskClear( &spDifMask );
@@ -53,16 +49,11 @@ static int docRtfSaveShapeProperties(
     PROPmaskADD( &spDifMask, SHPpropWR );
     PROPmaskADD( &spDifMask, SHPpropWRK );
 
-    for ( prop= 0; prop < SHPprop_COUNT; prop++ )
-	{
-	if  ( PROPmaskISSET( &spDifMask, prop ) )
-	    {
-	    const int	value= docGetShapeProperty( sp, prop );
-
-	    if  ( docRtfWriteProperty( rw, scope, prop, value ) )
-		{ LLLDEB(scope,prop,value); return -1;	}
-	    }
-	}
+    if  ( docRtfWriteAllItemProperties( rw, RTCscopeROOT_SHAPE,
+				(void *)sp,
+				(RtfGetIntProperty)docGetShapeProperty,
+				&spDifMask, SHPprop_COUNT ) )
+	{ LDEB(1); return -1;	}
 
     return 0;
     }
@@ -291,8 +282,7 @@ static int docRtfSaveBehindShapeImage(
     PictureProperties		pip;
     MemoryBuffer		mbImage;
 
-    SimpleOutputStream *	sosBuffer= (SimpleOutputStream *)0;
-    SimpleOutputStream *	sosHex= (SimpleOutputStream *)0;
+    SimpleOutputStream *	sosData= (SimpleOutputStream *)0;
 
     bmInitRasterImage( &ri );
     docInitPictureProperties( &pip );
@@ -317,28 +307,22 @@ static int docRtfSaveBehindShapeImage(
     ri.riDescription.bdYResolution=
 	    ( TWIPS_PER_M* ri.riDescription.bdPixelsHigh ) / pip.pipTwipsHigh;
 
-    sosBuffer= sioOutMemoryOpen( &mbImage );
-    if  ( ! sosBuffer )
-	{ XDEB(sosBuffer); rval= -1; goto ready;	}
-    sosHex= sioOutHexOpen( sosBuffer );
-    if  ( ! sosBuffer )
-	{ XDEB(sosBuffer); rval= -1; goto ready;	}
+    sosData= sioOutHexedMemoryOpen( &mbImage );
+    if  ( ! sosData )
+	{ XDEB(sosData); rval= -1; goto ready;	}
 
-    if  ( bmPngWritePng( &(ri.riDescription), ri.riBytes, sosHex ) )
+    if  ( bmPngWritePng( &(ri.riDescription), ri.riBytes, sosData ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    sioOutClose( sosHex ); sosHex= (SimpleOutputStream *)0;
-    sioOutClose( sosBuffer ); sosBuffer= (SimpleOutputStream *)0;
+    sioOutClose( sosData ); sosData= (SimpleOutputStream *)0;
 
     if  ( docRtfSavePicture( rw, &pip, &mbImage ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
   ready:
 
-    if  ( sosHex )
-	{ sioOutClose( sosHex );	}
-    if  ( sosBuffer )
-	{ sioOutClose( sosBuffer );	}
+    if  ( sosData )
+	{ sioOutClose( sosData );	}
 
     utilInitMemoryBuffer( &mbImage );
     /*docCleanPictureProperties( &pip );*/

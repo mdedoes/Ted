@@ -123,6 +123,7 @@ tedlibs: 	lib/appUtil.a		\
 		lib/docFont.a		\
 		lib/drawMeta.a		\
 		lib/docBase.a		\
+		lib/docField.a		\
 		lib/docBuf.a		\
 		lib/ind.a		\
 		lib/docRtf.a		\
@@ -217,9 +218,19 @@ $(CFG_docBase): docBase/makefile.in $(DEP_docBase) Makefile
 lib/docBase.a: $(CFG_docBase) lib
 	 cd docBase && $(MAKE)
 
+#### docField
+CFG_docField=docField/docFieldConfig.h
+DEP_docField= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(CFG_docField)
+
+$(CFG_docField): docField/makefile.in $(DEP_docField) Makefile
+	 cd docField && ./configure $(CONFIGURE_OPTIONS)
+
+lib/docField.a: $(CFG_docField) lib
+	 cd docField && $(MAKE)
+
 #### docBuf
 CFG_docBuf=docBuf/docBufConfig.h
-DEP_docBuf= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(CFG_docBuf)
+DEP_docBuf= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docField) $(CFG_docBuf)
 
 $(CFG_docBuf): docBuf/makefile.in $(DEP_docBuf) Makefile
 	 cd docBuf && ./configure $(CONFIGURE_OPTIONS)
@@ -229,7 +240,7 @@ lib/docBuf.a: $(CFG_docBuf) lib
 
 #### docRtf
 CFG_docRtf=docRtf/docRtfConfig.h
-DEP_docRtf= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docBuf) $(CFG_docRtf)
+DEP_docRtf= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docField) $(DEP_docBuf) $(CFG_docRtf)
 
 $(CFG_docRtf): docRtf/makefile.in $(DEP_docRtf) Makefile
 	 cd docRtf && ./configure $(CONFIGURE_OPTIONS)
@@ -239,7 +250,7 @@ lib/docRtf.a: $(CFG_docRtf) lib
 
 #### ind
 CFG_ind=ind/indConfig.h
-DEP_ind= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docBuf) $(DEP_docRtf) $(CFG_ind)
+DEP_ind= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docField) $(DEP_docBuf) $(DEP_docRtf) $(CFG_ind)
 
 $(CFG_ind): ind/makefile.in $(DEP_ind) Makefile
 	 cd ind && ./configure $(CONFIGURE_OPTIONS)
@@ -249,7 +260,7 @@ lib/ind.a: $(CFG_ind) lib
 
 #### docEdit
 CFG_docEdit=docEdit/docEditConfig.h
-DEP_docEdit= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docBuf) $(DEP_docRtf) $(DEP_ind) $(CFG_docEdit)
+DEP_docEdit= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docField) $(DEP_docBuf) $(DEP_docRtf) $(DEP_ind) $(CFG_docEdit)
 
 $(CFG_docEdit): docEdit/makefile.in $(DEP_docEdit) Makefile
 	 cd docEdit && ./configure $(CONFIGURE_OPTIONS)
@@ -259,7 +270,7 @@ lib/docEdit.a: $(CFG_docEdit) lib
 
 #### guiBase
 CFG_guiBase=guiBase/guiBaseConfig.h
-DEP_guiBase= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docBuf) $(DEP_docRtf) $(DEP_ind) $(DEP_docEdit) $(CFG_guiBase)
+DEP_guiBase= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docField) $(DEP_docBuf) $(DEP_docRtf) $(DEP_ind) $(DEP_docEdit) $(CFG_guiBase)
 
 $(CFG_guiBase): guiBase/makefile.in $(DEP_guiBase) Makefile
 	 cd guiBase && ./configure $(CONFIGURE_OPTIONS)
@@ -269,7 +280,7 @@ lib/guiBase.a: $(CFG_guiBase) lib
 
 #### docLayout
 CFG_docLayout=docLayout/docLayoutConfig.h
-DEP_docLayout= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docBuf) $(DEP_docRtf) $(DEP_ind) $(DEP_docEdit) $(DEP_guiBase) $(CFG_docLayout)
+DEP_docLayout= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docField) $(DEP_docBuf) $(DEP_docRtf) $(DEP_ind) $(DEP_docEdit) $(DEP_guiBase) $(CFG_docLayout)
 
 $(CFG_docLayout): docLayout/makefile.in $(DEP_docLayout) Makefile
 	 cd docLayout && ./configure $(CONFIGURE_OPTIONS)
@@ -279,7 +290,7 @@ lib/docLayout.a: $(CFG_docLayout) lib
 
 #### appFrame
 CFG_appFrame=appFrame/appFrameConfig.h
-DEP_appFrame= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docBuf) $(DEP_docRtf) $(DEP_ind) $(DEP_docEdit) $(DEP_guiBase) $(DEP_docLayout) $(CFG_appFrame)
+DEP_appFrame= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docField) $(DEP_docBuf) $(DEP_docRtf) $(DEP_ind) $(DEP_docEdit) $(DEP_guiBase) $(DEP_docLayout) $(CFG_appFrame)
 
 $(CFG_appFrame): appFrame/makefile.in $(DEP_appFrame) Makefile
 	 cd appFrame && ./configure $(CONFIGURE_OPTIONS)
@@ -289,7 +300,7 @@ lib/appFrame.a: $(CFG_appFrame) lib
 
 #### docHtml
 CFG_docHtml=docHtml/docHtmlConfig.h
-DEP_docHtml= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docBuf) $(DEP_docRtf) $(DEP_ind) $(DEP_docEdit) $(DEP_guiBase) $(DEP_docLayout) $(DEP_appFrame) $(CFG_docHtml)
+DEP_docHtml= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docField) $(DEP_docBuf) $(DEP_docRtf) $(DEP_ind) $(DEP_docEdit) $(DEP_guiBase) $(DEP_docLayout) $(DEP_appFrame) $(CFG_docHtml)
 
 $(CFG_docHtml): docHtml/makefile.in $(DEP_docHtml) Makefile
 	 cd docHtml && ./configure $(CONFIGURE_OPTIONS)
@@ -299,7 +310,7 @@ lib/docHtml.a: $(CFG_docHtml) lib
 
 #### appTools
 CFG_appTools=appTools/appToolsConfig.h
-DEP_appTools= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docBuf) $(DEP_docRtf) $(DEP_ind) $(DEP_docEdit) $(DEP_guiBase) $(DEP_docLayout) $(DEP_appFrame) $(DEP_docHtml) $(CFG_appTools)
+DEP_appTools= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docField) $(DEP_docBuf) $(DEP_docRtf) $(DEP_ind) $(DEP_docEdit) $(DEP_guiBase) $(DEP_docLayout) $(DEP_appFrame) $(DEP_docHtml) $(CFG_appTools)
 
 $(CFG_appTools): appTools/makefile.in $(DEP_appTools) Makefile
 	 cd appTools && ./configure $(CONFIGURE_OPTIONS)
@@ -309,7 +320,7 @@ lib/appTools.a: $(CFG_appTools) lib
 
 #### tedTools
 CFG_tedTools=tedTools/tedToolsConfig.h
-DEP_tedTools= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docBuf) $(DEP_docRtf) $(DEP_ind) $(DEP_docEdit) $(DEP_guiBase) $(DEP_docLayout) $(DEP_appFrame) $(DEP_docHtml) $(DEP_appTools) $(CFG_tedTools)
+DEP_tedTools= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docField) $(DEP_docBuf) $(DEP_docRtf) $(DEP_ind) $(DEP_docEdit) $(DEP_guiBase) $(DEP_docLayout) $(DEP_appFrame) $(DEP_docHtml) $(DEP_appTools) $(CFG_tedTools)
 
 $(CFG_tedTools): tedTools/makefile.in $(DEP_tedTools) Makefile
 	 cd tedTools && ./configure $(CONFIGURE_OPTIONS)
@@ -319,7 +330,7 @@ lib/tedTools.a: $(CFG_tedTools) lib
 
 #### tedResource
 CFG_tedResource=tedResource/tedResourceConfig.h
-DEP_tedResource= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docBuf) $(DEP_docRtf) $(DEP_ind) $(DEP_docEdit) $(DEP_guiBase) $(DEP_docLayout) $(DEP_appFrame) $(DEP_docHtml) $(DEP_appTools) $(DEP_tedTools) $(CFG_tedResource)
+DEP_tedResource= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docField) $(DEP_docBuf) $(DEP_docRtf) $(DEP_ind) $(DEP_docEdit) $(DEP_guiBase) $(DEP_docLayout) $(DEP_appFrame) $(DEP_docHtml) $(DEP_appTools) $(DEP_tedTools) $(CFG_tedResource)
 
 $(CFG_tedResource): tedResource/makefile.in $(DEP_tedResource) Makefile
 	 cd tedResource && ./configure $(CONFIGURE_OPTIONS)
@@ -328,7 +339,7 @@ lib/tedResource.a: $(CFG_tedResource) lib
 	 cd tedResource && $(MAKE)
 
 #### Ted
-DEP_Ted= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docBuf) $(DEP_docRtf) $(DEP_ind) $(DEP_docEdit) $(DEP_guiBase) $(DEP_docLayout) $(DEP_appFrame) $(DEP_docHtml) $(DEP_appTools) $(DEP_tedTools) $(DEP_tedResource)
+DEP_Ted= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docField) $(DEP_docBuf) $(DEP_docRtf) $(DEP_ind) $(DEP_docEdit) $(DEP_guiBase) $(DEP_docLayout) $(DEP_appFrame) $(DEP_docHtml) $(DEP_appTools) $(DEP_tedTools) $(DEP_tedResource)
 CFG_Ted=Ted/tedConfig.h
 
 $(CFG_Ted): Ted/makefile.in Ted/tedConfig.h.in $(DEP_Ted) Makefile

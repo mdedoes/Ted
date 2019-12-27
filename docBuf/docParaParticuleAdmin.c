@@ -20,8 +20,7 @@
 #   include	"docAttributes.h"
 #   include	<docTextParticule.h>
 #   include	<docDocumentField.h>
-#   include	<docDocumentFieldList.h>
-#   include	"docBuf.h"
+#   include	"docFields.h"
 #   include	<bidiTree.h>
 
 #   include	"docDebug.h"
@@ -370,7 +369,7 @@ static int docShiftParticuleOffset(	struct BufferDocument *	bd,
 	if  ( tp->tpObjectNumber < 0 )
 	    { LDEB(tp->tpObjectNumber); return -1; }
 	else{
-	    df= docGetFieldByNumber( &(bd->bdFieldList), tp->tpObjectNumber );
+	    df= docGetFieldByNumber( bd, tp->tpObjectNumber );
 	    if  ( ! df )
 		{ LXDEB(tp->tpObjectNumber,df);			}
 	    else{ df->dfHeadPosition.epStroff += stroffShift;	}
@@ -384,7 +383,7 @@ static int docShiftParticuleOffset(	struct BufferDocument *	bd,
 	if  ( tp->tpObjectNumber < 0 )
 	    { LDEB(tp->tpObjectNumber); return -1; }
 	else{
-	    df= docGetFieldByNumber( &(bd->bdFieldList), tp->tpObjectNumber );
+	    df= docGetFieldByNumber( bd, tp->tpObjectNumber );
 	    if  ( ! df )
 		{ LPDEB(tp->tpObjectNumber,df);			}
 	    else{ df->dfTailPosition.epStroff += stroffShift;	}

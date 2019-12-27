@@ -14,38 +14,38 @@
 
 /* small adjustments to _a_ to make values distinct */
 static const ub2 tab[] = {
-0,0,83,159,721,323,702,0,0,1109,83,1044,702,0,281,0,
-83,0,11,517,702,793,83,351,281,333,864,517,988,0,0,629,
-281,0,0,0,0,0,988,1441,333,0,83,605,508,0,702,11,
-64,665,630,83,829,629,323,1044,630,0,323,629,1140,665,517,1338,
-517,1481,1312,1432,0,83,605,764,864,665,665,323,11,665,864,1213,
-0,0,0,323,1213,0,0,764,288,83,0,1140,864,0,605,605,
-764,1042,0,764,1212,665,323,0,0,764,281,1509,0,281,508,281,
-288,0,1203,764,823,764,1312,0,702,64,702,0,281,1312,323,629,
-764,665,764,83,864,1042,764,0,11,323,1312,281,0,0,665,323,
-159,1338,605,323,517,528,0,1481,0,333,665,864,864,0,281,1000,
+0,0,83,159,721,323,702,0,0,1109,83,1140,702,0,281,0,
+83,0,11,517,702,793,83,351,281,333,864,517,323,0,0,629,
+281,0,0,0,0,0,988,1312,333,0,83,605,508,0,1312,11,
+64,665,630,83,829,288,323,1044,630,0,323,323,1140,665,517,1338,
+517,1481,11,1432,0,83,630,764,864,665,665,323,11,665,864,1213,
+0,0,0,1109,1213,0,0,764,83,83,0,924,1481,0,605,605,
+764,1042,0,764,197,665,323,0,0,764,281,1509,0,281,1481,281,
+288,0,1109,764,823,764,1312,0,988,64,517,0,281,764,323,629,
+764,665,764,83,83,1042,764,0,11,323,1312,281,0,0,665,323,
+159,1338,605,323,517,528,0,1481,0,333,665,864,702,0,281,1000,
 665,323,336,83,0,0,702,1312,0,197,764,988,988,702,665,0,
-1213,11,1140,6,0,11,83,1042,0,323,764,0,1232,1481,0,1213,
-1432,336,721,665,1481,323,11,764,1212,1140,924,823,83,1140,323,0,
-323,605,6,517,281,0,0,0,0,0,864,988,323,764,1000,1140,
-333,1213,605,864,281,864,1020,517,702,11,1338,11,11,508,517,0,
-1232,1232,0,665,83,764,348,0,823,359,197,323,605,605,894,1453,
-0,11,1140,1312,864,197,988,336,1481,665,674,0,891,427,0,197,
-1295,764,764,605,1530,1338,1213,605,864,508,180,1338,517,1042,629,0,
-0,473,702,665,580,0,517,338,760,1212,924,281,629,629,11,0,
-0,11,288,1312,0,1213,1513,249,1312,838,843,1044,823,11,1212,823,
-83,891,1213,333,1000,1189,924,986,11,665,0,333,1453,85,528,1218,
-0,1218,764,427,665,1453,702,265,764,1213,864,10,665,1481,823,83,
-824,281,517,0,1000,0,0,864,762,1044,764,76,0,924,764,824,
-444,764,924,1165,0,567,0,874,1203,1074,1509,0,11,0,323,323,
-64,764,265,0,764,793,1165,1058,0,281,517,728,0,1481,0,793,
-1383,1000,1432,1287,764,281,1020,1109,702,665,0,149,64,281,814,702,
-0,1212,443,665,793,665,0,455,935,1223,764,0,47,764,1185,760,
-1432,1493,1338,0,874,323,549,630,1500,0,665,348,1027,493,733,702,
-0,1338,508,0,764,1338,1481,517,567,0,1249,1185,824,874,988,702,
-762,926,829,1338,864,0,746,1108,580,904,1107,665,665,0,553,1042,
-442,0,1179,1007,846,0,665,864,553,665,864,630,323,909,0,336,
-0,338,553,474,1263,1312,0,179,968,1315,1338,341,1088,1203,764,0,
+1213,1042,1140,6,0,11,83,1042,0,323,764,0,1095,1481,0,288,
+1432,336,721,665,1481,323,665,764,1212,1042,924,1338,1140,1140,323,0,
+323,605,6,517,281,0,0,0,0,1109,864,988,323,764,1000,1140,
+333,1213,605,1379,281,864,1020,517,702,11,1338,11,11,508,517,0,
+1089,629,0,665,83,764,348,0,823,359,197,323,1379,605,159,358,
+0,11,1140,1295,864,197,988,336,508,665,215,0,1383,427,0,764,
+630,764,764,605,1530,1338,1212,605,864,508,884,1338,517,1116,629,0,
+0,986,702,665,1383,0,517,338,760,348,924,281,629,1295,11,0,
+0,11,1379,1312,0,605,1513,884,1312,793,933,702,823,11,1212,64,
+83,891,702,1295,1000,1189,924,580,11,665,0,333,1529,988,528,1213,
+0,1095,764,427,1529,1383,702,265,764,1213,864,10,665,1481,823,83,
+824,281,517,0,208,0,0,864,1074,1044,764,76,0,924,764,1116,
+444,764,924,46,0,567,333,1177,630,351,1509,0,11,0,323,323,
+64,764,265,0,764,793,737,1058,0,281,517,733,1042,1481,0,793,
+1383,1000,1432,1287,764,281,630,1107,702,665,0,64,1481,281,815,1519,
+0,1059,764,665,1203,665,0,342,764,342,764,0,47,764,1185,760,
+1430,629,1338,0,665,323,269,1429,1500,0,665,1500,1044,888,733,702,
+0,597,508,0,764,1361,1481,517,567,0,740,11,854,874,988,702,
+1383,522,1530,1011,864,0,746,760,918,48,1107,665,665,0,553,1042,
+1053,0,1262,1007,900,0,665,864,232,974,632,630,323,909,0,336,
+0,338,553,700,1263,1312,0,179,918,871,1399,403,316,894,764,0,
 };
 
 /* map back array */
@@ -53,1197 +53,1199 @@ static const ub2 tab[] = {
 static short mapBack[]=
     {
      295L,	/*     0: "celld" */
-     812L,	/*     1: "styrsid" */
-     471L,	/*     2: "margb" */
-    1042L,	/*     3: "shp" */
+     814L,	/*     1: "styrsid" */
+     473L,	/*     2: "margb" */
+    1044L,	/*     3: "shp" */
      120L,	/*     4: "revauthdel" */
-     324L,	/*     5: "cltxlrtb" */
+     326L,	/*     5: "cltxlrtb" */
      223L,	/*     6: "tdfrmtxtRight" */
-     397L,	/*     7: "trspdb" */
-     841L,	/*     8: "liststyleid" */
-     659L,	/*     9: "endnotes" */
+     399L,	/*     7: "trspdb" */
+     843L,	/*     8: "liststyleid" */
+     661L,	/*     9: "endnotes" */
      202L,	/*    10: "tphpg" */
-     769L,	/*    11: "revprot" */
-     719L,	/*    12: "ctextone" */
-     482L,	/*    13: "ltrdoc" */
-     303L,	/*    14: "clbgbdiag" */
-     762L,	/*    15: "otblrul" */
-     467L,	/*    16: "tblindtype" */
-     799L,	/*    17: "hr" */
-     124L,	/*    18: "shad" */
+     771L,	/*    11: "revprot" */
+     721L,	/*    12: "ctextone" */
+     484L,	/*    13: "ltrdoc" */
+     305L,	/*    14: "clbgbdiag" */
+     764L,	/*    15: "otblrul" */
+     469L,	/*    16: "tblindtype" */
+     801L,	/*    17: "hr" */
+     549L,	/*    18: "indrlsweleven" */
       94L,	/*    19: "pnzodiacl" */
-     549L,	/*    20: "afelev" */
-     689L,	/*    21: "additive" */
+     551L,	/*    20: "afelev" */
+     691L,	/*    21: "additive" */
      271L,	/*    22: "pnrxst" */
-     317L,	/*    23: "clshdngraw" */
-     474L,	/*    24: "gutter" */
-     795L,	/*    25: "ignoremixedcontent" */
-     976L,	/*    26: "dpastartl" */
-    1183L,	/*    27: "brdrdashsm" */
+     319L,	/*    23: "clshdngraw" */
+     476L,	/*    24: "gutter" */
+    1142L,	/*    25: "OHS" */
+     978L,	/*    26: "dpastartl" */
+    1185L,	/*    27: "brdrdashsm" */
       86L,	/*    28: "pnirohad" */
-    1055L,	/*    29: "ffrecalc" */
-    1189L,	/*    30: "brdrinset" */
+    1057L,	/*    29: "ffrecalc" */
+    1191L,	/*    30: "brdrinset" */
        7L,	/*    31: "plain" */
-     879L,	/*    32: "dibitmap" */
-     727L,	/*    33: "fldpriv" */
-     537L,	/*    34: "asianbrkrule" */
-     699L,	/*    35: "sqformat" */
-     582L,	/*    36: "marglsxn" */
-     369L,	/*    37: "trhdr" */
+     881L,	/*    32: "dibitmap" */
+     729L,	/*    33: "fldpriv" */
+     539L,	/*    34: "asianbrkrule" */
+     701L,	/*    35: "sqformat" */
+     584L,	/*    36: "marglsxn" */
+     371L,	/*    37: "trhdr" */
      167L,	/*    38: "bgvert" */
-     384L,	/*    39: "tsbrdrt" */
+     195L,	/*    39: "saauto" */
      263L,	/*    40: "wraparound" */
-    1097L,	/*    41: "footnote" */
-    1059L,	/*    42: "ffdefres" */
+    1099L,	/*    41: "footnote" */
+    1061L,	/*    42: "ffdefres" */
      258L,	/*    43: "frmtxbtlr" */
-     832L,	/*    44: "levelprev" */
-     424L,	/*    45: "trbgfdiag" */
+     834L,	/*    44: "levelprev" */
+     541L,	/*    45: "nogrowautofit" */
      160L,	/*    46: "slmult" */
-     941L,	/*    47: "tab" */
-    1007L,	/*    48: "dptxlrtbv" */
+     943L,	/*    47: "tab" */
+    1009L,	/*    48: "dptxlrtbv" */
      240L,	/*    49: "posxi" */
-    1035L,	/*    50: "revtbl" */
-     234L,	/*    51: "phcol" */
-     506L,	/*    52: "deff" */
+    1037L,	/*    50: "revtbl" */
+     565L,	/*    51: "xef" */
+     508L,	/*    52: "deff" */
      139L,	/*    53: "pard" */
       47L,	/*    54: "ulthdash " */
-     420L,	/*    55: "trftsWidthB" */
+     422L,	/*    55: "trftsWidthB" */
       33L,	/*    56: "chbgdkdcross" */
-     480L,	/*    57: "doctemp" */
-     667L,	/*    58: "ftnstart" */
-    1188L,	/*    59: "brdroutset" */
-    1082L,	/*    60: "footerf" */
-    1117L,	/*    61: "printim" */
+     482L,	/*    57: "doctemp" */
+     669L,	/*    58: "ftnstart" */
+    1190L,	/*    59: "brdroutset" */
+    1084L,	/*    60: "footerf" */
+    1119L,	/*    61: "printim" */
       19L,	/*    62: "chcbpat" */
      180L,	/*    63: "shading" */
-     346L,	/*    64: "clpadr" */
-     388L,	/*    65: "tsbrdrh" */
-     399L,	/*    66: "trspdfr" */
-     797L,	/*    67: "showxmlerrors" */
-    1092L,	/*    68: "ftnsepc" */
-     573L,	/*    69: "pnhang" */
-     435L,	/*    70: "trcbpat" */
-     433L,	/*    71: "trbgdkdcross" */
-     429L,	/*    72: "trbgdkvert" */
-     754L,	/*    73: "hyphhotz" */
-     163L,	/*    74: "hyphpar" */
-    1158L,	/*    75: "brdrcf" */
-     592L,	/*    76: "sbkcol" */
-    1113L,	/*    77: "hlinkbase" */
-     705L,	/*    78: "ansicpg" */
+     348L,	/*    64: "clpadr" */
+     390L,	/*    65: "tsbrdrh" */
+     401L,	/*    66: "trspdfr" */
+     799L,	/*    67: "showxmlerrors" */
+    1094L,	/*    68: "ftnsepc" */
+     575L,	/*    69: "pnhang" */
+     437L,	/*    70: "trcbpat" */
+     435L,	/*    71: "trbgdkdcross" */
+     431L,	/*    72: "trbgdkvert" */
+     756L,	/*    73: "hyphhotz" */
+     552L,	/*    74: "hwelev" */
+    1160L,	/*    75: "brdrcf" */
+     594L,	/*    76: "sbkcol" */
+    1115L,	/*    77: "hlinkbase" */
+     707L,	/*    78: "ansicpg" */
      130L,	/*    79: "expndtw" */
-    1083L,	/*    80: "footerl" */
+    1085L,	/*    80: "footerl" */
       37L,	/*    81: "ulnone" */
-     964L,	/*    82: "dptxbx" */
-     585L,	/*    83: "margbsxn" */
-     678L,	/*    84: "ftnnruc" */
-     859L,	/*    85: "fswiss" */
-     701L,	/*    86: "ansi" */
+     950L,	/*    82: "page" */
+     587L,	/*    83: "margbsxn" */
+     680L,	/*    84: "ftnnruc" */
+     861L,	/*    85: "fswiss" */
+     703L,	/*    86: "ansi" */
      182L,	/*    87: "brdrb" */
      122L,	/*    88: "revdttmdel" */
       27L,	/*    89: "chbgdcross" */
-    1101L,	/*    90: "bkmkend" */
-     652L,	/*    91: "saftnnar" */
+    1103L,	/*    90: "bkmkend" */
+     654L,	/*    91: "saftnnar" */
       16L,	/*    92: "lang" */
-     302L,	/*    93: "clbgfdiag" */
-     618L,	/*    94: "pgnhn" */
-    1003L,	/*    95: "dppty" */
+     304L,	/*    93: "clbgfdiag" */
+     620L,	/*    94: "pgnhn" */
+    1005L,	/*    95: "dppty" */
      231L,	/*    96: "absnoovrlp" */
-     698L,	/*    97: "spriority" */
+     700L,	/*    97: "spriority" */
      173L,	/*    98: "bgdkvert" */
-     850L,	/*    99: "tlul" */
-     392L,	/*   100: "trwWidth" */
+     852L,	/*    99: "tlul" */
+     394L,	/*   100: "trwWidth" */
       52L,	/*   101: "ulw" */
-    1009L,	/*   102: "shpleft" */
+    1011L,	/*   102: "shpleft" */
       93L,	/*   103: "pnzodiacd" */
-     593L,	/*   104: "sbkpage" */
-    1145L,	/*   105: "NHS" */
-     987L,	/*   106: "dptxbxmar" */
-     463L,	/*   107: "lastrow" */
+     595L,	/*   104: "sbkpage" */
+    1147L,	/*   105: "NHS" */
+     989L,	/*   106: "dptxbxmar" */
+     219L,	/*   107: "tposyin" */
      208L,	/*   108: "tposxc" */
-     914L,	/*   109: "objw" */
-     874L,	/*   110: "macpict" */
-     693L,	/*   111: "sautoupd" */
-     978L,	/*   112: "dpastartw" */
-     806L,	/*   113: "rsidroot" */
-    1087L,	/*   114: "headerf" */
-     465L,	/*   115: "tbllknocolband" */
+     916L,	/*   109: "objw" */
+     876L,	/*   110: "macpict" */
+     695L,	/*   111: "sautoupd" */
+     980L,	/*   112: "dpastartw" */
+     808L,	/*   113: "rsidroot" */
+    1089L,	/*   114: "headerf" */
+     467L,	/*   115: "tbllknocolband" */
      198L,	/*   116: "aspnum" */
-     165L,	/*   117: "itap" */
-     312L,	/*   118: "clcfpat" */
+     404L,	/*   117: "trpaddl" */
+     314L,	/*   118: "clcfpat" */
      268L,	/*   119: "pnrrgb" */
-     566L,	/*   120: "tcf" */
-     655L,	/*   121: "saftnnrlc" */
+     568L,	/*   120: "tcf" */
+     657L,	/*   121: "saftnnrlc" */
      297L,	/*   122: "clbrdrb" */
-     321L,	/*   123: "tsvertalt" */
-     629L,	/*   124: "binsxn" */
+     323L,	/*   123: "tsvertalt" */
+     631L,	/*   124: "binsxn" */
       62L,	/*   125: "rtlch" */
-     738L,	/*   126: "themelang" */
+     740L,	/*   126: "themelang" */
      233L,	/*   127: "phpg" */
-     746L,	/*   128: "fldalt" */
-     864L,	/*   129: "fbidi" */
-     877L,	/*   130: "jpegblip" */
-    1165L,	/*   131: "brdrdb" */
-     668L,	/*   132: "aftnstart" */
-    1040L,	/*   133: "shppict" */
-    1041L,	/*   134: "object" */
+     748L,	/*   128: "fldalt" */
+     866L,	/*   129: "fbidi" */
+     879L,	/*   130: "jpegblip" */
+    1167L,	/*   131: "brdrdb" */
+     670L,	/*   132: "aftnstart" */
+    1042L,	/*   133: "shppict" */
+    1043L,	/*   134: "object" */
      277L,	/*   135: "af" */
-     993L,	/*   136: "dplinegray" */
+     995L,	/*   136: "dplinegray" */
      125L,	/*   137: "fcs" */
-     434L,	/*   138: "trcfpat" */
-    1076L,	/*   139: "chdpa" */
+     436L,	/*   138: "trcfpat" */
+    1078L,	/*   139: "chdpa" */
       25L,	/*   140: "chbgbdiag" */
-     526L,	/*   141: "lyttblrtgr" */
+     528L,	/*   141: "lyttblrtgr" */
      257L,	/*   142: "frmtxtbrl" */
-    1129L,	/*   143: "OON" */
-     918L,	/*   144: "objcropt" */
+    1131L,	/*   143: "OON" */
+     920L,	/*   144: "objcropt" */
       10L,	/*   145: "cf" */
-     387L,	/*   146: "tsbrdrr" */
-     478L,	/*   147: "widowctrl" */
-     852L,	/*   148: "tlth" */
+     389L,	/*   146: "tsbrdrr" */
+     480L,	/*   147: "widowctrl" */
+    1063L,	/*   148: "ffdeftext" */
      185L,	/*   149: "brdrbtw" */
-     486L,	/*   150: "noqfpromote" */
-     441L,	/*   151: "tsbgcross" */
-    1172L,	/*   152: "brdrtnthsg" */
-     464L,	/*   153: "trauth" */
-    1050L,	/*   154: "ffownhelp" */
-     393L,	/*   155: "trftsWidth" */
-     798L,	/*   156: "ilfomacatclnup" */
-     924L,	/*   157: "bullet" */
-     627L,	/*   158: "endnhere" */
-     407L,	/*   159: "trpaddfr" */
+     488L,	/*   150: "noqfpromote" */
+     443L,	/*   151: "tsbgcross" */
+    1174L,	/*   152: "brdrtnthsg" */
+     466L,	/*   153: "trauth" */
+    1052L,	/*   154: "ffownhelp" */
+     395L,	/*   155: "trftsWidth" */
+     800L,	/*   156: "ilfomacatclnup" */
+     926L,	/*   157: "bullet" */
+     629L,	/*   158: "endnhere" */
+     409L,	/*   159: "trpaddfr" */
      118L,	/*   160: "crauth" */
-     564L,	/*   161: "bxe" */
-     563L,	/*   162: "xef" */
-     801L,	/*   163: "sec" */
+     566L,	/*   161: "bxe" */
+     438L,	/*   162: "trshdng" */
+     803L,	/*   163: "sec" */
      109L,	/*   164: "pnlvlbody" */
-     470L,	/*   165: "margt" */
-     819L,	/*   166: "levelstartat" */
+     472L,	/*   165: "margt" */
+     821L,	/*   166: "levelstartat" */
      253L,	/*   167: "dxfrtext" */
-    1153L,	/*   168: "SEA" */
-     717L,	/*   169: "cfollowedhyperlink" */
-     483L,	/*   170: "psz" */
-     851L,	/*   171: "tlhyph" */
-     490L,	/*   172: "viewbksp" */
-     752L,	/*   173: "hyphcaps" */
-     493L,	/*   174: "readonlyrecommended" */
-    1139L,	/*   175: "OHP" */
-     807L,	/*   176: "delrsid" */
+    1155L,	/*   168: "SEA" */
+     719L,	/*   169: "cfollowedhyperlink" */
+     485L,	/*   170: "psz" */
+     853L,	/*   171: "tlhyph" */
+     492L,	/*   172: "viewbksp" */
+     754L,	/*   173: "hyphcaps" */
+     495L,	/*   174: "readonlyrecommended" */
+    1141L,	/*   175: "OHP" */
+     809L,	/*   176: "delrsid" */
       45L,	/*   177: "ulth" */
      205L,	/*   178: "tposnegx" */
-     402L,	/*   179: "trpaddl" */
-     646L,	/*   180: "sftnnar" */
+      99L,	/*   179: "pnbidib" */
+     648L,	/*   180: "sftnnar" */
      269L,	/*   181: "pnrstart" */
-     447L,	/*   182: "tsbgdkcross" */
-     983L,	/*   183: "dpy" */
-     419L,	/*   184: "trwWidthA" */
-     811L,	/*   185: "tblrsid" */
-     499L,	/*   186: "dghshow" */
-     884L,	/*   187: "wbmwidthbytes" */
+     449L,	/*   182: "tsbgdkcross" */
+     985L,	/*   183: "dpy" */
+     421L,	/*   184: "trwWidthA" */
+     813L,	/*   185: "tblrsid" */
+     702L,	/*   186: "sunhideused" */
+     886L,	/*   187: "wbmwidthbytes" */
       29L,	/*   188: "chbgdkvert" */
      249L,	/*   189: "posyc" */
-     786L,	/*   190: "level" */
+     788L,	/*   190: "level" */
      196L,	/*   191: "nooverflow" */
-     576L,	/*   192: "pnulnone" */
-     334L,	/*   193: "clvmrg" */
-     959L,	/*   194: "dpellipse" */
+      49L,	/*   192: "ulthdashdd " */
+     336L,	/*   193: "clvmrg" */
+     961L,	/*   194: "dpellipse" */
      193L,	/*   195: "adjustleft" */
-     410L,	/*   196: "tscellpaddl" */
-     925L,	/*   197: "emdash" */
-     371L,	/*   198: "trkeepfollow" */
-     502L,	/*   199: "hres" */
+     412L,	/*   196: "tscellpaddl" */
+     927L,	/*   197: "emdash" */
+     710L,	/*   198: "green" */
+     504L,	/*   199: "hres" */
      113L,	/*   200: "pnrnot" */
      166L,	/*   201: "bghoriz" */
       71L,	/*   202: "pnucltr" */
      212L,	/*   203: "tpvpara" */
-     638L,	/*   204: "sftnbj" */
-     535L,	/*   205: "snaptogridincell" */
+     640L,	/*   204: "sftnbj" */
+     537L,	/*   205: "snaptogridincell" */
      241L,	/*   206: "posxo" */
-     639L,	/*   207: "sftnstart" */
-     337L,	/*   208: "clwWidth" */
-     758L,	/*   209: "makebackup" */
+     641L,	/*   207: "sftnstart" */
+     339L,	/*   208: "clwWidth" */
+     760L,	/*   209: "makebackup" */
      126L,	/*   210: "v" */
      228L,	/*   211: "abslock" */
-     322L,	/*   212: "tsvertalc" */
-     309L,	/*   213: "clbgdkbdiag" */
-    1187L,	/*   214: "brdrframe" */
-     558L,	/*   215: "nofeaturethrottle" */
-     313L,	/*   216: "clcbpat" */
-     778L,	/*   217: "viewzk" */
-    1154L,	/*   218: "FLK" */
+     324L,	/*   212: "tsvertalc" */
+     311L,	/*   213: "clbgdkbdiag" */
+    1189L,	/*   214: "brdrframe" */
+     560L,	/*   215: "nofeaturethrottle" */
+     315L,	/*   216: "clcbpat" */
+     780L,	/*   217: "viewzk" */
+    1156L,	/*   218: "FLK" */
       63L,	/*   219: "deleted" */
-    1156L,	/*   220: "SelOpen" */
-    1045L,	/*   221: "fldinst" */
+     615L,	/*   220: "pgnhnsp" */
+    1047L,	/*   221: "fldinst" */
       77L,	/*   222: "pndbnumd" */
-     591L,	/*   223: "sbknone" */
-    1028L,	/*   224: "upr" */
-     512L,	/*   225: "pgbrdrb" */
-     671L,	/*   226: "ftnrstcont" */
+     593L,	/*   223: "sbknone" */
+    1030L,	/*   224: "upr" */
+     514L,	/*   225: "pgbrdrb" */
+     619L,	/*   226: "sectdefaultcl" */
      218L,	/*   227: "tposyc" */
-    1142L,	/*   228: "OTP" */
-     782L,	/*   229: "ogutter" */
-     534L,	/*   230: "nobrkwrptbl" */
+    1144L,	/*   228: "OTP" */
+     784L,	/*   229: "ogutter" */
+     536L,	/*   230: "nobrkwrptbl" */
      224L,	/*   231: "tdfrmtxtTop" */
      143L,	/*   232: "fi" */
-     790L,	/*   233: "donotembedsysfont" */
-     300L,	/*   234: "clbghoriz" */
-     347L,	/*   235: "clpadft" */
-     459L,	/*   236: "tbllklastcol" */
-    1103L,	/*   237: "sn" */
+     792L,	/*   233: "donotembedsysfont" */
+     302L,	/*   234: "clbghoriz" */
+     349L,	/*   235: "clpadft" */
+     461L,	/*   236: "tbllklastcol" */
+    1105L,	/*   237: "sn" */
       48L,	/*   238: "ulthdashd " */
-    1016L,	/*   239: "shpbxmargin" */
-     903L,	/*   240: "rsltpict" */
+    1018L,	/*   239: "shpbxmargin" */
+     905L,	/*   240: "rsltpict" */
      150L,	/*   241: "pagebb" */
      178L,	/*   242: "cfpat" */
-     814L,	/*   243: "listlevel" */
-    1095L,	/*   244: "aftnsepc" */
-     628L,	/*   245: "binfsxn" */
-     492L,	/*   246: "utinl" */
-     923L,	/*   247: "rsltmerge" */
-     998L,	/*   248: "dpfillbgcr" */
+     816L,	/*   243: "listlevel" */
+    1097L,	/*   244: "aftnsepc" */
+     630L,	/*   245: "binfsxn" */
+     494L,	/*   246: "utinl" */
+     925L,	/*   247: "rsltmerge" */
+    1000L,	/*   248: "dpfillbgcr" */
      179L,	/*   249: "cbpat" */
-    1090L,	/*   250: "headere" */
+    1092L,	/*   250: "headere" */
       43L,	/*   251: "ulhwave" */
-     598L,	/*   252: "pgnlcrm" */
-     934L,	/*   253: "softlheight" */
-    1080L,	/*   254: "height" */
-     519L,	/*   255: "msmcap" */
-     487L,	/*   256: "trackmoves" */
-     523L,	/*   257: "useltbaln" */
-     663L,	/*   258: "aendnotes" */
-    1002L,	/*   259: "dpptx" */
+     600L,	/*   252: "pgnlcrm" */
+     936L,	/*   253: "softlheight" */
+    1082L,	/*   254: "height" */
+     521L,	/*   255: "msmcap" */
+     489L,	/*   256: "trackmoves" */
+     525L,	/*   257: "useltbaln" */
+     665L,	/*   258: "aendnotes" */
+     172L,	/*   259: "bgdkhoriz" */
      267L,	/*   260: "pnrpnbr" */
-     696L,	/*   261: "ssemihidden" */
-     890L,	/*   262: "picscaley" */
-     550L,	/*   263: "hwelev" */
+     698L,	/*   261: "ssemihidden" */
+     892L,	/*   262: "picscaley" */
+     904L,	/*   263: "rslttxt" */
      200L,	/*   264: "tabsnoovrlp" */
      201L,	/*   265: "tphmrg" */
-     692L,	/*   266: "slink" */
-     568L,	/*   267: "noxlattoyen" */
+     694L,	/*   266: "slink" */
+     570L,	/*   267: "noxlattoyen" */
       69L,	/*   268: "pnucrm" */
      217L,	/*   269: "tposyb" */
       70L,	/*   270: "pnlcrm" */
      111L,	/*   271: "pnnumonce" */
-    1132L,	/*   272: "NTT" */
-    1077L,	/*   273: "chdpl" */
+    1134L,	/*   272: "NTT" */
+    1079L,	/*   273: "chdpl" */
      276L,	/*   274: "aexpnd" */
-     906L,	/*   275: "objemb" */
-     575L,	/*   276: "pnuldb" */
-     382L,	/*   277: "trbrdrh" */
-     865L,	/*   278: "fcharset" */
+     908L,	/*   275: "objemb" */
+     577L,	/*   276: "pnuldb" */
+     384L,	/*   277: "trbrdrh" */
+     867L,	/*   278: "fcharset" */
      242L,	/*   279: "pvmrg" */
        1L,	/*   280: "cell" */
       11L,	/*   281: "fc" */
-     823L,	/*   282: "leveljc" */
-     992L,	/*   283: "dplinecob" */
-     623L,	/*   284: "vertalc" */
+     825L,	/*   282: "leveljc" */
+     994L,	/*   283: "dplinecob" */
+     625L,	/*   284: "vertalc" */
      174L,	/*   285: "bgdkfdiag" */
      287L,	/*   286: "auldb" */
-     587L,	/*   287: "margmirsxn" */
-    1018L,	/*   288: "shpbxcolumn" */
-     898L,	/*   289: "picbmp" */
-     616L,	/*   290: "pgnhnsn" */
+     589L,	/*   287: "margmirsxn" */
+    1020L,	/*   288: "shpbxcolumn" */
+     151L,	/*   289: "nowidctlpar" */
+     618L,	/*   290: "pgnhnsn" */
      158L,	/*   291: "lisb" */
      142L,	/*   292: "li" */
-     529L,	/*   293: "oldas" */
-     596L,	/*   294: "pgndec" */
-    1170L,	/*   295: "brdrdashdd" */
-    1088L,	/*   296: "headerl" */
-     982L,	/*   297: "dpx" */
-     853L,	/*   298: "tleq" */
-     481L,	/*   299: "rtldoc" */
-    1075L,	/*   300: "sectnum" */
-     830L,	/*   301: "leveltemplateid" */
-     929L,	/*   302: "ldblquote" */
-     332L,	/*   303: "ClvmNone" */
-     881L,	/*   304: "pmmetafile" */
-    1151L,	/*   305: "SET" */
-     544L,	/*   306: "noindnmbrts" */
-     963L,	/*   307: "dprect" */
+     531L,	/*   293: "oldas" */
+     598L,	/*   294: "pgndec" */
+    1172L,	/*   295: "brdrdashdd" */
+    1090L,	/*   296: "headerl" */
+     984L,	/*   297: "dpx" */
+     855L,	/*   298: "tleq" */
+     483L,	/*   299: "rtldoc" */
+    1077L,	/*   300: "sectnum" */
+     832L,	/*   301: "leveltemplateid" */
+     931L,	/*   302: "ldblquote" */
+     334L,	/*   303: "ClvmNone" */
+     883L,	/*   304: "pmmetafile" */
+    1153L,	/*   305: "SET" */
+     546L,	/*   306: "noindnmbrts" */
+     345L,	/*   307: "clpadt" */
      171L,	/*   308: "bgdcross" */
      290L,	/*   309: "aup" */
-     356L,	/*   310: "tscbandhorzodd" */
-    1086L,	/*   311: "header" */
-    1152L,	/*   312: "SEB" */
-     750L,	/*   313: "fracwidth" */
-     361L,	/*   314: "tscnecell" */
+     358L,	/*   310: "tscbandhorzodd" */
+    1088L,	/*   311: "header" */
+    1154L,	/*   312: "SEB" */
+     752L,	/*   313: "fracwidth" */
+     363L,	/*   314: "tscnecell" */
       26L,	/*   315: "chbgcross" */
-     570L,	/*   316: "noultrlspc" */
-     468L,	/*   317: "margl" */
+     572L,	/*   316: "noultrlspc" */
+     470L,	/*   317: "margl" */
      117L,	/*   318: "revauth" */
-     624L,	/*   319: "vertalj" */
+     626L,	/*   319: "vertalj" */
       23L,	/*   320: "chbgvert" */
-     952L,	/*   321: "dobxcolumn" */
-    1105L,	/*   322: "nesttableprops" */
-    1029L,	/*   323: "fonttbl" */
-     867L,	/*   324: "fprq" */
-     897L,	/*   325: "bliptag" */
+     954L,	/*   321: "dobxcolumn" */
+    1107L,	/*   322: "nesttableprops" */
+    1031L,	/*   323: "fonttbl" */
+     869L,	/*   324: "fprq" */
+     899L,	/*   325: "bliptag" */
       78L,	/*   326: "pnaiu" */
        9L,	/*   327: "fs" */
-     595L,	/*   328: "sbkodd" */
-     894L,	/*   329: "piccropr" */
-     873L,	/*   330: "falt" */
-     637L,	/*   331: "sftntj" */
-     675L,	/*   332: "ftnnalc" */
+     597L,	/*   328: "sbkodd" */
+     896L,	/*   329: "piccropr" */
+     875L,	/*   330: "falt" */
+     639L,	/*   331: "sftntj" */
+     677L,	/*   332: "ftnnalc" */
      140L,	/*   333: "s" */
-     645L,	/*   334: "saftnrestart" */
-    1168L,	/*   335: "brdrdash" */
-     381L,	/*   336: "trbrdrr" */
-     805L,	/*   337: "insrsid" */
-    1005L,	/*   338: "dptxtbrl" */
-     552L,	/*   339: "notcvasp" */
-     836L,	/*   340: "listid" */
-     816L,	/*   341: "levelnumbers" */
+     647L,	/*   334: "saftnrestart" */
+    1170L,	/*   335: "brdrdash" */
+     383L,	/*   336: "trbrdrr" */
+     807L,	/*   337: "insrsid" */
+    1007L,	/*   338: "dptxtbrl" */
+     554L,	/*   339: "notcvasp" */
+     838L,	/*   340: "listid" */
+     818L,	/*   341: "levelnumbers" */
       40L,	/*   342: "uldashd" */
-     510L,	/*   343: "stshfbi" */
+     512L,	/*   343: "stshfbi" */
      147L,	/*   344: "qj" */
-     353L,	/*   345: "tsclastrow" */
+     355L,	/*   345: "tsclastrow" */
      279L,	/*   346: "ai" */
-    1013L,	/*   347: "shplid" */
-    1125L,	/*   348: "vern" */
-     516L,	/*   349: "pgbrdrfoot" */
-     711L,	/*   350: "caccenttwo" */
-     405L,	/*   351: "trpaddb" */
-     871L,	/*   352: "fontfile" */
-    1164L,	/*   353: "brdrsh" */
-     455L,	/*   354: "tbllkbestfit" */
-     413L,	/*   355: "tscellpaddb" */
-     597L,	/*   356: "pgnucrm" */
+    1015L,	/*   347: "shplid" */
+    1127L,	/*   348: "vern" */
+     518L,	/*   349: "pgbrdrfoot" */
+     713L,	/*   350: "caccenttwo" */
+     407L,	/*   351: "trpaddb" */
+     873L,	/*   352: "fontfile" */
+    1166L,	/*   353: "brdrsh" */
+     457L,	/*   354: "tbllkbestfit" */
+     415L,	/*   355: "tscellpaddb" */
+     599L,	/*   356: "pgnucrm" */
      221L,	/*   357: "tposyt" */
      244L,	/*   358: "pvpg" */
-     702L,	/*   359: "mac" */
-     314L,	/*   360: "clshdng" */
-     644L,	/*   361: "saftnrstcont" */
+     704L,	/*   359: "mac" */
+     316L,	/*   360: "clshdng" */
+     646L,	/*   361: "saftnrstcont" */
       57L,	/*   362: "caps" */
-     626L,	/*   363: "sectlinegrid" */
-     403L,	/*   364: "trpaddr" */
-     885L,	/*   365: "picw" */
-    1171L,	/*   366: "brdrtriple" */
-     345L,	/*   367: "clpadl" */
-     891L,	/*   368: "piccropt" */
-     532L,	/*   369: "pgbrdrsnap" */
-     794L,	/*   370: "showplaceholdtext" */
+     628L,	/*   363: "sectlinegrid" */
+     405L,	/*   364: "trpaddr" */
+     887L,	/*   365: "picw" */
+    1173L,	/*   366: "brdrtriple" */
+     347L,	/*   367: "clpadl" */
+     658L,	/*   368: "saftnnruc" */
+     534L,	/*   369: "pgbrdrsnap" */
+     796L,	/*   370: "showplaceholdtext" */
      115L,	/*   371: "cchs" */
       91L,	/*   372: "pngbnumk" */
        2L,	/*   373: "row" */
       68L,	/*   374: "pndec" */
      248L,	/*   375: "posyb" */
-     647L,	/*   376: "sftnnalc" */
-     579L,	/*   377: "footery" */
+     649L,	/*   376: "sftnnalc" */
+     581L,	/*   377: "footery" */
      246L,	/*   378: "posy" */
-     979L,	/*   379: "dpfillpat" */
-    1015L,	/*   380: "shpfhdr" */
-     556L,	/*   381: "cachedcolbal" */
-     933L,	/*   382: "softcol" */
-     683L,	/*   383: "aftnnrlc" */
-    1000L,	/*   384: "dpfillbgcb" */
-     376L,	/*   385: "rtlrow" */
-     870L,	/*   386: "fontemb" */
-     408L,	/*   387: "trpaddft" */
-     893L,	/*   388: "piccropl" */
+     981L,	/*   379: "dpfillpat" */
+    1017L,	/*   380: "shpfhdr" */
+     558L,	/*   381: "cachedcolbal" */
+     935L,	/*   382: "softcol" */
+     699L,	/*   383: "spersonal" */
+    1002L,	/*   384: "dpfillbgcb" */
+     378L,	/*   385: "rtlrow" */
+     872L,	/*   386: "fontemb" */
+     410L,	/*   387: "trpaddft" */
+     895L,	/*   388: "piccropl" */
       50L,	/*   389: "ulthldash " */
      157L,	/*   390: "sl" */
       30L,	/*   391: "chbgdkfdiag" */
-     710L,	/*   392: "caccentone" */
+     712L,	/*   392: "caccentone" */
      206L,	/*   393: "tposxl" */
-     440L,	/*   394: "tsbgbdiag" */
+     442L,	/*   394: "tsbgbdiag" */
      112L,	/*   395: "pnrestart" */
-    1079L,	/*   396: "width" */
-     791L,	/*   397: "donotembedlingdata" */
+    1081L,	/*   396: "width" */
+     793L,	/*   397: "donotembedlingdata" */
      186L,	/*   398: "brdrbar" */
-    1116L,	/*   399: "revtim" */
-     306L,	/*   400: "clbgdkhor" */
-     264L,	/*   401: "pnrauth" */
-    1135L,	/*   402: "NON" */
-    1177L,	/*   403: "brdrtnthtnmg" */
-     824L,	/*   404: "levelfollow" */
+    1118L,	/*   399: "revtim" */
+     308L,	/*   400: "clbgdkhor" */
+     890L,	/*   401: "pichgoal" */
+    1137L,	/*   402: "NON" */
+    1179L,	/*   403: "brdrtnthtnmg" */
+     894L,	/*   404: "piccropb" */
      176L,	/*   405: "bgdkcross" */
-     736L,	/*   406: "nopro" */
-     530L,	/*   407: "sprstsm" */
-     359L,	/*   408: "tscbandverteven" */
-     316L,	/*   409: "clcbpatraw" */
-     945L,	/*   410: "chftnsepc" */
-     396L,	/*   411: "trspdt" */
-    1038L,	/*   412: "do" */
-    1121L,	/*   413: "nofpages" */
-     759L,	/*   414: "nocolbal" */
-     732L,	/*   415: "langnp" */
-     684L,	/*   416: "aftnnruc" */
-     767L,	/*   417: "revisions" */
-     343L,	/*   418: "clpadt" */
-     531L,	/*   419: "pgbrdropt" */
-    1186L,	/*   420: "brdrengrave" */
-     211L,	/*   421: "tpvmrg" */
-     395L,	/*   422: "trspdr" */
-     777L,	/*   423: "wraptrsp" */
+     738L,	/*   406: "nopro" */
+     580L,	/*   407: "headery" */
+     361L,	/*   408: "tscbandverteven" */
+     318L,	/*   409: "clcbpatraw" */
+     947L,	/*   410: "chftnsepc" */
+     398L,	/*   411: "trspdt" */
+    1040L,	/*   412: "do" */
+    1123L,	/*   413: "nofpages" */
+     761L,	/*   414: "nocolbal" */
+     734L,	/*   415: "langnp" */
+     686L,	/*   416: "aftnnruc" */
+     769L,	/*   417: "revisions" */
+    1055L,	/*   418: "ffsize" */
+     533L,	/*   419: "pgbrdropt" */
+    1188L,	/*   420: "brdrengrave" */
+     893L,	/*   421: "piccropt" */
+     397L,	/*   422: "trspdr" */
+     779L,	/*   423: "wraptrsp" */
       79L,	/*   424: "pniroha" */
-     956L,	/*   425: "dobymargin" */
-     508L,	/*   426: "stshfloch" */
+     958L,	/*   425: "dobymargin" */
+     510L,	/*   426: "stshfloch" */
      129L,	/*   427: "expnd" */
-     688L,	/*   428: "FtnAuto" */
+     690L,	/*   428: "FtnAuto" */
      296L,	/*   429: "clbrdrt" */
-    1111L,	/*   430: "comment" */
-     739L,	/*   431: "themelangfe" */
-    1185L,	/*   432: "brdremboss" */
-     955L,	/*   433: "dobypara" */
-     452L,	/*   434: "tbllkshading" */
-     513L,	/*   435: "pgbrdrl" */
-     911L,	/*   436: "objicemb" */
-     522L,	/*   437: "htmautsp" */
-    1060L,	/*   438: "ffname" */
-     561L,	/*   439: "tc" */
+    1113L,	/*   430: "comment" */
+     741L,	/*   431: "themelangfe" */
+    1187L,	/*   432: "brdremboss" */
+     957L,	/*   433: "dobypara" */
+     868L,	/*   434: "cpg" */
+     578L,	/*   435: "pnulnone" */
+     913L,	/*   436: "objicemb" */
+     524L,	/*   437: "htmautsp" */
+    1062L,	/*   438: "ffname" */
+     563L,	/*   439: "tc" */
      288L,	/*   440: "aulnone" */
-     614L,	/*   441: "pgnhnsc" */
-     755L,	/*   442: "landscape" */
-     840L,	/*   443: "listrestarthdn" */
-     461L,	/*   444: "irowband" */
-    1102L,	/*   445: "sp" */
-     338L,	/*   446: "clftsWidth" */
-     953L,	/*   447: "dobxmargin" */
-     833L,	/*   448: "levelprevspace" */
-     707L,	/*   449: "red" */
-    1184L,	/*   450: "brdrdashdotstr" */
+     616L,	/*   441: "pgnhnsc" */
+     757L,	/*   442: "landscape" */
+     842L,	/*   443: "listrestarthdn" */
+     463L,	/*   444: "irowband" */
+    1104L,	/*   445: "sp" */
+     340L,	/*   446: "clftsWidth" */
+     955L,	/*   447: "dobxmargin" */
+     835L,	/*   448: "levelprevspace" */
+     709L,	/*   449: "red" */
+    1186L,	/*   450: "brdrdashdotstr" */
       85L,	/*   451: "pnaiud" */
-     609L,	/*   452: "colsr" */
-     172L,	/*   453: "bgdkhoriz" */
-    1034L,	/*   454: "info" */
-     815L,	/*   455: "leveltext" */
-     517L,	/*   456: "truncex" */
-     431L,	/*   457: "trbgdkbdiag" */
+     611L,	/*   452: "colsr" */
+     214L,	/*   453: "tposyil" */
+    1036L,	/*   454: "info" */
+     817L,	/*   455: "leveltext" */
+     519L,	/*   456: "truncex" */
+     433L,	/*   457: "trbgdkbdiag" */
      132L,	/*   458: "highlight" */
      247L,	/*   459: "posnegy" */
-     335L,	/*   460: "clNoWrap" */
-    1044L,	/*   461: "field" */
-     920L,	/*   462: "objcropl" */
-     453L,	/*   463: "tbllkfont" */
-     931L,	/*   464: "rdblquote" */
+     337L,	/*   460: "clNoWrap" */
+    1046L,	/*   461: "field" */
+     922L,	/*   462: "objcropl" */
+     455L,	/*   463: "tbllkfont" */
+     933L,	/*   464: "rdblquote" */
      104L,	/*   465: "pnsp" */
-     961L,	/*   466: "dppolygon" */
-    1163L,	/*   467: "brdrth" */
-     612L,	/*   468: "pgnhnsh" */
+     963L,	/*   466: "dppolygon" */
+    1165L,	/*   467: "brdrth" */
+     614L,	/*   468: "pgnhnsh" */
      191L,	/*   469: "wrapdefault" */
-     648L,	/*   470: "sftnnauc" */
+     650L,	/*   470: "sftnnauc" */
      144L,	/*   471: "ri" */
-    1149L,	/*   472: "SEN" */
-     651L,	/*   473: "sftnnchi" */
+    1151L,	/*   472: "SEN" */
+     653L,	/*   473: "sftnnchi" */
      235L,	/*   474: "posx" */
-     951L,	/*   475: "dobxpage" */
-    1167L,	/*   476: "brdrdot" */
-     658L,	/*   477: "fet" */
-    1014L,	/*   478: "shpz" */
-     358L,	/*   479: "tscbandvertodd" */
+     953L,	/*   475: "dobxpage" */
+    1169L,	/*   476: "brdrdot" */
+     660L,	/*   477: "fet" */
+    1016L,	/*   478: "shpz" */
+     975L,	/*   479: "dpastarthol" */
      194L,	/*   480: "sbauto" */
-    1004L,	/*   481: "dptxlrtb" */
+    1006L,	/*   481: "dptxlrtb" */
       44L,	/*   482: "ulldash " */
      286L,	/*   483: "auld" */
-     672L,	/*   484: "aftnrstcont" */
-    1001L,	/*   485: "dpfillbggray" */
-    1098L,	/*   486: "annotation" */
-     714L,	/*   487: "caccentfive" */
+     674L,	/*   484: "aftnrstcont" */
+    1003L,	/*   485: "dpfillbggray" */
+    1100L,	/*   486: "annotation" */
+     716L,	/*   487: "caccentfive" */
      188L,	/*   488: "ltrpar" */
-     409L,	/*   489: "trpaddfb" */
-     650L,	/*   490: "sftnnruc" */
-    1085L,	/*   491: "footere" */
+     411L,	/*   489: "trpaddfb" */
+     273L,	/*   490: "acaps" */
+    1087L,	/*   491: "footere" */
      272L,	/*   492: "ab" */
-     909L,	/*   493: "objsub" */
-    1120L,	/*   494: "edmins" */
-     352L,	/*   495: "tscfirstrow" */
-     127L,	/*   496: "webhidden" */
-     308L,	/*   497: "clbgdkfdiag" */
-     501L,	/*   498: "dgmargin" */
-     773L,	/*   499: "subfontbysize" */
-    1094L,	/*   500: "aftnsep" */
-     760L,	/*   501: "noextrasprl" */
-     373L,	/*   502: "trql" */
+     911L,	/*   493: "objsub" */
+    1122L,	/*   494: "edmins" */
+     354L,	/*   495: "tscfirstrow" */
+     175L,	/*   496: "bgdkbdiag" */
+     310L,	/*   497: "clbgdkfdiag" */
+     503L,	/*   498: "dgmargin" */
+     775L,	/*   499: "subfontbysize" */
+    1096L,	/*   500: "aftnsep" */
+     762L,	/*   501: "noextrasprl" */
+     556L,	/*   502: "notvatxbx" */
      255L,	/*   503: "dfrmtxty" */
      192L,	/*   504: "adjustright" */
-     415L,	/*   505: "tscellpaddfr" */
-     872L,	/*   506: "panose" */
-     677L,	/*   507: "ftnnrlc" */
-     574L,	/*   508: "pnuld" */
-    1064L,	/*   509: "ffstattext" */
-     687L,	/*   510: "NoFtnalt" */
-     971L,	/*   511: "dpaendhol" */
+     417L,	/*   505: "tscellpaddfr" */
+     874L,	/*   506: "panose" */
+     679L,	/*   507: "ftnnrlc" */
+     576L,	/*   508: "pnuld" */
+    1066L,	/*   509: "ffstattext" */
+     689L,	/*   510: "NoFtnalt" */
+     280L,	/*   511: "alang" */
      274L,	/*   512: "acf" */
-      49L,	/*   513: "ulthdashdd " */
-     837L,	/*   514: "listtemplateid" */
+     303L,	/*   513: "clbgvert" */
+     839L,	/*   514: "listtemplateid" */
      275L,	/*   515: "adn" */
-     540L,	/*   516: "rempersonalinfo" */
+     542L,	/*   516: "rempersonalinfo" */
        3L,	/*   517: "sect" */
      292L,	/*   518: "hich" */
-     775L,	/*   519: "transmf" */
-     679L,	/*   520: "ftnnchi" */
-     809L,	/*   521: "sectrsid" */
-     577L,	/*   522: "sectd" */
-     451L,	/*   523: "tbllkborder" */
-     426L,	/*   524: "trbgcross" */
-     994L,	/*   525: "dpfillfgcr" */
-     649L,	/*   526: "sftnnrlc" */
-     390L,	/*   527: "tsbrdrdgl" */
-     742L,	/*   528: "annotprot" */
-     175L,	/*   529: "bgdkbdiag" */
-     861L,	/*   530: "fscript" */
-    1176L,	/*   531: "brdrthtnmg" */
-    1106L,	/*   532: "title" */
-     828L,	/*   533: "fbias" */
-     763L,	/*   534: "prcolbl" */
-     605L,	/*   535: "pgnstarts" */
-     954L,	/*   536: "dobypage" */
-      60L,	/*   537: "striked" */
-     802L,	/*   538: "dy" */
-     536L,	/*   539: "wrppunct" */
-    1054L,	/*   540: "fftypetxt" */
+     777L,	/*   519: "transmf" */
+     681L,	/*   520: "ftnnchi" */
+     811L,	/*   521: "sectrsid" */
+     579L,	/*   522: "sectd" */
+     453L,	/*   523: "tbllkborder" */
+     428L,	/*   524: "trbgcross" */
+     996L,	/*   525: "dpfillfgcr" */
+     651L,	/*   526: "sftnnrlc" */
+     392L,	/*   527: "tsbrdrdgl" */
+     169L,	/*   528: "bgbdiag" */
+     744L,	/*   529: "annotprot" */
+     863L,	/*   530: "fscript" */
+    1178L,	/*   531: "brdrthtnmg" */
+    1108L,	/*   532: "title" */
+     830L,	/*   533: "fbias" */
+     765L,	/*   534: "prcolbl" */
+     307L,	/*   535: "clbgdcross" */
+     956L,	/*   536: "dobypage" */
+     826L,	/*   537: "levelfollow" */
+     804L,	/*   538: "dy" */
+     538L,	/*   539: "wrppunct" */
+      59L,	/*   540: "strike" */
      284L,	/*   541: "astrike" */
       56L,	/*   542: "sub" */
-     886L,	/*   543: "pich" */
+     888L,	/*   543: "pich" */
      266L,	/*   544: "pnrnfc" */
      215L,	/*   545: "tposy" */
      154L,	/*   546: "keepn" */
-     417L,	/*   547: "tscellpaddfb" */
+     419L,	/*   547: "tscellpaddfb" */
       32L,	/*   548: "chbgdkcross" */
-     839L,	/*   549: "listhybrid" */
-     571L,	/*   550: "dntblnsbdb" */
-    1019L,	/*   551: "shpbxignore" */
+     841L,	/*   549: "listhybrid" */
+     573L,	/*   550: "dntblnsbdb" */
+    1021L,	/*   551: "shpbxignore" */
      164L,	/*   552: "intbl" */
-     557L,	/*   553: "nouicompat" */
-     375L,	/*   554: "trqc" */
-     494L,	/*   555: "horzdoc" */
-     485L,	/*   556: "jexpand" */
-     835L,	/*   557: "levelspace" */
-    1056L,	/*   558: "ffhaslistbox" */
+     559L,	/*   553: "nouicompat" */
+     652L,	/*   554: "sftnnruc" */
+     110L,	/*   555: "pnlvlcont" */
+     487L,	/*   556: "jexpand" */
+     837L,	/*   557: "levelspace" */
+    1058L,	/*   558: "ffhaslistbox" */
       65L,	/*   559: "embo" */
-     389L,	/*   560: "tsbrdrv" */
-     103L,	/*   561: "pnindent" */
-     489L,	/*   562: "relyonvml" */
-     792L,	/*   563: "grfdocevents" */
-     709L,	/*   564: "blue" */
-     562L,	/*   565: "tcn" */
-     660L,	/*   566: "enddoc" */
-     825L,	/*   567: "levellegal" */
-    1160L,	/*   568: "brdrart" */
-     868L,	/*   569: "ftnil" */
-     735L,	/*   570: "langf" */
+     391L,	/*   560: "tsbrdrv" */
+     635L,	/*   561: "linerestart" */
+     491L,	/*   562: "relyonvml" */
+     794L,	/*   563: "grfdocevents" */
+     711L,	/*   564: "blue" */
+     564L,	/*   565: "tcn" */
+     662L,	/*   566: "enddoc" */
+     827L,	/*   567: "levellegal" */
+    1162L,	/*   568: "brdrart" */
+     870L,	/*   569: "ftnil" */
+     737L,	/*   570: "langf" */
      213L,	/*   571: "tpvpg" */
      293L,	/*   572: "dbch" */
-     311L,	/*   573: "clbgdkdcross" */
-     673L,	/*   574: "aftnrestart" */
-     965L,	/*   575: "dplinesolid" */
-    1093L,	/*   576: "ftncn" */
-    1119L,	/*   577: "version" */
-    1123L,	/*   578: "nofchars" */
-     680L,	/*   579: "aftnnar" */
-     545L,	/*   580: "felnbrelev" */
-     391L,	/*   581: "tsbrdrdgr" */
-     339L,	/*   582: "tscellwidthfts" */
-    1141L,	/*   583: "OTC" */
-     843L,	/*   584: "listoverridestartat" */
-     783L,	/*   585: "rtlgutter" */
-     541L,	/*   586: "nojkernpunct" */
-     804L,	/*   587: "yr" */
-     278L,	/*   588: "afs" */
-    1071L,	/*   589: "chpgn" */
-     554L,	/*   590: "notvatxbx" */
+     313L,	/*   573: "clbgdkdcross" */
+     675L,	/*   574: "aftnrestart" */
+     967L,	/*   575: "dplinesolid" */
+    1095L,	/*   576: "ftncn" */
+    1121L,	/*   577: "version" */
+    1125L,	/*   578: "nofchars" */
+     682L,	/*   579: "aftnnar" */
+     547L,	/*   580: "felnbrelev" */
+     496L,	/*   581: "horzdoc" */
+     341L,	/*   582: "tscellwidthfts" */
+    1143L,	/*   583: "OTC" */
+     845L,	/*   584: "listoverridestartat" */
+     607L,	/*   585: "pgnstarts" */
+     543L,	/*   586: "nojkernpunct" */
+     806L,	/*   587: "yr" */
+     555L,	/*   588: "notbrkcnstfrctbl" */
+    1073L,	/*   589: "chpgn" */
+     338L,	/*   590: "clshdrawnil" */
       35L,	/*   591: "i" */
-     328L,	/*   592: "cltxtbrlv" */
-    1025L,	/*   593: "shpwrk" */
-     849L,	/*   594: "tldot" */
+     330L,	/*   592: "cltxtbrlv" */
+    1027L,	/*   593: "shpwrk" */
+     851L,	/*   594: "tldot" */
       89L,	/*   595: "pngbnumd" */
-     448L,	/*   596: "tsbgdkdcross" */
+     450L,	/*   596: "tsbgdkdcross" */
      281L,	/*   597: "aoutl" */
-     349L,	/*   598: "clpadfl" */
-     518L,	/*   599: "nolead" */
-    1089L,	/*   600: "headerr" */
-    1049L,	/*   601: "fftype" */
+     351L,	/*   598: "clpadfl" */
+     520L,	/*   599: "nolead" */
+    1091L,	/*   600: "headerr" */
+    1051L,	/*   601: "fftype" */
      282L,	/*   602: "ascaps" */
-     421L,	/*   603: "trftsWidthA" */
-     834L,	/*   604: "levelindent" */
-     771L,	/*   605: "sprsspbf" */
-     747L,	/*   606: "formdisp" */
-     936L,	/*   607: "softpage" */
-     905L,	/*   608: "rslthtml" */
-     427L,	/*   609: "trbgdcross" */
-     784L,	/*   610: "deflangfe" */
-     445L,	/*   611: "tsbgdkfdiag" */
-     970L,	/*   612: "dplinedadodo" */
+     423L,	/*   603: "trftsWidthA" */
+     836L,	/*   604: "levelindent" */
+     773L,	/*   605: "sprsspbf" */
+     749L,	/*   606: "formdisp" */
+     938L,	/*   607: "softpage" */
+     907L,	/*   608: "rslthtml" */
+     429L,	/*   609: "trbgdcross" */
+     786L,	/*   610: "deflangfe" */
+     447L,	/*   611: "tsbgdkfdiag" */
+     972L,	/*   612: "dplinedadodo" */
      105L,	/*   613: "pnprev" */
-     772L,	/*   614: "sprstsp" */
-     912L,	/*   615: "objhtml" */
-    1008L,	/*   616: "dptxtbrlv" */
-    1072L,	/*   617: "chtime" */
-     728L,	/*   618: "bkmkcolf" */
-     601L,	/*   619: "pgncont" */
-     412L,	/*   620: "tscellpaddt" */
+     774L,	/*   614: "sprstsp" */
+     914L,	/*   615: "objhtml" */
+    1010L,	/*   616: "dptxtbrlv" */
+    1074L,	/*   617: "chtime" */
+     730L,	/*   618: "bkmkcolf" */
+     603L,	/*   619: "pgncont" */
+     414L,	/*   620: "tscellpaddt" */
      121L,	/*   621: "revdttm" */
-     528L,	/*   622: "bdrrlswsix" */
+     530L,	/*   622: "bdrrlswsix" */
      243L,	/*   623: "pvpara" */
-     404L,	/*   624: "trpaddt" */
+     406L,	/*   624: "trpaddt" */
      100L,	/*   625: "pnql" */
-     374L,	/*   626: "trqr" */
-     676L,	/*   627: "ftnnauc" */
-     854L,	/*   628: "jclisttab" */
+     376L,	/*   626: "trqr" */
+     678L,	/*   627: "ftnnauc" */
+     965L,	/*   628: "dprect" */
      187L,	/*   629: "box" */
-     729L,	/*   630: "bkmkcoll" */
-     350L,	/*   631: "clpadfr" */
-     664L,	/*   632: "aenddoc" */
-    1084L,	/*   633: "footerr" */
-     855L,	/*   634: "tx" */
-     495L,	/*   635: "dghspace" */
-     808L,	/*   636: "charrsid" */
-     351L,	/*   637: "yts" */
+     731L,	/*   630: "bkmkcoll" */
+     352L,	/*   631: "clpadfr" */
+     666L,	/*   632: "aenddoc" */
+    1086L,	/*   633: "footerr" */
+     857L,	/*   634: "tx" */
+     497L,	/*   635: "dghspace" */
+     810L,	/*   636: "charrsid" */
+     353L,	/*   637: "yts" */
       55L,	/*   638: "super" */
-     921L,	/*   639: "objcropr" */
-     820L,	/*   640: "levelnfcn" */
-     743L,	/*   641: "brkfrm" */
-     662L,	/*   642: "ftnbj" */
-    1073L,	/*   643: "chftn" */
-     641L,	/*   644: "sftnrstpg" */
+     923L,	/*   639: "objcropr" */
+     822L,	/*   640: "levelnfcn" */
+     745L,	/*   641: "brkfrm" */
+     664L,	/*   642: "ftnbj" */
+    1075L,	/*   643: "chftn" */
+     643L,	/*   644: "sftnrstpg" */
      210L,	/*   645: "tposxo" */
-    1140L,	/*   646: "OHS" */
-     362L,	/*   647: "tscswcell" */
-     810L,	/*   648: "pararsid" */
-    1091L,	/*   649: "ftnsep" */
-     866L,	/*   650: "cpg" */
+     278L,	/*   646: "afs" */
+     364L,	/*   647: "tscswcell" */
+     812L,	/*   648: "pararsid" */
+    1093L,	/*   649: "ftnsep" */
+    1004L,	/*   650: "dpptx" */
       46L,	/*   651: "ulthd" */
-     307L,	/*   652: "clbgdkvert" */
+     309L,	/*   652: "clbgdkvert" */
      135L,	/*   653: "facenter" */
-     437L,	/*   654: "tsbghoriz" */
-     503L,	/*   655: "chhres" */
-    1078L,	/*   656: "NeXTGraphic" */
-     822L,	/*   657: "leveljcn" */
-     908L,	/*   658: "objautlink" */
-     636L,	/*   659: "sectunlocked" */
+     439L,	/*   654: "tsbghoriz" */
+     505L,	/*   655: "chhres" */
+    1101L,	/*   656: "pnseclvl" */
+     824L,	/*   657: "leveljcn" */
+     910L,	/*   658: "objautlink" */
+     638L,	/*   659: "sectunlocked" */
      250L,	/*   660: "posyin" */
-     509L,	/*   661: "stshfhich" */
-     803L,	/*   662: "mo" */
-     594L,	/*   663: "sbkeven" */
-     722L,	/*   664: "ctint" */
-    1130L,	/*   665: "OPG" */
-     500L,	/*   666: "dgvshow" */
-     365L,	/*   667: "tsrowd" */
-     444L,	/*   668: "tsbgdkvert" */
-     326L,	/*   669: "cltxbtlr" */
-     749L,	/*   670: "formshade" */
-     462L,	/*   671: "ts" */
-     844L,	/*   672: "listoverrideformat" */
-     472L,	/*   673: "paperh" */
-     813L,	/*   674: "list" */
-     944L,	/*   675: "chftnsep" */
-    1057L,	/*   676: "ffmaxlen" */
-    1032L,	/*   677: "listtable" */
-    1020L,	/*   678: "shpbymargin" */
-    1115L,	/*   679: "creatim" */
-    1104L,	/*   680: "sv" */
-     613L,	/*   681: "pgnhnsp" */
-     940L,	/*   682: "-" */
-     400L,	/*   683: "trspdft" */
-     432L,	/*   684: "trbgdkcross" */
-     569L,	/*   685: "expshrtn" */
-     781L,	/*   686: "lytprtmet" */
+     511L,	/*   661: "stshfhich" */
+     805L,	/*   662: "mo" */
+     596L,	/*   663: "sbkeven" */
+     724L,	/*   664: "ctint" */
+    1132L,	/*   665: "OPG" */
+     502L,	/*   666: "dgvshow" */
+     367L,	/*   667: "tsrowd" */
+     446L,	/*   668: "tsbgdkvert" */
+     328L,	/*   669: "cltxbtlr" */
+     751L,	/*   670: "formshade" */
+     134L,	/*   671: "fahang" */
+     846L,	/*   672: "listoverrideformat" */
+     474L,	/*   673: "paperh" */
+     815L,	/*   674: "list" */
+     946L,	/*   675: "chftnsep" */
+    1059L,	/*   676: "ffmaxlen" */
+    1034L,	/*   677: "listtable" */
+    1022L,	/*   678: "shpbymargin" */
+    1117L,	/*   679: "creatim" */
+    1106L,	/*   680: "sv" */
+     750L,	/*   681: "formprot" */
+     942L,	/*   682: "-" */
+     402L,	/*   683: "trspdft" */
+     434L,	/*   684: "trbgdkcross" */
+     571L,	/*   685: "expshrtn" */
+     783L,	/*   686: "lytprtmet" */
      285L,	/*   687: "aul" */
-     889L,	/*   688: "picscalex" */
+     891L,	/*   688: "picscalex" */
      137L,	/*   689: "favar" */
-     214L,	/*   690: "tposyil" */
+     386L,	/*   690: "tsbrdrt" */
      262L,	/*   691: "dropcapt" */
      101L,	/*   692: "pnqc" */
-    1178L,	/*   693: "brdrtnthlg" */
-     520L,	/*   694: "splytwnine" */
+    1180L,	/*   693: "brdrtnthlg" */
+     998L,	/*   694: "dpfillfgcb" */
      138L,	/*   695: "fafixed" */
-    1161L,	/*   696: "brdrnone" */
-     888L,	/*   697: "pichgoal" */
-     756L,	/*   698: "linestart" */
-    1157L,	/*   699: "brdrw" */
-     610L,	/*   700: "colw" */
-     789L,	/*   701: "subdocument" */
-     567L,	/*   702: "tcl" */
-     665L,	/*   703: "aftntj" */
-     162L,	/*   704: "ilvl" */
-     876L,	/*   705: "pngblip" */
-     607L,	/*   706: "colsx" */
-     622L,	/*   707: "vertalb" */
-    1136L,	/*   708: "NPG" */
-     110L,	/*   709: "pnlvlcont" */
-    1037L,	/*   710: "pict" */
-     860L,	/*   711: "fmodern" */
-     398L,	/*   712: "trspdfl" */
-     817L,	/*   713: "listname" */
-     418L,	/*   714: "trwWidthB" */
+    1163L,	/*   696: "brdrnone" */
+     360L,	/*   697: "tscbandvertodd" */
+     758L,	/*   698: "linestart" */
+    1159L,	/*   699: "brdrw" */
+     612L,	/*   700: "colw" */
+     300L,	/*   701: "cldglu" */
+     569L,	/*   702: "tcl" */
+     667L,	/*   703: "aftntj" */
+     464L,	/*   704: "ts" */
+     878L,	/*   705: "pngblip" */
+     609L,	/*   706: "colsx" */
+     321L,	/*   707: "clvertalc" */
+    1138L,	/*   708: "NPG" */
+     373L,	/*   709: "trkeepfollow" */
+    1039L,	/*   710: "pict" */
+     862L,	/*   711: "fmodern" */
+     400L,	/*   712: "trspdfl" */
+     819L,	/*   713: "listname" */
+     432L,	/*   714: "trbgdkfdiag" */
      149L,	/*   715: "nopagebb" */
-    1144L,	/*   716: "NHP" */
-     988L,	/*   717: "dplinew" */
+    1146L,	/*   716: "NHP" */
+     990L,	/*   717: "dplinew" */
      159L,	/*   718: "lisa" */
-     170L,	/*   719: "bgcross" */
-     477L,	/*   720: "gutterprl" */
-    1124L,	/*   721: "nofcharsws" */
-    1081L,	/*   722: "footer" */
-     363L,	/*   723: "tscsecell" */
-    1175L,	/*   724: "brdrtnthmg" */
-     946L,	/*   725: "ltrmark" */
-     882L,	/*   726: "wbmbitspixel" */
-     446L,	/*   727: "tsbgdkbdiag" */
-     745L,	/*   728: "defformat" */
-     273L,	/*   729: "acaps" */
+     420L,	/*   719: "trwWidthB" */
+     479L,	/*   720: "gutterprl" */
+     225L,	/*   721: "tdfrmtxtBottom" */
+    1083L,	/*   722: "footer" */
+     365L,	/*   723: "tscsecell" */
+    1177L,	/*   724: "brdrtnthmg" */
+     948L,	/*   725: "ltrmark" */
+     884L,	/*   726: "wbmbitspixel" */
+     448L,	/*   727: "tsbgdkbdiag" */
+     747L,	/*   728: "defformat" */
+     802L,	/*   729: "min" */
      256L,	/*   730: "frmtxlrtb" */
-    1134L,	/*   731: "NOSN" */
+    1136L,	/*   731: "NOSN" */
      220L,	/*   732: "tposyout" */
-     666L,	/*   733: "aftnbj" */
-     323L,	/*   734: "tsvertalb" */
+     668L,	/*   733: "aftnbj" */
+     325L,	/*   734: "tsvertalb" */
      189L,	/*   735: "rtlpar" */
      291L,	/*   736: "loch" */
-     457L,	/*   737: "tbllklastrow" */
-     327L,	/*   738: "cltxlrtbv" */
-     981L,	/*   739: "dparcflipy" */
-     438L,	/*   740: "tsbgvert" */
-     731L,	/*   741: "rin" */
-    1191L,	/*   742: "brdrnil" */
-     325L,	/*   743: "cltxtbrl" */
+    1028L,	/*   737: "shpfblwtxt" */
+     329L,	/*   738: "cltxlrtbv" */
+     983L,	/*   739: "dparcflipy" */
+     440L,	/*   740: "tsbgvert" */
+     733L,	/*   741: "rin" */
+    1193L,	/*   742: "brdrnil" */
+     327L,	/*   743: "cltxtbrl" */
       88L,	/*   744: "pngbnum" */
      245L,	/*   745: "posyil" */
-    1122L,	/*   746: "nofwords" */
-     422L,	/*   747: "trbghoriz" */
-    1133L,	/*   748: "NSN" */
+    1124L,	/*   746: "nofwords" */
+     424L,	/*   747: "trbghoriz" */
+    1135L,	/*   748: "NSN" */
       81L,	/*   749: "pndbnumt" */
      136L,	/*   750: "faroman" */
-     357L,	/*   751: "tscbandhorzeven" */
-     990L,	/*   752: "dplinecor" */
+     359L,	/*   751: "tscbandhorzeven" */
+     992L,	/*   752: "dplinecor" */
       42L,	/*   753: "uldb" */
-     488L,	/*   754: "trackformatting" */
-     411L,	/*   755: "tscellpaddr" */
-     785L,	/*   756: "uc" */
-     935L,	/*   757: "softline" */
-     869L,	/*   758: "ftruetype" */
-    1053L,	/*   759: "ffsize" */
-     329L,	/*   760: "ClmNone" */
+     785L,	/*   754: "rtlgutter" */
+     413L,	/*   755: "tscellpaddr" */
+     787L,	/*   756: "uc" */
+     937L,	/*   757: "softline" */
+     460L,	/*   758: "tbllkhdrcols" */
+     621L,	/*   759: "pgnx" */
+     331L,	/*   760: "ClmNone" */
      237L,	/*   761: "posxl" */
      252L,	/*   762: "posyt" */
-     899L,	/*   763: "picbpp" */
+     901L,	/*   763: "picbpp" */
       83L,	/*   764: "pncnum" */
-     460L,	/*   765: "irow" */
+     462L,	/*   765: "irow" */
      106L,	/*   766: "pnacross" */
-    1159L,	/*   767: "brsp" */
-     606L,	/*   768: "cols" */
-     342L,	/*   769: "tscbandsv" */
-     572L,	/*   770: "nospaceforul" */
-     826L,	/*   771: "levelnorestart" */
+    1161L,	/*   767: "brsp" */
+     608L,	/*   768: "cols" */
+     344L,	/*   769: "tscbandsv" */
+     574L,	/*   770: "nospaceforul" */
+     335L,	/*   771: "clvmgf" */
      289L,	/*   772: "aulw" */
-     458L,	/*   773: "tbllkhdrcols" */
-     725L,	/*   774: "fldedit" */
-     932L,	/*   775: "rquote" */
-     847L,	/*   776: "tqc" */
-    1058L,	/*   777: "ffhps" */
-     686L,	/*   778: "ftnalt" */
+     532L,	/*   773: "sprstsm" */
+     727L,	/*   774: "fldedit" */
+     934L,	/*   775: "rquote" */
+     849L,	/*   776: "tqc" */
+    1060L,	/*   777: "ffhps" */
+     688L,	/*   778: "ftnalt" */
      270L,	/*   779: "pnrstop" */
-     560L,	/*   780: "adeff" */
+     562L,	/*   780: "adeff" */
      197L,	/*   781: "aspalpha" */
-     588L,	/*   782: "ds" */
+     590L,	/*   782: "ds" */
      260L,	/*   783: "frmtxtbrlv" */
-     521L,	/*   784: "ftnlytwnine" */
-     195L,	/*   785: "saauto" */
-     615L,	/*   786: "pgnhnsm" */
-     950L,	/*   787: "dolock" */
+     523L,	/*   784: "ftnlytwnine" */
+     170L,	/*   785: "bgcross" */
+     617L,	/*   786: "pgnhnsm" */
+     952L,	/*   787: "dolock" */
      251L,	/*   788: "posyout" */
        6L,	/*   789: "nonesttables" */
-     682L,	/*   790: "aftnnauc" */
-     968L,	/*   791: "dplinedot" */
-     718L,	/*   792: "cbackgroundone" */
-     442L,	/*   793: "tsbgdcross" */
-     344L,	/*   794: "clpadb" */
-     770L,	/*   795: "sprslnsp" */
-     497L,	/*   796: "dghorigin" */
-     469L,	/*   797: "margr" */
-     315L,	/*   798: "clcfpatraw" */
-    1126L,	/*   799: "OTT" */
-    1030L,	/*   800: "colortbl" */
-     938L,	/*   801: "zwnj" */
-     310L,	/*   802: "clbgdkcross" */
-      54L,	/*   803: "nosupersub" */
-     476L,	/*   804: "facingp" */
-    1147L,	/*   805: "NTS" */
-     690L,	/*   806: "sbasedon" */
-     942L,	/*   807: "line" */
-     383L,	/*   808: "trbrdrv" */
-     380L,	/*   809: "trbrdrl" */
-     787L,	/*   810: "noline" */
-    1043L,	/*   811: "shpgrp" */
-     670L,	/*   812: "ftnrestart" */
+     684L,	/*   790: "aftnnauc" */
+     970L,	/*   791: "dplinedot" */
+     720L,	/*   792: "cbackgroundone" */
+     444L,	/*   793: "tsbgdcross" */
+     346L,	/*   794: "clpadb" */
+     772L,	/*   795: "sprslnsp" */
+     499L,	/*   796: "dghorigin" */
+     471L,	/*   797: "margr" */
+     317L,	/*   798: "clcfpatraw" */
+    1128L,	/*   799: "OTT" */
+    1032L,	/*   800: "colortbl" */
+     940L,	/*   801: "zwnj" */
+     312L,	/*   802: "clbgdkcross" */
+     645L,	/*   803: "sftnrstcont" */
+     478L,	/*   804: "facingp" */
+    1149L,	/*   805: "NTS" */
+     692L,	/*   806: "sbasedon" */
+     944L,	/*   807: "line" */
+     385L,	/*   808: "trbrdrv" */
+     103L,	/*   809: "pnindent" */
+     789L,	/*   810: "noline" */
+    1045L,	/*   811: "shpgrp" */
+     672L,	/*   812: "ftnrestart" */
      265L,	/*   813: "pnrdate" */
-     553L,	/*   814: "notbrkcnstfrctbl" */
-    1068L,	/*   815: "pntext" */
+    1029L,	/*   814: "shplockanchor" */
+    1070L,	/*   815: "pntext" */
       58L,	/*   816: "scaps" */
      230L,	/*   817: "overlay" */
-     599L,	/*   818: "pgnucltr" */
-     761L,	/*   819: "notabind" */
-     621L,	/*   820: "linex" */
-     479L,	/*   821: "twoonone" */
-    1131L,	/*   822: "OCO" */
+     601L,	/*   818: "pgnucltr" */
+     763L,	/*   819: "notabind" */
+     623L,	/*   820: "linex" */
+     481L,	/*   821: "twoonone" */
+    1133L,	/*   822: "OCO" */
       75L,	/*   823: "pnordt" */
-     715L,	/*   824: "caccentsix" */
-    1162L,	/*   825: "brdrs" */
-     547L,	/*   826: "indrlsweleven" */
-     538L,	/*   827: "newtblstyruls" */
-     348L,	/*   828: "clpadfb" */
+     717L,	/*   824: "caccentsix" */
+    1164L,	/*   825: "brdrs" */
+     671L,	/*   826: "ftnrstpg" */
+     540L,	/*   827: "newtblstyruls" */
+     350L,	/*   828: "clpadfb" */
       98L,	/*   829: "pnbidia" */
-    1012L,	/*   830: "shpright" */
+    1014L,	/*   830: "shpright" */
        5L,	/*   831: "nestrow" */
-     857L,	/*   832: "fnil" */
-    1024L,	/*   833: "shpwr" */
-    1099L,	/*   834: "pnseclvl" */
-     466L,	/*   835: "tblind" */
+     859L,	/*   832: "fnil" */
+    1026L,	/*   833: "shpwr" */
+      60L,	/*   834: "striked" */
+     468L,	/*   835: "tblind" */
      283L,	/*   836: "ashad" */
-     608L,	/*   837: "colno" */
-     475L,	/*   838: "margmirror" */
+     610L,	/*   837: "colno" */
+     685L,	/*   838: "aftnnrlc" */
       92L,	/*   839: "pnzodiac" */
       82L,	/*   840: "pndbnumk" */
-     584L,	/*   841: "margrsxn" */
+     586L,	/*   841: "margrsxn" */
       13L,	/*   842: "up" */
-     829L,	/*   843: "lvltentative" */
-    1048L,	/*   844: "formfield" */
-     401L,	/*   845: "trspdfb" */
-    1006L,	/*   846: "dptxbtlr" */
-     776L,	/*   847: "ight" */
+     831L,	/*   843: "lvltentative" */
+    1050L,	/*   844: "formfield" */
+     403L,	/*   845: "trspdfb" */
+    1008L,	/*   846: "dptxbtlr" */
+     778L,	/*   847: "ight" */
      298L,	/*   848: "clbrdrl" */
       41L,	/*   849: "uldashdd" */
-     331L,	/*   850: "clmrg" */
-     653L,	/*   851: "saftnnalc" */
-     151L,	/*   852: "nowidctlpar" */
-      66L,	/*   853: "impr" */
+     333L,	/*   850: "clmrg" */
+     655L,	/*   851: "saftnnalc" */
+     162L,	/*   852: "ilvl" */
+     124L,	/*   853: "shad" */
       72L,	/*   854: "pnlcltr" */
       31L,	/*   855: "chbgdkbdiag" */
-     842L,	/*   856: "listoverridecount" */
-     779L,	/*   857: "viewkind" */
-    1096L,	/*   858: "aftncn" */
+     844L,	/*   856: "listoverridecount" */
+     781L,	/*   857: "viewkind" */
+    1098L,	/*   858: "aftncn" */
       34L,	/*   859: "b" */
-     764L,	/*   860: "printdata" */
-     333L,	/*   861: "clvmgf" */
-     986L,	/*   862: "dpysize" */
-     642L,	/*   863: "sftnrestart" */
-     360L,	/*   864: "tscnwcell" */
+     766L,	/*   860: "printdata" */
+     624L,	/*   861: "vertalb" */
+     988L,	/*   862: "dpysize" */
+     644L,	/*   863: "sftnrestart" */
+     362L,	/*   864: "tscnwcell" */
       90L,	/*   865: "pngbnuml" */
-    1155L,	/*   866: "PRL" */
-     716L,	/*   867: "chyperlink" */
+    1157L,	/*   866: "PRL" */
+     718L,	/*   867: "chyperlink" */
      156L,	/*   868: "sa" */
-    1066L,	/*   869: "ffexitmcr" */
-     774L,	/*   870: "swpbdr" */
+    1068L,	/*   869: "ffexitmcr" */
+     776L,	/*   870: "swpbdr" */
      294L,	/*   871: "cellx" */
-     930L,	/*   872: "lquote" */
-     695L,	/*   873: "slocked" */
-     634L,	/*   874: "linestarts" */
-     796L,	/*   875: "saveinvalidxml" */
-     386L,	/*   876: "tsbrdrl" */
-      87L,	/*   877: "pnganada" */
-     496L,	/*   878: "dgvspace" */
-     354L,	/*   879: "tscfirstcol" */
-     364L,	/*   880: "trowd" */
-     542L,	/*   881: "doctype" */
-     372L,	/*   882: "trautofit" */
-     862L,	/*   883: "fdecor" */
-    1179L,	/*   884: "brdrthtnlg" */
+     932L,	/*   872: "lquote" */
+     697L,	/*   873: "slocked" */
+     973L,	/*   874: "dpaendhol" */
+     798L,	/*   875: "saveinvalidxml" */
+     388L,	/*   876: "tsbrdrl" */
+     477L,	/*   877: "margmirror" */
+     498L,	/*   878: "dgvspace" */
+     356L,	/*   879: "tscfirstcol" */
+     366L,	/*   880: "trowd" */
+     544L,	/*   881: "doctype" */
+     374L,	/*   882: "trautofit" */
+     864L,	/*   883: "fdecor" */
+    1181L,	/*   884: "brdrthtnlg" */
       95L,	/*   885: "pnchosung" */
      299L,	/*   886: "clbrdrr" */
-    1137L,	/*   887: "NCO" */
-     524L,	/*   888: "alntblind" */
+    1139L,	/*   887: "NCO" */
+     526L,	/*   888: "alntblind" */
      216L,	/*   889: "tposnegy" */
-    1143L,	/*   890: "OTS" */
-    1021L,	/*   891: "shpbypage" */
-     643L,	/*   892: "sftnrstcont" */
-     378L,	/*   893: "trbrdrt" */
-     708L,	/*   894: "green" */
-     744L,	/*   895: "cvmme" */
-     958L,	/*   896: "dpcallout" */
+    1145L,	/*   890: "OTS" */
+    1023L,	/*   891: "shpbypage" */
+     871L,	/*   892: "ftruetype" */
+     380L,	/*   893: "trbrdrt" */
+      28L,	/*   894: "chbgdkhoriz" */
+     746L,	/*   895: "cvmme" */
+     960L,	/*   896: "dpcallout" */
      108L,	/*   897: "pnlvlblt" */
-     546L,	/*   898: "nocxsptable" */
-    1169L,	/*   899: "brdrdashd" */
-     533L,	/*   900: "allowfieldendsel" */
-     846L,	/*   901: "tqr" */
-     425L,	/*   902: "trbgbdiag" */
+     548L,	/*   898: "nocxsptable" */
+    1171L,	/*   899: "brdrdashd" */
+     535L,	/*   900: "allowfieldendsel" */
+     848L,	/*   901: "tqr" */
+     427L,	/*   902: "trbgbdiag" */
      222L,	/*   903: "tdfrmtxtLeft" */
      168L,	/*   904: "bgfdiag" */
-     838L,	/*   905: "listsimple" */
-      36L,	/*   906: "ul" */
-    1070L,	/*   907: "chdate" */
-    1182L,	/*   908: "brdrwavydb" */
-     875L,	/*   909: "wmetafile" */
-     423L,	/*   910: "trbgvert" */
-     511L,	/*   911: "pgbrdrt" */
-     336L,	/*   912: "clshdrawnil" */
-    1022L,	/*   913: "shpbypara" */
+     840L,	/*   905: "listsimple" */
+     163L,	/*   906: "hyphpar" */
+    1072L,	/*   907: "chdate" */
+    1184L,	/*   908: "brdrwavydb" */
+     877L,	/*   909: "wmetafile" */
+     425L,	/*   910: "trbgvert" */
+      36L,	/*   911: "ul" */
+     797L,	/*   912: "ignoremixedcontent" */
+    1024L,	/*   913: "shpbypara" */
       73L,	/*   914: "pnord" */
-     416L,	/*   915: "tscellpaddft" */
+     418L,	/*   915: "tscellpaddft" */
      133L,	/*   916: "faauto" */
-     640L,	/*   917: "saftnstart" */
-     370L,	/*   918: "trkeep" */
-     320L,	/*   919: "clvertalb" */
-     960L,	/*   920: "dpline" */
+     642L,	/*   917: "saftnstart" */
+     372L,	/*   918: "trkeep" */
+     322L,	/*   919: "clvertalb" */
+     962L,	/*   920: "dpline" */
       53L,	/*   921: "ulwave" */
-     937L,	/*   922: "zwj" */
-     491L,	/*   923: "remdttm" */
-     484L,	/*   924: "jcompress" */
-     379L,	/*   925: "trbrdrb" */
-    1174L,	/*   926: "brdrtnthtnsg" */
-     939L,	/*   927: "u" */
-     827L,	/*   928: "levelpicture" */
-     620L,	/*   929: "pgny" */
+     939L,	/*   922: "zwj" */
+     493L,	/*   923: "remdttm" */
+     486L,	/*   924: "jcompress" */
+     381L,	/*   925: "trbrdrb" */
+    1176L,	/*   926: "brdrtnthtnsg" */
+     941L,	/*   927: "u" */
+    1168L,	/*   928: "brdrhair" */
+     622L,	/*   929: "pgny" */
      259L,	/*   930: "frmtxlrtbv" */
      190L,	/*   931: "nosnaplinegrid" */
-     768L,	/*   932: "revprop" */
-     304L,	/*   933: "clbgcross" */
-    1031L,	/*   934: "stylesheet" */
+     770L,	/*   932: "revprop" */
+     306L,	/*   933: "clbgcross" */
+    1033L,	/*   934: "stylesheet" */
      207L,	/*   935: "tposxr" */
       21L,	/*   936: "cb" */
-    1128L,	/*   937: "OOSN" */
-    1046L,	/*   938: "fldrslt" */
-     565L,	/*   939: "ixe" */
-    1062L,	/*   940: "ffformat" */
+    1130L,	/*   937: "OOSN" */
+    1048L,	/*   938: "fldrslt" */
+     567L,	/*   939: "ixe" */
+    1064L,	/*   940: "ffformat" */
      145L,	/*   941: "ql" */
       96L,	/*   942: "pnaiueo" */
       84L,	/*   943: "pndecd" */
      181L,	/*   944: "brdrt" */
-     748L,	/*   945: "formprot" */
-     723L,	/*   946: "cshade" */
-     788L,	/*   947: "sbys" */
+     454L,	/*   945: "tbllkshading" */
+     725L,	/*   946: "cshade" */
+     790L,	/*   947: "sbys" */
       38L,	/*   948: "uld" */
-     967L,	/*   949: "dplinedash" */
-     589L,	/*   950: "titlepg" */
+     969L,	/*   949: "dplinedash" */
+     459L,	/*   950: "tbllklastrow" */
      155L,	/*   951: "sb" */
-     635L,	/*   952: "lndscpsxn" */
-     428L,	/*   953: "trbgdkhor" */
+     637L,	/*   952: "lndscpsxn" */
+     430L,	/*   953: "trbgdkhor" */
       39L,	/*   954: "uldash" */
-     913L,	/*   955: "objocx" */
+     915L,	/*   955: "objocx" */
      153L,	/*   956: "keep" */
-    1110L,	/*   957: "keywords" */
-     505L,	/*   958: "deftab" */
-     737L,	/*   959: "nolnhtadjtbl" */
+    1112L,	/*   957: "keywords" */
+     507L,	/*   958: "deftab" */
+     739L,	/*   959: "nolnhtadjtbl" */
      229L,	/*   960: "nowrap" */
-     818L,	/*   961: "liststylename" */
-    1063L,	/*   962: "ffhelptext" */
-     730L,	/*   963: "lin" */
-     134L,	/*   964: "fahang" */
-     883L,	/*   965: "wbmplanes" */
-     858L,	/*   966: "froman" */
-     926L,	/*   967: "emspace" */
-     473L,	/*   968: "paperw" */
-     910L,	/*   969: "objpub" */
-     674L,	/*   970: "ftnnar" */
-     580L,	/*   971: "pgwsxn" */
-     604L,	/*   972: "ltrsect" */
-     724L,	/*   973: "flddirty" */
-    1166L,	/*   974: "brdrhair" */
-     439L,	/*   975: "tsbgfdiag" */
+     820L,	/*   961: "liststylename" */
+    1065L,	/*   962: "ffhelptext" */
+     732L,	/*   963: "lin" */
+     917L,	/*   964: "objh" */
+     885L,	/*   965: "wbmplanes" */
+     860L,	/*   966: "froman" */
+     527L,	/*   967: "lytcalctblwd" */
+     475L,	/*   968: "paperw" */
+     127L,	/*   969: "webhidden" */
+     676L,	/*   970: "ftnnar" */
+     582L,	/*   971: "pgwsxn" */
+     606L,	/*   972: "ltrsect" */
+     726L,	/*   973: "flddirty" */
+    1056L,	/*   974: "fftypetxt" */
+     441L,	/*   975: "tsbgfdiag" */
      204L,	/*   976: "tposx" */
-    1011L,	/*   977: "shpbottom" */
-     632L,	/*   978: "lineppage" */
+    1013L,	/*   977: "shpbottom" */
+     634L,	/*   978: "lineppage" */
      146L,	/*   979: "qr" */
-     713L,	/*   980: "caccentfour" */
-     590L,	/*   981: "endpg" */
-     551L,	/*   982: "spltpgpar" */
+     715L,	/*   980: "caccentfour" */
+     592L,	/*   981: "endpg" */
+     553L,	/*   982: "spltpgpar" */
        8L,	/*   983: "f" */
-    1039L,	/*   984: "nonshppict" */
-     515L,	/*   985: "pgbrdrhead" */
-     726L,	/*   986: "fldlock" */
+    1041L,	/*   984: "nonshppict" */
+     517L,	/*   985: "pgbrdrhead" */
+    1035L,	/*   986: "listoverridetable" */
      226L,	/*   987: "absw" */
-     740L,	/*   988: "themelangcs" */
-     793L,	/*   989: "validatexml" */
+     742L,	/*   988: "themelangcs" */
+     795L,	/*   989: "validatexml" */
       64L,	/*   990: "ulc" */
      254L,	/*   991: "dfrmtxtx" */
-     625L,	/*   992: "vertalt" */
-     704L,	/*   993: "pca" */
-     947L,	/*   994: "rtlmark" */
-     694L,	/*   995: "shidden" */
-     367L,	/*   996: "trleft" */
-     974L,	/*   997: "dpastartsol" */
-     856L,	/*   998: "tb" */
-     997L,	/*   999: "dpfillfggray" */
-     831L,	/*  1000: "levelold" */
-     603L,	/*  1001: "rtlsect" */
-    1107L,	/*  1002: "author" */
+     627L,	/*   992: "vertalt" */
+     706L,	/*   993: "pca" */
+     949L,	/*   994: "rtlmark" */
+     696L,	/*   995: "shidden" */
+     369L,	/*   996: "trleft" */
+     976L,	/*   997: "dpastartsol" */
+     858L,	/*   998: "tb" */
+     999L,	/*   999: "dpfillfggray" */
+     833L,	/*  1000: "levelold" */
+     605L,	/*  1001: "rtlsect" */
+    1109L,	/*  1002: "author" */
      209L,	/*  1003: "tposxi" */
-     999L,	/*  1004: "dpfillbgcg" */
-     991L,	/*  1005: "dplinecog" */
-     559L,	/*  1006: "adeflang" */
-     341L,	/*  1007: "tscbandsh" */
-     685L,	/*  1008: "aftnnchi" */
+    1001L,	/*  1004: "dpfillbgcg" */
+     828L,	/*  1005: "levelnorestart" */
+     561L,	/*  1006: "adeflang" */
+     633L,	/*  1007: "linemod" */
+     687L,	/*  1008: "aftnnchi" */
       15L,	/*  1009: "chbrdr" */
-    1067L,	/*  1010: "listtext" */
-     863L,	/*  1011: "ftech" */
-    1074L,	/*  1012: "chatn" */
+    1069L,	/*  1010: "listtext" */
+     865L,	/*  1011: "ftech" */
+    1076L,	/*  1012: "chatn" */
       97L,	/*  1013: "pnaiueod" */
-     821L,	/*  1014: "levelnfc" */
-    1150L,	/*  1015: "SAL" */
-     406L,	/*  1016: "trpaddfl" */
-     927L,	/*  1017: "endash" */
+     823L,	/*  1014: "levelnfc" */
+    1152L,	/*  1015: "SAL" */
+    1140L,	/*  1016: "OHC" */
+     929L,	/*  1017: "endash" */
      261L,	/*  1018: "dropcapli" */
-    1114L,	/*  1019: "generator" */
-     414L,	/*  1020: "tscellpaddfl" */
+    1116L,	/*  1019: "generator" */
+     416L,	/*  1020: "tscellpaddfl" */
       17L,	/*  1021: "noproof" */
-     586L,	/*  1022: "guttersxn" */
-     366L,	/*  1023: "trgaph" */
-     907L,	/*  1024: "objlink" */
-     977L,	/*  1025: "dpaendw" */
-     301L,	/*  1026: "clbgvert" */
-     430L,	/*  1027: "trbgdkfdiag" */
-     780L,	/*  1028: "viewscale" */
-     922L,	/*  1029: "objsetsize" */
-     578L,	/*  1030: "headery" */
-     631L,	/*  1031: "linemod" */
-     436L,	/*  1032: "trshdng" */
-     892L,	/*  1033: "piccropb" */
-     525L,	/*  1034: "lytcalctblwd" */
-    1127L,	/*  1035: "OSN" */
+     588L,	/*  1022: "guttersxn" */
+     368L,	/*  1023: "trgaph" */
+     909L,	/*  1024: "objlink" */
+     979L,	/*  1025: "dpaendw" */
+     211L,	/*  1026: "tpvmrg" */
+     663L,	/*  1027: "ftntj" */
+     782L,	/*  1028: "viewscale" */
+     924L,	/*  1029: "objsetsize" */
+    1071L,	/*  1030: "xe" */
+     966L,	/*  1031: "dptxbx" */
+     755L,	/*  1032: "hyphconsec" */
+     545L,	/*  1033: "usenormstyforlist" */
+     382L,	/*  1034: "trbrdrl" */
+    1129L,	/*  1035: "OSN" */
        4L,	/*  1036: "nestcell" */
      177L,	/*  1037: "bgdkdcross" */
-     340L,	/*  1038: "tscellpct" */
-     131L,	/*  1039: "charscalex" */
-     880L,	/*  1040: "wbitmap" */
-      28L,	/*  1041: "chbgdkhoriz" */
-     712L,	/*  1042: "caccentthree" */
+     636L,	/*  1038: "linestarts" */
+     342L,	/*  1039: "tscellpct" */
+     882L,	/*  1040: "wbitmap" */
+     847L,	/*  1041: "tql" */
+     714L,	/*  1042: "caccentthree" */
       61L,	/*  1043: "ltrch" */
-     225L,	/*  1044: "tdfrmtxtBottom" */
-     169L,	/*  1045: "bgbdiag" */
+     854L,	/*  1044: "tlth" */
+    1102L,	/*  1045: "bkmkstart" */
      102L,	/*  1046: "pnqr" */
-     845L,	/*  1047: "tql" */
-     915L,	/*  1048: "objh" */
-     721L,	/*  1049: "ctexttwo" */
-    1052L,	/*  1050: "ffprot" */
-    1047L,	/*  1051: "datafield" */
-     928L,	/*  1052: "enspace" */
-     656L,	/*  1053: "saftnnruc" */
-     504L,	/*  1054: "pgnstart" */
-     280L,	/*  1055: "alang" */
-    1051L,	/*  1056: "ffownstat" */
-    1148L,	/*  1057: "SEH" */
+    1175L,	/*  1047: "brdrthtnsg" */
+     426L,	/*  1048: "trbgfdiag" */
+    1126L,	/*  1049: "nofcharsws" */
+    1054L,	/*  1050: "ffprot" */
+     902L,	/*  1051: "blipupi" */
+     930L,	/*  1052: "enspace" */
+      54L,	/*  1053: "nosupersub" */
+     506L,	/*  1054: "pgnstart" */
+     522L,	/*  1055: "splytwnine" */
+    1053L,	/*  1056: "ffownstat" */
+     959L,	/*  1057: "dparc" */
       14L,	/*  1058: "dn" */
-     507L,	/*  1059: "stshfdbch" */
-     706L,	/*  1060: "deflang" */
-     107L,	/*  1061: "pnlvl" */
-     703L,	/*  1062: "pc" */
+     509L,	/*  1059: "stshfdbch" */
+     708L,	/*  1060: "deflang" */
+     850L,	/*  1061: "tqdec" */
+     705L,	/*  1062: "pc" */
       80L,	/*  1063: "pndbnuml" */
-     896L,	/*  1064: "picscaled" */
-     183L,	/*  1065: "brdrl" */
+     898L,	/*  1064: "picscaled" */
+     377L,	/*  1065: "trqc" */
      232L,	/*  1066: "phmrg" */
-     948L,	/*  1067: "page" */
-     555L,	/*  1068: "krnprsnet" */
-     984L,	/*  1069: "dodhgt" */
-    1065L,	/*  1070: "ffentrymcr" */
-    1010L,	/*  1071: "shptop" */
-     757L,	/*  1072: "linkstyles" */
-    1108L,	/*  1073: "company" */
-     848L,	/*  1074: "tqdec" */
-     966L,	/*  1075: "dplinehollow" */
+     591L,	/*  1067: "titlepg" */
+    1025L,	/*  1068: "shpbyignore" */
+     986L,	/*  1069: "dodhgt" */
+    1067L,	/*  1070: "ffentrymcr" */
+    1012L,	/*  1071: "shptop" */
+     759L,	/*  1072: "linkstyles" */
+      66L,	/*  1073: "impr" */
+    1120L,	/*  1074: "operator" */
+     968L,	/*  1075: "dplinehollow" */
      141L,	/*  1076: "ls" */
-    1138L,	/*  1077: "OHC" */
-     733L,	/*  1078: "langfe" */
-    1061L,	/*  1079: "ffdeftext" */
-     980L,	/*  1080: "dparcflipx" */
-     800L,	/*  1081: "min" */
-    1100L,	/*  1082: "bkmkstart" */
-     449L,	/*  1083: "tscellcfpat" */
-    1118L,	/*  1084: "operator" */
-     916L,	/*  1085: "objscalex" */
-     454L,	/*  1086: "tbllkcolor" */
+     490L,	/*  1077: "trackformatting" */
+     735L,	/*  1078: "langfe" */
+     165L,	/*  1079: "itap" */
+     951L,	/*  1080: "column" */
+     903L,	/*  1081: "rsltrtf" */
+     515L,	/*  1082: "pgbrdrl" */
+     451L,	/*  1083: "tscellcfpat" */
+      87L,	/*  1084: "pnganada" */
+     918L,	/*  1085: "objscalex" */
+     456L,	/*  1086: "tbllkcolor" */
       24L,	/*  1087: "chbgfdiag" */
-    1180L,	/*  1088: "brdrtnthtnlg" */
-     878L,	/*  1089: "emfblip" */
-     318L,	/*  1090: "clvertalt" */
-     669L,	/*  1091: "ftnrstpg" */
-     543L,	/*  1092: "usenormstyforlist" */
-     581L,	/*  1093: "pghsxn" */
-     943L,	/*  1094: "lbr" */
-     681L,	/*  1095: "aftnnalc" */
+    1182L,	/*  1088: "brdrtnthtnlg" */
+     880L,	/*  1089: "emfblip" */
+     320L,	/*  1090: "clvertalt" */
+     829L,	/*  1091: "levelpicture" */
+     728L,	/*  1092: "fldlock" */
+     583L,	/*  1093: "pghsxn" */
+     945L,	/*  1094: "lbr" */
+     683L,	/*  1095: "aftnnalc" */
      227L,	/*  1096: "absh" */
       76L,	/*  1097: "pndbnum" */
        0L,	/*  1098: "par" */
      114L,	/*  1099: "cgrid" */
-    1023L,	/*  1100: "shpbyignore" */
+     465L,	/*  1100: "lastrow" */
       22L,	/*  1101: "chbghoriz" */
-     917L,	/*  1102: "objscaley" */
-     548L,	/*  1103: "noafcnsttbl" */
-     377L,	/*  1104: "ltrrow" */
+     919L,	/*  1102: "objscaley" */
+     550L,	/*  1103: "noafcnsttbl" */
+     379L,	/*  1104: "ltrrow" */
       12L,	/*  1105: "cs" */
-     619L,	/*  1106: "pgnx" */
-     305L,	/*  1107: "clbgdcross" */
-     697L,	/*  1108: "spersonal" */
-     600L,	/*  1109: "pgnlcltr" */
-     900L,	/*  1110: "blipupi" */
-    1181L,	/*  1111: "brdrwavy" */
-     919L,	/*  1112: "objcropb" */
-    1173L,	/*  1113: "brdrthtnsg" */
-     583L,	/*  1114: "margtsxn" */
+     408L,	/*  1106: "trpaddfl" */
+     982L,	/*  1107: "dparcflipx" */
+    1150L,	/*  1108: "SEH" */
+     602L,	/*  1109: "pgnlcltr" */
+    1183L,	/*  1110: "brdrwavy" */
+     912L,	/*  1111: "objpub" */
+     921L,	/*  1112: "objcropb" */
+     393L,	/*  1113: "tsbrdrdgr" */
+     585L,	/*  1114: "margtsxn" */
       67L,	/*  1115: "pnstart" */
-     765L,	/*  1116: "psover" */
-    1036L,	/*  1117: "pn" */
-     385L,	/*  1118: "tsbrdrb" */
+     301L,	/*  1116: "cldgll" */
+    1038L,	/*  1117: "pn" */
+     387L,	/*  1118: "tsbrdrb" */
       74L,	/*  1119: "pncard" */
-     691L,	/*  1120: "snext" */
+     693L,	/*  1120: "snext" */
      128L,	/*  1121: "kerning" */
      123L,	/*  1122: "revised" */
      116L,	/*  1123: "outl" */
-     962L,	/*  1124: "dppolyline" */
-     904L,	/*  1125: "rsltbmp" */
+     964L,	/*  1124: "dppolyline" */
+     906L,	/*  1125: "rsltbmp" */
      236L,	/*  1126: "posnegx" */
       51L,	/*  1127: "ululdbwave" */
      199L,	/*  1128: "contextualspace" */
-     319L,	/*  1129: "clvertalc" */
-     720L,	/*  1130: "cbackgroundtwo" */
-     394L,	/*  1131: "trspdl" */
-     751L,	/*  1132: "hyphauto" */
+     131L,	/*  1129: "charscalex" */
+     722L,	/*  1130: "cbackgroundtwo" */
+    1019L,	/*  1131: "shpbxpage" */
+     753L,	/*  1132: "hyphauto" */
       18L,	/*  1133: "chcfpat" */
      238L,	/*  1134: "posxr" */
       20L,	/*  1135: "chshdng" */
-      59L,	/*  1136: "strike" */
-     700L,	/*  1137: "sunhideused" */
-     657L,	/*  1138: "saftnnchi" */
-     985L,	/*  1139: "dpxsize" */
-     498L,	/*  1140: "dgvorigin" */
+     234L,	/*  1136: "phcol" */
+     107L,	/*  1137: "pnlvl" */
+     659L,	/*  1138: "saftnnchi" */
+     987L,	/*  1139: "dpxsize" */
+     500L,	/*  1140: "dgvorigin" */
      161L,	/*  1141: "outlinelevel" */
-    1112L,	/*  1142: "doccomm" */
-     901L,	/*  1143: "rsltrtf" */
-     450L,	/*  1144: "tscellcbpat" */
-     895L,	/*  1145: "defshp" */
-    1033L,	/*  1146: "listoverridetable" */
+    1114L,	/*  1142: "doccomm" */
+     856L,	/*  1143: "jclisttab" */
+     452L,	/*  1144: "tscellcbpat" */
+     897L,	/*  1145: "defshp" */
+     791L,	/*  1146: "subdocument" */
      239L,	/*  1147: "posxc" */
-     661L,	/*  1148: "ftntj" */
-     972L,	/*  1149: "dpaendsol" */
-     443L,	/*  1150: "tsbgdkhor" */
-     996L,	/*  1151: "dpfillfgcb" */
-    1109L,	/*  1152: "subject" */
-     368L,	/*  1153: "trrh" */
-     887L,	/*  1154: "picwgoal" */
+     513L,	/*  1148: "pgbrdrt" */
+     974L,	/*  1149: "dpaendsol" */
+     445L,	/*  1150: "tsbgdkhor" */
+     375L,	/*  1151: "trql" */
+    1111L,	/*  1152: "subject" */
+     370L,	/*  1153: "trrh" */
+     889L,	/*  1154: "picwgoal" */
      184L,	/*  1155: "brdrr" */
      152L,	/*  1156: "widctlpar" */
-     969L,	/*  1157: "dplinedado" */
-      99L,	/*  1158: "pnbidib" */
-     539L,	/*  1159: "nogrowautofit" */
-     734L,	/*  1160: "langfenp" */
-     753L,	/*  1161: "hyphconsec" */
-     630L,	/*  1162: "linecont" */
-     741L,	/*  1163: "allprot" */
-     611L,	/*  1164: "linebetcol" */
-    1026L,	/*  1165: "shpfblwtxt" */
-    1027L,	/*  1166: "shplockanchor" */
-     456L,	/*  1167: "tbllkhdrrows" */
-    1146L,	/*  1168: "NTP" */
-     527L,	/*  1169: "lnbrkrule" */
-     602L,	/*  1170: "pgnrestart" */
-    1190L,	/*  1171: "brdrtbl" */
-     766L,	/*  1172: "revbar" */
-     989L,	/*  1173: "dppolycount" */
-     902L,	/*  1174: "rslttxt" */
-    1069L,	/*  1175: "xe" */
-     975L,	/*  1176: "dpaendl" */
-     654L,	/*  1177: "saftnnauc" */
-     514L,	/*  1178: "pgbrdrr" */
-     617L,	/*  1179: "sectdefaultcl" */
-     995L,	/*  1180: "dpfillfgcg" */
-     633L,	/*  1181: "linerestart" */
-     330L,	/*  1182: "clmgf" */
+     971L,	/*  1157: "dplinedado" */
+     900L,	/*  1158: "picbmp" */
+     264L,	/*  1159: "pnrauth" */
+     736L,	/*  1160: "langfenp" */
+    1158L,	/*  1161: "SelOpen" */
+     632L,	/*  1162: "linecont" */
+     343L,	/*  1163: "tscbandsh" */
+     613L,	/*  1164: "linebetcol" */
+     396L,	/*  1165: "trspdl" */
+     723L,	/*  1166: "ctexttwo" */
+     458L,	/*  1167: "tbllkhdrrows" */
+    1148L,	/*  1168: "NTP" */
+     529L,	/*  1169: "lnbrkrule" */
+     604L,	/*  1170: "pgnrestart" */
+    1192L,	/*  1171: "brdrtbl" */
+     768L,	/*  1172: "revbar" */
+     991L,	/*  1173: "dppolycount" */
+     767L,	/*  1174: "psover" */
+     993L,	/*  1175: "dplinecog" */
+     977L,	/*  1176: "dpaendl" */
+     656L,	/*  1177: "saftnnauc" */
+    1049L,	/*  1178: "datafield" */
+     516L,	/*  1179: "pgbrdrr" */
+     997L,	/*  1180: "dpfillfgcg" */
+    1080L,	/*  1181: "NeXTGraphic" */
+     332L,	/*  1182: "clmgf" */
      119L,	/*  1183: "crdate" */
-     219L,	/*  1184: "tposyin" */
-    1017L,	/*  1185: "shpbxpage" */
-     355L,	/*  1186: "tsclastcol" */
-     973L,	/*  1187: "dpastarthol" */
-     957L,	/*  1188: "dparc" */
+    1110L,	/*  1184: "company" */
+     673L,	/*  1185: "ftnrstcont" */
+     357L,	/*  1186: "tsclastcol" */
+     501L,	/*  1187: "dghshow" */
+     743L,	/*  1188: "allprot" */
      203L,	/*  1189: "tphcol" */
      148L,	/*  1190: "qc" */
-     949L,	/*  1191: "column" */
+     928L,	/*  1191: "emspace" */
+     183L,	/*  1192: "brdrl" */
+     557L,	/*  1193: "krnprsnet" */
     };
 
 /* The hash function */

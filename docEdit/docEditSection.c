@@ -21,12 +21,12 @@
 
 /************************************************************************/
 
-static int docCopySectHdFt(	struct DocumentTree *		eiTo,
-				struct BufferDocument *	bdTo,
+static int docCopySectHdFt(	struct DocumentTree *		dtTo,
+				struct BufferDocument *		bdTo,
 				const struct BufferItem *	bodySectNode,
-				struct BufferDocument *	bdFrom,
+				struct BufferDocument *		bdFrom,
 				struct DocumentTree *		dtFrom,
-				int			treeType )
+				int				treeType )
     {
     int			rval= 0;
 
@@ -36,7 +36,7 @@ static int docCopySectHdFt(	struct DocumentTree *		eiTo,
     docInitEditOperation( &eo );
     docInitDocumentCopyJob( &dcj );
 
-    docEraseDocumentTree( bdTo, eiTo );
+    docEraseDocumentTree( bdTo, dtTo );
 
     if  ( dtFrom->dtRoot )
 	{
@@ -47,12 +47,12 @@ static int docCopySectHdFt(	struct DocumentTree *		eiTo,
 	struct BufferItem *	rootNodeFrom= dtFrom->dtRoot;
 	const int	from= 0;
 
-	rootNodeTo= docMakeTreeRoot( bdTo, eiTo,
+	rootNodeTo= docMakeTreeRoot( bdTo, dtTo,
 					bodySectNode, ownerNumber, treeType );
 	if  ( ! rootNodeTo )
 	    { XDEB(rootNodeTo); rval= -1; goto ready;	}
 
-	eo.eoTree= eiTo;
+	eo.eoTree= dtTo;
 	eo.eoDocument= bdTo;
 	eo.eoSelectionScope= rootNodeTo->biSectSelectionScope;
 
@@ -155,9 +155,9 @@ int docCopySectHeadersFooters(	struct BufferItem *		sectNodeTo,
     }
 
 int docCopySectDescription(	struct BufferItem *		sectNodeTo,
-				struct BufferDocument *	bdTo,
+				struct BufferDocument *		bdTo,
 				const struct BufferItem *	sectNodeFrom,
-				struct BufferDocument *	bdFrom )
+				struct BufferDocument *		bdFrom )
     {
     if  ( sectNodeFrom->biTreeType == DOCinBODY			&&
 	  docCopySectHeadersFooters( sectNodeTo, bdTo, sectNodeFrom, bdFrom ) )

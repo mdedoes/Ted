@@ -12,6 +12,7 @@
 #   include	"docIntermediaryDocument.h"
 #   include	<docTreeNode.h>
 #   include	<docBuf.h>
+#   include	<docDocument.h>
 
 #   include	<appDebugon.h>
 

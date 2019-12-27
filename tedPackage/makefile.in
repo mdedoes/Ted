@@ -12,8 +12,8 @@ PREFIX=		@PREFIX@
 
 #
 #		Name of the binary arrchive
-VERSION=	2.23h
-BINDIST=	ted-2.23h-$(PLATFORM)
+VERSION=	2.23nx
+BINDIST=	ted-$(VERSION)-$(PLATFORM)
 TGZ=		$(BINDIST).tar.gz
 #
 #

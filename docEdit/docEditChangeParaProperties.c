@@ -19,7 +19,6 @@
 #   include	<utilPropMask.h>
 #   include	<docFields.h>
 #   include	<docAttributes.h>
-#   include	<docBuf.h>
 #   include	<docParaParticuleAdmin.h>
 
 #   include	<appDebugon.h>

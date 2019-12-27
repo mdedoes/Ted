@@ -15,6 +15,7 @@ struct DocumentGeometry;
 struct MemoryBuffer;
 struct BufferDocument;
 struct DocumentRectangle;
+struct TedDocument;
 
 /************************************************************************/
 /*									*/
@@ -36,7 +37,13 @@ extern int tedSaveDocument(	struct EditApplication *	ea,
 				const struct MemoryBuffer *	filename,
 				int				isDocName );
 
-extern void * tedMakePrivateData( const struct EditApplication *	ea  );
+int tedSaveDocumentToStream(	struct EditApplication *	ea,
+				DrawingSurface			ds,
+				struct SimpleOutputStream *	sos,
+				struct TedDocument *		td,
+				int				format,
+				const struct MemoryBuffer *	documentTitle,
+				const struct MemoryBuffer *	filename );
 
 extern int tedNewDocument(	struct EditDocument *		ed,
 				const struct MemoryBuffer *	filename );
@@ -76,8 +83,9 @@ extern int tedOpenDocument(	struct EditApplication *		ea,
 extern void tedMakeDocumentReadonly(	struct EditDocument *	ed,
 					int		readonly );
 
-extern int tedLayoutDocument(	struct DocumentRectangle *		drScreen,
-				struct DocumentRectangle *		drVisible,
+extern int tedLayoutDocument(	const struct EditApplication *	ea,
+				struct DocumentRectangle *	drScreen,
+				struct DocumentRectangle *	drVisible,
 				void *				privateData,
 				int				format,
 				DrawingSurface			ds,

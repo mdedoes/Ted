@@ -10,6 +10,7 @@
 #   include	"docLayout.h"
 #   include	"docLayoutStopCode.h"
 #   include	"docStripLayoutJob.h"
+#   include	"layoutContext.h"
 #   include	<docPageGrid.h>
 #   include	<docTreeType.h>
 #   include	<docTreeNode.h>
@@ -128,7 +129,7 @@ static int docLayoutGetChildFrame(
 /************************************************************************/
 /*									*/
 /*  Layout as much of a series of paragraphs and child rows as fit on	*/
-/*  the current page. (Actually the column on the page).		*/
+/*  the current page. (Actually the newspaper style column on the page).*/
 /*									*/
 /*  a)  Do not format children that belong to different frames.		*/
 /*									*/
@@ -140,7 +141,7 @@ int docLayoutStripChildren(	int *				pStopCode,
 				struct BufferItem *		cellNode )
     {
     const LayoutJob *		lj= plj->pljLayoutJob;
-    const LayoutContext *	lc= &(lj->ljContext);
+    const LayoutContext *	lc= lj->ljContext;
     ParagraphLayoutPosition *	plp= &(plj->pljPos);
     const int			childFrom= plp->pspChild;
     struct BufferItem *		childNode= cellNode->biChildren[childFrom];
@@ -331,27 +332,31 @@ static int docCommitStripAtExplicitPageBreak(
     {
     if  ( plp1->pspChild < cellNode->biChildCount )
 	{
-	const struct BufferItem *	paraNode1;
-	int				line1= plp1->pspLine;
+	const struct BufferItem *	childNode1;
 
-	paraNode1= cellNode->biChildren[plp1->pspChild];
+	childNode1= cellNode->biChildren[plp1->pspChild];
 
-	if  ( line1 == 0						&&
-	      paraNode1->biParaProperties->ppBreakKind != DOCibkNONE	)
+	if  ( childNode1->biLevel == DOClevPARA )
 	    {
-	    *plp0= *plp1;
-	    return 1;
-	    }
+	    int				line1= plp1->pspLine;
 
-	if  ( line1- 1 >= 0				&&
-	      line1- 1 < paraNode1->biParaLineCount	)
-	    {
-	    const TextLine *	tl= paraNode1->biParaLines+ line1- 1;
-
-	    if  ( tl->tlFlags & TLflagBLOCKBREAK )
+	    if  ( line1 == 0						&&
+		  childNode1->biParaProperties->ppBreakKind != DOCibkNONE )
 		{
 		*plp0= *plp1;
 		return 1;
+		}
+
+	    if  ( line1- 1 >= 0					&&
+		  line1- 1 < childNode1->biParaLineCount	)
+		{
+		const TextLine *	tl= childNode1->biParaLines+ line1- 1;
+
+		if  ( tl->tlFlags & TLflagBLOCKBREAK )
+		    {
+		    *plp0= *plp1;
+		    return 1;
+		    }
 		}
 	    }
 	}
@@ -367,18 +372,17 @@ static int docCommitStripAtLegalPosition(
     {
     if  ( plp1->pspChild < cellNode->biChildCount )
 	{
-	const struct BufferItem *	paraNode1;
+	const struct BufferItem *	childNode1;
 
-	paraNode1= cellNode->biChildren[plp1->pspChild];
+	childNode1= cellNode->biChildren[plp1->pspChild];
 
-	if  ( paraNode1->biLevel == DOClevPARA			&& /*!nestrow*/
-	      ! paraNode1->biParaProperties->ppKeepOnPage	&&
-	      ! paraNode1->biParaProperties->ppKeepWithNext	&&
-	      plp1->pspLine > 0		)
+	if  ( childNode1->biLevel == DOClevPARA			&& /*!nestrow*/
+	      ! PP_IS_ONE_PAGE( childNode1->biParaProperties )	&&
+	      plp1->pspLine > 0					)
 	    {
 	    int		line= 1;
 
-	    if  ( paraNode1->biParaProperties->ppWidowControl )
+	    if  ( childNode1->biParaProperties->ppWidowControl )
 		{ line++;	}
 
 	    if  ( plp1->pspLine >= line )
@@ -386,6 +390,14 @@ static int docCommitStripAtLegalPosition(
 		*plp0= *plp1;
 		return 1;
 		}
+	    }
+
+	/* TODO: Ignores /trkeep,/trkeepn etc */
+	if  ( childNode1->biLevel == DOClevROW ) /* nestrow */
+	    {
+	    plp0->pspChild= plp1->pspChild;
+	    plp0->pspChildAdvanced= plp1->pspChildAdvanced;
+	    return 1;
 	    }
 	}
 
@@ -396,8 +408,7 @@ static int docCommitStripAtLegalPosition(
 static const struct BufferItem * docCommitParagraphsBeforeFrame(
 				ParagraphLayoutPosition *	plp0,
 				const ParagraphLayoutPosition *	plp1,
-				int				page,
-				int				column,
+				const struct LayoutPosition *	lpHere,
 				const struct BufferItem *	cellNode )
     {
     const struct BufferItem *	paraNode0;
@@ -406,8 +417,8 @@ static const struct BufferItem * docCommitParagraphsBeforeFrame(
 
     while( plp0->pspChild < plp1->pspChild )
 	{
-	if  ( docCompareLayoutPositionToFrame( &(paraNode0->biBelowPosition),
-							page, column ) >= 0 )
+	if  ( docCompareLayoutPositionFrames( &(paraNode0->biBelowPosition),
+							lpHere ) >= 0 )
 	    { break;	}
 
 	docStripLayoutNextChild( plp0 );
@@ -421,8 +432,7 @@ static const struct BufferItem * docCommitParagraphsBeforeFrame(
 static void docCommitLinesBeforeFrame(
 				ParagraphLayoutPosition *	plp0,
 				const ParagraphLayoutPosition *	plp1,
-				int				page,
-				int				column,
+				const struct LayoutPosition *	lpHere,
 				const struct BufferItem *	paraNode0 )
     {
     int				line0;
@@ -435,8 +445,8 @@ static void docCommitLinesBeforeFrame(
     tl= paraNode0->biParaLines+ plp0->pspLine;
     while( plp0->pspLine < line0 && plp0->pspLine < paraNode0->biParaLineCount )
 	{
-	if  ( docCompareLayoutPositionToFrame( &(tl->tlTopPosition),
-							page, column ) >= 0 )
+	if  ( docCompareLayoutPositionFrames( &(tl->tlTopPosition),
+								lpHere ) >= 0 )
 	    { break;	}
 
 	plp0->pspLine++; tl++;
@@ -481,22 +491,20 @@ static int docCommitStripToAvoidOrphan(
     {
     if  ( plp1->pspChild < cellNode->biChildCount )
 	{
-	const struct BufferItem *	paraNode1;
+	const struct BufferItem *	childNode1;
 
-	paraNode1= cellNode->biChildren[plp1->pspChild];
+	childNode1= cellNode->biChildren[plp1->pspChild];
 
 	if  ( ! advanceAnyway					&&
-	      paraNode1->biLevel == DOClevPARA			&&
-	      paraNode1->biParaProperties->ppWidowControl	&&
+	      childNode1->biLevel == DOClevPARA			&&
+	      childNode1->biParaProperties->ppWidowControl	&&
 	      plp1->pspLine == 1				&&
-	      paraNode1->biParaLineCount >= 1		)
+	      childNode1->biParaLineCount >= 1			)
 	    {
-	    const TextLine *		tl;
-
-	    tl= paraNode1->biParaLines+ 0;
+	    const TextLine *		tl= childNode1->biParaLines+ 0;
 
 	    if  ( tl->tlFirstParticule+ tl->tlParticuleCount <
-					paraNode1->biParaParticuleCount	)
+				childNode1->biParaParticuleCount	)
 		{
 		docStripLayoutStartChild( plp0, plp0->pspChild );
 		return 1;
@@ -511,8 +519,7 @@ static void docCommitStripLayout_x(
 				ParagraphLayoutPosition *	plp0,
 				const ParagraphLayoutPosition *	plp1,
 				const int			advanceAnyway,
-				int				page,
-				int				column,
+				const struct LayoutPosition *	lpHere,
 				const struct BufferItem *	cellNode )
     {
     const struct BufferItem *	paraNode0;
@@ -531,10 +538,9 @@ static void docCommitStripLayout_x(
 	{ return;	}
 
     /*  1  */
-    paraNode0= docCommitParagraphsBeforeFrame( plp0, plp1,
-						    page, column, cellNode );
+    paraNode0= docCommitParagraphsBeforeFrame( plp0, plp1, lpHere, cellNode );
     /*  2  */
-    docCommitLinesBeforeFrame( plp0, plp1, page, column, paraNode0 );
+    docCommitLinesBeforeFrame( plp0, plp1, lpHere, paraNode0 );
 
     /*  3  */
     paraNode0= docCommitParagraphsNoKeepNext( plp0, plp1, advanceAnyway,
@@ -545,23 +551,23 @@ static void docCommitStripLayout_x(
 	{ return;	}
 
     if  ( plp0->pspChild != plp1->pspChild )
-	{ LLLLDEB(page,column,plp0->pspChild,plp1->pspChild );	}
+	{
+	LLLLDEB(lpHere->lpPage,lpHere->lpColumn,plp0->pspChild,plp1->pspChild );	}
 
     if  ( plp0->pspChild >= cellNode->biChildCount )
 	{ return;	}
 
     /*  5  */
-    if  ( ! advanceAnyway					&&
+    if  ( ! advanceAnyway						&&
 	  ( paraNode0->biLevel != DOClevPARA			||
-	    paraNode0->biParaProperties->ppKeepOnPage		||
-	    paraNode0->biParaProperties->ppKeepWithNext	)	)
+	    PP_IS_ONE_PAGE( paraNode0->biParaProperties )	)	)
 	{
 	docStripLayoutStartChild( plp0, plp0->pspChild );
 	return;
 	}
 
     /*  6  */
-    if  ( docCommitStripToAvoidOrphan( plp0, plp1, advanceAnyway,cellNode ) )
+    if  ( docCommitStripToAvoidOrphan( plp0, plp1, advanceAnyway, cellNode ) )
 	{ return;	}
 
     /*  7  */
@@ -588,28 +594,10 @@ static void docCommitStripLayout_x(
     (plpt)->pspLine= (plpf)->pspLine; \
     }
 
-static int docCompareLayoutProgress(
-			const ParagraphLayoutPosition *	plp0,
-			const ParagraphLayoutPosition *	plp1 )
-    {
-    if  ( plp1->pspChild > plp0->pspChild )
-	{ return  1;	}
-    if  ( plp1->pspChild < plp0->pspChild )
-	{ return -1;	}
-
-    if  ( plp1->pspPart > plp0->pspPart )
-	{ return  1;	}
-    if  ( plp1->pspPart < plp0->pspPart )
-	{ return -1;	}
-
-    return 0;
-    }
-
 void docCommitStripLayout(	int *				pAdvanced,
 				const int			advanceAnyway,
 				ParagraphLayoutJob *		plj,
-				int				page,
-				int				column,
+				const struct LayoutPosition *	lpHere,
 				const struct BufferItem *	cellNode )
     {
     int				advanced= 0;
@@ -618,7 +606,7 @@ void docCommitStripLayout(	int *				pAdvanced,
     plp0= plj->pljPos0;
 
     docCommitStripLayout_x( &plp0, &(plj->pljPos),
-				    advanceAnyway, page, column, cellNode );
+				    advanceAnyway, lpHere, cellNode );
 
     advanced= ( docCompareLayoutProgress( &plp0, &(plj->pljPos0) ) < 0 );
     if  ( advanced )
@@ -653,14 +641,13 @@ void docCommitStripLayout(	int *				pAdvanced,
 /************************************************************************/
 
 void docFindStripLayoutOrigin(	ParagraphLayoutJob *		plj,
-				int				page,
-				int				column,
+				const struct LayoutPosition *	lpHere,
 				const struct BufferItem *	cellNode )
     {
     int				advanceAnyway= 0;
 
     docCommitStripLayout_x( &(plj->pljPos0), &(plj->pljPos),
-					advanceAnyway, page, column, cellNode );
+					advanceAnyway, lpHere, cellNode );
 
     return;
     }
@@ -692,16 +679,20 @@ static void logLayoutProgress(  const char *			head,
 /*  Format the lines in a series of paragraphs. On the way keep an	*/
 /*  administration on where to restart formatting at a page break.	*/
 /*									*/
-/*  1)  Place as much as fits on the first page.			*/
-/*  2)  While unformatted paragraphs remain: place some more on		*/
-/*	subsequent pages.						*/
-/*  3)  First place the footnotes on the page.				*/
+/*  1)  Place as much as fits in the first frame (page,column).		*/
+/*  2)  While unformatted paragraphs remain: place some more in		*/
+/*	subsequent frames.						*/
+/*  3)  First place the footnotes in the frame.				*/
 /*  4)  Then find out where to restart the layout job on the next page	*/
 /*	Widow/Orphan control etc can cause some of the text that we	*/
 /*	already formatted to go to the next page.			*/
-/*  5)  Skip to the next page.						*/
-/*  6)  Determine available space on the next page.			*/
-/*  7)  Place as much as fits on the next page.				*/
+/*  5)  Skip to the next frame.						*/
+/*  5a) If we already are at the head of the frame, it does not make	*/
+/*	sense to skip to the next frame to make things fit.		*/
+/*  5b) If even that does not help.. Skip the offending paragraph to	*/
+/*	prevent loops.							*/
+/*  6)  Determine available space in the next frame.			*/
+/*  7)  Place as much as fits in the next frame.			*/
 /*									*/
 /************************************************************************/
 
@@ -711,7 +702,6 @@ int docLayoutStackedStrip(	struct BufferItem *		parentNode,
     {
     LayoutPosition		lpPrevRound;
 
-    int				advanceAnyway= 0;
     int				stopCode= FORMATstopREADY;
 
     lpPrevRound= plj->pljPos.plpPos;
@@ -747,10 +737,11 @@ int docLayoutStackedStrip(	struct BufferItem *		parentNode,
 	    { LDEB(1); return -1;	}
 
 	/*  4  */
-	advanceAnyway= plj->pljPos.plpPos.lpPage > lpPrevRound.lpPage;
+	{
+	const int advanceAnyway= 0;
 	docCommitStripLayout( &advanced, advanceAnyway, plj,
-				lpPrevRound.lpPage, lpPrevRound.lpColumn,
-				parentNode );
+						&lpPrevRound, parentNode );
+	}
 
 #	if DEBUG_PROGRESS
 	logLayoutProgress( "--------", parentNode, plj );
@@ -760,6 +751,30 @@ int docLayoutStackedStrip(	struct BufferItem *		parentNode,
 	switch( stopCode )
 	    {
 	    case FORMATstopBLOCK_FULL:
+		/*  5a  */
+		if  ( ! advanced && lpPrevRound.lpAtTopOfColumn )
+		    {
+		    const int advanceAnyway= 1;
+		    docCommitStripLayout( &advanced, advanceAnyway, plj,
+						&lpPrevRound, parentNode );
+		    /*  5b  */
+		    if  ( ! advanced )
+			{
+			LDEB(advanced);
+			LPOSDEB(&lpPrevRound);
+			LPOSDEB(&(plj->pljPos0.plpPos));
+			LPOSDEB(&(plj->pljPos.plpPos));
+			RECTDEB(
+			    &(plj->pljPos.plpParagraphFrame.pfParaContentRect));
+
+			docStripLayoutNextChild( &(plj->pljPos) );
+			docSetLayoutProgress( &(plj->pljPos0), &(plj->pljPos) );
+
+			if  ( docLayoutStripDone( &(plj->pljPos), plj ) )
+			    { break;	}
+			}
+		    }
+
 		docLayoutToNextColumn( &(plj->pljPos.plpPos),
 					bf, parentNode, plj->pljLayoutJob );
 		break;
@@ -786,22 +801,6 @@ int docLayoutStackedStrip(	struct BufferItem *		parentNode,
 	    default:
 		LLDEB(stopCode,advanced);
 		break;
-	    }
-
-	if  ( ! advanced )
-	    {
-	    if  ( advanceAnyway )
-		{
-		RECTDEB(&(plj->pljPos.plpParagraphFrame.pfParaContentRect));
-
-		docStripLayoutNextChild( &(plj->pljPos) );
-		docSetLayoutProgress( &(plj->pljPos0), &(plj->pljPos) );
-
-		if  ( docLayoutStripDone( &(plj->pljPos), plj ) )
-		    { break;	}
-		}
-
-	    docSetLayoutProgress( &(plj->pljPos), &(plj->pljPos0) );
 	    }
 
 	/*  6  */

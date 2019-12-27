@@ -7,9 +7,8 @@
 #   include	"docDebug.h"
 #   include	<docTextParticule.h>
 #   include	<docTextLine.h>
+#   include	<docTreeType.h>
 #   include	"docDocumentNote.h"
-#   include	<fontDocFontList.h>
-#   include	<fontDocFont.h>
 
 #   include	<appDebugon.h>
 
@@ -133,22 +132,5 @@ void docListNotes(	const struct BufferDocument *	bd )
 	}
 
     return;
-    }
-
-void docListFontList( const DocumentFontList *	dfl )
-    {
-    int		i;
-
-    appDebug( "FONTLIST: %d fonts\n", dfl->dflFontCount );
-    for ( i= 0; i < dfl->dflFontCount; i++ )
-	{
-	const DocumentFont *	df= fontFontListGetFontByNumber( dfl, i );
-
-	if  ( ! df )
-	    { continue;	}
-
-	appDebug( "FONT %6d: \"%s\"\n", df->dfDocFontNumber,
-				utilMemoryBufferGetString( &(df->dfName) ) );
-	}
     }
 

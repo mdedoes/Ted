@@ -24,7 +24,6 @@ struct TextAttribute;
 /************************************************************************/
 
 extern const char * docKindStr(		int			kind );
-extern const char * docTreeTypeStr(	int			kind );
 extern const char * docFieldKindStr(	int			kind );
 extern const char * docObjectKindStr(	int			kind );
 extern const char * docBreakKindStr(	int			kind );

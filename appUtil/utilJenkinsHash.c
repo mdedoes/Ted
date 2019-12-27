@@ -111,16 +111,26 @@ unsigned long utilJenkinsHash(	const unsigned char *	k,
    switch(len)              /* all the case statements fall through */
    {
    case 11: c+=((ub4)k[10]<<24);
+	/*FALLTHROUGH*/
    case 10: c+=((ub4)k[9]<<16);
+	/*FALLTHROUGH*/
    case 9 : c+=((ub4)k[8]<<8);
       /* the first byte of c is reserved for the length */
+	/*FALLTHROUGH*/
    case 8 : b+=((ub4)k[7]<<24);
+	/*FALLTHROUGH*/
    case 7 : b+=((ub4)k[6]<<16);
+	/*FALLTHROUGH*/
    case 6 : b+=((ub4)k[5]<<8);
+	/*FALLTHROUGH*/
    case 5 : b+=k[4];
+	/*FALLTHROUGH*/
    case 4 : a+=((ub4)k[3]<<24);
+	/*FALLTHROUGH*/
    case 3 : a+=((ub4)k[2]<<16);
+	/*FALLTHROUGH*/
    case 2 : a+=((ub4)k[1]<<8);
+	/*FALLTHROUGH*/
    case 1 : a+=k[0];
      /* case 0: nothing left to add */
    }
@@ -208,35 +218,65 @@ void  utilJenkinsHash2(	const unsigned char *	k,
    switch(len)
    {
    case 31: h+=(k[30]<<24);
+	/*FALLTHROUGH*/
    case 30: h+=(k[29]<<16);
+	/*FALLTHROUGH*/
    case 29: h+=(k[28]<<8);
+	/*FALLTHROUGH*/
    case 28: g+=(k[27]<<24);
+	/*FALLTHROUGH*/
    case 27: g+=(k[26]<<16);
+	/*FALLTHROUGH*/
    case 26: g+=(k[25]<<8);
-   case 25: g+=k[24];
+	/*FALLTHROUGH*/
+   case 25: g+=k[24];	
+	/*FALLTHROUGH*/
    case 24: f+=(k[23]<<24);
+	/*FALLTHROUGH*/
    case 23: f+=(k[22]<<16);
+	/*FALLTHROUGH*/
    case 22: f+=(k[21]<<8);
-   case 21: f+=k[20];
+	/*FALLTHROUGH*/
+   case 21: f+=k[20];	
+	/*FALLTHROUGH*/
    case 20: e+=(k[19]<<24);
+	/*FALLTHROUGH*/
    case 19: e+=(k[18]<<16);
+	/*FALLTHROUGH*/
    case 18: e+=(k[17]<<8);
-   case 17: e+=k[16];
+	/*FALLTHROUGH*/
+   case 17: e+=k[16];	
+	/*FALLTHROUGH*/
    case 16: d+=(k[15]<<24);
+	/*FALLTHROUGH*/
    case 15: d+=(k[14]<<16);
+	/*FALLTHROUGH*/
    case 14: d+=(k[13]<<8);
-   case 13: d+=k[12];
+	/*FALLTHROUGH*/
+   case 13: d+=k[12];	
+	/*FALLTHROUGH*/
    case 12: c+=(k[11]<<24);
+	/*FALLTHROUGH*/
    case 11: c+=(k[10]<<16);
+	/*FALLTHROUGH*/
    case 10: c+=(k[9]<<8);
-   case 9 : c+=k[8];
+	/*FALLTHROUGH*/
+   case 9 : c+=k[8];	
+	/*FALLTHROUGH*/
    case 8 : b+=(k[7]<<24);
+	/*FALLTHROUGH*/
    case 7 : b+=(k[6]<<16);
+	/*FALLTHROUGH*/
    case 6 : b+=(k[5]<<8);
-   case 5 : b+=k[4];
+	/*FALLTHROUGH*/
+   case 5 : b+=k[4];	
+	/*FALLTHROUGH*/
    case 4 : a+=(k[3]<<24);
+	/*FALLTHROUGH*/
    case 3 : a+=(k[2]<<16);
+	/*FALLTHROUGH*/
    case 2 : a+=(k[1]<<8);
+	/*FALLTHROUGH*/
    case 1 : a+=k[0];
    }
    mixc(a,b,c,d,e,f,g,h);

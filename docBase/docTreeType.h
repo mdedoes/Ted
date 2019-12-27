@@ -122,4 +122,6 @@ extern const int DOC_HeaderFooterTypeCount;
 /*									*/
 /************************************************************************/
 
+extern const char * docTreeTypeStr(	int			kind );
+
 #   endif

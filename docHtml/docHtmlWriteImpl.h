@@ -17,7 +17,6 @@
 #   include		<docBlockFrame.h>
 #   include		<docStripFrame.h>
 #   include		<docParaProperties.h>
-#   include		<textAttribute.h>
 #   include		<utilIndexMapping.h>
 #   include		<bmio.h>
 #   include		<drawMetafileSvg.h>
@@ -59,42 +58,64 @@ typedef int (*HtmlGetImageSrc)(		struct MemoryBuffer *		target,
 
 typedef int (*HtmlGetCssName)(		struct MemoryBuffer *		target,
 					struct HtmlWritingContext *	hwc );
-typedef struct HtmlWritingContext
+typedef struct HtmlWritingSettings
     {
-    XmlWriter			hwcXmlWriter;
-
-    const struct LayoutContext * hwcLayoutContext;
-    BlockFrame			hwcBlockFrame;
-    ParagraphFrame		hwcParagraphFrame;
-
-    HtmlOpenImageStream		hwcOpenImageStream;
-    HtmlGetImageSrc		hwcGetImageSrc;
-    HtmlGetCssName		hwcGetCssName;
-    void *			hwcPrivate;
-    struct BufferDocument *	hwcDocument;
-
-    IndexMapping		hwcDeferredNotes;
-
 				/**
 				 *  Directly include CSS in the HTML file.
 				 */
-    unsigned char		hwcInlineCss;
+    unsigned char		hwsInlineCss;
+
+				/**
+				 *  Determine the href attribute of the
+				 *  stylesheet
+				 */
+    HtmlGetCssName		hwsGetCssName;
+
+				/**
+				 *  Include image data as a data url
+				 */
+    unsigned char		hwsInlineImages;
+
+				/**
+				 *  Open an output stream to write an image to.
+				 */
+    HtmlOpenImageStream		hwsOpenImageStream;
+
+				/**
+				 *  Determine the src or href attribute of 
+				 *  an image or a similar object
+				 */
+    HtmlGetImageSrc		hwsGetImageSrc;
+
 				/**
 				 *  Insert notes at the end of the paragraph 
 				 *  or a top level table, rather than at the 
 				 *  end of the document.
 				 */
-    unsigned char		hwcInlineNotes;
-				/**
-				 *  Include image data as a data url
-				 */
-    unsigned char		hwcInlineImages;
+    unsigned char		hwsInlineNotes;
+
+    unsigned char		hwsEmitBackground;
+
+    const struct LayoutContext * hwsLayoutContext;
+    struct BufferDocument *	hwsDocument;
+    } HtmlWritingSettings;
+
+typedef struct HtmlWritingContext
+    {
+    XmlWriter			hwcXmlWriter;
+    const HtmlWritingSettings *	hwcSettings;
+
+    BlockFrame			hwcBlockFrame;
+    ParagraphFrame		hwcParagraphFrame;
+
+    void *			hwcPrivate;
+
+    IndexMapping		hwcDeferredNotes;
 
     int				hwcInHyperlink;
     int				hwcInBookmark;
     int				hwcInPageref;
     int				hwcBytesInLink;
-    TextAttribute		hwcDefaultAttribute;
     ParagraphProperties		hwcParagraphProperties;
 
 
@@ -105,11 +126,6 @@ typedef struct HtmlWritingContext
     int				hwcTableNesting;
 
     int				hwcCurrentAttributeNumber;
-				/**
-				 *  Support bullets? Only in browser!
-				 */
-    unsigned char		hwcSupportsBullets;
-    unsigned char		hwcEmitBackground;
     } HtmlWritingContext;
 
 /************************************************************************/
@@ -118,15 +134,23 @@ typedef struct HtmlWritingContext
 /*									*/
 /************************************************************************/
 
+extern void docInitHtmlWritingSettings(	HtmlWritingSettings *	hws );
 extern void docInitHtmlWritingContext(	HtmlWritingContext *	hwc );
 extern void docCleanHtmlWritingContext(	HtmlWritingContext *	hwc );
+
+extern int docStartHtmlWritingContext(	HtmlWritingContext *		hwc,
+					const HtmlWritingSettings *	hws,
+					struct SimpleOutputStream *	sos );
 
 extern void docHtmlPutString(		const char *		s,
 					HtmlWritingContext *	hwc );
 
 extern void docHtmlNewLine(		HtmlWritingContext *	hwc );
 
-extern int docHtmlSaveImgElement(
+extern void docHtmlWritelnCloseElement(	const char *		element,
+					HtmlWritingContext *	hwc );
+
+extern int docHtmlSaveInsertedObject(
 				int *				pDone,
 				HtmlWritingContext *		hwc,
 				int				n,
@@ -167,18 +191,26 @@ extern int docHtmlSaveParaNode( HtmlWritingContext *		hwc,
 extern int docHtmlSaveDocumentStyles(	HtmlWritingContext *	hwc,
 					struct SimpleOutputStream *	sos );
 
-extern int docHtmlSaveSelection(	HtmlWritingContext *		hwc,
-					struct DocumentTree *		dt,
-					const struct DocumentSelection *	ds );
+extern int docHtmlSaveSelection( HtmlWritingContext *			hwc,
+				struct DocumentTree *			dt,
+				const struct DocumentSelection *	ds );
 
 extern void docHtmlEmitBackgroundProperty(
 					const struct ItemShading *	is,
 					HtmlWritingContext *	hwc );
 
-extern int docHtmlStartDocument(	HtmlWritingContext *	hwc );
-extern int docHtmlFinishDocument(	HtmlWritingContext *	hwc );
+extern int docHtmlEmitProlog(	HtmlWritingContext *	hwc,
+				const char *		localeTag,
+				const char *		extraNameSpaces );
 
-extern int docHtmlSaveNotes(		HtmlWritingContext *	hwc );
+extern int docHtmlWriteStyleLink( HtmlWritingContext *		hwc,
+				const struct MemoryBuffer *	mbStylesheet );
+
+extern int docHtmlWriteTitle(	HtmlWritingContext *		hwc,
+				const struct MemoryBuffer *	mbTitle );
+
+extern int docHtmlStartDocument(	HtmlWritingContext *	hwc );
+extern int docHtmlFinishDocumentBody(	HtmlWritingContext *	hwc );
 
 extern int docHtmlObjectSaveHow(
 			const struct HtmlWritingContext *	hwc,
@@ -193,6 +225,11 @@ extern int docHtmlObjectSaveHow(
 
 extern int docHtmlSaveDeferredNotes(	HtmlWritingContext *		hwc );
 
+extern int docHtmlSaveEndnotes(	int				sect,
+				struct HtmlWritingContext *	hwc );
+
+extern int docHtmlSaveFootnotes( struct HtmlWritingContext *	hwc );
+
 extern int docHtmlStartNote(	const struct DocumentField *	df,
 				HtmlWritingContext *		hwc,
 				const struct BufferItem *	node,
@@ -201,10 +238,26 @@ extern int docHtmlStartNote(	const struct DocumentField *	df,
 extern int docHtmlStartAnchor(	HtmlWritingContext *		hwc,
 				int				isNote,
 				const struct MemoryBuffer *	fileName,
-				const struct MemoryBuffer *	markName,
-				const struct MemoryBuffer *	refName,
-				const char *			title,
-				int				titleSize );
+				const struct MemoryBuffer *	mbTarget,
+				const struct MemoryBuffer *	mbSource,
+				const struct MemoryBuffer *	mbTitle );
+
+extern int dochtmlEnterSectNode( struct BufferItem *		sectNode,
+				struct HtmlWritingContext *	hwc );
+
+extern int dochtmlLeaveSectNode( struct BufferItem *		sectNode,
+				struct HtmlWritingContext *	hwc );
+
+extern int docHtmlEnterCellNode(
+			struct HtmlWritingContext *	hwc,
+			const struct BufferItem *	rowNode,
+			int				col,
+			const struct BufferItem *	cellNode );
+
+extern int docHtmlEnterRowNode(	struct HtmlWritingContext *	hwc,
+				const struct BufferItem *	rowNode );
+
+extern int docHtmlFinishTable(	struct HtmlWritingContext *	hwc );
 
 #   endif	/*	DOC_HTML_WRITE_IMPL_H	*/
 

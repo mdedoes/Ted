@@ -13,7 +13,7 @@
 
 #   include	"tedSelect.h"
 #   include	"tedCopyPasteImpl.h"
-#   include	"tedEdit.h"
+#   include	"tedEditOperation.h"
 #   include	"tedDocument.h"
 #   include	<docRtfReadWrite.h>
 #   include	<docPlainReadWrite.h>
@@ -28,6 +28,7 @@
 #   include	<appEditDocument.h>
 #   include	<sioGeneral.h>
 #   include	<docBuf.h>
+#   include	<docAttributes.h>
 
 #   include	<appDebugon.h>
 

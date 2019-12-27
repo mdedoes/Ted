@@ -6,14 +6,11 @@
 
 #   include	"docEditConfig.h"
 
-#   include	<docBuf.h>
 #   include	<docNodeTree.h>
 #   include	"docEdit.h"
-#   include	<docParaProperties.h>
 #   include	"docEditOperation.h"
 #   include	<docTreeNode.h>
 #   include	<docTextParticule.h>
-#   include	<utilPropMask.h>
 #   include	<docParaParticuleAdmin.h>
 
 #   include	<appDebugon.h>
@@ -36,9 +33,6 @@ int docInsertParagraph(		EditOperation *		eo,
     struct BufferItem *	newParaNode;
     int			paraNr;
 
-    PropertyMask	ppChgMask;
-    PropertyMask	ppUpdMask;
-
     newParaNode= docInsertNode( eo->eoDocument, parentNode, pos, DOClevPARA );
     if  ( ! newParaNode )
 	{ XDEB(newParaNode); return -1;	}
@@ -57,15 +51,9 @@ int docInsertParagraph(		EditOperation *		eo,
 				    sectShift, paraShift, stroffShift );
     }
 
-    utilPropMaskClear( &ppChgMask );
-
-    utilPropMaskClear( &ppUpdMask );
-    utilPropMaskFill( &ppUpdMask, PPprop_FULL_COUNT );
-
-    if  ( docEditUpdParaProperties( eo, &ppChgMask, newParaNode, &ppUpdMask,
-				paraNode->biParaProperties,
-				(const struct DocumentAttributeMap *)0 ) )
-	{ LDEB(1);	}
+    if  ( docEditTransferParaProperties( eo, newParaNode, paraNode, 1,
+				    (const struct DocumentAttributeMap *)0 ) )
+	{ LDEB(1); return -1;	}
 
     if  ( ! docInsertTextParticule( newParaNode, 0, 0, 0,
 					TPkindSPAN, textAttrNr ) )

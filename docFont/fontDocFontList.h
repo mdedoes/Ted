@@ -8,22 +8,7 @@
 #   define	DOC_FONT_LIST_H
 
 struct DocumentFont;
-
-typedef struct DocFontSort
-    {
-    int		arrayIndex;
-    int		sortIndex;
-    } DocFontSort;
-
-typedef struct DocumentFontList
-    {
-    int				dflFontCount;
-    struct DocumentFont **	dflFontPages;
-    int				dflFontPageCount;
-    DocFontSort *		dflFontSortIndex;
-    } DocumentFontList;
-
-# define DFL_PGSZ	256
+struct DocumentFontList;
 
 /************************************************************************/
 /*									*/
@@ -32,37 +17,50 @@ typedef struct DocumentFontList
 /************************************************************************/
 
 extern struct DocumentFont * fontFontListGetFontByNumber(
-					const DocumentFontList *	dfl,
+					const struct DocumentFontList *	dfl,
 					int				n );
 
-extern void fontInitDocFontList(	DocumentFontList *		dfl );
+extern void fontInitDocFontList(	struct DocumentFontList *	dfl );
 
-extern void fontCleanDocFontList(	DocumentFontList *		dfl );
+extern void fontCleanDocFontList(	struct DocumentFontList *	dfl );
 
-extern int fontCopyDocFontList(		DocumentFontList *		to,
-					const DocumentFontList *	from );
+extern int fontCopyDocFontList(		struct DocumentFontList *	to,
+					const struct DocumentFontList *	from );
 
-extern int fontListGetFontByName(	DocumentFontList *	dfl,
+extern int fontListGetFontByName(	struct DocumentFontList *	dfl,
 					const char *		fontName );
 
-extern int fontMergeFontIntoList(	DocumentFontList *	dflTo,
+extern int fontMergeFontIntoList(	struct DocumentFontList *	dflTo,
 					const struct DocumentFont *	dfFrom );
 
 extern const struct DocumentFont * fontListGetFontBySortIndex(
-						DocumentFontList *	dfl,
-						int			idx );
+					struct DocumentFontList *	dfl,
+					int			idx );
 
-extern int fontListGetSortIndex(		DocumentFontList *	dfl,
-						int			aidx );
+extern int fontListGetSortIndex(	struct DocumentFontList *	dfl,
+					int			aidx );
 
-extern int fontListGetArrayIndex(		DocumentFontList *	dfl,
-						int			sidx );
+extern int fontListGetArrayIndex(	struct DocumentFontList *	dfl,
+					int			sidx );
 
-extern struct DocumentFont * fontAddDocFontToList( DocumentFontList *	dfl,
+extern struct DocumentFont * fontAddDocFontToList(
+					struct DocumentFontList * dfl,
 					const char *		name,
 					int			styleInt,
 					int			pitch );
 
-extern void fontListClearCharsUsed(	DocumentFontList *	dfl );
+extern void fontListClearCharsUsed(	struct DocumentFontList *	dfl );
+
+extern int fontListMergeLists(	struct DocumentFontList *	dflTo,
+				const struct DocumentFontList *	dflFrom,
+				int *				fontMap,
+				const unsigned char *		fontUsed );
+
+extern int fontListAllocateMergeAdmin(
+				int **				pFontMap,
+				unsigned char **		pFontUsed,
+				const struct DocumentFontList *	dflFrom );
+
+extern void fontListFontList(	const struct DocumentFontList *	dfl );
 
 #   endif	/*  DOC_FONT_LIST_H	*/

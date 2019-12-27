@@ -24,28 +24,34 @@ struct LayoutJob;
 
 typedef struct ParagraphLayoutPosition
     {
+				    /**
+				     *  The frame that we use to layout the 
+				     *  children.
+				     *  It belongs to the position as it depends
+				     *  on the paragraph margins.
+				     */
     ParagraphFrame		plpParagraphFrame;
-					/********************************/
-					/*  Belongs to the position as	*/
-					/*  it depends on the paragraph	*/
-					/*  margins.			*/
-					/********************************/
 
+				    /**
+				     *  Progress in the chain of children.
+				     */
     int				pspChild;
     int				pspChildAdvanced;
     int				pspPart;
     int				pspLine;
-					/********************************/
-					/*  Progress in the chain of	*/
-					/*  children.			*/
-					/********************************/
+
+				    /**
+				     *  Recursion in parallel children.
+				     *  I.E: cells in a row.
+				     */
     struct ParagraphLayoutJob *	pspChildren;
     int				pspChildCount;
-					/********************************/
-					/*  Recursion in parallel	*/
-					/*  children. (cells in a row)	*/
-					/********************************/
 
+				    /**
+				     *  The current vertical progress on the 
+				     *  page. (Actually in the newspaper style 
+				     *  column.)
+				     */
     LayoutPosition		plpPos;
     } ParagraphLayoutPosition;
 
@@ -63,6 +69,12 @@ typedef struct ParagraphLayoutJob
 # define docLayoutAtStripHead( plp ) \
 		    ( (plp)->pspChild == 0	&& \
 		      (plp)->pspPart == 0	)
+
+/* TODO: Should it not have been this way?
+# define docLayoutAtStripHead( plp ) \
+		    ( (plp)->pspChild == 0	&& \
+		      (plp)->pspChildAdvanced == 0	)
+*/
 
 # define docLayoutStripDone( plp, plj ) \
 		    ( (plp)->pspChild >= (plj)->pljChildUpto )
@@ -95,6 +107,10 @@ extern void docBeginParagraphLayoutProgress(
 extern void docStripLayoutStartChild(	ParagraphLayoutPosition *	plp,
 					int				child);
 extern void docStripLayoutNextChild(	ParagraphLayoutPosition *	plp );
+
+extern int docCompareLayoutProgress(
+				const ParagraphLayoutPosition *	plp0,
+				const ParagraphLayoutPosition *	plp1 );
 
 #   endif /*	DOC_STRIP_LAYOUT_JOB_H */
 

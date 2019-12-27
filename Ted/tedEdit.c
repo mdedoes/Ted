@@ -13,6 +13,7 @@
 #   include	<ucdGeneralCategory.h>
 
 #   include	"tedEdit.h"
+#   include	"tedEditOperation.h"
 #   include	"tedDocument.h"
 #   include	"tedSelect.h"
 #   include	<tedToolFront.h>
@@ -61,17 +62,6 @@ int tedEditReplaceSelection(	TedEditOperation *	teo,
     /*  b,c,d,e  */
     if  ( docReplaceSelection( eo, addedText, addedLength, textAttributeNr ) )
 	{ LDEB(addedLength); return -1;	}
-
-    return 0;
-    }
-
-int tedEditDeleteSelection(	TedEditOperation *	teo )
-    {
-    EditOperation *		eo= &(teo->teoEo);
-
-    /*  b,c,d,e  */
-    if  ( docDeleteSelection( eo ) )
-	{ LDEB(1); return -1;	}
 
     return 0;
     }
@@ -468,7 +458,7 @@ void tedEditInsertSpecialParticule(	EditDocument *	ed,
     if  ( tedEditStartReplace( &dsTraced, &teo, command, DOClevSPAN, 0 ) )
 	{ LDEB(1); goto ready;	}
 
-    if  ( tedEditDeleteSelection( &teo ) )
+    if  ( docDeleteSelection( eo ) )
 	{ goto ready;	}
 
     tp= docEditParaSpecialParticule( eo, kind );

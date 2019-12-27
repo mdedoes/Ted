@@ -20,6 +20,7 @@
 #   include	"docTreeNode.h"
 #   include	<docTextLine.h>
 #   include	<docSectProperties.h>
+#   include	"docFields.h"
 
 #   include	"docDebug.h"
 #   include	<appDebugon.h>
@@ -117,7 +118,7 @@ int docCalculatePagerefFieldString(
     if  ( docGetPagerefField( &pf, dfRef ) )
 	{ LDEB(1); *pCalculated= 0; goto ready;	}
 
-    n= docFindBookmarkField( &dfMark, &(bd->bdFieldList), &(pf.pfBookmark) );
+    n= docFindBookmarkField( &dfMark, bd, &(pf.pfBookmark) );
     if  ( n < 0 )
 	{
 	/* SLDEB(utilMemoryBufferGetString(&(pf.pfBookmark)),n); */

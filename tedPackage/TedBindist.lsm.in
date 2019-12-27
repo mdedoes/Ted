@@ -1,7 +1,7 @@
 Begin3
-Title:          ted-2.23h-linux-amd64
-Version:        2.23h
-Entered-date:   09MAR14
+Title:          ted-2.23nx-linux-amd64
+Version:        2.23nx
+Entered-date:   09SEP18
 Description:    Ted is an easy rich text processor. It can edit RTF files
 		in a wysiwyg manner. It supports multiple fonts and can
 		print to PostScript printers.

@@ -3,29 +3,29 @@
 #   include "ucdIntern.h"
 #   include "ucdBidiClass.h"
 
-#   define R	UCDbidi_R
-#   define RLI	UCDbidi_RLI
-#   define NSM	UCDbidi_NSM
-#   define PDF	UCDbidi_PDF
-#   define ON	UCDbidi_ON
-#   define AN	UCDbidi_AN
-#   define BN	UCDbidi_BN
-#   define LRE	UCDbidi_LRE
-#   define ES	UCDbidi_ES
-#   define LRO	UCDbidi_LRO
-#   define LRI	UCDbidi_LRI
-#   define B	UCDbidi_B
-#   define RLE	UCDbidi_RLE
-#   define WS	UCDbidi_WS
-#   define PDI	UCDbidi_PDI
-#   define S	UCDbidi_S
 #   define AL	UCDbidi_AL
-#   define ET	UCDbidi_ET
+#   define AN	UCDbidi_AN
+#   define B	UCDbidi_B
+#   define BN	UCDbidi_BN
 #   define CS	UCDbidi_CS
+#   define EN	UCDbidi_EN
+#   define ES	UCDbidi_ES
+#   define ET	UCDbidi_ET
 #   define FSI	UCDbidi_FSI
 #   define L	UCDbidi_L
+#   define LRE	UCDbidi_LRE
+#   define LRI	UCDbidi_LRI
+#   define LRO	UCDbidi_LRO
+#   define NSM	UCDbidi_NSM
+#   define ON	UCDbidi_ON
+#   define PDF	UCDbidi_PDF
+#   define PDI	UCDbidi_PDI
+#   define R	UCDbidi_R
+#   define RLE	UCDbidi_RLE
+#   define RLI	UCDbidi_RLI
 #   define RLO	UCDbidi_RLO
-#   define EN	UCDbidi_EN
+#   define S	UCDbidi_S
+#   define WS	UCDbidi_WS
 
 static const unsigned char    UCD_BIDI_0000_000f[16]= {BN,BN,BN,BN,BN,BN,BN,BN,BN,S,B,S,WS,B,BN,BN,};
 static const unsigned char    UCD_BIDI_0010_001f[16]= {BN,BN,BN,BN,BN,BN,BN,BN,BN,BN,BN,BN,B,B,B,S,};
@@ -222,8 +222,10 @@ static const unsigned char    UCD_BIDI_0810_081f[16]= {R,R,R,R,R,R,NSM,NSM,NSM,N
 static const unsigned char    UCD_BIDI_0820_082f[16]= {NSM,NSM,NSM,NSM,R,NSM,NSM,NSM,R,NSM,NSM,NSM,NSM,NSM,ON,ON,};
 static const unsigned char    UCD_BIDI_0830_083f[16]= {R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,ON,};
 static const unsigned char    UCD_BIDI_0850_085f[16]= {R,R,R,R,R,R,R,R,R,NSM,NSM,NSM,ON,ON,R,ON,};
-static const unsigned char    UCD_BIDI_08b0_08bf[16]= {AL,AL,AL,ON,ON,ON,ON,ON,ON,ON,ON,ON,ON,ON,ON,ON,};
-static const unsigned char    UCD_BIDI_08e0_08ef[16]= {ON,ON,ON,ON,NSM,NSM,NSM,NSM,NSM,NSM,NSM,NSM,NSM,NSM,NSM,NSM,};
+static const unsigned char    UCD_BIDI_0860_086f[16]= {AL,AL,AL,AL,AL,AL,AL,AL,AL,AL,AL,ON,ON,ON,ON,ON,};
+static const unsigned char    UCD_BIDI_08b0_08bf[16]= {AL,AL,AL,AL,AL,ON,AL,AL,AL,AL,AL,AL,AL,AL,ON,ON,};
+static const unsigned char    UCD_BIDI_08d0_08df[16]= {ON,ON,ON,ON,NSM,NSM,NSM,NSM,NSM,NSM,NSM,NSM,NSM,NSM,NSM,NSM,};
+static const unsigned char    UCD_BIDI_08e0_08ef[16]= {NSM,NSM,AN,NSM,NSM,NSM,NSM,NSM,NSM,NSM,NSM,NSM,NSM,NSM,NSM,NSM,};
 static const unsigned char * const UCD_BIDI_0800_08ff[16]= {
     UCD_BIDI_05d0_05df, /*  UCD_BIDI_0800_080f  */
     UCD_BIDI_0810_081f,
@@ -231,14 +233,14 @@ static const unsigned char * const UCD_BIDI_0800_08ff[16]= {
     UCD_BIDI_0830_083f,
     UCD_BIDI_05d0_05df, /*  UCD_BIDI_0840_084f  */
     UCD_BIDI_0850_085f,
-    UCD_BIDI_02f0_02ff, /*  UCD_BIDI_0860_086f  */
+    UCD_BIDI_0860_086f,
     UCD_BIDI_02f0_02ff, /*  UCD_BIDI_0870_087f  */
     UCD_BIDI_02f0_02ff, /*  UCD_BIDI_0880_088f  */
     UCD_BIDI_02f0_02ff, /*  UCD_BIDI_0890_089f  */
     UCD_BIDI_0620_062f, /*  UCD_BIDI_08a0_08af  */
     UCD_BIDI_08b0_08bf,
     UCD_BIDI_02f0_02ff, /*  UCD_BIDI_08c0_08cf  */
-    UCD_BIDI_02f0_02ff, /*  UCD_BIDI_08d0_08df  */
+    UCD_BIDI_08d0_08df,
     UCD_BIDI_08e0_08ef,
     UCD_BIDI_0300_030f, /*  UCD_BIDI_08f0_08ff  */
 };
@@ -254,7 +256,7 @@ static const unsigned char    UCD_BIDI_09b0_09bf[16]= {L,ON,L,ON,ON,ON,L,L,L,L,O
 static const unsigned char    UCD_BIDI_09c0_09cf[16]= {L,NSM,NSM,NSM,NSM,ON,ON,L,L,ON,ON,L,L,NSM,L,ON,};
 static const unsigned char    UCD_BIDI_09d0_09df[16]= {ON,ON,ON,ON,ON,ON,ON,L,ON,ON,ON,ON,L,L,ON,L,};
 static const unsigned char    UCD_BIDI_09e0_09ef[16]= {L,L,NSM,NSM,ON,ON,L,L,L,L,L,L,L,L,L,L,};
-static const unsigned char    UCD_BIDI_09f0_09ff[16]= {L,L,ET,ET,L,L,L,L,L,L,L,ET,ON,ON,ON,ON,};
+static const unsigned char    UCD_BIDI_09f0_09ff[16]= {L,L,ET,ET,L,L,L,L,L,L,L,ET,L,L,ON,ON,};
 static const unsigned char * const UCD_BIDI_0900_09ff[16]= {
     UCD_BIDI_0900_090f,
     UCD_BIDI_00c0_00cf, /*  UCD_BIDI_0910_091f  */
@@ -283,7 +285,7 @@ static const unsigned char    UCD_BIDI_0a80_0a8f[16]= {ON,NSM,NSM,L,ON,L,L,L,L,L
 static const unsigned char    UCD_BIDI_0ab0_0abf[16]= {L,ON,L,L,ON,L,L,L,L,L,ON,ON,NSM,L,L,L,};
 static const unsigned char    UCD_BIDI_0ac0_0acf[16]= {L,NSM,NSM,NSM,NSM,NSM,ON,NSM,NSM,L,ON,L,L,NSM,ON,ON,};
 static const unsigned char    UCD_BIDI_0ad0_0adf[16]= {L,ON,ON,ON,ON,ON,ON,ON,ON,ON,ON,ON,ON,ON,ON,ON,};
-static const unsigned char    UCD_BIDI_0af0_0aff[16]= {L,ET,ON,ON,ON,ON,ON,ON,ON,ON,ON,ON,ON,ON,ON,ON,};
+static const unsigned char    UCD_BIDI_0af0_0aff[16]= {L,ET,ON,ON,ON,ON,ON,ON,ON,L,NSM,NSM,NSM,NSM,NSM,NSM,};
 static const unsigned char * const UCD_BIDI_0a00_0aff[16]= {
     UCD_BIDI_0a00_0a0f,
     UCD_BIDI_0990_099f, /*  UCD_BIDI_0a10_0a1f  */
@@ -336,9 +338,9 @@ static const unsigned char    UCD_BIDI_0c00_0c0f[16]= {NSM,L,L,L,ON,L,L,L,L,L,L,
 static const unsigned char    UCD_BIDI_0c10_0c1f[16]= {L,ON,L,L,L,L,L,L,L,L,L,L,L,L,L,L,};
 static const unsigned char    UCD_BIDI_0c30_0c3f[16]= {L,L,L,L,L,L,L,L,L,L,ON,ON,ON,L,NSM,NSM,};
 static const unsigned char    UCD_BIDI_0c40_0c4f[16]= {NSM,L,L,L,L,ON,NSM,NSM,NSM,ON,NSM,NSM,NSM,NSM,ON,ON,};
-static const unsigned char    UCD_BIDI_0c50_0c5f[16]= {ON,ON,ON,ON,ON,NSM,NSM,ON,L,L,ON,ON,ON,ON,ON,ON,};
+static const unsigned char    UCD_BIDI_0c50_0c5f[16]= {ON,ON,ON,ON,ON,NSM,NSM,ON,L,L,L,ON,ON,ON,ON,ON,};
 static const unsigned char    UCD_BIDI_0c70_0c7f[16]= {ON,ON,ON,ON,ON,ON,ON,ON,ON,ON,ON,ON,ON,ON,ON,L,};
-static const unsigned char    UCD_BIDI_0c80_0c8f[16]= {ON,NSM,L,L,ON,L,L,L,L,L,L,L,L,ON,L,L,};
+static const unsigned char    UCD_BIDI_0c80_0c8f[16]= {L,NSM,L,L,ON,L,L,L,L,L,L,L,L,ON,L,L,};
 static const unsigned char    UCD_BIDI_0cb0_0cbf[16]= {L,L,L,L,ON,L,L,L,L,L,ON,ON,NSM,L,L,L,};
 static const unsigned char    UCD_BIDI_0cc0_0ccf[16]= {L,L,L,L,L,ON,L,L,L,ON,L,L,NSM,NSM,ON,ON,};
 static const unsigned char    UCD_BIDI_0cd0_0cdf[16]= {ON,ON,ON,ON,ON,L,L,ON,ON,ON,ON,ON,ON,ON,L,ON,};
@@ -361,10 +363,10 @@ static const unsigned char * const UCD_BIDI_0c00_0cff[16]= {
     UCD_BIDI_09e0_09ef, /*  UCD_BIDI_0ce0_0cef  */
     UCD_BIDI_0cf0_0cff,
 };
-static const unsigned char    UCD_BIDI_0d30_0d3f[16]= {L,L,L,L,L,L,L,L,L,L,L,ON,ON,L,L,L,};
-static const unsigned char    UCD_BIDI_0d40_0d4f[16]= {L,NSM,NSM,NSM,NSM,ON,L,L,L,ON,L,L,L,NSM,L,ON,};
-static const unsigned char    UCD_BIDI_0d50_0d5f[16]= {ON,ON,ON,ON,ON,ON,ON,L,ON,ON,ON,ON,ON,ON,ON,ON,};
-static const unsigned char    UCD_BIDI_0d70_0d7f[16]= {L,L,L,L,L,L,ON,ON,ON,L,L,L,L,L,L,L,};
+static const unsigned char    UCD_BIDI_0d00_0d0f[16]= {NSM,NSM,L,L,ON,L,L,L,L,L,L,L,L,ON,L,L,};
+static const unsigned char    UCD_BIDI_0d30_0d3f[16]= {L,L,L,L,L,L,L,L,L,L,L,NSM,NSM,L,L,L,};
+static const unsigned char    UCD_BIDI_0d40_0d4f[16]= {L,NSM,NSM,NSM,NSM,ON,L,L,L,ON,L,L,L,NSM,L,L,};
+static const unsigned char    UCD_BIDI_0d50_0d5f[16]= {ON,ON,ON,ON,L,L,L,L,L,L,L,L,L,L,L,L,};
 static const unsigned char    UCD_BIDI_0d80_0d8f[16]= {ON,ON,L,L,ON,L,L,L,L,L,L,L,L,L,L,L,};
 static const unsigned char    UCD_BIDI_0d90_0d9f[16]= {L,L,L,L,L,L,L,ON,ON,ON,L,L,L,L,L,L,};
 static const unsigned char    UCD_BIDI_0db0_0dbf[16]= {L,L,ON,L,L,L,L,L,L,L,L,L,ON,L,ON,ON,};
@@ -372,14 +374,14 @@ static const unsigned char    UCD_BIDI_0dc0_0dcf[16]= {L,L,L,L,L,L,L,ON,ON,ON,NS
 static const unsigned char    UCD_BIDI_0dd0_0ddf[16]= {L,L,NSM,NSM,NSM,ON,NSM,ON,L,L,L,L,L,L,L,L,};
 static const unsigned char    UCD_BIDI_0df0_0dff[16]= {ON,ON,L,L,L,ON,ON,ON,ON,ON,ON,ON,ON,ON,ON,ON,};
 static const unsigned char * const UCD_BIDI_0d00_0dff[16]= {
-    UCD_BIDI_0c80_0c8f, /*  UCD_BIDI_0d00_0d0f  */
+    UCD_BIDI_0d00_0d0f,
     UCD_BIDI_0c10_0c1f, /*  UCD_BIDI_0d10_0d1f  */
     UCD_BIDI_00c0_00cf, /*  UCD_BIDI_0d20_0d2f  */
     UCD_BIDI_0d30_0d3f,
     UCD_BIDI_0d40_0d4f,
     UCD_BIDI_0d50_0d5f,
     UCD_BIDI_09e0_09ef, /*  UCD_BIDI_0d60_0d6f  */
-    UCD_BIDI_0d70_0d7f,
+    UCD_BIDI_00c0_00cf, /*  UCD_BIDI_0d70_0d7f  */
     UCD_BIDI_0d80_0d8f,
     UCD_BIDI_0d90_0d9f,
     UCD_BIDI_00c0_00cf, /*  UCD_BIDI_0da0_0daf  */
@@ -510,7 +512,7 @@ static const unsigned char * const UCD_BIDI_1200_12ff[16]= {
     UCD_BIDI_00c0_00cf, /*  UCD_BIDI_12f0_12ff  */
 };
 static const unsigned char    UCD_BIDI_1350_135f[16]= {L,L,L,L,L,L,L,L,L,L,L,ON,ON,NSM,NSM,NSM,};
-static const unsigned char    UCD_BIDI_13f0_13ff[16]= {L,L,L,L,L,ON,ON,ON,ON,ON,ON,ON,ON,ON,ON,ON,};
+static const unsigned char    UCD_BIDI_13f0_13ff[16]= {L,L,L,L,L,L,ON,ON,L,L,L,L,L,L,ON,ON,};
 static const unsigned char * const UCD_BIDI_1300_13ff[16]= {
     UCD_BIDI_00c0_00cf, /*  UCD_BIDI_1300_130f  */
     UCD_BIDI_12c0_12cf, /*  UCD_BIDI_1310_131f  */
@@ -595,6 +597,7 @@ static const unsigned char * const UCD_BIDI_1700_17ff[16]= {
     UCD_BIDI_02f0_02ff, /*  UCD_BIDI_17f0_17ff  */
 };
 static const unsigned char    UCD_BIDI_1800_180f[16]= {ON,ON,ON,ON,ON,ON,ON,ON,ON,ON,ON,NSM,NSM,NSM,BN,ON,};
+static const unsigned char    UCD_BIDI_1880_188f[16]= {L,L,L,L,L,NSM,NSM,L,L,L,L,L,L,L,L,L,};
 static const unsigned char    UCD_BIDI_18a0_18af[16]= {L,L,L,L,L,L,L,L,L,NSM,L,ON,ON,ON,ON,ON,};
 static const unsigned char    UCD_BIDI_18f0_18ff[16]= {L,L,L,L,L,L,ON,ON,ON,ON,ON,ON,ON,ON,ON,ON,};
 static const unsigned char * const UCD_BIDI_1800_18ff[16]= {
@@ -606,7 +609,7 @@ static const unsigned char * const UCD_BIDI_1800_18ff[16]= {
     UCD_BIDI_00c0_00cf, /*  UCD_BIDI_1850_185f  */
     UCD_BIDI_00c0_00cf, /*  UCD_BIDI_1860_186f  */
     UCD_BIDI_0b70_0b7f, /*  UCD_BIDI_1870_187f  */
-    UCD_BIDI_00c0_00cf, /*  UCD_BIDI_1880_188f  */
+    UCD_BIDI_1880_188f,
     UCD_BIDI_00c0_00cf, /*  UCD_BIDI_1890_189f  */
     UCD_BIDI_18a0_18af,
     UCD_BIDI_00c0_00cf, /*  UCD_BIDI_18b0_18bf  */
@@ -619,6 +622,7 @@ static const unsigned char    UCD_BIDI_1910_191f[16]= {L,L,L,L,L,L,L,L,L,L,L,L,L
 static const unsigned char    UCD_BIDI_1920_192f[16]= {NSM,NSM,NSM,L,L,L,L,NSM,NSM,L,L,L,ON,ON,ON,ON,};
 static const unsigned char    UCD_BIDI_1930_193f[16]= {L,L,NSM,L,L,L,L,L,L,NSM,NSM,NSM,ON,ON,ON,ON,};
 static const unsigned char    UCD_BIDI_1960_196f[16]= {L,L,L,L,L,L,L,L,L,L,L,L,L,L,ON,ON,};
+static const unsigned char    UCD_BIDI_1970_197f[16]= {L,L,L,L,L,ON,ON,ON,ON,ON,ON,ON,ON,ON,ON,ON,};
 static const unsigned char * const UCD_BIDI_1900_19ff[16]= {
     UCD_BIDI_00c0_00cf, /*  UCD_BIDI_1900_190f  */
     UCD_BIDI_1910_191f,
@@ -627,7 +631,7 @@ static const unsigned char * const UCD_BIDI_1900_19ff[16]= {
     UCD_BIDI_0a60_0a6f, /*  UCD_BIDI_1940_194f  */
     UCD_BIDI_00c0_00cf, /*  UCD_BIDI_1950_195f  */
     UCD_BIDI_1960_196f,
-    UCD_BIDI_13f0_13ff, /*  UCD_BIDI_1970_197f  */
+    UCD_BIDI_1970_197f,
     UCD_BIDI_00c0_00cf, /*  UCD_BIDI_1980_198f  */
     UCD_BIDI_00c0_00cf, /*  UCD_BIDI_1990_199f  */
     UCD_BIDI_0e50_0e5f, /*  UCD_BIDI_19a0_19af  */
@@ -692,7 +696,7 @@ static const unsigned char    UCD_BIDI_1c30_1c3f[16]= {NSM,NSM,NSM,NSM,L,L,NSM,N
 static const unsigned char    UCD_BIDI_1c40_1c4f[16]= {L,L,L,L,L,L,L,L,L,L,ON,ON,ON,L,L,L,};
 static const unsigned char    UCD_BIDI_1cd0_1cdf[16]= {NSM,NSM,NSM,L,NSM,NSM,NSM,NSM,NSM,NSM,NSM,NSM,NSM,NSM,NSM,NSM,};
 static const unsigned char    UCD_BIDI_1ce0_1cef[16]= {NSM,L,NSM,NSM,NSM,NSM,NSM,NSM,NSM,L,L,L,L,NSM,L,L,};
-static const unsigned char    UCD_BIDI_1cf0_1cff[16]= {L,L,L,L,NSM,L,L,ON,NSM,NSM,ON,ON,ON,ON,ON,ON,};
+static const unsigned char    UCD_BIDI_1cf0_1cff[16]= {L,L,L,L,NSM,L,L,L,NSM,NSM,ON,ON,ON,ON,ON,ON,};
 static const unsigned char * const UCD_BIDI_1c00_1cff[16]= {
     UCD_BIDI_00c0_00cf, /*  UCD_BIDI_1c00_1c0f  */
     UCD_BIDI_00c0_00cf, /*  UCD_BIDI_1c10_1c1f  */
@@ -702,7 +706,7 @@ static const unsigned char * const UCD_BIDI_1c00_1cff[16]= {
     UCD_BIDI_00c0_00cf, /*  UCD_BIDI_1c50_1c5f  */
     UCD_BIDI_00c0_00cf, /*  UCD_BIDI_1c60_1c6f  */
     UCD_BIDI_00c0_00cf, /*  UCD_BIDI_1c70_1c7f  */
-    UCD_BIDI_02f0_02ff, /*  UCD_BIDI_1c80_1c8f  */
+    UCD_BIDI_16f0_16ff, /*  UCD_BIDI_1c80_1c8f  */
     UCD_BIDI_02f0_02ff, /*  UCD_BIDI_1c90_1c9f  */
     UCD_BIDI_02f0_02ff, /*  UCD_BIDI_1ca0_1caf  */
     UCD_BIDI_02f0_02ff, /*  UCD_BIDI_1cb0_1cbf  */
@@ -711,7 +715,7 @@ static const unsigned char * const UCD_BIDI_1c00_1cff[16]= {
     UCD_BIDI_1ce0_1cef,
     UCD_BIDI_1cf0_1cff,
 };
-static const unsigned char    UCD_BIDI_1df0_1dff[16]= {NSM,NSM,NSM,NSM,NSM,NSM,ON,ON,ON,ON,ON,ON,NSM,NSM,NSM,NSM,};
+static const unsigned char    UCD_BIDI_1df0_1dff[16]= {NSM,NSM,NSM,NSM,NSM,NSM,NSM,NSM,NSM,NSM,ON,NSM,NSM,NSM,NSM,NSM,};
 static const unsigned char * const UCD_BIDI_1d00_1dff[16]= {
     UCD_BIDI_00c0_00cf, /*  UCD_BIDI_1d00_1d0f  */
     UCD_BIDI_00c0_00cf, /*  UCD_BIDI_1d10_1d1f  */
@@ -730,17 +734,16 @@ static const unsigned char * const UCD_BIDI_1d00_1dff[16]= {
     UCD_BIDI_0300_030f, /*  UCD_BIDI_1de0_1def  */
     UCD_BIDI_1df0_1dff,
 };
-static const unsigned char    UCD_BIDI_1f10_1f1f[16]= {L,L,L,L,L,L,ON,ON,L,L,L,L,L,L,ON,ON,};
 static const unsigned char    UCD_BIDI_1f50_1f5f[16]= {L,L,L,L,L,L,L,L,ON,L,ON,L,ON,L,ON,L,};
 static const unsigned char    UCD_BIDI_1fb0_1fbf[16]= {L,L,L,L,L,ON,L,L,L,L,L,L,L,ON,L,ON,};
 static const unsigned char    UCD_BIDI_1fc0_1fcf[16]= {ON,ON,L,L,L,ON,L,L,L,L,L,L,L,ON,ON,ON,};
 static const unsigned char    UCD_BIDI_1fd0_1fdf[16]= {L,L,L,L,ON,ON,L,L,L,L,L,L,ON,ON,ON,ON,};
 static const unsigned char * const UCD_BIDI_1f00_1fff[16]= {
     UCD_BIDI_00c0_00cf, /*  UCD_BIDI_1f00_1f0f  */
-    UCD_BIDI_1f10_1f1f,
+    UCD_BIDI_13f0_13ff, /*  UCD_BIDI_1f10_1f1f  */
     UCD_BIDI_00c0_00cf, /*  UCD_BIDI_1f20_1f2f  */
     UCD_BIDI_00c0_00cf, /*  UCD_BIDI_1f30_1f3f  */
-    UCD_BIDI_1f10_1f1f, /*  UCD_BIDI_1f40_1f4f  */
+    UCD_BIDI_13f0_13ff, /*  UCD_BIDI_1f40_1f4f  */
     UCD_BIDI_1f50_1f5f,
     UCD_BIDI_00c0_00cf, /*  UCD_BIDI_1f60_1f6f  */
     UCD_BIDI_1960_196f, /*  UCD_BIDI_1f70_1f7f  */
@@ -780,7 +783,6 @@ static const unsigned char    UCD_BIDI_2060_206f[16]= {BN,BN,BN,BN,BN,ON,LRI,RLI
 static const unsigned char    UCD_BIDI_2070_207f[16]= {EN,L,ON,ON,EN,EN,EN,EN,EN,EN,ES,ES,ON,ON,ON,L,};
 static const unsigned char    UCD_BIDI_2080_208f[16]= {EN,EN,EN,EN,EN,EN,EN,EN,EN,EN,ES,ES,ON,ON,ON,ON,};
 static const unsigned char    UCD_BIDI_20a0_20af[16]= {ET,ET,ET,ET,ET,ET,ET,ET,ET,ET,ET,ET,ET,ET,ET,ET,};
-static const unsigned char    UCD_BIDI_20b0_20bf[16]= {ET,ET,ET,ET,ET,ET,ET,ET,ET,ET,ET,ET,ET,ET,ON,ON,};
 static const unsigned char    UCD_BIDI_20f0_20ff[16]= {NSM,ON,ON,ON,ON,ON,ON,ON,ON,ON,ON,ON,ON,ON,ON,ON,};
 static const unsigned char * const UCD_BIDI_2000_20ff[16]= {
     UCD_BIDI_2000_200f,
@@ -794,7 +796,7 @@ static const unsigned char * const UCD_BIDI_2000_20ff[16]= {
     UCD_BIDI_2080_208f,
     UCD_BIDI_0f60_0f6f, /*  UCD_BIDI_2090_209f  */
     UCD_BIDI_20a0_20af,
-    UCD_BIDI_20b0_20bf,
+    UCD_BIDI_20a0_20af, /*  UCD_BIDI_20b0_20bf  */
     UCD_BIDI_02f0_02ff, /*  UCD_BIDI_20c0_20cf  */
     UCD_BIDI_0300_030f, /*  UCD_BIDI_20d0_20df  */
     UCD_BIDI_0300_030f, /*  UCD_BIDI_20e0_20ef  */
@@ -1004,7 +1006,7 @@ static const unsigned char    UCD_BIDI_3100_310f[16]= {ON,ON,ON,ON,ON,L,L,L,L,L,
 static const unsigned char * const UCD_BIDI_3100_31ff[16]= {
     UCD_BIDI_3100_310f,
     UCD_BIDI_00c0_00cf, /*  UCD_BIDI_3110_311f  */
-    UCD_BIDI_1960_196f, /*  UCD_BIDI_3120_312f  */
+    UCD_BIDI_1910_191f, /*  UCD_BIDI_3120_312f  */
     UCD_BIDI_0040_004f, /*  UCD_BIDI_3130_313f  */
     UCD_BIDI_00c0_00cf, /*  UCD_BIDI_3140_314f  */
     UCD_BIDI_00c0_00cf, /*  UCD_BIDI_3150_315f  */
@@ -1142,9 +1144,9 @@ static const unsigned char * const UCD_BIDI_9f00_9fff[16]= {
     UCD_BIDI_00c0_00cf, /*  UCD_BIDI_9f90_9f9f  */
     UCD_BIDI_00c0_00cf, /*  UCD_BIDI_9fa0_9faf  */
     UCD_BIDI_00c0_00cf, /*  UCD_BIDI_9fb0_9fbf  */
-    UCD_BIDI_0f60_0f6f, /*  UCD_BIDI_9fc0_9fcf  */
-    UCD_BIDI_02f0_02ff, /*  UCD_BIDI_9fd0_9fdf  */
-    UCD_BIDI_02f0_02ff, /*  UCD_BIDI_9fe0_9fef  */
+    UCD_BIDI_00c0_00cf, /*  UCD_BIDI_9fc0_9fcf  */
+    UCD_BIDI_00c0_00cf, /*  UCD_BIDI_9fd0_9fdf  */
+    UCD_BIDI_0050_005f, /*  UCD_BIDI_9fe0_9fef  */
     UCD_BIDI_02f0_02ff, /*  UCD_BIDI_9ff0_9fff  */
 };
 static const unsigned char * const * const UCD_BIDI_9000_9fff[16]= {
@@ -1185,7 +1187,7 @@ static const unsigned char * const UCD_BIDI_a400_a4ff[16]= {
 };
 static const unsigned char    UCD_BIDI_a660_a66f[16]= {L,L,L,L,L,L,L,L,L,L,L,L,L,L,L,NSM,};
 static const unsigned char    UCD_BIDI_a670_a67f[16]= {NSM,NSM,NSM,ON,NSM,NSM,NSM,NSM,NSM,NSM,NSM,NSM,NSM,NSM,ON,ON,};
-static const unsigned char    UCD_BIDI_a690_a69f[16]= {L,L,L,L,L,L,L,L,L,L,L,L,L,L,ON,NSM,};
+static const unsigned char    UCD_BIDI_a690_a69f[16]= {L,L,L,L,L,L,L,L,L,L,L,L,L,L,NSM,NSM,};
 static const unsigned char    UCD_BIDI_a6f0_a6ff[16]= {NSM,NSM,L,L,L,L,L,L,ON,ON,ON,ON,ON,ON,ON,ON,};
 static const unsigned char * const UCD_BIDI_a600_a6ff[16]= {
     UCD_BIDI_0f60_0f6f, /*  UCD_BIDI_a600_a60f  */
@@ -1206,7 +1208,6 @@ static const unsigned char * const UCD_BIDI_a600_a6ff[16]= {
     UCD_BIDI_a6f0_a6ff,
 };
 static const unsigned char    UCD_BIDI_a720_a72f[16]= {ON,ON,L,L,L,L,L,L,L,L,L,L,L,L,L,L,};
-static const unsigned char    UCD_BIDI_a780_a78f[16]= {L,L,L,L,L,L,L,L,ON,L,L,L,L,L,L,ON,};
 static const unsigned char    UCD_BIDI_a7f0_a7ff[16]= {ON,ON,ON,ON,ON,ON,ON,L,L,L,L,L,L,L,L,L,};
 static const unsigned char * const UCD_BIDI_a700_a7ff[16]= {
     UCD_BIDI_02f0_02ff, /*  UCD_BIDI_a700_a70f  */
@@ -1217,10 +1218,10 @@ static const unsigned char * const UCD_BIDI_a700_a7ff[16]= {
     UCD_BIDI_00c0_00cf, /*  UCD_BIDI_a750_a75f  */
     UCD_BIDI_00c0_00cf, /*  UCD_BIDI_a760_a76f  */
     UCD_BIDI_00c0_00cf, /*  UCD_BIDI_a770_a77f  */
-    UCD_BIDI_a780_a78f,
+    UCD_BIDI_0f40_0f4f, /*  UCD_BIDI_a780_a78f  */
     UCD_BIDI_00c0_00cf, /*  UCD_BIDI_a790_a79f  */
-    UCD_BIDI_1960_196f, /*  UCD_BIDI_a7a0_a7af  */
-    UCD_BIDI_02c0_02cf, /*  UCD_BIDI_a7b0_a7bf  */
+    UCD_BIDI_1910_191f, /*  UCD_BIDI_a7a0_a7af  */
+    UCD_BIDI_0b70_0b7f, /*  UCD_BIDI_a7b0_a7bf  */
     UCD_BIDI_02f0_02ff, /*  UCD_BIDI_a7c0_a7cf  */
     UCD_BIDI_02f0_02ff, /*  UCD_BIDI_a7d0_a7df  */
     UCD_BIDI_02f0_02ff, /*  UCD_BIDI_a7e0_a7ef  */
@@ -1230,8 +1231,8 @@ static const unsigned char    UCD_BIDI_a800_a80f[16]= {L,L,NSM,L,L,L,NSM,L,L,L,L
 static const unsigned char    UCD_BIDI_a820_a82f[16]= {L,L,L,L,L,NSM,NSM,L,ON,ON,ON,ON,ON,ON,ON,ON,};
 static const unsigned char    UCD_BIDI_a830_a83f[16]= {L,L,L,L,L,L,L,L,ET,ET,ON,ON,ON,ON,ON,ON,};
 static const unsigned char    UCD_BIDI_a870_a87f[16]= {L,L,L,L,ON,ON,ON,ON,ON,ON,ON,ON,ON,ON,ON,ON,};
-static const unsigned char    UCD_BIDI_a8c0_a8cf[16]= {L,L,L,L,NSM,ON,ON,ON,ON,ON,ON,ON,ON,ON,L,L,};
-static const unsigned char    UCD_BIDI_a8f0_a8ff[16]= {NSM,NSM,L,L,L,L,L,L,L,L,L,L,ON,ON,ON,ON,};
+static const unsigned char    UCD_BIDI_a8c0_a8cf[16]= {L,L,L,L,NSM,NSM,ON,ON,ON,ON,ON,ON,ON,ON,L,L,};
+static const unsigned char    UCD_BIDI_a8f0_a8ff[16]= {NSM,NSM,L,L,L,L,L,L,L,L,L,L,L,L,ON,ON,};
 static const unsigned char * const UCD_BIDI_a800_a8ff[16]= {
     UCD_BIDI_a800_a80f,
     UCD_BIDI_00c0_00cf, /*  UCD_BIDI_a810_a81f  */
@@ -1303,7 +1304,6 @@ static const unsigned char * const UCD_BIDI_aa00_aaff[16]= {
 };
 static const unsigned char    UCD_BIDI_ab00_ab0f[16]= {ON,L,L,L,L,L,L,ON,ON,L,L,L,L,L,L,ON,};
 static const unsigned char    UCD_BIDI_ab10_ab1f[16]= {ON,L,L,L,L,L,L,ON,ON,ON,ON,ON,ON,ON,ON,ON,};
-static const unsigned char    UCD_BIDI_ab60_ab6f[16]= {ON,ON,ON,ON,L,L,ON,ON,ON,ON,ON,ON,ON,ON,ON,ON,};
 static const unsigned char    UCD_BIDI_abe0_abef[16]= {L,L,L,L,L,NSM,L,L,NSM,L,L,L,L,NSM,ON,ON,};
 static const unsigned char * const UCD_BIDI_ab00_abff[16]= {
     UCD_BIDI_ab00_ab0f,
@@ -1312,12 +1312,12 @@ static const unsigned char * const UCD_BIDI_ab00_abff[16]= {
     UCD_BIDI_00c0_00cf, /*  UCD_BIDI_ab30_ab3f  */
     UCD_BIDI_00c0_00cf, /*  UCD_BIDI_ab40_ab4f  */
     UCD_BIDI_00c0_00cf, /*  UCD_BIDI_ab50_ab5f  */
-    UCD_BIDI_ab60_ab6f,
-    UCD_BIDI_02f0_02ff, /*  UCD_BIDI_ab70_ab7f  */
-    UCD_BIDI_02f0_02ff, /*  UCD_BIDI_ab80_ab8f  */
-    UCD_BIDI_02f0_02ff, /*  UCD_BIDI_ab90_ab9f  */
-    UCD_BIDI_02f0_02ff, /*  UCD_BIDI_aba0_abaf  */
-    UCD_BIDI_02f0_02ff, /*  UCD_BIDI_abb0_abbf  */
+    UCD_BIDI_18f0_18ff, /*  UCD_BIDI_ab60_ab6f  */
+    UCD_BIDI_00c0_00cf, /*  UCD_BIDI_ab70_ab7f  */
+    UCD_BIDI_00c0_00cf, /*  UCD_BIDI_ab80_ab8f  */
+    UCD_BIDI_00c0_00cf, /*  UCD_BIDI_ab90_ab9f  */
+    UCD_BIDI_00c0_00cf, /*  UCD_BIDI_aba0_abaf  */
+    UCD_BIDI_00c0_00cf, /*  UCD_BIDI_abb0_abbf  */
     UCD_BIDI_00c0_00cf, /*  UCD_BIDI_abc0_abcf  */
     UCD_BIDI_00c0_00cf, /*  UCD_BIDI_abd0_abdf  */
     UCD_BIDI_abe0_abef,
@@ -1459,7 +1459,6 @@ static const unsigned char * const UCD_BIDI_fd00_fdff[16]= {
     UCD_BIDI_02f0_02ff, /*  UCD_BIDI_fde0_fdef  */
     UCD_BIDI_fdf0_fdff,
 };
-static const unsigned char    UCD_BIDI_fe20_fe2f[16]= {NSM,NSM,NSM,NSM,NSM,NSM,NSM,NSM,NSM,NSM,NSM,NSM,NSM,NSM,ON,ON,};
 static const unsigned char    UCD_BIDI_fe50_fe5f[16]= {CS,ON,CS,ON,ON,CS,ON,ON,ON,ON,ON,ON,ON,ON,ON,ET,};
 static const unsigned char    UCD_BIDI_fe60_fe6f[16]= {ON,ON,ES,ES,ON,ON,ON,ON,ON,ET,ET,ON,ON,ON,ON,ON,};
 static const unsigned char    UCD_BIDI_fe70_fe7f[16]= {AL,AL,AL,AL,AL,ON,AL,AL,AL,AL,AL,AL,AL,AL,AL,AL,};
@@ -1467,7 +1466,7 @@ static const unsigned char    UCD_BIDI_fef0_feff[16]= {AL,AL,AL,AL,AL,AL,AL,AL,A
 static const unsigned char * const UCD_BIDI_fe00_feff[16]= {
     UCD_BIDI_0300_030f, /*  UCD_BIDI_fe00_fe0f  */
     UCD_BIDI_02f0_02ff, /*  UCD_BIDI_fe10_fe1f  */
-    UCD_BIDI_fe20_fe2f,
+    UCD_BIDI_0300_030f, /*  UCD_BIDI_fe20_fe2f  */
     UCD_BIDI_02f0_02ff, /*  UCD_BIDI_fe30_fe3f  */
     UCD_BIDI_02f0_02ff, /*  UCD_BIDI_fe40_fe4f  */
     UCD_BIDI_fe50_fe5f,
@@ -1548,29 +1547,29 @@ const char * ucdBidiClassStr( int sym ) {
     static char scratch[20];
     switch( sym )
 	{
-	case R:	return "R";
-	case RLI:	return "RLI";
-	case NSM:	return "NSM";
-	case PDF:	return "PDF";
-	case ON:	return "ON";
-	case AN:	return "AN";
-	case BN:	return "BN";
-	case LRE:	return "LRE";
-	case ES:	return "ES";
-	case LRO:	return "LRO";
-	case LRI:	return "LRI";
-	case B:	return "B";
-	case RLE:	return "RLE";
-	case WS:	return "WS";
-	case PDI:	return "PDI";
-	case S:	return "S";
 	case AL:	return "AL";
-	case ET:	return "ET";
+	case AN:	return "AN";
+	case B:	return "B";
+	case BN:	return "BN";
 	case CS:	return "CS";
+	case EN:	return "EN";
+	case ES:	return "ES";
+	case ET:	return "ET";
 	case FSI:	return "FSI";
 	case L:	return "L";
+	case LRE:	return "LRE";
+	case LRI:	return "LRI";
+	case LRO:	return "LRO";
+	case NSM:	return "NSM";
+	case ON:	return "ON";
+	case PDF:	return "PDF";
+	case PDI:	return "PDI";
+	case R:	return "R";
+	case RLE:	return "RLE";
+	case RLI:	return "RLI";
 	case RLO:	return "RLO";
-	case EN:	return "EN";
+	case S:	return "S";
+	case WS:	return "WS";
 	default:
 	    sprintf( scratch, "%d", sym );
 	    return scratch;

@@ -23,6 +23,7 @@
 #   include	<appEditDocument.h>
 #   include	<docBlockFrame.h>
 #   include	<geo2DInteger.h>
+#   include	<layoutContext.h>
 
 #   include	<appDebugon.h>
 

@@ -67,7 +67,7 @@ typedef struct ParaNode
 				/**
 				 *  Bidi tree: Holds runs with different 
 				 *  directions. This member is only set in 
-				 *  paragraphs that actually holds text with
+				 *  paragraphs that actually hold text with
 				 *  the opposite direction of the paragraph 
 				 *  direction. (In the paragraph properties)
 				 */

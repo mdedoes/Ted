@@ -21,6 +21,11 @@ struct DocumentPosition;
 struct ChildFields;
 struct EditRange;
 struct DocumentField;
+struct MemoryBuffer;
+
+typedef int (*DocFieldListForAllFun)(	int			n,
+					struct DocumentField *	df,
+					void *			through );
 
 /************************************************************************/
 /*									*/
@@ -64,7 +69,7 @@ extern int docDelimitFieldInDoc(struct DocumentSelection *	dsInside,
 				struct DocumentSelection *	dsAround,
 				int *				pPart0,
 				int *				pPart1,
-				const struct BufferDocument *		bd,
+				const struct BufferDocument *	bd,
 				const struct DocumentField *	df );
 
 extern int docDelimitFieldInTree(
@@ -98,5 +103,20 @@ extern int docDeleteFieldRange(	int *				pUpdateFlags,
 extern void docDeleteChildFields(	int *			pUpdateFlags,
 					struct BufferDocument *	bd,
 					struct ChildFields *	cf );
+
+extern struct DocumentField * docGetFieldByNumber(
+					const struct BufferDocument *	bd,
+					int				n );
+
+extern int docFindBookmarkField( struct DocumentField **	pDf,
+				const struct BufferDocument *	bd,
+				const struct MemoryBuffer *	markName );
+
+extern struct DocumentField * docClaimField(
+					struct BufferDocument *	bd );
+
+extern int docForAllFields(	const struct BufferDocument *	bd,
+				DocFieldListForAllFun		fun,
+				void *				through );
 
 #   endif

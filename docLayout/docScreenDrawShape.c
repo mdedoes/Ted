@@ -10,6 +10,7 @@
 #   include	<stdlib.h>
 
 #   include	"docScreenDraw.h"
+#   include	"layoutContext.h"
 #   include	<geoGrid.h>
 #   include	<docShape.h>
 #   include	<docShapeType.h>
@@ -140,7 +141,7 @@ static void docScreenDrawShapeGetLine(
 
     if  ( *pLine )
 	{
-	const LayoutContext *	lc= &(dc->dcLayoutContext);
+	const LayoutContext *	lc= dc->dcLayoutContext;
 	int			twipsWide= EMUtoTWIPS( sd->sdLineWidthEmu );
 	int			pixelsWide= docLayoutXPixels( lc, twipsWide );
 
@@ -231,7 +232,7 @@ static int docScreenDrawShapePoints(	const DrawingShape *		ds,
 				ScreenDrawingData *		sdd )
     {
     const ShapeDrawing *	sd= &(ds->dsDrawing);
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
     double			xfac= lc->lcPixelsPerTwip;
 
     int				line= 0;
@@ -394,12 +395,12 @@ static int docScreenDrawShapePath(	const DrawingShape *		ds,
     return rval;
     }
 
-static int docScreenDrawPictureFrame( DrawingShape *			ds,
+static int docScreenDrawPictureFrame( DrawingShape *		ds,
 				DrawingContext *		dc,
 				ScreenDrawingData *		sdd,
 				const DocumentRectangle *	drPixels )
     {
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
 
     const ShapePath *		sp= &SP_RECTANGLE;
     int				np= sp->spVertexCount;
@@ -443,7 +444,7 @@ static int docScreenDrawOnlineStorage( DrawingShape *			ds,
 				ScreenDrawingData *		sdd,
 				const DocumentRectangle *	drPixels )
     {
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
     DrawingSurface		drsf= lc->lcDrawingSurface;
 
     const ShapePath *		sp= &SP_RECTANGLE;
@@ -512,7 +513,7 @@ static int docScreenDrawCan( 	DrawingShape *			ds,
 				ScreenDrawingData *		sdd,
 				const DocumentRectangle *	drPixels )
     {
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
     DrawingSurface		drsf= lc->lcDrawingSurface;
 
     Arc2DI			topArc;
@@ -577,7 +578,7 @@ static int docScreenDrawCallout( DrawingShape *			ds,
 				const DocumentRectangle *	drPixels )
     {
     const ShapeDrawing *	sd= &(ds->dsDrawing);
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
     DrawingSurface		drsf= lc->lcDrawingSurface;
 
     const ShapePath *	sp= &SP_RECTANGLE;
@@ -638,7 +639,7 @@ static int docScreenDrawRoundedRectangleShape(
 				DrawingContext *		dc,
 				ScreenDrawingData *		sdd )
     {
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
     DrawingSurface		drsf= lc->lcDrawingSurface;
 
     int			fill= 0;
@@ -670,7 +671,7 @@ int docScreenDrawDrawingShape(	const DocumentRectangle *	drOutside,
 				void *				vsdd )
     {
     const ShapeDrawing *	sd= &(ds->dsDrawing);
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
     DrawingSurface		drsf= lc->lcDrawingSurface;
     ScreenDrawingData *		sdd= (ScreenDrawingData *)vsdd;
 

@@ -27,7 +27,7 @@ int docDescribeSetSelection(
 			DocumentRectangle *		drExternalSet,
 			int *				pRedrawOldTree,
 			int *				pRedrawNewTree,
-			LayoutContext *			lc,
+			struct LayoutContext *		lc,
 			struct BufferDocument *		bd,
 			const DocumentSelection *	dsOld,
 			const DocumentSelection *	dsSet )
@@ -120,14 +120,6 @@ int docDescribeSetSelection(
 					    &(dsSet->dsHead), bd,
 					    rootNodeSet->biTreeType ) )
 		{ LDEB(rootNodeSet->biTreeType);	}
-
-	    /*
-	    page= docSectionHeaderFooterFirstPage( &usedInDoc, bodySectNodeSet,
-					rootNodeSet->biTreeType, dp );
-
-	    if  ( page < 0 || ! usedInDoc )
-		{ LLDEB(page,usedInDoc); return;	}
-	    */
 
 	    if  ( docCheckPageOfSelectedTree( &changed, &bodySectNodeSet,
 				(DocumentRectangle *)0, treeSet, lc,

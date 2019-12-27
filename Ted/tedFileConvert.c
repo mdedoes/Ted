@@ -19,11 +19,13 @@
 #   include	<appSystem.h>
 #   include	<docCopyNode.h>
 #   include	<docFontsDocuments.h>
+#   include	<docJsonReport.h>
 #   include	"tedFileConvert.h"
 #   include	"tedDocument.h"
 #   include	<appEditApplication.h>
 #   include	<sioGeneral.h>
 
+#   include	<docDebug.h>
 #   include	<appDebugon.h>
 
 /************************************************************************/
@@ -262,7 +264,7 @@ int tedFontsDocuments(	EditApplication *		ea,
     if  ( drawGetDeferredFontMetricsForList( &(ea->eaPostScriptFontList) ) )
 	{ SDEB(ea->eaAfmDirectory); rval= -1; /*goto ready;*/	}
 
-    if  ( fileTestDirectory( &outDir )	&&
+    if  ( fileTestDirectory( &outDir )		&&
 	  fileMakeDirectories( &outDir )	)
 	{ SDEB(utilMemoryBufferGetString(&outDir)); rval= -1; goto ready; }
 
@@ -282,6 +284,22 @@ int tedFontsDocuments(	EditApplication *		ea,
     utilCleanMemoryBuffer( &scriptAbsoluteTo );
 
     return rval;
+    }
+
+static int tedFileConvertSaveOutput(
+				MemoryBuffer *			fileName,
+				EditApplication *		ea,
+				TedDocument *			tdOut,
+				const char *			outName,
+				int				formatOut )
+    {
+    if  ( utilMemoryBufferSetString( fileName, outName ) )
+	{ SDEB(outName); return -1;	}
+
+    if  ( appSaveDocumentOutput( ea, tdOut, formatOut, fileName ) )
+	{ SDEB(outName); return -1;	}
+
+    return 0;
     }
 
 static int tedConcatenateX(	EditApplication *		ea,
@@ -334,10 +352,8 @@ static int tedConcatenateX(	EditApplication *		ea,
 	tdIn= (TedDocument *)0; formatIn= -1;
 	}
 
-    if  ( utilMemoryBufferSetString( &fileName, argv[arg] ) )
-	{ LSDEB(arg,argv[arg]); rval= -1; goto ready;	}
-
-    if  ( appSaveDocumentOutput( ea, tdOut, formatOut, &fileName ) )
+    if  ( tedFileConvertSaveOutput( &fileName, ea, tdOut,
+						    argv[arg], formatOut ) )
 	{ LSDEB(arg,argv[arg]); rval= -1; goto ready;	}
 
   ready:
@@ -372,5 +388,62 @@ int tedConcatenateText(	EditApplication *		ea,
     const int	omitSectBreak= 1;
 
     return tedConcatenateX( ea, argc, argv, omitSectBreak );
+    }
+
+int tedMergeJson(	EditApplication *		ea,
+			const char *			prog,
+			const char *			call,
+			int				argc,
+			char **				argv )
+    {
+    int			rval= argc;
+
+    TedDocument *	tdIn= (TedDocument *)0;
+    TedDocument *	tdOut= (TedDocument *)0;
+    int			formatIn= -1;
+    int			formatOut= -1;
+
+    MemoryBuffer	fileName;
+
+    int			stdinCount= 0;
+    int			suggestStdin= 0;
+
+    utilInitMemoryBuffer( &fileName );
+
+    if  ( argc != 3 )
+	{ SLDEB(call,argc); rval= -1; goto ready;	}
+
+    if  ( utilMemoryBufferSetString( &fileName, argv[0] ) )
+	{ SDEB(argv[0]); rval= -1; goto ready;	}
+
+    tdIn= (TedDocument *)appOpenDocumentInput( ea, &formatIn,
+				    &suggestStdin, stdinCount > 0, &fileName );
+    if  ( ! tdIn )
+	{ SXDEB(argv[0],tdIn); rval= -1; goto ready;	}
+
+    if  ( suggestStdin )
+	{ stdinCount++;	}
+
+    tdOut= tdIn; formatOut= formatIn;
+    tdIn= (TedDocument *)0; formatIn= -1;
+
+    if  ( docSubstituteJsonProperties( argv[1], ea->eaLocale,
+							tdOut->tdDocument ) )
+	{ SSDEB(argv[0],argv[1]); rval= -1; goto ready;	}
+
+    if  ( tedFileConvertSaveOutput( &fileName, ea, tdOut,
+						    argv[2], formatOut ) )
+	{ SDEB(argv[2]); rval= -1; goto ready;	}
+
+  ready:
+
+    if  ( tdIn )
+	{ tedFreeDocument( tdIn, formatIn );	}
+    if  ( tdOut )
+	{ tedFreeDocument( tdOut, formatOut );	}
+
+    utilCleanMemoryBuffer( &fileName );
+
+    return rval;
     }
 

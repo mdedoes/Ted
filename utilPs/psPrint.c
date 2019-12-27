@@ -360,13 +360,11 @@ void psInitPrintingState(	PrintingState *	ps )
 
     ps->psInsideLink= 0;
 
-    utilInitMemoryBuffer( &(ps->psNoteRef) );
-    utilInitMemoryBuffer( &(ps->psNoteDef) );
-
     ps->psLinkParticulesDone= 0;
     ps->psLinkRectLeft= -1;
     utilInitMemoryBuffer( &(ps->psLinkFile) );
     utilInitMemoryBuffer( &(ps->psLinkMark) );
+    utilInitMemoryBuffer( &(ps->psLinkTitle) );
 
     ps->psUsePostScriptFilters= 1;
     ps->psUsePostScriptIndexedImages= 1;
@@ -381,10 +379,9 @@ void psCleanPrintingState(	PrintingState *	ps )
 
     psCleanPrintGeometry( &(ps->psPrintGeometry) );
 
-    utilCleanMemoryBuffer( &(ps->psNoteRef) );
-    utilCleanMemoryBuffer( &(ps->psNoteDef) );
     utilCleanMemoryBuffer( &(ps->psLinkMark) );
     utilCleanMemoryBuffer( &(ps->psLinkFile) );
+    utilCleanMemoryBuffer( &(ps->psLinkTitle) );
 
     return;
     }
@@ -534,8 +531,18 @@ void psFlushLink(		PrintingState *		ps,
 	drLink.drX1= x1;
 	drLink.drY1= lineTop;
 
-	psSourcePdfmark( ps->psSos, &drLink,
-				    &(ps->psLinkFile), &(ps->psLinkMark) );
+	if  ( utilMemoryBufferIsEmpty( &(ps->psLinkTitle) ) )
+	    {
+	    psSourcePdfmark( ps->psSos, &drLink,
+					    &(ps->psLinkFile),
+					    &(ps->psLinkMark) );
+	    }
+	else{
+	    psGotoPdfmark( ps->psSos, &drLink,
+					    &(ps->psLinkFile),
+					    &(ps->psLinkMark),
+					    &(ps->psLinkTitle) );
+	    }
 
 	ps->psLinkParticulesDone= 0;
 	ps->psLinkRectLeft= x1;

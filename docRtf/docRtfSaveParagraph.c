@@ -13,10 +13,10 @@
 #   include	<docTreeType.h>
 #   include	<docParaParticules.h>
 #   include	"docRtfWriterImpl.h"
+#   include	"docRtfControlWord.h"
 #   include	<docSelect.h>
 #   include	<docTreeNode.h>
 #   include	<docTextParticule.h>
-#   include	<docBuf.h>
 #   include	<utilPropMask.h>
 #   include	<docObjects.h>
 #   include	<docTabStopList.h>
@@ -372,7 +372,7 @@ int docRtfSaveParaNode(		RtfWriter *			rw,
 /*									*/
 /************************************************************************/
 
-void docRtfSaveTabStopList( 	RtfWriter *		rw,
+int docRtfSaveTabStopList( 	RtfWriter *		rw,
 				const TabStopList *	tsl )
     {
     int			i;
@@ -381,27 +381,38 @@ void docRtfSaveTabStopList( 	RtfWriter *		rw,
     ts= tsl->tslTabStops;
     for ( i= 0; i < tsl->tslTabStopCount; ts++, i++ )
 	{
+	const int	scope= RTCscopeTAB;
+
 	if  ( rw->rwCol >= 65 )
 	    { docRtfWriteNextLine( rw );	}
 
 	if  ( ts->tsAlignment != DOCtaLEFT )
 	    {
-	    docRtfWriteEnumTag( rw, DOCrtf_TabAlignTags, ts->tsAlignment,
-				    DOCrtf_TabAlignTagCount, DOCta_COUNT );
+	    if  ( docRtfWriteProperty( rw, scope,
+					TABpropALIGN, ts->tsAlignment ) )
+		{ LLLDEB(scope,TABpropALIGN,ts->tsAlignment); return -1; }
 	    }
 
+	/* No tag for default value DOCtlNONE exists */
 	if  ( ts->tsLeader != DOCtlNONE )
 	    {
-	    docRtfWriteEnumTag( rw, DOCrtf_TabLeaderTags, ts->tsLeader,
-				    DOCrtf_TabLeaderTagCount, DOCtl_COUNT );
+	    if  ( docRtfWriteProperty( rw, scope,
+					TABpropLEADER, ts->tsLeader ) )
+		{ LLLDEB(scope,TABpropLEADER,ts->tsLeader); return -1; }
 	    }
 
-	if  ( ts->tsFromStyleOrList )
-	    { docRtfWriteTag( rw, "jclisttab" );	}
+	if  ( docRtfWriteProperty( rw, scope,
+				    TABpropFROM_STYLE, ts->tsFromStyleOrList ) )
+	    {
+	    LLLDEB(scope,TABpropFROM_STYLE,ts->tsFromStyleOrList);
+	    return -1;
+	    }
 
-	docRtfWriteArgTag( rw, "tx", ts->tsOffset );
+	if  ( docRtfWriteProperty( rw, scope,
+				    TABpropOFFSET, ts->tsOffset ) )
+	    { LLLDEB(scope,TABpropOFFSET,ts->tsOffset); return -1; }
 	}
 
-    return;
+    return 0;
     }
 

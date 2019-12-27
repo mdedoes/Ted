@@ -16,6 +16,7 @@ typedef struct LayoutContext
     struct IndexMapping *		lcAttributeToScreenFont;
     const struct PostScriptFontList *	lcPostScriptFontList;
     struct BufferDocument *		lcDocument;
+    int					lcHonourSpecialSectBreaks;
 
     int					lcOx;
     int					lcOy;

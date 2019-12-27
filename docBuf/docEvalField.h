@@ -9,9 +9,7 @@
 
 struct DocumentField;
 struct RecalculateFields;
-struct NoteProperties;
 struct BufferDocument;
-struct FootEndNotesProperties;
 struct MemoryBuffer;
 struct DocumentSelection;
 struct ParagraphBuilder;
@@ -157,12 +155,6 @@ extern int docCalculateRefFieldValue(
 			struct MemoryBuffer *			mbResult,
 			const struct MemoryBuffer *		markName,
 			struct BufferDocument *			bd );
-
-extern int docFormatChftnField(
-			struct MemoryBuffer *			mbResult,
-			const struct FootEndNotesProperties *	fep,
-			const struct NoteProperties *		np,
-			int					noteNumber );
 
 extern int docCalculateFormulaFieldString(
 			int *					pCalculated,

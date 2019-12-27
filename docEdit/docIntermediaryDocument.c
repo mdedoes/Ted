@@ -7,6 +7,7 @@
 #   include	"docEditConfig.h"
 
 #   include	<docBuf.h>
+#   include	<docDocument.h>
 #   include	<docNodeTree.h>
 #   include	"docIntermediaryDocument.h"
 #   include	<docPropertiesAdmin.h>

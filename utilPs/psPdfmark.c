@@ -241,17 +241,27 @@ static void psFileLinkDestMark(	SimpleOutputStream *	sos,
 /*									*/
 /************************************************************************/
 
-void psSourcePdfmark(		SimpleOutputStream *		sos,
-				const DocumentRectangle *	drLink,
-				const MemoryBuffer *		fileName,
-				const MemoryBuffer *		markName )
+static void pdPdfmarkWriteClickArea(
+				SimpleOutputStream *		sos,
+				const DocumentRectangle *	drLink )
     {
     sioOutPrintf( sos, "[ /Rect [ %d %d %d %d ]\n",
 				drLink->drX0, drLink->drY0,
 				drLink->drX1, drLink->drY1 );
     sioOutPrintf( sos, "  /Border [ 0 0 0 ]\n" );
+    }
 
-    if  ( ! fileName || utilMemoryBufferIsEmpty( fileName ) )
+void psSourcePdfmark(		SimpleOutputStream *		sos,
+				const DocumentRectangle *	drLink,
+				const MemoryBuffer *		fileName,
+				const MemoryBuffer *		markName )
+    {
+    if  ( fileName && utilMemoryBufferIsEmpty( fileName ) )
+	{ fileName= (const MemoryBuffer *)0;	}
+
+    pdPdfmarkWriteClickArea( sos, drLink );
+
+    if  ( ! fileName )
 	{
 	if  ( ! markName || utilMemoryBufferIsEmpty( markName ) )
 	    { XDEB(markName);	}
@@ -268,6 +278,38 @@ void psSourcePdfmark(		SimpleOutputStream *		sos,
 
     sioOutPrintf( sos, "  /Subtype /Link\n" );
     sioOutPrintf( sos, "/ANN pdfmark\n" );
+
+    return;
+    }
+
+void psGotoPdfmark(		SimpleOutputStream *		sos,
+				const DocumentRectangle *	drLink,
+				const MemoryBuffer *		fileName,
+				const MemoryBuffer *		markName,
+				const MemoryBuffer *		title )
+    {
+    psSourcePdfmark( sos, drLink, fileName, markName );
+
+#   if 0
+    Does not work. (Why?)
+
+    static int		n= 0;
+
+    if  ( fileName && utilMemoryBufferIsEmpty( fileName ) )
+	{ fileName= (const MemoryBuffer *)0;	}
+
+    pdPdfmarkWriteClickArea( sos, drLink );
+
+    sioOutPrintf( sos, "  /T (Widget%d)\n", n++ );
+    sioOutPrintf( sos, "  /TU (tooltip text)\n" );
+    sioOutPrintf( sos, "  /FT /Btn\n" );
+    sioOutPrintf( sos, "  /F 4\n" );
+    sioOutPrintf( sos, "  /Ff 65536\n" ); /* Pushbutton */
+    sioOutPrintf( sos, "  /Action <</Subtype/GoTo /D/%s>>\n", utilMemoryBufferGetString( markName ) );
+
+    sioOutPrintf( sos, "  /Subtype /Widget\n" );
+    sioOutPrintf( sos, "/ANN pdfmark\n" );
+#   endif
 
     return;
     }
@@ -319,3 +361,14 @@ int psOutlinePdfmark(		PrintingState *		ps,
     return 0;
     }
 
+int psSetPageProperty(		PrintingState *		ps,
+				const char *		key,
+				const char *		value )
+    {
+    sioOutPrintf( ps->psSos, "[ {ThisPage} << " );
+    sioOutPrintf( ps->psSos, "/%s ", key );
+    psPrintStringValue( ps, value, strlen( value ) );
+    sioOutPrintf( ps->psSos, " >> /PUT pdfmark\n" );
+
+    return 0;
+    }

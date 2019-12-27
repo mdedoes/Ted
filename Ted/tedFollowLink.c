@@ -228,7 +228,7 @@ int tedDocFollowLink(	APP_WIDGET		option,
 	else{
 	    if  ( utilCopyMemoryBuffer( &target, &base ) )
 		{ LDEB(1); rval= -1; goto ready;	}
-	    if  ( utilMemoryBufferAppendBytes( &target, (unsigned char *)"/", 1 ) )
+	    if  ( utilMemoryBufferAppendString( &target, "/" ) )
 		{ LDEB(1); rval= -1; goto ready;	}
 	    if  ( utilMemoryAppendBuffer( &target, &file ) )
 		{ LDEB(1); rval= -1; goto ready;	}

@@ -11,6 +11,7 @@
 #   include	<docObjectProperties.h>
 #   include	<geoUnits.h>
 #   include	"docRtfWriterImpl.h"
+#   include	"docRtfControlWord.h"
 #   include	"docRtfTags.h"
 #   include	<docPictureProperties.h>
 #   include	<utilPropMask.h>
@@ -23,10 +24,35 @@
 /*									*/
 /************************************************************************/
 
+static const int PictRegularProperties[]=
+{
+    PIPpropPICSCALE_X,
+    PIPpropPICSCALE_Y,
+    PIPpropPICTWIPS_WIDE,
+    PIPpropPICTWIPS_HIGH,
+    PIPpropPICCROP_TOP,
+    PIPpropPICCROP_BOTTOM,
+    PIPpropPICCROP_LEFT,
+    PIPpropPICCROP_RIGHT,
+    PIPpropBLIPTAG,
+    PIPpropWBMBITSPIXEL,
+    PIPpropWBMPLANES,
+    PIPpropWBMWIDTHBYTES,
+    PIPpropDEFSHP,
+    PIPpropPICSCALED,
+    PIPpropPICBMP,
+    PIPpropBLIPUPI,
+};
+
+static const int PictRegularPropertyCount=
+			sizeof(PictRegularProperties)/sizeof(int);
+
 int docRtfSavePictureTags(	RtfWriter *			rw,
 				const PropertyMask *		pipSetMask,
 				const PictureProperties *	pipSet )
     {
+    const int			scope= RTCscopePICT;
+
     if  ( PROPmaskISSET( pipSetMask, PIPpropTYPE ) )
 	{
 	switch( pipSet->pipType )
@@ -98,44 +124,10 @@ int docRtfSavePictureTags(	RtfWriter *			rw,
 	docRtfWriteArgTag( rw, "pich", yExt );
 	}
 
-    if  ( PROPmaskISSET( pipSetMask, PIPpropPICSCALE_X ) )
-	{ docRtfWriteArgTag( rw, "picscalex", pipSet->pipScaleXSet ); }
-    if  ( PROPmaskISSET( pipSetMask, PIPpropPICSCALE_Y ) )
-	{ docRtfWriteArgTag( rw, "picscaley", pipSet->pipScaleYSet ); }
-
-    if  ( PROPmaskISSET( pipSetMask, PIPpropPICTWIPS_WIDE ) )
-	{ docRtfWriteArgTag( rw, "picwgoal", pipSet->pipTwipsWide );	}
-    if  ( PROPmaskISSET( pipSetMask, PIPpropPICTWIPS_HIGH ) )
-	{ docRtfWriteArgTag( rw, "pichgoal", pipSet->pipTwipsHigh );	}
-
-    if  ( PROPmaskISSET( pipSetMask, PIPpropPICCROP_TOP ) )
-	{ docRtfWriteArgTag( rw, "piccropt", pipSet->pipTopCropTwips ); }
-    if  ( PROPmaskISSET( pipSetMask, PIPpropPICCROP_BOTTOM ) )
-	{ docRtfWriteArgTag( rw, "piccropb", pipSet->pipBottomCropTwips ); }
-    if  ( PROPmaskISSET( pipSetMask, PIPpropPICCROP_LEFT ) )
-	{ docRtfWriteArgTag( rw, "piccropl", pipSet->pipLeftCropTwips ); }
-    if  ( PROPmaskISSET( pipSetMask, PIPpropPICCROP_RIGHT ) )
-	{ docRtfWriteArgTag( rw, "piccropr", pipSet->pipRightCropTwips ); }
-
-    if  ( PROPmaskISSET( pipSetMask, PIPpropBLIPTAG ) )
-	{ docRtfWriteArgTag( rw, "bliptag", pipSet->pipBliptag ); }
-
-    if  ( PROPmaskISSET( pipSetMask, PIPpropWBMBITSPIXEL ) )
-	{ docRtfWriteArgTag( rw, "wbmbitspixel", pipSet->pipBmBitsPerPixel ); }
-    if  ( PROPmaskISSET( pipSetMask, PIPpropWBMPLANES ) )
-	{ docRtfWriteArgTag( rw, "wbmplanes", pipSet->pipBmPlanes );	}
-    if  ( PROPmaskISSET( pipSetMask, PIPpropWBMWIDTHBYTES ) )
-	{ docRtfWriteArgTag( rw, "wbmwidthbytes", pipSet->pipBmBytesPerRow ); }
-
-    if  ( PROPmaskISSET( pipSetMask, PIPpropDEFSHP ) )
-	{ docRtfWriteFlagTag( rw, "defshp", pipSet->pipPictureIsWordArt ); }
-    if  ( PROPmaskISSET( pipSetMask, PIPpropPICSCALED ) )
-	{ docRtfWriteFlagTag( rw, "picscaled", pipSet->pipPictIsScaled ); }
-    if  ( PROPmaskISSET( pipSetMask, PIPpropPICBMP ) )
-	{ docRtfWriteFlagTag( rw, "picbmp", pipSet->pipMetafileIsRaster ); }
-
-    if  ( PROPmaskISSET( pipSetMask, PIPpropBLIPUPI ) )
-	{ docRtfWriteArgTag( rw, "blipupi", pipSet->pipBmUnitsPerInch ); }
+    if  ( docRtfWriteItemProperties( rw, scope, pipSet,
+			(RtfGetIntProperty)docGetPictureProperty, pipSetMask,
+			PictRegularProperties, PictRegularPropertyCount ) )
+	{ LLDEB(scope,PictRegularPropertyCount); return -1;	}
 
     return 0;
     }

@@ -13,12 +13,10 @@
 #   include	"docDraw.h"
 #   include	"docDrawLine.h"
 #   include	<docTextRun.h>
-#   include	<docTreeType.h>
 #   include	<docTreeNode.h>
 #   include	<docTextLine.h>
 #   include	<docHyperlinkField.h>
 #   include	<docBookmarkField.h>
-#   include	<utilMemoryBufferPrintf.h>
 #   include	<docNotes.h>
 #   include	<docDocumentField.h>
 #   include	<docFieldKind.h>
@@ -26,6 +24,7 @@
 #   include	"docParticuleData.h"
 #   include	<psPrint.h>
 #   include	<docFields.h>
+#   include	<docTreeType.h>
 
 #   include	<docDebug.h>
 #   include	<appDebugon.h>
@@ -307,20 +306,23 @@ int docPsPrintStartField(	const DrawTextLine *		dtl,
     int				rval= 0;
 
     PrintingState *		ps= (PrintingState *)dtl->dtlThrough;
-    DrawingContext *		dc= dtl->dtlDrawingContext;
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
-    const struct BufferDocument *	bd= lc->lcDocument;
 
     const TextLine *		tl= dtl->dtlTextLine;
     int				lineTop= tl->tlTopPosition.lpPageYTwips;
 
-    const struct BufferItem *	paraNode= dtl->dtlParaNode;
+    struct BufferItem *		paraNode= dtl->dtlParaNode;
 
     const MemoryBuffer *	mbBookmark;
+
+    MemoryBuffer		mbSource;
+    MemoryBuffer		mbTarget;
 
     HyperlinkField		hf;
 
     docInitHyperlinkField( &hf );
+
+    utilInitMemoryBuffer( &mbSource );
+    utilInitMemoryBuffer( &mbTarget );
 
     if  ( df->dfKind == DOCfkBOOKMARK )
 	{
@@ -334,11 +336,6 @@ int docPsPrintStartField(	const DrawTextLine *		dtl,
 
     if  ( df->dfKind == DOCfkCHFTN )
 	{
-	const MemoryBuffer *	refName;
-	const MemoryBuffer *	markName;
-
-	struct DocumentNote *	dn;
-
 	int			cnt;
 	int			closed;
 
@@ -347,29 +344,30 @@ int docPsPrintStartField(	const DrawTextLine *		dtl,
 	if  ( cnt < 0 )
 	    { LDEB(cnt); }
 
-	dn= docGetNoteOfField( df, bd );
-	if  ( ! dn )
-	    { LXSDEB(cnt,dn,docTreeTypeStr(paraNode->biTreeType)); }
+	if  ( docSetNoteLinks( &mbTarget, &mbSource, paraNode, df ) )
+	    { LDEB(1); rval= -1; goto ready;	}
 
-	utilMemoryBufferPrintf( &(ps->psNoteRef),
-				    "_NREF_%d", df->dfFieldNumber+ 1 );
-	utilMemoryBufferPrintf( &(ps->psNoteDef),
-				    "_NDEF_%d", df->dfFieldNumber+ 1 );
+	/* Include destination to jump to from the target */
+	psDestPdfmark( ps, lineTop, &mbSource );
 
+	/* Remember what the target is to use that at the end of the link */
+	utilEmptyMemoryBuffer( &(ps->psLinkFile) );
+
+	utilEmptyMemoryBuffer( &(ps->psLinkTitle) );
 	if  ( paraNode->biTreeType == DOCinBODY )
 	    {
-	    markName= &(ps->psNoteDef);
-	    refName=  &(ps->psNoteRef);
-	    }
-	else{
-	    markName= &(ps->psNoteRef);
-	    refName=  &(ps->psNoteDef);
+	    struct DocumentNote *	dn;
+
+	    dn= docGetNoteOfField( df, dtl->dtlDocument );
+	    if  ( dn )
+		{
+		if  ( docCollectNoteTitle( &(ps->psLinkTitle),
+							dn, dtl->dtlDocument ) )
+		    { LDEB(1); rval= -1;	}
+		}
 	    }
 
-	psDestPdfmark( ps, lineTop, refName );
-
-	utilEmptyMemoryBuffer( &(ps->psLinkFile) );
-	if  ( utilCopyMemoryBuffer( &(ps->psLinkMark), markName ) )
+	if  ( utilCopyMemoryBuffer( &(ps->psLinkMark), &mbTarget ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 
 	ps->psInsideLink= 1;
@@ -387,6 +385,7 @@ int docPsPrintStartField(	const DrawTextLine *		dtl,
 	    ps->psLinkParticulesDone= 0;
 	    ps->psLinkRectLeft= x0Twips;
 
+	    utilEmptyMemoryBuffer( &(ps->psLinkTitle) );
 	    if  ( utilCopyMemoryBuffer( &(ps->psLinkFile), &(hf.hfFile) ) )
 		{ LDEB(1); rval= -1; goto ready;	}
 	    if  ( utilCopyMemoryBuffer( &(ps->psLinkMark), &(hf.hfBookmark) ) )
@@ -397,6 +396,9 @@ int docPsPrintStartField(	const DrawTextLine *		dtl,
 	}
 
   ready:
+
+    utilCleanMemoryBuffer( &mbSource );
+    utilCleanMemoryBuffer( &mbTarget );
 
     docCleanHyperlinkField( &hf );
 

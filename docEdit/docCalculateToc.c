@@ -26,6 +26,7 @@
 #   include	<docFields.h>
 #   include	<docParaBuilder.h>
 
+#   include	<docDebug.h>
 #   include	<appDebugon.h>
 
 /************************************************************************/
@@ -91,7 +92,7 @@ void docCleanCalculateToc(	CalculateToc *	ct )
     /* docCleanParagraphFrame( &(ct->ctParagraphFrame) ); */
     docCleanParagraphProperties( &(ct->ctRefPP) );
 
-    utilInitIndexSet( &(ct->ctStyleNumbers) );
+    utilCleanIndexSet( &(ct->ctStyleNumbers) );
 
     if  ( ct->ctEntries )
 	{ free( ct->ctEntries );	}
@@ -219,6 +220,7 @@ static int docGetTocEntry(	TocEntry *		te,
 					  paraStyleNumber )	)
 	    {
 	    te->teNumbered= 1;
+	    te->teLevel= ct->ctStyleLevels[paraStyleNumber];
 	    return 0;
 	    }
 
@@ -324,48 +326,55 @@ static int docGetTocEntry(	TocEntry *		te,
 /*									*/
 /************************************************************************/
 
+static int docCollectTocEntry(	int				fieldNr,
+				DocumentField *			df,
+				void *				vct )
+    {
+    CalculateToc *		ct= (CalculateToc *)vct;
+
+    int				res;
+    TocEntry *			te;
+
+    if  ( ! df )
+	{ return 0;	}
+    if  ( df->dfSelectionScope.ssTreeType != DOCinBODY )
+	{ return 0;	}
+
+    if  ( df->dfKind != DOCfkBOOKMARK	&&
+	  df->dfKind != DOCfkSEQ	&&
+	  df->dfKind != DOCfkTC		&&
+	  df->dfKind != DOCfkTCN	)
+	{ return 0;	}
+
+    te= ct->ctEntries+ ct->ctEntryCount;
+    te->teField= df;
+
+    res= docGetTocEntry( te, ct );
+    if  ( res < 0 )
+	{ LLDEB(fieldNr,res); return -1;	}
+    if  ( res > 0 )
+	{ return 0;	}
+
+    if  ( ct->ctDepth < te->teLevel+ 1 )
+	{ ct->ctDepth=  te->teLevel+ 1;	}
+
+    ct->ctEntryCount++;
+
+    return 0;
+    }
+
 static int docCollectTocEntries(	CalculateToc *			ct )
     {
-    const DocumentFieldList *	dflDoc= &(ct->ctBdDoc->bdFieldList);
-    const int			fieldCount= dflDoc->dflPagedList.plItemCount;
-    int				fieldNr;
-
     int				entryNr= -1;
     int				entryParaNr;
 
     TocEntry *			te;
     int				to= 0;
+    int				res;
 
-    for ( fieldNr= 0; fieldNr < fieldCount; fieldNr++ )
-	{
-	int			res;
-	const DocumentField *	df= docGetFieldByNumber( dflDoc, fieldNr );
-
-	if  ( ! df )
-	    { continue;	}
-	if  ( df->dfSelectionScope.ssTreeType != DOCinBODY )
-	    { continue;	}
-
-	if  ( df->dfKind != DOCfkBOOKMARK	&&
-	      df->dfKind != DOCfkSEQ		&&
-	      df->dfKind != DOCfkTC		&&
-	      df->dfKind != DOCfkTCN		)
-	    { continue;	}
-
-	te=  ct->ctEntries+ ct->ctEntryCount;
-	te->teField= df;
-
-	res= docGetTocEntry( te, ct );
-	if  ( res < 0 )
-	    { LLDEB(fieldNr,res); return -1;	}
-	if  ( res > 0 )
-	    { continue;	}
-
-	if  ( ct->ctDepth < te->teLevel+ 1 )
-	    { ct->ctDepth=  te->teLevel+ 1;	}
-
-	ct->ctEntryCount++;
-	}
+    res= docForAllFields( ct->ctBdDoc, docCollectTocEntry, (void *)ct );
+    if  ( res < 0 )
+	{ LDEB(res); return -1;	}
 
     qsort( ct->ctEntries, ct->ctEntryCount,
 				    sizeof(TocEntry), docCompareTocEntries );
@@ -455,7 +464,7 @@ static int docTocCollectTocStyles(	CalculateToc *		ct )
 static int docTocSetStyleBookmarks(	CalculateToc *		ct )
     {
     const TocField *		tf= &(ct->ctTocField);
-    struct BufferDocument *		bd= ct->ctBdDoc;
+    struct BufferDocument *	bd= ct->ctBdDoc;
     DocumentPosition		dp;
 
     if  ( docHeadPosition( &dp, bd->bdBody.dtRoot ) )

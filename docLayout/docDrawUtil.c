@@ -8,6 +8,7 @@
 
 #   include	"docDraw.h"
 #   include	"docDrawLine.h"
+#   include	"layoutContext.h"
 #   include	<docAttributes.h>
 
 #   include	<appDebugon.h>
@@ -26,7 +27,7 @@ void docInitDrawingContext(	DrawingContext *	dc )
     dc->dcCurrentColorSet= 0;
     utilInitRGB8Color( &(dc->dcCurrentColor) );
 
-    layoutInitContext( &(dc->dcLayoutContext) );
+    dc->dcLayoutContext= (struct LayoutContext *)0;
     dc->dcBodySectNode= (struct BufferItem *)0;
 
     dc->dcClipRect= (DocumentRectangle *)0;
@@ -100,7 +101,7 @@ void docDrawSetColorNumber(	DrawingContext *	dc,
 				void *			through,
 				int			colorNumber )
     {
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
     RGB8Color			rgb8;
 
     docGetColorByNumber( &rgb8, lc->lcDocument, colorNumber );

@@ -20,6 +20,7 @@
 #   include	<svgWriter.h>
 #   include	<docParticuleData.h>
 #   include	<docBuf.h>
+#   include	<layoutContext.h>
 
 #   include	<appDebugon.h>
 
@@ -60,7 +61,7 @@ int docSvgDrawTextRun(		const TextRun *		tr,
 			    tr->trTextAttribute->taTextColorNumber );
 
 	df= fontFontListGetFontByNumber(
-		    dc->dcLayoutContext.lcDocument->bdProperties->dpFontList,
+		    dc->dcLayoutContext->lcDocument->bdProperties->dpFontList,
 		    tr->trTextAttribute->taFontNumber );
 
 	y= spanBaseline;

@@ -18,8 +18,6 @@
 #   include	<sioGeneral.h>
 #   include	<docTreeNode.h>
 #   include	"docRtfWriterImpl.h"
-#   include	"docRtfControlWord.h"
-#   include	"docRtfFindProperty.h"
 
 #   include	<appDebugon.h>
 
@@ -150,6 +148,37 @@ int docRtfWriteTag(	RtfWriter *	rw,
     return 0;
     }
 
+int docRtfWriteArgTag(	RtfWriter *		rw,
+			const char *		tag,
+			int			arg )
+    {
+    char	scratch[20];
+    int		len;
+
+    sprintf( scratch, "%d", arg );
+
+    len= strlen( tag )+ strlen( scratch );
+
+    rw->rwCol += 1+ len;
+
+    if  ( rw->rwCol > 72 )
+	{
+	docRtfWriteNextLine( rw );
+	rw->rwCol= len;
+	}
+
+    if  ( sioOutPutByte( '\\', rw->rwSosOut ) < 0 )
+	{ LDEB(1); return -1;	}
+    if  ( sioOutPutString( tag, rw->rwSosOut ) < 0 )
+	{ LDEB(1); return -1;	}
+    if  ( sioOutPutString( scratch, rw->rwSosOut ) < 0 )
+	{ LDEB(1); return -1;	}
+
+    rw->rwAfter= RTFafterARG;
+
+    return 0;
+    }
+
 int docRtfWriteDestinationBegin(	RtfWriter *		rw,
 					const char *		tag )
     {
@@ -225,117 +254,12 @@ int docRtfWriteDestinationEnd(		RtfWriter *	rw )
     return 0;
     }
 
-int docRtfWriteArgTag(	RtfWriter *		rw,
-			const char *		tag,
-			int			arg )
-    {
-    char	scratch[20];
-    int		len;
-
-    sprintf( scratch, "%d", arg );
-
-    len= strlen( tag )+ strlen( scratch );
-
-    rw->rwCol += 1+ len;
-
-    if  ( rw->rwCol > 72 )
-	{
-	docRtfWriteNextLine( rw );
-	rw->rwCol= len;
-	}
-
-    if  ( sioOutPutByte( '\\', rw->rwSosOut ) < 0 )
-	{ LDEB(1); return -1;	}
-    if  ( sioOutPutString( tag, rw->rwSosOut ) < 0 )
-	{ LDEB(1); return -1;	}
-    if  ( sioOutPutString( scratch, rw->rwSosOut ) < 0 )
-	{ LDEB(1); return -1;	}
-
-    rw->rwAfter= RTFafterARG;
-
-    return 0;
-    }
-
-int docRtfWriteFlagTag(		RtfWriter *		rw,
-				const char *		tag,
-				int			arg )
-    {
-    if  ( arg )
-	{ return docRtfWriteTag( rw, tag );		}
-    else{ return docRtfWriteArgTag( rw, tag, arg );	}
-    }
-
-int docRtfWriteAltTag(		RtfWriter *		rw,
-				const char *		yesTag,
-				const char *		noTag,
-				int			arg )
-    {
-    if  ( arg )
-	{ return docRtfWriteTag( rw, yesTag );	}
-    else{ return docRtfWriteTag( rw, noTag  );	}
-    }
-
-int docRtfWriteEnumTag(		RtfWriter *		rw,
-				const char * const *	tags,
-				int			arg,
-				int			tagCount,
-				int			enumCount )
-    {
-    if  ( tagCount != enumCount )
-	{ LLSDEB(tagCount,enumCount,tags[0]); return -1;	}
-
-    if  ( arg < 0 || arg >= tagCount )
-	{ LLSDEB(tagCount,arg,tags[0]); return -1;	}
-
-    if  ( tags[arg] )
-	{ return docRtfWriteTag( rw, tags[arg] );	}
-    else{ return 0;					}
-    }
-
 void docRtfWriteSemicolon(	RtfWriter *	rw )
     {
     sioOutPutString( ";", rw->rwSosOut );
     rw->rwCol += 1;
 
     rw->rwAfter= RTFafterTEXT;
-    }
-
-int docRtfWriteProperty(		RtfWriter *		rw,
-					int			scope,
-					int			prop,
-					int			value )
-    {
-    const RtfControlWord *	rcw;
-
-    rcw= docRtfFindProperty( scope, prop, value );
-    if  ( ! rcw )
-	{ LLLXDEB(scope,prop,value,rcw); return -1;	}
-
-    switch( rcw->rcwType )
-	{
-	case RTCtypeFLAG:
-	    if  ( docRtfWriteFlagTag( rw, rcw->rcwWord, value ) )
-		{ SDEB(rcw->rcwWord); return -1;	}
-	    return 0;
-
-	case RTCtypeNUMBER:
-	    if  ( docRtfWriteArgTag( rw, rcw->rcwWord, value ) )
-		{ SDEB(rcw->rcwWord); return -1;	}
-	    return 0;
-
-	case RTCtypeENUM:
-	    if  ( docRtfWriteTag( rw, rcw->rcwWord ) )
-		{ SDEB(rcw->rcwWord); return -1;	}
-	    return 0;
-
-	case RTCtypeSYMBOL:
-	case RTCtypeDEST:
-	default:
-	    SLDEB(rcw->rcwWord,rcw->rcwType);
-	    return -1;
-	}
-
-    return 0;
     }
 
 /************************************************************************/

@@ -9,6 +9,7 @@
 
 #   include	<stddef.h>
 #   include	<ctype.h>
+#   include	<limits.h>
 
 #   include	"docEdit.h"
 #   include	"docEditImpl.h"
@@ -21,35 +22,12 @@
 #   include	"docEditOperation.h"
 #   include	<docTreeNode.h>
 #   include	<docDocumentProperties.h>
-#   include	<utilPropMask.h>
 #   include	<docBuf.h>
 
 #   include	<docDebug.h>
 #   include	<appDebugon.h>
 
 #   define	SHOW_SELECTION_RANGE	0
-
-/************************************************************************/
-
-static int docIncludeTransferParaProperties(
-					struct BufferItem *		paraNodeTo,
-					const struct BufferItem *	paraNodeFrom,
-					DocumentCopyJob *	dcjInsert )
-    {
-    PropertyMask	ppSetMask;
-
-    utilPropMaskClear( &ppSetMask );
-    utilPropMaskFill( &ppSetMask, PPprop_COUNT );
-    PROPmaskUNSET( &ppSetMask, PPpropTABLE_NESTING );
-
-    if  ( docEditUpdParaProperties( dcjInsert->dcjEditOperation,
-			(PropertyMask *)0, paraNodeTo,
-			&ppSetMask, paraNodeFrom->biParaProperties,
-			&(dcjInsert->dcjAttributeMap) ) )
-	{ LDEB(1); return -1; }
-
-    return 0;
-    }
 
 /************************************************************************/
 /*									*/
@@ -82,7 +60,7 @@ static int docIncludeTransferParaProperties(
 
 static int docReplaceMultipleParagraphsWithSingle(
 				DocumentCopyJob *		dcjInsert,
-				const DocumentPosition *	dpFrom,
+				const DocumentSelection *	dsSource,
 				int				partFrom,
 				const int			paraNrHead )
     {
@@ -107,7 +85,8 @@ static int docReplaceMultipleParagraphsWithSingle(
 	{ LDEB(1); rval= -1; goto ready;	}
 
     if  ( docParaInsertTail( dcjInsert, paraNrHead,
-					&tailDp, &tailDp, dpFrom ) )
+				&tailDp, &tailDp,
+				&(dsSource->dsHead), &(dsSource->dsTail) ) )
 	{ LDEB(partFrom); rval= -1; goto ready;	}
 
     epSave= eo->eoAffectedRange.erTail;
@@ -123,7 +102,8 @@ static int docReplaceMultipleParagraphsWithSingle(
 	    { LDEB(1); rval= -1; goto ready;	}
 
 	if  ( docParaInsertTail( &dcjTail, paraNrHead,
-					&afterDp, &tailDp, &(eo->eoTailDp) ) )
+				&afterDp, &tailDp,
+				&(eo->eoTailDp), (DocumentPosition *)0 ) )
 	    { LDEB(eo->eoTailDp.dpStroff); rval= -1; goto ready;	}
 	}
 
@@ -152,7 +132,7 @@ static int docReplaceMultipleParagraphsWithSingle(
 
 static int docInsertSingleParagraph(
 				DocumentCopyJob *		dcjInsert,
-				const DocumentSelection *	dsFrom,
+				const DocumentSelection *	dsSource,
 				int				paraNrHead )
     {
     EditOperation *		eo= dcjInsert->dcjEditOperation;
@@ -165,7 +145,7 @@ static int docInsertSingleParagraph(
     if  ( eo->eoHeadDp.dpNode != eo->eoTailDp.dpNode )
 	{
 	if  ( docReplaceMultipleParagraphsWithSingle( dcjInsert,
-				    &(dsFrom->dsHead), partFrom, paraNrHead ) )
+				    dsSource, partFrom, paraNrHead ) )
 	    { LDEB(partFrom); rval= -1; goto ready;	}
 	}
     else{
@@ -175,14 +155,16 @@ static int docInsertSingleParagraph(
 	    { LDEB(1); rval= -1; goto ready;	}
 
 	if  ( docParaInsertTail( dcjInsert, paraNrHead,
-			&(eo->eoTailDp), &(eo->eoTailDp), &(dsFrom->dsHead) ) )
+			&(eo->eoTailDp), &(eo->eoTailDp),
+			&(dsSource->dsHead), &(dsSource->dsTail) ) )
 	    { LDEB(partFrom); rval= -1; goto ready;	}
 	}
 
     if  ( ( dcjInsert->dcjCopyHeadParaProperties	||
 	    dcjInsert->dcjCopyHeadParaProperties	)		&&
-	  docIncludeTransferParaProperties( eo->eoTailDp.dpNode,
-				  dsFrom->dsHead.dpNode, dcjInsert )	)
+	  docEditTransferParaProperties( eo, eo->eoTailDp.dpNode,
+				      dsSource->dsHead.dpNode, 
+				      0, &(dcjInsert->dcjAttributeMap) )	)
 	{ LDEB(1); rval= -1; goto ready; }
 
     docEditFinishStep( eo );
@@ -200,62 +182,258 @@ static int docInsertSingleParagraph(
 
 typedef struct TreeCopyJob
     {
-    struct BufferDocument *	tcjDocument;
-    const struct BufferItem *	tcjFromNode;
+					/**
+					 *  The document that receives the
+					 *  copied tree.
+					 */
+    struct BufferDocument *		tcjTargetDocument;
 
-    struct BufferItem *		tcjToNode;
-    int				tcjToIndex;
-    struct BufferItem *		tcjTailNode;
+					/**
+					 *  The selection in the source 
+					 *  document that we copy.
+					 */
+    const struct DocumentSelection *	tcjSourceSelection;
+
+					/**
+					 *  If copying is limited to a 
+					 *  selection of the source, do not 
+					 *  go beyond this paragraph.
+					 */
+    int					tcjSourceParaNrLast;
+
+					/**
+					 *  The node whose children we are 
+					 *  copying to the target.
+					 */
+    const struct BufferItem *		tcjSourceNode;
+
+					/**
+					 *  The node that receives the copied 
+					 *  nodes.
+					 */
+    struct BufferItem *			tcjTargetNode;
+
+					/**
+					 *  The index in the target node where
+					 *  copied children will be placed
+					 */
+    int					tcjTargetIndex;
+
+    struct BufferItem *			tcjTailNode;
     } TreeCopyJob;
 
 static int docInsertNextStep(		TreeCopyJob *		tcj )
     {
-    const struct BufferItem *	fromNode= tcj->tcjFromNode;
+    const struct BufferItem *	srcNode= tcj->tcjSourceNode;
+    const struct BufferItem *	nextParaNode;
     
-    if  ( ! docNextParagraph( (struct BufferItem *)fromNode ) )
+    nextParaNode= docNextParagraph( (struct BufferItem *)srcNode );
+    if  ( ! nextParaNode )
 	{ return 1;	}
-
-    while( fromNode )
+    if  ( tcj->tcjSourceSelection )
 	{
-	int	next= fromNode->biNumberInParent+ 1;
+	int	nextParaNumber= docNumberOfParagraph( nextParaNode );
 
-	if  ( fromNode->biParent			&&
-	      next < fromNode->biParent->biChildCount	)
+	if  ( nextParaNumber > tcj->tcjSourceParaNrLast )
+	    { return 1;	}
+	}
+
+    while( srcNode )
+	{
+	int	next= srcNode->biNumberInParent+ 1;
+
+	if  ( srcNode->biParent				&&
+	      next < srcNode->biParent->biChildCount	)
 	    {
-	    fromNode= fromNode->biParent->biChildren[next];
+	    srcNode= srcNode->biParent->biChildren[next];
 	    break;
 	    }
 	else{
-	    fromNode= fromNode->biParent;
-	    if  ( ! fromNode || ! fromNode->biParent )
-		{ XDEB(fromNode); return -1;		}
+	    srcNode= srcNode->biParent;
+	    if  ( ! srcNode || ! srcNode->biParent )
+		{ XDEB(srcNode); return -1;		}
 
-	    if  ( ! tcj->tcjToNode )
-		{ XDEB(tcj->tcjToNode); return -1;	}
-	    if  ( tcj->tcjToIndex < tcj->tcjToNode->biChildCount )
+	    if  ( ! tcj->tcjTargetNode )
+		{ XDEB(tcj->tcjTargetNode); return -1;	}
+	    if  ( tcj->tcjTargetIndex < tcj->tcjTargetNode->biChildCount )
 		{
 		struct BufferItem *	insertedNode= (struct BufferItem *)0;
 
-		if  ( docSplitGroupNode( tcj->tcjDocument, &insertedNode,
-					tcj->tcjToNode, tcj->tcjToIndex ) )
+		if  ( docSplitGroupNode( tcj->tcjTargetDocument,
+					&insertedNode,
+					tcj->tcjTargetNode,
+					tcj->tcjTargetIndex ) )
 		    { LDEB(1); return -1;	}
 
-		tcj->tcjToIndex= insertedNode->biNumberInParent+ 1;
-		tcj->tcjToNode= insertedNode->biParent;
+		tcj->tcjTargetIndex= insertedNode->biNumberInParent+ 1;
+		tcj->tcjTargetNode= insertedNode->biParent;
 		tcj->tcjTailNode= insertedNode;
 		}
 	    else{
-		tcj->tcjToIndex= tcj->tcjToNode->biNumberInParent+ 1;
-		tcj->tcjToNode= tcj->tcjToNode->biParent;
-		tcj->tcjTailNode= tcj->tcjToNode;
+		tcj->tcjTargetIndex= tcj->tcjTargetNode->biNumberInParent+ 1;
+		tcj->tcjTargetNode= tcj->tcjTargetNode->biParent;
+		tcj->tcjTailNode= tcj->tcjTargetNode;
 		}
 	    }
 	}
 
-    if  ( ! fromNode )
-	{ XDEB(fromNode); return -1;	}
+    if  ( ! srcNode )
+	{ XDEB(srcNode); return -1;	}
 
-    tcj->tcjFromNode= fromNode;
+    tcj->tcjSourceNode= srcNode;
+    return 0;
+    }
+
+static int docInsertCopyNode(	TreeCopyJob *		tcj,
+				DocumentCopyJob *	dcjInsert )
+    {
+    struct BufferItem *	insertedNode;
+    int			step;
+
+    if  ( ! tcj->tcjTargetNode )
+	{ XDEB(tcj->tcjTargetNode); return -1;	}
+
+    insertedNode= docCopyNodeSelection( dcjInsert,
+			tcj->tcjTargetNode, tcj->tcjTargetIndex,
+			tcj->tcjSourceNode, tcj->tcjSourceSelection );
+    if  ( ! insertedNode )
+	{
+	SSXDEB(docLevelStr(tcj->tcjSourceNode->biLevel),
+			docLevelStr(tcj->tcjTargetNode->biLevel),insertedNode);
+	return -1;
+	}
+
+    tcj->tcjTargetNode= insertedNode->biParent;
+    tcj->tcjTargetIndex= insertedNode->biNumberInParent+ 1;
+    tcj->tcjTailNode= insertedNode;
+
+    /* Reached end of source? */
+    if  ( tcj->tcjSourceSelection					&&
+	  tcj->tcjSourceSelection->dsTail.dpNode == tcj->tcjSourceNode	)
+	{ return 1;	}
+
+    step= docInsertNextStep( tcj );
+    if  ( step < 0 )
+	{ LDEB(step); return step;	}
+
+    return step;
+    }
+
+/************************************************************************/
+
+static int docStartTreeCopyInsideTargetParagraph(
+				TreeCopyJob *			tcj,
+				EditOperation *			eo,
+				int				headSplitLevel,
+				const DocumentSelection *	dsSource )
+    {
+    BufferItem *		newParaNode;
+
+    if  ( docEditSplitParaNode( &newParaNode, eo, headSplitLevel ) )
+	{ LDEB(headSplitLevel); return -1;	}
+
+    tcj->tcjTargetDocument= eo->eoDocument;
+    tcj->tcjSourceSelection= dsSource;
+    if  ( tcj->tcjSourceSelection )
+	{
+	tcj->tcjSourceParaNrLast=
+		docNumberOfParagraph( tcj->tcjSourceSelection->dsTail.dpNode );
+	}
+    else{
+	tcj->tcjSourceParaNrLast= INT_MAX;
+	}
+
+    if  ( headSplitLevel == DOClevPARA )
+	{
+	tcj->tcjTargetNode= newParaNode->biParent;
+	tcj->tcjTargetIndex= newParaNode->biNumberInParent;
+	tcj->tcjSourceNode= dsSource->dsHead.dpNode;
+	tcj->tcjTailNode= eo->eoTailDp.dpNode;
+	}
+    else{
+	struct BufferItem *	rowNode;
+
+	rowNode= docGetRowLevelNode( eo->eoTailDp.dpNode );
+	tcj->tcjTargetNode= rowNode->biParent;
+	tcj->tcjTargetIndex= rowNode->biNumberInParent+ 1;
+	tcj->tcjSourceNode= docGetRowNode( dsSource->dsHead.dpNode );
+	tcj->tcjTailNode= rowNode;
+	}
+
+    return 0;
+    }
+
+/************************************************************************/
+
+static int docStartTreeCopyBetweenTargetParagraphs(
+				TreeCopyJob *			tcj,
+				EditOperation *			eo,
+				int				headSplitLevel,
+				int				after,
+				const DocumentSelection *	dsSource )
+    {
+    struct BufferItem *	rowNode;
+    int			atExtremity;
+
+    rowNode= docGetRowLevelNode( eo->eoTailDp.dpNode );
+
+    if  ( docNodeAtExtremity( &atExtremity,
+				rowNode, eo->eoTailDp.dpNode, after ) )
+	{ LDEB(1); return -1;	}
+
+    if  ( atExtremity )
+	{
+	tcj->tcjTargetNode= rowNode->biParent;
+	tcj->tcjTargetIndex= rowNode->biNumberInParent+ after;
+
+	tcj->tcjTargetDocument= eo->eoDocument;
+	tcj->tcjSourceSelection= dsSource;
+	if  ( tcj->tcjSourceSelection )
+	    {
+	    tcj->tcjSourceParaNrLast=
+		    docNumberOfParagraph( tcj->tcjSourceSelection->dsTail.dpNode );
+	    }
+	else{
+	    tcj->tcjSourceParaNrLast= INT_MAX;
+	    }
+	tcj->tcjSourceNode= docGetRowNode( dsSource->dsHead.dpNode );
+	tcj->tcjTailNode= rowNode; /* Wrong for ! after, but irrelevant */
+
+	docEditIncludeNodeInReformatRange( eo, rowNode->biParent );
+	}
+    else{
+	struct BufferItem *		beforeNode;
+	struct BufferItem *		afterNode;
+
+	if  ( docEditSplitParaParent( eo, &beforeNode, &afterNode,
+			    eo->eoTailDp.dpNode, after, headSplitLevel ) )
+	    { LDEB(headSplitLevel); return -1;	}
+
+	rowNode= docGetRowLevelNode( eo->eoTailDp.dpNode );
+	tcj->tcjTargetNode= rowNode->biParent;
+	tcj->tcjTargetIndex= rowNode->biNumberInParent+ after;
+
+	tcj->tcjTargetDocument= eo->eoDocument;
+	tcj->tcjSourceSelection= dsSource;
+	if  ( tcj->tcjSourceSelection )
+	    {
+	    tcj->tcjSourceParaNrLast=
+		    docNumberOfParagraph( tcj->tcjSourceSelection->dsTail.dpNode );
+	    }
+	else{
+	    tcj->tcjSourceParaNrLast= INT_MAX;
+	    }
+	tcj->tcjSourceNode= docGetRowNode( dsSource->dsHead.dpNode );
+	tcj->tcjTailNode= afterNode;
+
+	if  ( after )
+	    {
+	    eo->eoAffectedRange.erTail.epParaNr=
+			    docNumberOfParagraph( eo->eoTailDp.dpNode )+ 1;
+	    eo->eoAffectedRange.erTail.epStroff= 0;
+	    }
+	}
+
     return 0;
     }
 
@@ -279,13 +457,13 @@ static int docInsertNextStep(		TreeCopyJob *		tcj )
 
 static int docInsertMultipleParagraphs(
 				DocumentCopyJob *		dcjInsert,
-				const DocumentSelection *	dsFrom,
+				const DocumentSelection *	dsSource,
 				int				paraNrHead )
     {
     int				rval= 0;
 
     EditOperation *		eo= dcjInsert->dcjEditOperation;
-    const struct BufferDocument *	bdFrom= dcjInsert->dcjSourceDocument;
+    const struct BufferDocument * bdFrom= dcjInsert->dcjSourceDocument;
 
     DocumentCopyJob		dcjTail;
 
@@ -311,15 +489,20 @@ static int docInsertMultipleParagraphs(
     if  ( docDeleteSelection( eo ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( ! docSelectionInsideCell( dsFrom )				&&
-	  eo->eoTailDp.dpNode->biParaProperties->ppTableNesting == 0	&&
-	  dsFrom->dsHead.dpNode->biParaProperties->ppTableNesting > 0	)
-	{ headSplitLevel= DOClevROW;	}
+    if  ( ! docSelectionInsideCell( dsSource ) )
+	{
+	const BufferItem *		tailNode= eo->eoTailDp.dpNode;
+	const ParagraphProperties *	pp= tailNode->biParaProperties;
+	int				tailTableNesting= pp->ppTableNesting;
 
-    if  ( ! docSelectionInsideCell( dsFrom )				&&
-	  eo->eoTailDp.dpNode->biParaProperties->ppTableNesting == 0	&&
-	  dsFrom->dsTail.dpNode->biParaProperties->ppTableNesting > 0	)
-	{ tailSplitLevel= DOClevROW;	}
+	if  ( tailTableNesting == 0	&&
+	      dsSource->dsHead.dpNode->biParaProperties->ppTableNesting > 0 )
+	    { headSplitLevel= DOClevROW;	}
+
+	if  ( tailTableNesting == 0	&&
+	      dsSource->dsTail.dpNode->biParaProperties->ppTableNesting > 0 )
+	    { tailSplitLevel= DOClevROW;	}
+	}
 
     if  ( docFindParticuleOfPosition( &part, &partFlags,
 					    &(eo->eoTailDp), PARAfindPAST ) )
@@ -329,75 +512,16 @@ static int docInsertMultipleParagraphs(
     if  ( headSplitLevel == DOClevPARA				||
 	  ! ( partFlags & (POSflagPARA_HEAD|POSflagPARA_TAIL) )	)
 	{
-	struct BufferItem *		newParaNode;
-
-	if  ( docSplitParaNode( &newParaNode, eo, headSplitLevel ) )
-	    { LDEB(headSplitLevel); return -1;	}
-
-	tcj.tcjDocument= eo->eoDocument;
-
-	if  ( headSplitLevel == DOClevPARA )
-	    {
-	    tcj.tcjToNode= newParaNode->biParent;
-	    tcj.tcjToIndex= newParaNode->biNumberInParent;
-	    tcj.tcjFromNode= dsFrom->dsHead.dpNode;
-	    tcj.tcjTailNode= eo->eoTailDp.dpNode;
-	    }
-	else{
-	    struct BufferItem *	rowNode;
-
-	    rowNode= docGetRowLevelNode( eo->eoTailDp.dpNode );
-	    tcj.tcjToNode= rowNode->biParent;
-	    tcj.tcjToIndex= rowNode->biNumberInParent+ 1;
-	    tcj.tcjFromNode= docGetRowNode( dsFrom->dsHead.dpNode );
-	    tcj.tcjTailNode= rowNode;
-	    }
+	if  ( docStartTreeCopyInsideTargetParagraph( &tcj, eo,
+						headSplitLevel, dsSource ) )
+	    { LDEB(headSplitLevel); rval= -1; goto ready;	}
 	}
     else{
-	const int		after= ( partFlags & POSflagPARA_HEAD ) == 0;
-	struct BufferItem *	rowNode;
-	int			atExtremity;
+	int	after= ( partFlags & POSflagPARA_HEAD ) == 0;
 
-	rowNode= docGetRowLevelNode( eo->eoTailDp.dpNode );
-
-	if  ( docNodeAtExtremity( &atExtremity,
-				    rowNode, eo->eoTailDp.dpNode, after ) )
-	    { LDEB(1); return -1;	}
-
-	if  ( atExtremity )
-	    {
-	    tcj.tcjToNode= rowNode->biParent;
-	    tcj.tcjToIndex= rowNode->biNumberInParent+ after;
-
-	    tcj.tcjDocument= eo->eoDocument;
-	    tcj.tcjFromNode= docGetRowNode( dsFrom->dsHead.dpNode );
-	    tcj.tcjTailNode= rowNode; /* Wrong for ! after, but irrelevant */
-
-	    docEditIncludeNodeInReformatRange( eo, rowNode->biParent );
-	    }
-	else{
-	    struct BufferItem *		beforeNode;
-	    struct BufferItem *		afterNode;
-
-	    if  ( docEditSplitParaParent( eo, &beforeNode, &afterNode,
-				eo->eoTailDp.dpNode, after, headSplitLevel ) )
-		{ LDEB(headSplitLevel); return -1;	}
-
-	    rowNode= docGetRowLevelNode( eo->eoTailDp.dpNode );
-	    tcj.tcjToNode= rowNode->biParent;
-	    tcj.tcjToIndex= rowNode->biNumberInParent+ after;
-
-	    tcj.tcjDocument= eo->eoDocument;
-	    tcj.tcjFromNode= docGetRowNode( dsFrom->dsHead.dpNode );
-	    tcj.tcjTailNode= afterNode;
-
-	    if  ( after )
-		{
-		eo->eoAffectedRange.erTail.epParaNr=
-				docNumberOfParagraph( eo->eoTailDp.dpNode )+ 1;
-		eo->eoAffectedRange.erTail.epStroff= 0;
-		}
-	    }
+	if  ( docStartTreeCopyBetweenTargetParagraphs( &tcj, eo,
+					headSplitLevel, after, dsSource ) )
+	    { LDEB(headSplitLevel); rval= -1; goto ready;	}
 	}
 
     if  ( headSplitLevel == DOClevPARA )
@@ -408,40 +532,27 @@ static int docInsertMultipleParagraphs(
 	docTailPosition( &tailDp, eo->eoTailDp.dpNode );
 
 	if  ( docParaInsertTail( dcjInsert, paraNrHead,
-				    &tailDp, &tailDp, &(dsFrom->dsHead) ) )
+				&tailDp, &tailDp,
+				&(dsSource->dsHead), &(dsSource->dsTail) ) )
 	    { LDEB(partFrom); rval= -1; goto ready;	}
 
 	if  ( dcjInsert->dcjCopyHeadParaProperties			&&
-	      docIncludeTransferParaProperties( tailDp.dpNode,
-				  dsFrom->dsHead.dpNode, dcjInsert )	)
+	      docEditTransferParaProperties( eo, tailDp.dpNode,
+			      dsSource->dsHead.dpNode,
+			      0, &(dcjInsert->dcjAttributeMap) )	)
 	    { LDEB(1); rval= -1; goto ready; }
 
 	step= docInsertNextStep( &tcj );
 	if  ( step < 0 )
 	    { LDEB(step); rval= -1; goto ready;	}
 	if  ( step > 0 )
-	    { tcj.tcjFromNode= (const struct BufferItem *)0;	}
+	    { tcj.tcjSourceNode= (const struct BufferItem *)0;	}
 	}
 
     /*  4  */
-    while( tcj.tcjFromNode )
+    while( tcj.tcjSourceNode )
 	{
-	struct BufferItem *	insertedNode;
-	int			step;
-
-	if  ( ! tcj.tcjToNode )
-	    { XDEB(tcj.tcjToNode); rval= -1; goto ready;	}
-
-	insertedNode= docCopyNode( dcjInsert,
-			    tcj.tcjToNode, tcj.tcjToIndex, tcj.tcjFromNode );
-	if  ( ! insertedNode )
-	    { XDEB(insertedNode); rval= -1; goto ready;	}
-
-	tcj.tcjToNode= insertedNode->biParent;
-	tcj.tcjToIndex= insertedNode->biNumberInParent+ 1;
-	tcj.tcjTailNode= insertedNode;
-
-	step= docInsertNextStep( &tcj );
+	int step= docInsertCopyNode( &tcj, dcjInsert );
 	if  ( step < 0 )
 	    { LDEB(step); rval= -1; goto ready;	}
 	if  ( step > 0 )
@@ -449,7 +560,7 @@ static int docInsertMultipleParagraphs(
 	}
 
     if  ( docTailPosition( &tailDp, tcj.tcjTailNode ) )
-	{ XDEB(tcj.tcjToNode); rval= -1; goto ready;	}
+	{ XDEB(tcj.tcjTargetNode); rval= -1; goto ready;	}
 
     if  ( tailSplitLevel == DOClevROW )
 	{
@@ -467,8 +578,8 @@ static int docInsertMultipleParagraphs(
     while( tcj.tcjTailNode->biLevel != DOClevPARA )
 	{
 	struct BufferItem *	parentNode= tcj.tcjTailNode->biParent;
-	int		n= tcj.tcjTailNode->biNumberInParent;
-	int		lastChild= tcj.tcjTailNode->biChildCount- 1;
+	int			n= tcj.tcjTailNode->biNumberInParent;
+	int			lastChild= tcj.tcjTailNode->biChildCount- 1;
 
 	if  ( parentNode == nextRowNode )
 	    { break;	}
@@ -476,18 +587,18 @@ static int docInsertMultipleParagraphs(
 	if  ( n+ 1 < parentNode->biChildCount )
 	    {
 	    int			sectionsDeleted;
-	    struct BufferItem *	biMerged;
+	    struct BufferItem *	mergedNode;
 
-	    biMerged= parentNode->biChildren[n+ 1];
+	    mergedNode= parentNode->biChildren[n+ 1];
 
-	    if  ( biMerged == nextRowNode )
+	    if  ( mergedNode == nextRowNode )
 		{ break;	}
 
-	    if  ( docMergeGroupNodes( tcj.tcjTailNode, biMerged ) )
+	    if  ( docMergeGroupNodes( tcj.tcjTailNode, mergedNode ) )
 		{ LDEB(1); rval= -1; goto ready;	}
 
 	    sectionsDeleted= 0;
-	    docDeleteEmptyParents( eo, &sectionsDeleted, biMerged );
+	    docDeleteEmptyParents( eo, &sectionsDeleted, mergedNode );
 	    sectShift -= sectionsDeleted;
 	    }
 
@@ -540,15 +651,17 @@ static int docInsertMultipleParagraphs(
 	    { LDEB(1); rval= -1; goto ready;	}
 
 	if  ( docParaInsertTail( &dcjTail, paraNrTail,
-				&dpTailTo, &(eo->eoTailDp), &dpTailFrom ) )
+				&dpTailTo, &(eo->eoTailDp),
+				&dpTailFrom, (DocumentPosition *)0 ) )
 	    { LDEB(partTailFrom); rval= -1; goto ready;	}
 
 	if  ( docRemoveSelectionTail( eo ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 
 	if  ( dcjInsert->dcjCopyTailParaProperties			&&
-	      docIncludeTransferParaProperties( dpTailTo.dpNode,
-				  dsFrom->dsTail.dpNode, dcjInsert )	)
+	      docEditTransferParaProperties( eo, dpTailTo.dpNode,
+				  dsSource->dsTail.dpNode,
+				  0, &(dcjInsert->dcjAttributeMap) )	)
 	    { LDEB(1); rval= -1; goto ready; }
 
 	eo->eoAffectedRange.erTail= affSav;
@@ -573,12 +686,12 @@ static int docInsertMultipleParagraphs(
 /*									*/
 /************************************************************************/
 
-int docIncludeDocument(		DocumentCopyJob *		dcjInsert )
+int docIncludeSelection(	DocumentCopyJob *		dcjInsert,
+				const DocumentSelection *	dsSource )
     {
     EditOperation *		eo= dcjInsert->dcjEditOperation;
     struct BufferDocument *	bdFrom= dcjInsert->dcjSourceDocument;
 
-    DocumentSelection		dsFrom;
     DocumentSelection		dsTo;
 
     int				paraNrHead;
@@ -597,27 +710,19 @@ int docIncludeDocument(		DocumentCopyJob *		dcjInsert )
 		    bdFrom->bdProperties.dpHasOpenEnd?"OPEN":"CLOSED");
 #   endif
 
-    /*  1  */
-    if  ( docHeadPosition( &(dsFrom.dsHead), bdFrom->bdBody.dtRoot ) )
-	{ LDEB(1); return -1;	}
-    if  ( docTailPosition(  &(dsFrom.dsTail), bdFrom->bdBody.dtRoot ) )
-	{ LDEB(1); return -1;	}
-    if  ( docSelectWholeBody( &dsFrom, bdFrom ) )
-	{ LDEB(1); return -1;	}
-
     docEditOperationGetSelection( &dsTo, eo );
 
     /*  2,3  */
-    if  ( bdFrom->bdProperties->dpHasOpenEnd		&&
-	  dsFrom.dsHead.dpNode == dsFrom.dsTail.dpNode	)
+    if  ( bdFrom->bdProperties->dpHasOpenEnd			&&
+	  dsSource->dsHead.dpNode == dsSource->dsTail.dpNode	)
 	{
-	if  ( docInsertSingleParagraph( dcjInsert, &dsFrom, paraNrHead ) )
+	if  ( docInsertSingleParagraph( dcjInsert, dsSource, paraNrHead ) )
 	    { LDEB(1); return -1;	}
 	}
     else{
 	const int	recursively= 1;
 
-	if  ( docInsertMultipleParagraphs( dcjInsert, &dsFrom, paraNrHead ) )
+	if  ( docInsertMultipleParagraphs( dcjInsert, dsSource, paraNrHead ) )
 	    { LDEB(1); return -1;	}
 
 
@@ -630,6 +735,51 @@ int docIncludeDocument(		DocumentCopyJob *		dcjInsert )
 	{ eo->eoFieldUpdate |= FIELDdoCHFTN;	}
     if  ( dcjInsert->dcjBulletsCopied > 0 )
 	{ eo->eoFieldUpdate |= FIELDdoLISTTEXT;	}
+
+    return 0;
+    }
+
+int docIncludeDocument(		DocumentCopyJob *		dcjInsert )
+    {
+    struct BufferDocument *	bdFrom= dcjInsert->dcjSourceDocument;
+
+    DocumentSelection		dsSource;
+
+    /*  1  */
+    if  ( docHeadPosition( &(dsSource.dsHead), bdFrom->bdBody.dtRoot ) )
+	{ LDEB(1); return -1;	}
+    if  ( docTailPosition(  &(dsSource.dsTail), bdFrom->bdBody.dtRoot ) )
+	{ LDEB(1); return -1;	}
+    if  ( docSelectWholeBody( &dsSource, bdFrom ) )
+	{ LDEB(1); return -1;	}
+
+    return docIncludeSelection( dcjInsert, &dsSource );
+    }
+
+/************************************************************************/
+/*									*/
+/*  Wrapper around docIncludeDocument(): More relayout admin.		*/
+/*									*/
+/************************************************************************/
+
+int docEditIncludeDocument(	EditOperation *			eo,
+				struct DocumentCopyJob *	dcj )
+    {
+    int			beginStrlenOld= docParaStrlen( eo->eoHeadDp.dpNode );
+
+    if  ( docIncludeDocument( dcj ) )
+	{ LDEB(1); return -1;	}
+
+    if  ( eo->eoParagraphsInserted == 0 )
+	{
+	int	beginStrlenNew= docParaStrlen( eo->eoHeadDp.dpNode );
+	int	stroffTail= eo->eoSelectedRange.erTail.epStroff;
+	int	stroffShift= beginStrlenNew- beginStrlenOld;
+
+	/*  C  */
+	docSetParagraphAdjust( eo, eo->eoHeadDp.dpNode,
+						stroffShift, stroffTail );
+	}
 
     return 0;
     }

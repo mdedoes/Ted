@@ -112,20 +112,16 @@ static int sioHttpCloseBodyOutput(       void *  voidhc )
 
 	sprintf( scratch, "%d", hc->hcRequestBody.mbSize );
 
-	if  ( utilMemoryBufferAppendBytes( &(hc->hcRequestHeaders),
-			(const unsigned char *)cl, strlen( cl ) ) )
+	if  ( utilMemoryBufferAppendString( &(hc->hcRequestHeaders), cl ) )
 	    { LDEB(1); return -1;	}
 
-	if  ( utilMemoryBufferAppendBytes( &(hc->hcRequestHeaders),
-			(const unsigned char *)scratch, strlen( scratch ) ) )
+	if  ( utilMemoryBufferAppendString( &(hc->hcRequestHeaders), scratch ) )
 	    { LDEB(1); return -1;	}
 
-	if  ( utilMemoryBufferAppendBytes( &(hc->hcRequestHeaders),
-			(const unsigned char *)crlf, strlen( crlf ) ) )
+	if  ( utilMemoryBufferAppendString( &(hc->hcRequestHeaders), crlf ) )
 	    { LDEB(1); return -1;	}
 
-	if  ( utilMemoryBufferAppendBytes( &(hc->hcRequestHeaders),
-			(const unsigned char *)crlf, strlen( crlf ) ) )
+	if  ( utilMemoryBufferAppendString( &(hc->hcRequestHeaders), crlf ) )
 	    { LDEB(1); return -1;	}
 
 	done= write( hc->hcFd, hc->hcRequestHeaders.mbBytes,

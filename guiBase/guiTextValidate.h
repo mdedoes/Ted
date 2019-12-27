@@ -9,8 +9,6 @@
 
 #   include	"guiBase.h"
 
-struct MemoryBuffer;
-
 # ifdef __cplusplus
 extern "C"
     {

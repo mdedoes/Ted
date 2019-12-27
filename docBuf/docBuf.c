@@ -11,9 +11,12 @@
 #   include	<utilTree.h>
 
 #   include	"docBuf.h"
+#   include	"docAttributes.h"
+#   include	"docDocument.h"
 #   include	"docShape.h"
 #   include	"docTreeNode.h"
 #   include	"docNotes.h"
+#   include	"docObjects.h"
 #   include	<docTreeType.h>
 #   include	<textAttributeAdmin.h>
 #   include	"docNodeTree.h"
@@ -35,6 +38,8 @@
 void docFreeDocument( struct BufferDocument *	bd )
     {
     int		i;
+
+    docCleanDocumentObjects( bd );
 
     docCleanDocumentTree( bd, &(bd->bdBody) );
 
@@ -201,7 +206,7 @@ struct BufferDocument * docNewFile(
 			const DocumentGeometry *	dg )
     {
     NumberedPropertiesList *	taList;
-    struct BufferDocument *		bd;
+    struct BufferDocument *	bd;
     DocumentProperties *	dp;
 
     PropertyMask		taNewMask;
@@ -233,7 +238,7 @@ struct BufferDocument * docNewFile(
 	}
 
     textInitTextAttribute( &taNew );
-    taNew.taFontNumber= fontListGetFontByName( dp->dpFontList, defaultFontName );
+    taNew.taFontNumber= docGetFontByName( bd, defaultFontName );
     if  ( taNew.taFontNumber < 0 )
 	{ LDEB(taNew.taFontNumber); goto failed;	}
     PROPmaskADD( &taNewMask, TApropFONT_NUMBER );

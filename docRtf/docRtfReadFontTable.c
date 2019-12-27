@@ -15,6 +15,7 @@
 #   include	"docRtfTagEnum.h"
 #   include	<docBuf.h>
 #   include	<fontDocFontList.h>
+#   include	<fontDocFontListImpl.h>
 
 #   include	<appDebugon.h>
 

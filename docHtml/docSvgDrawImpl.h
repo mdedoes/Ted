@@ -17,6 +17,9 @@ struct TextAttribute;
 struct BufferItem;
 struct LayoutContext;
 struct AffineTransform2D;
+struct MemoryBuffer;
+
+#   include		<drawMetafileSvg.h>
 
 /************************************************************************/
 /*									*/
@@ -96,3 +99,10 @@ extern int docSvgDrawShapeImage( struct SvgWriter *		sw,
 				const struct DocumentRectangle * drTwips,
 				const struct AffineTransform2D * at );
 
+extern int docSvgPlayMetafileToDocument(
+			const struct LayoutContext *	lc,
+			struct InsertedObject *		io,
+			int				includeSvgDeclaration,
+			const struct MemoryBuffer *	objectData,
+			MetafileWriteSvg		playMetafile,
+			struct SimpleOutputStream *	sosImage );

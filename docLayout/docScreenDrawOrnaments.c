@@ -9,6 +9,7 @@
 #   include	"docDraw.h"
 #   include	"docScreenDraw.h"
 #   include	"docScreenDrawOrnaments.h"
+#   include	"layoutContext.h"
 #   include	<psShading.h>
 #   include	<docItemShading.h>
 #   include	<docBorderProperties.h>
@@ -33,7 +34,7 @@ int docScreenDrawSetColorRgb(	DrawingContext *	dc,
 				void *			vsdd,
 				const RGB8Color *	rgb8 )
     {
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
 
     drawSetForegroundColor( lc->lcDrawingSurface, rgb8 );
 
@@ -45,7 +46,7 @@ int docScreenDrawSetFont(	DrawingContext *	dc,
 				int			textAttrNr,
 				const TextAttribute *	ta )
     {
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
     int				screenFont;
 
     screenFont= utilIndexMappingGet( lc->lcAttributeToScreenFont, textAttrNr );
@@ -88,7 +89,7 @@ int docScreenDrawOrnaments(
 			struct DrawingContext *		dc )
     {
     ScreenDrawingData *		sdd= (ScreenDrawingData *)through;
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
     const struct BufferDocument *	bd= lc->lcDocument;
 
     DocumentRectangle		drOutPixels;

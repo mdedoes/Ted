@@ -86,6 +86,7 @@ extern APP_PASTE_REPLY( tedPasteClipboardPng, w, event, voided );
 extern APP_PASTE_REPLY( tedPasteClipboardJfif, w, event, voided );
 
 extern APP_GIVE_COPY( tedCopyClipboardRtf, w, event, voided );
+extern APP_GIVE_COPY( tedCopyClipboardHtml, w, event, voided );
 extern APP_GIVE_COPY( tedCopyClipboardString, w, event, voided );
 extern APP_GIVE_COPY( tedCopyPrimaryString, w, event, voided );
 extern APP_GIVE_COPY( tedCopyClipboardPng, w, event, voided );

@@ -5,6 +5,7 @@
 /************************************************************************/
 
 #   include	<string.h>
+#   include	<stdlib.h>
 
 #   include	"textMsLcid.h"
 #   include	"textMsLocale.h"
@@ -24,13 +25,13 @@ const char *	textGetMsLocaleTagById(	int		id )
 	    { return ml->mlTag;	}
 	}
 
-    if  ( id == 0x400 || id == 0x0 ) /* 0x0: To avoid too many warnings */
+    if  ( id == 0x400 || id == 0 || id == -1 ) /* 0, -1: Against too many warnings */
 	{ return (const char *)0;	}
 
     XDEB(id); return (const char *)0;
     }
 
-int textGetMsLocaleIdByTag(	const char *	tag )
+static int textGetMsLocaleIdByTagImpl(	const char *	tag )
     {
     int			i;
     const MsLcid *	ml;
@@ -42,9 +43,34 @@ int textGetMsLocaleIdByTag(	const char *	tag )
 	    { return ml->mlId;	}
 	}
 
-    SDEB(tag); return -1;
+    return -1;
     }
 
+int textGetMsLocaleIdByTag(	const char *	tag )
+    {
+    char *	t= strdup( tag );
+    char *	s= t;
+    int		rval;
+
+    if  ( ! t )
+	{ XDEB(t); return -1;	}
+
+    while( *s )
+	{
+	if  ( *s == '_' )
+	    { *s= '-';		}
+	s++;
+	}
+
+    rval= textGetMsLocaleIdByTagImpl( t );
+
+    free( t );
+
+    if  ( rval < 0 )
+	{ SDEB(tag);	}
+
+    return rval;
+    }
 
 int textMatchMsLocaleIdByTag(	const char *	tag )
     {

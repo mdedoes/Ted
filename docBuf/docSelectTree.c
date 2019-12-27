@@ -33,11 +33,16 @@ int docGetTreeOfNode(		struct DocumentTree **		pTree,
     if  ( node->biLevel == DOClevBODY && node->biChildCount > 0 )
 	{ selSectNode= node->biChildren[0];	}
     else{
-	node= docGetSectNode( node );
-	if  ( ! node )
-	    { XDEB(node); return -1;	}
+	struct BufferItem *	sectNode= docGetSectNode( node );
+	if  ( ! sectNode )
+	    {
+	    XXDEB(node,sectNode);
+	    if  ( node )
+		{ docListNode(0,node,0);	}
+	    return -1;
+	    }
 
-	selSectNode= node;
+	selSectNode= sectNode;
 	}
 
     if  ( docGetRootOfSelectionScope( &tree, &bodySectNode,

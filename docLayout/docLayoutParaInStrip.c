@@ -52,10 +52,10 @@ int docLayoutParagraphInStrip(	int *				pStopCode,
 				const LayoutJob *		lj,
 				int				cellTopInset,
 				int				isRedo,
-				struct BufferItem * const	paraNode )
+				BufferItem * const		paraNode )
     {
     const ParagraphProperties *	pp= paraNode->biParaProperties;
-    const LayoutContext *	lc= &(lj->ljContext);
+    const struct LayoutContext * lc= lj->ljContext;
     int				stopCode= FORMATstopREADY;
     int				accepted;
     int				prevLine;
@@ -102,8 +102,7 @@ int docLayoutParagraphInStrip(	int *				pStopCode,
 	}
 
     /*  3  */
-    if  ( ( pp->ppKeepOnPage	||
-	    pp->ppKeepWithNext	)					&&
+    if  ( PP_IS_ONE_PAGE( pp )						&&
 	  ! lpBefore.lpAtTopOfColumn					&&
 	  stopCode == FORMATstopBLOCK_FULL				&&
 	  paraNode->biParaLineCount >= plp->pspLine			&&
@@ -140,7 +139,7 @@ int docLayoutParagraphInStrip(	int *				pStopCode,
 	    /*  5  */
 	    if  ( paraNode->biParaLineCount == 3 )
 		{
-		struct BufferItem *	node= paraNode;
+		BufferItem *	node= paraNode;
 
 		docStripLayoutStartChild( plp, plp->pspChild );
 		plp->plpPos= tl[1].tlTopPosition;

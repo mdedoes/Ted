@@ -12,6 +12,7 @@
 
 #   include	"docRtfFlags.h"
 #   include	"docRtfTags.h"
+#   include	"docRtfControlWord.h"
 #   include	<docObjectProperties.h>
 #   include	<docObject.h>
 #   include	"docRtfWriterImpl.h"
@@ -23,6 +24,8 @@ int docRtfSaveObject(		RtfWriter *			rw,
 				const struct BufferItem *	paraNode,
 				const InsertedObject *		io )
     {
+    const int	scope= RTCscopeOBJ;
+
     docRtfWriteNextLine( rw );
 
     switch( io->ioKind )
@@ -41,59 +44,18 @@ int docRtfSaveObject(		RtfWriter *			rw,
 	case DOCokOLEOBJECT:
 	    docRtfWriteDestinationBegin( rw, "object" );
 
-	    switch( io->ioRtfEmbedKind )
-		{
-		case EMBEDkindOBJEMB:
-		    docRtfWriteTag( rw, "objemb" );
-		    break;
-		case EMBEDkindOBJLINK:
-		    docRtfWriteTag( rw, "objlink" );
-		    break;
-		case EMBEDkindOBJAUTLINK:
-		    docRtfWriteTag( rw, "objautlink" );
-		    break;
-		case EMBEDkindOBJSUB:
-		    docRtfWriteTag( rw, "objsub" );
-		    break;
-		case EMBEDkindOBJPUB:
-		    docRtfWriteTag( rw, "objpub" );
-		    break;
-		case EMBEDkindOBJICEMB:
-		    docRtfWriteTag( rw, "objicemb" );
-		    break;
-		case EMBEDkindOBJHTML:
-		    docRtfWriteTag( rw, "objhtml" );
-		    break;
-		case EMBEDkindOBJOCX:
-		    docRtfWriteTag( rw, "objocx" );
-		    break;
-		default:
-		    LDEB(io->ioRtfEmbedKind);
-		    break;
-		}
+	    if  ( docRtfWriteProperty( rw, scope,
+					IOpropEMBED_KIND, io->ioRtfEmbedKind ) )
+		{ LLLDEB(scope,IOpropEMBED_KIND,io->ioRtfEmbedKind); return -1;}
 
-	    switch( io->ioRtfResultKind )
+	    if  ( io->ioRtfResultKind != RESULTkindUNKNOWN )
 		{
-		case RESULTkindUNKNOWN:
-		    break;
-		case RESULTkindRTF:
-		    docRtfWriteTag( rw, "rsltrtf" );
-		    break;
-		case RESULTkindTXT:
-		    docRtfWriteTag( rw, "rslttxt" );
-		    break;
-		case RESULTkindPICT:
-		    docRtfWriteTag( rw, "rsltpict" );
-		    break;
-		case RESULTkindBMP:
-		    docRtfWriteTag( rw, "rsltbmp" );
-		    break;
-		case RESULTkindHTML:
-		    docRtfWriteTag( rw, "rslthtml" );
-		    break;
-		default:
-		    LDEB(io->ioRtfResultKind);
-		    break;
+		if  ( docRtfWriteProperty( rw, scope,
+				    IOpropRESULT_KIND, io->ioRtfResultKind ) )
+		    {
+		    LLLDEB(scope,IOpropRESULT_KIND,io->ioRtfResultKind);
+		    return -1;
+		    }
 		}
 
 	    if  ( ! utilMemoryBufferIsEmpty( &(io->ioObjectClass) ) )
@@ -112,15 +74,39 @@ int docRtfSaveObject(		RtfWriter *			rw,
 					&(io->ioObjectName), addSemicolon );
 		}
 
-	    docRtfWriteArgTag( rw, "objw", io->ioTwipsWide );
-	    docRtfWriteArgTag( rw, "objh", io->ioTwipsHigh );
+	    if  ( docRtfWriteProperty( rw, scope,
+				    IOpropOBJTWIPS_WIDE, io->ioTwipsWide ) )
+		{
+		LLLDEB(scope,IOpropOBJTWIPS_WIDE,io->ioTwipsWide);
+		return -1;
+		}
+	    if  ( docRtfWriteProperty( rw, scope,
+				    IOpropOBJTWIPS_HIGH, io->ioTwipsHigh ) )
+		{
+		LLLDEB(scope,IOpropOBJTWIPS_HIGH,io->ioTwipsHigh);
+		return -1;
+		}
 	    if  ( io->ioScaleXSet != 100 )
-		{ docRtfWriteArgTag( rw, "objscalex", io->ioScaleXSet ); }
+		{
+		if  ( docRtfWriteProperty( rw, scope,
+				    IOpropOBJSCALE_X, io->ioScaleXSet ) )
+		    {
+		    LLLDEB(scope,IOpropOBJSCALE_X,io->ioScaleXSet);
+		    return -1;
+		    }
+		}
 	    if  ( io->ioScaleYSet != 100 )
-		{ docRtfWriteArgTag( rw, "objscaley", io->ioScaleYSet ); }
+		{
+		if  ( docRtfWriteProperty( rw, scope,
+				    IOpropOBJSCALE_Y, io->ioScaleYSet ) )
+		    {
+		    LLLDEB(scope,IOpropOBJSCALE_Y,io->ioScaleYSet);
+		    return -1;
+		    }
+		}
 
 	    docRtfWriteDestinationBegin( rw, "*\\objdata" );
-	    docRtfWriteMemoryBuffer( rw, &io->ioObjectData );
+	    docRtfWriteMemoryBuffer( rw, &(io->ioObjectData) );
 	    docRtfWriteNextLine( rw );
 	    docRtfWriteDestinationEnd( rw );
 

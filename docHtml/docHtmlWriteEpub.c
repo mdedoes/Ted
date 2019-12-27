@@ -5,6 +5,11 @@
 /*  Documents can be validated against:					*/
 /*  -  http://threepress.org/document/epub-validate.			*/
 /*									*/
+/*  See:								*/
+/*  -  https://www.safaribooksonline.com/library/view/epub-3-best/9781449329129/ch01.html */
+/*  -  https://www.opticalauthoring.com/inside-the-epub-format-the-basics/ */
+/*  -  https://github.com/jstallent/BookOfTexas				*/
+/*									*/
 /************************************************************************/
 
 #   include	"docHtmlConfig.h"
@@ -14,42 +19,23 @@
 #   include	<ctype.h>
 
 #   include	<sioGeneral.h>
-#   include	<sioZip.h>
 #   include	<utilMemoryBufferPrintf.h>
-#   include	<textMsLocale.h>
 
 #   include	<docBuf.h>
 #   include	<docCalculateToc.h>
 #   include	"docHtmlWriteImpl.h"
 #   include	"docHtmlWrite.h"
-#   include	<docEvalField.h>
 #   include	<docTreeType.h>
 #   include	<docObject.h>
 #   include	<docDocumentField.h>
 #   include	<docFieldKind.h>
 #   include	<docDocumentProperties.h>
+#   include	<docFields.h>
+#   include	"docEpubWrite.h"
 
 #   include	<appDebugon.h>
 
 /************************************************************************/
-
-typedef struct EpubWriter
-    {
-    CalculateToc	ewCalculateToc;
-    ZipOutput		ewZipOutput;
-    } EpubWriter;
-
-typedef struct EpubXmlWriter
-    {
-    HtmlWritingContext *	exwHtmlWriter;
-    XmlWriter			exwXmlWriter;
-    } EpubXmlWriter;
-
-static int docEpubGetImageSrcX(		MemoryBuffer *		target,
-					int			relative,
-					int			n,
-					const InsertedObject *	io,
-					const char *		ext );
 
 static SimpleOutputStream * docEpubOpenImageStream(
 					HtmlWritingContext *	hwc,
@@ -84,59 +70,42 @@ static void docCleanEpubWriter(	EpubWriter *	ew )
 # define DIR_CONTENT	"document"
 # define DIR_MEDIA	"media"
 # define NAME_CSS	"document.css"
-# define NAME_DOC	"document.html"
+# define NAME_DOC	"document.xhtml"
 
-static const char	DocEpubIdNcx[]= "ncx";
-static const char	DocEpubIdCss[]= "css";
-static const char	DocEpubIdDoc[]= "doc";
+const char	DocEpubNameOpf[]= "content.opf";
 
-static const char	DocEpubNameMimetype[]= "mimetype";
-static const char	DocEpubNameContainer[]= "META-INF/container.xml";
-static const char	DocEpubNameOpf[]= "content.opf";
-static const char	DocEpubNameNcx[]= "toc.ncx";
-static const char	DocEpubNameContent[]= DIR_CONTENT;
-static const char	DocEpubNameDocAbs[]= DIR_CONTENT "/" NAME_DOC;
-static const char	DocEpubNameDocRel[]= NAME_DOC;
-static const char	DocEpubNameMediaAbs[]= DIR_CONTENT "/" DIR_MEDIA;
-static const char	DocEpubNameMediaRel[]= DIR_MEDIA;
+const char	DocEpubIdNcx[]= "ncx";
+const char	DocEpubIdNavig[]= "tocnav";
+const char	DocEpubIdCss[]= "css";
+const char	DocEpubIdDoc[]= "doc";
 
-static const char	DocEpubNameCssAbs[]= DIR_CONTENT "/" 
+const char	DocEpubNameMimetype[]= "mimetype";
+const char	DocEpubNameContainer[]= "META-INF/container.xml";
+const char	DocEpubNameNcx[]= "toc.ncx";
+const char	DocEpubNameNavig[]= "toc.xhtml";
+const char	DocEpubNameContent[]= DIR_CONTENT;
+const char	DocEpubNameDocAbs[]= DIR_CONTENT "/" NAME_DOC;
+const char	DocEpubNameDocRel[]= NAME_DOC;
+const char	DocEpubNameMediaAbs[]= DIR_CONTENT "/" DIR_MEDIA;
+const char	DocEpubNameMediaRel[]= DIR_MEDIA;
+
+const char	DocEpubNameCssAbs[]= DIR_CONTENT "/" 
 					     DIR_MEDIA "/" NAME_CSS;
-static const char	DocEpubNameCssRel[]= DIR_MEDIA "/" NAME_CSS;
+const char	DocEpubNameCssRel[]= DIR_MEDIA "/" NAME_CSS;
 
-static const char	DocEpubMediaNcx[]= "application/x-dtbncx+xml";
-static const char	DocEpubMediaCss[]= "text/css";
-static const char	DocEpubMediaDoc[]= "application/xhtml+xml";
-static const char	DocEpubMediaEpub[]= "application/epub+zip";
+const char	DocEpubMediaNcx[]= "application/x-dtbncx+xml";
+const char	DocEpubMediaNavig[]= "application/xhtml+xml";
+const char	DocEpubMediaCss[]= "text/css";
+const char	DocEpubMediaDoc[]= "application/xhtml+xml";
+const char	DocEpubMediaEpub[]= "application/epub+zip";
 
-static const char	DocEpubNameContentLen= sizeof(DocEpubNameContent)- 1;
+const char	DocEpubNameContentLen= sizeof(DocEpubNameContent)- 1;
 /*
-static const int	DocEpubNameMediaLenAbs= sizeof(DocEpubNameMediaAbs)- 1;
-static const int	DocEpubNameMediaLenRel= sizeof(DocEpubNameMediaRel) -1;
-static const int	DocEpubNameCssLenAbs= sizeof(DocEpubNameCssAbs) -1;
-static const int	DocEpubNameCssLenRel= sizeof(DocEpubNameCssRel) -1;
+const int	DocEpubNameMediaLenAbs= sizeof(DocEpubNameMediaAbs)- 1;
+const int	DocEpubNameMediaLenRel= sizeof(DocEpubNameMediaRel) -1;
+const int	DocEpubNameCssLenAbs= sizeof(DocEpubNameCssAbs) -1;
+const int	DocEpubNameCssLenRel= sizeof(DocEpubNameCssRel) -1;
 */
-
-/************************************************************************/
-
-static const char	DocEpubXmlDeclaration[]=
-			    "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
-
-/************************************************************************/
-
-static const char	DocEpubIdentifierName[]= "dcidentifier";
-
-/************************************************************************/
-
-static const char *	DocEpubOpfMetaHead[]=
-{
-  "  <metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\"\n",
-  "    xmlns:dcterms=\"http://purl.org/dc/terms/\"\n",
-  "    xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n",
-  "    xmlns:opf=\"http://www.idpf.org/2007/opf\">\n",
-};
-
-static const char	DocEpubOpfMetaTail[]= "  </metadata>\n";
 
 /************************************************************************/
 /*									*/
@@ -146,7 +115,7 @@ static const char	DocEpubOpfMetaTail[]= "  </metadata>\n";
 
 static const char *	DocEpubContainerXml[]=
 {
-  DocEpubXmlDeclaration,
+  XML_DECLARATION,
   "<container version=\"1.0\" xmlns=\"urn:oasis:names:tc:opendocument:xmlns:container\">\n",
   "  <rootfiles>\n",
   "    <rootfile full-path=\"", DocEpubNameOpf, "\" media-type=\"application/oebps-package+xml\"/>\n",
@@ -180,309 +149,6 @@ static int docEpubEmitContainerXml(		ZipOutput *	zo )
     }
 
 /************************************************************************/
-/*									*/
-/*  Emit a meta information element for the opf package file.		*/
-/*									*/
-/************************************************************************/
-
-static void docEpubEmitOpfMetaElement(	XmlWriter *		xw,
-					const char *		id,
-					const char *		name,
-					const MemoryBuffer *	value )
-    {
-    sioOutPutString( "    <", xw->xwSos );
-    sioOutPutString( name, xw->xwSos );
-    if  ( id )
-	{ xmlWriteStringAttribute( xw, "id", id );	}
-    sioOutPutString( ">", xw->xwSos );
-
-    xmlEscapeCharacters( xw, (const char *)value->mbBytes, value->mbSize );
-
-    sioOutPutString( "</", xw->xwSos );
-    sioOutPutString( name, xw->xwSos );
-    sioOutPutString( ">", xw->xwSos );
-    xmlNewLine( xw );
-    }
-
-static void docEpubEmitOpfMetaElementIfSet(
-					XmlWriter *		xw,
-					const char *		id,
-					const char *		name,
-					const MemoryBuffer *	value )
-    {
-    if  ( ! utilMemoryBufferIsEmpty( value ) )
-	{ docEpubEmitOpfMetaElement( xw, id, name, value );	}
-
-    return;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Emit the matadata in an OPF package file. I.E:			*/
-/*									*/
-/*  Translate document information to Dublin Core Metadata.		*/
-/*  See http://dublincore.org/documents/usageguide/elements.shtml	*/
-/*									*/
-/*  Dublin Core		RTF						*/
-/*  ------ ----		---						*/
-/*  Title		title						*/
-/*  Creator		author						*/
-/*  Subject		subject+ keywords				*/
-/*  Description		doccom						*/
-/*  Publisher		company (Do not repeat the autor value)		*/
-/*  Contributor		-- (Do not repeat the autor value)		*/
-/*  Date		revtim or creatim				*/
-/*  Type		-- Not available				*/
-/*  Format		-- Irrelevant					*/
-/*  Identifier		-- Must be made up.				*/
-/*  Source		-- Not available				*/
-/*  Language		deflang						*/
-/*  Relation		-- Not available				*/
-/*  Coverage		-- Not available				*/
-/*  Rights		-- Not available				*/
-/*									*/
-/************************************************************************/
-
-static int docEpubEmitMetaData(		XmlWriter *		xw,
-					const MemoryBuffer *	title,
-					const MemoryBuffer *	identifier,
-					const struct BufferDocument *	bd )
-    {
-    int				rval= 0;
-    const DocumentProperties *	dp= bd->bdProperties;
-
-    MemoryBuffer		mbLang;
-    const char *		localeTag;
-
-    int				l;
-
-    utilInitMemoryBuffer( &mbLang );
-    if  ( utilMemoryBufferSetString( &mbLang, "en_US" ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-
-    for ( l= 0; l < sizeof(DocEpubOpfMetaHead)/sizeof(char *); l++ )
-	{ sioOutPutString( DocEpubOpfMetaHead[l], xw->xwSos ); }
-
-    docEpubEmitOpfMetaElement( xw, (char *)0, "dc:title", title );
-
-    localeTag= textGetMsLocaleTagById( dp->dpDefaultLocaleId );
-    if  ( localeTag )
-	{
-	if  ( utilMemoryBufferSetString( &mbLang, localeTag ) )
-	    { LDEB(1); rval= -1; goto ready;	}
-	}
-
-    docEpubEmitOpfMetaElement( xw, (char *)0, "dc:language", &mbLang );
-    docEpubEmitOpfMetaElement( xw, DocEpubIdentifierName,
-					"dc:identifier", identifier );
-
-    docEpubEmitOpfMetaElementIfSet( xw, (char *)0,
-					"dc:creator", &(dp->dpAuthor) );
-
-    docEpubEmitOpfMetaElementIfSet( xw, (char *)0,
-					"dc:subject", &(dp->dpSubject) );
-    docEpubEmitOpfMetaElementIfSet( xw, (char *)0,
-					"dc:subject", &(dp->dpKeywords) );
-
-    docEpubEmitOpfMetaElementIfSet( xw, (char *)0,
-					"dc:description", &(dp->dpDoccomm) );
-    docEpubEmitOpfMetaElementIfSet( xw, (char *)0,
-					"dc:publisher", &(dp->dpCompany) );
-
-    sioOutPutString( DocEpubOpfMetaTail, xw->xwSos );
-
-  ready:
-
-    utilCleanMemoryBuffer( &mbLang );
-
-    return rval;
-    }
-
-/************************************************************************/
-
-static int docEpubEmitManifestItem(	XmlWriter *		xw,
-					const char *		id,
-					const char *		href,
-					const char *		mediaType )
-    {
-    sioOutPutString( "    <item", xw->xwSos );
-
-    xmlWriteStringAttribute( xw, "id", id );
-    xmlWriteStringAttribute( xw, "href", href );
-    xmlWriteStringAttribute( xw, "media-type", mediaType );
-
-    sioOutPutString( "/>\n", xw->xwSos );
-
-    return 0;
-    }
-
-static int docEpubEmitSpineItem(	XmlWriter *		xw,
-					const char *		id )
-    {
-    sioOutPutString( "    <itemref", xw->xwSos );
-
-    xmlWriteStringAttribute( xw, "idref", id );
-
-    sioOutPutString( "/>\n", xw->xwSos );
-
-    return 0;
-    }
-
-/************************************************************************/
-
-static int docEpubAddImageToOpf(	int			n,
-					void *			vio,
-					void *			vexw )
-    {
-    int				rval= 0;
-
-    const InsertedObject *	io= (InsertedObject *)vio;
-    const PictureProperties *	pip= &(io->ioPictureProperties);
-    EpubXmlWriter *		exw= (EpubXmlWriter *)vexw;
-    XmlWriter *			xw= &(exw->exwXmlWriter);
-
-    const char *		mimeType;
-    const char *		ext;
-    int				type;
-    int				useDataUrl;
-
-    const MemoryBuffer *	mb= (const MemoryBuffer *)0;
-    bmWriteBitmap		writeBitmap= (bmWriteBitmap)0;
-    MetafileWriteSvg		writeSvg= (MetafileWriteSvg)0;
-
-    MemoryBuffer		href;
-    char			id[20+1];
-    const int			relative= 0;
-
-    utilInitMemoryBuffer( &href );
-
-    if  ( docHtmlObjectSaveHow( exw->exwHtmlWriter, &type, &useDataUrl,
-				&writeBitmap, &writeSvg,
-				&mimeType, &ext, &mb, io ) )
-	{ goto ready;	}
-
-    if  ( ! useDataUrl )
-	{
-	if  ( docEpubGetImageSrcX( &href, relative, n, io, ext ) < 0 )
-	    { LDEB(n); rval= -1; goto ready;	}
-
-	if  ( 1 || pip->pipBliptag == 0 )
-	    { sprintf( id, "i%d", n );			}
-	else{ sprintf( id, "b%08lx", pip->pipBliptag );	}
-
-	if  ( docEpubEmitManifestItem( xw, id,
-			    utilMemoryBufferGetString( &href ), mimeType ) )
-	    { SDEB(id); rval= -1; goto ready;	}
-	}
-
-  ready:
-
-    utilCleanMemoryBuffer( &href );
-
-    return rval;
-    }
-
-static int docEpubAddImagesToOpf(	EpubXmlWriter *			exw )
-    {
-    const struct BufferDocument *	bd= exw->exwHtmlWriter->hwcDocument;
-
-    utilPagedListForAll( &(bd->bdObjectList.iolPagedList),
-					docEpubAddImageToOpf, (void *)exw );
-
-    return 0;
-    }
-
-/************************************************************************/
-
-static const char	DocEpubOpfManifestHead[]= "<manifest>\n";
-static const char	DocEpubOpfManifestTail[]= "</manifest>\n";
-
-static const char *	DocEpubSpineHead[]=
-{
-  "<spine toc=\"", DocEpubIdNcx, "\">\n",
-};
-static const char	DocEpubSpineTail[]= "</spine>\n";
-
-
-static const char *	DocEpubOpfHead[]=
-{
-  DocEpubXmlDeclaration,
-  "<package xmlns=\"http://www.idpf.org/2007/opf\" version=\"2.0\" unique-identifier=\"", DocEpubIdentifierName, "\">\n",
-};
-static const char	DocEpubOpfTail[]= "</package>\n";
-
-static int docEpubStartOpf(	ZipOutput *		zo,
-				XmlWriter *		xw,
-				const MemoryBuffer *	title,
-				const MemoryBuffer *	identifier,
-				const struct BufferDocument *	bd )
-    {
-    const char * const		nameMember= DocEpubNameOpf;
-    const int			compressed= 1;
-
-    int				l;
-
-    xw->xwSos= sioOutZipOpen( zo, nameMember, compressed );
-    if  ( ! xw->xwSos )
-	{ SXDEB(nameMember,xw->xwSos); return -1;	}
-
-    for ( l= 0; l < sizeof(DocEpubOpfHead)/sizeof(char *); l++ )
-	{ sioOutPutString( DocEpubOpfHead[l], xw->xwSos ); }
-
-    if  ( docEpubEmitMetaData( xw, title, identifier, bd ) )
-	{ SDEB(nameMember); return -1;	}
-
-    return 0;
-    }
-
-static int docEpubEmitSimpleOpf(	ZipOutput *		zo,
-					HtmlWritingContext *	hwc,
-					const MemoryBuffer *	title,
-					const MemoryBuffer *	identifier )
-    {
-    int				rval= 0;
-    int				l;
-
-    EpubXmlWriter		exw;
-
-    xmlInitXmlWriter( &(exw.exwXmlWriter) );
-    exw.exwHtmlWriter= hwc;
-
-    if  ( docEpubStartOpf( zo, &(exw.exwXmlWriter),
-				    title, identifier, hwc->hwcDocument ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-
-    sioOutPutString( DocEpubOpfManifestHead, exw.exwXmlWriter.xwSos );
-
-    docEpubEmitManifestItem( &(exw.exwXmlWriter),
-			    DocEpubIdNcx, DocEpubNameNcx, DocEpubMediaNcx );
-    docEpubEmitManifestItem( &(exw.exwXmlWriter),
-			    DocEpubIdCss, DocEpubNameCssAbs, DocEpubMediaCss );
-    docEpubEmitManifestItem( &(exw.exwXmlWriter),
-			    DocEpubIdDoc, DocEpubNameDocAbs, DocEpubMediaDoc );
-
-    docEpubAddImagesToOpf( &exw );
-
-    sioOutPutString( DocEpubOpfManifestTail, exw.exwXmlWriter.xwSos );
-
-    for ( l= 0; l < sizeof(DocEpubSpineHead)/sizeof(char *); l++ )
-	{ sioOutPutString( DocEpubSpineHead[l], exw.exwXmlWriter.xwSos ); }
-
-    docEpubEmitSpineItem( &(exw.exwXmlWriter), DocEpubIdDoc );
-
-    sioOutPutString( DocEpubSpineTail, exw.exwXmlWriter.xwSos );
-
-    sioOutPutString( DocEpubOpfTail, exw.exwXmlWriter.xwSos );
-
-  ready:
-
-    if  ( exw.exwXmlWriter.xwSos && sioOutClose( exw.exwXmlWriter.xwSos ) )
-	{ LDEB(1); rval= -1;	}
-
-    return rval;
-    }
-
-/************************************************************************/
 
 static int docEpubEmitMimeType(		ZipOutput *	zo )
     {
@@ -497,251 +163,14 @@ static int docEpubEmitMimeType(		ZipOutput *	zo )
 	{ SXDEB(nameMember,sosMember); rval= -1; goto ready;	}
 
     sioOutPutString( DocEpubMediaEpub, sosMember );
+    /* Not expected this way
     sioOutPutString( "\n", sosMember );
+    */
 
   ready:
 
     if  ( sosMember && sioOutClose( sosMember ) )
 	{ SDEB(nameMember); rval= -1;	}
-
-    return rval;
-    }
-
-/************************************************************************/
-
-static void docEpubEmitNcxMetaElement(	XmlWriter *		xw,
-					const char *		name,
-					const char *		value )
-    {
-    sioOutPutString( "    <meta", xw->xwSos );
-
-    xmlWriteStringAttribute( xw, "name", name );
-    xmlWriteStringAttribute( xw, "content", value );
-
-    sioOutPutString( "/>\n", xw->xwSos );
-    }
-
-static int docEpubEmitNcxHead(		XmlWriter *		xw,
-					const MemoryBuffer *	title,
-					const MemoryBuffer *	identifier,
-					int			depth )
-    {
-    char		scratch[10];
-
-    sprintf( scratch, "%d", depth );
-
-    sioOutPutString( "    <head>\n", xw->xwSos );
-
-    docEpubEmitNcxMetaElement( xw, "dtb:uid",
-				    utilMemoryBufferGetString( identifier ) );
-    docEpubEmitNcxMetaElement( xw, "dtb:depth", scratch );
-    docEpubEmitNcxMetaElement( xw, "dtb:totalPageCount", "0" );
-    docEpubEmitNcxMetaElement( xw, "dtb:maxPageNumber", "0" );
-
-    sioOutPutString( "    </head>\n", xw->xwSos );
-
-    sioOutPutString( "    <docTitle><text>", xw->xwSos );
-    xmlEscapeCharacters( xw, (const char *)title->mbBytes, title->mbSize );
-    sioOutPutString( "</text></docTitle>\n", xw->xwSos );
-
-    return 0;
-    }
-
-/************************************************************************/
-
-static int docEpubCloseNavPoint(	XmlWriter *		xw,
-					int			level )
-    {
-    sioOutPrintf( xw->xwSos, "%*s</navPoint>\n", 4+ 4* level, "" );
-    return 0;
-    }
-
-static int docEpubStartNavPoint(	XmlWriter *		xw,
-					int			level,
-					const char *		id,
-					int			playOrder,
-					const MemoryBuffer *	label,
-					const char *		src )
-    {
-    sioOutPrintf( xw->xwSos, "%*s<navPoint", 4+ 4* level, "" );
-    xmlWriteStringAttribute( xw, "id", id );
-    xmlWriteIntAttribute( xw, "playOrder", playOrder );
-    sioOutPutString( ">\n", xw->xwSos );
-
-    sioOutPrintf( xw->xwSos, "%*s<navLabel><text>", 8+ 4* level, "" );
-    xmlEscapeCharacters( xw, (const char *)label->mbBytes, label->mbSize );
-    sioOutPutString( "</text></navLabel>\n", xw->xwSos );
-
-    sioOutPrintf( xw->xwSos, "%*s<content", 8+ 4* level, "" );
-    xmlWriteStringAttribute( xw, "src", src );
-    sioOutPutString( "/>\n", xw->xwSos );
-
-    return 0;
-    }
-
-/************************************************************************/
-
-static const char *	DocEpubNcxHead[]=
-{
-  DocEpubXmlDeclaration,
-  "<!DOCTYPE ncx PUBLIC \"-//NISO//DTD ncx 2005-1//EN\"\n",
-  "  \"http://www.daisy.org/z3986/2005/ncx-2005-1.dtd\">\n",
-  "<ncx xmlns=\"http://www.daisy.org/z3986/2005/ncx/\" version=\"2005-1\">\n",
-};
-static const char	DocEpubNcxTail[]= "</ncx>\n";
-
-static int docEpubStartNcx(	ZipOutput *		zo,
-				XmlWriter *		xw,
-				const MemoryBuffer *	title,
-				const MemoryBuffer *	identifier,
-				int			depth )
-    {
-    const char * const		nameMember= DocEpubNameNcx;
-    const int			compressed= 1;
-
-    int				l;
-
-    xw->xwSos= sioOutZipOpen( zo, nameMember, compressed );
-    if  ( ! xw->xwSos )
-	{ SXDEB(nameMember,xw->xwSos); return -1;	}
-
-    for ( l= 0; l < sizeof(DocEpubNcxHead)/sizeof(char *); l++ )
-	{ sioOutPutString( DocEpubNcxHead[l], xw->xwSos ); }
-
-    if  ( docEpubEmitNcxHead( xw, title, identifier, depth ) )
-	{ SDEB(nameMember); return -1;	}
-
-    return 0;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Emit a Contents NCX that only holds the main document.		*/
-/*									*/
-/************************************************************************/
-
-static int docEpubEmitSimpleNcx(	ZipOutput *		zo,
-					const MemoryBuffer *	title,
-					const MemoryBuffer *	identifier )
-    {
-    int				rval= 0;
-    const int			depth= 1;
-
-    int				playOrder= 1;
-
-    XmlWriter			xw;
-
-    xmlInitXmlWriter( &xw );
-
-    if  ( docEpubStartNcx( zo, &xw, title, identifier, depth ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-
-    sioOutPutString( "    <navMap>\n", xw.xwSos );
-
-    docEpubStartNavPoint( &xw, 0, DocEpubIdDoc, playOrder++,
-						    title, DocEpubNameDocAbs );
-    docEpubCloseNavPoint( &xw, 0 );
-
-    sioOutPutString( "    </navMap>\n", xw.xwSos );
-
-    sioOutPutString( DocEpubNcxTail, xw.xwSos );
-
-  ready:
-
-    if  ( xw.xwSos && sioOutClose( xw.xwSos ) )
-	{ LDEB(1); rval= -1;	}
-
-    return rval;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Emit a Contents NCX that follows the structure of a table of	*/
-/*  contents.								*/
-/*									*/
-/*  Note the toilsome mapping between the level numbers in the TOC and	*/
-/*  those in the NCX. This is to cope with situations where the TOC	*/
-/*  skips levels.							*/
-/*									*/
-/************************************************************************/
-
-static int docEpubEmitCompositeNcx(	EpubWriter *		ew,
-					const MemoryBuffer *	title,
-					const MemoryBuffer *	identifier,
-					struct BufferDocument *	bd )
-    {
-    int				rval= 0;
-
-    int				playOrder= 1;
-    const TocEntry *		te;
-    int				l;
-
-    char			id[20+1];
-    char			src[150+1];
-
-    MemoryBuffer		mbLabel;
-    XmlWriter			xw;
-
-    int				ncxLevel;
-    int				m[PPoutline_COUNT];
-
-    utilInitMemoryBuffer( &mbLabel );
-    xmlInitXmlWriter( &xw );
-
-    if  ( docEpubStartNcx( &(ew->ewZipOutput), &xw,
-			title, identifier, ew->ewCalculateToc.ctDepth ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-
-    sioOutPutString( "    <navMap>\n", xw.xwSos );
-
-    for ( ncxLevel= 0; ncxLevel < PPoutline_COUNT; ncxLevel++ )
-	{ m[ncxLevel]= 0;	}
-    ncxLevel= 0;
-
-    te= ew->ewCalculateToc.ctEntries;
-    for ( l= 0; l < ew->ewCalculateToc.ctEntryCount; te++, l++ )
-	{
-#	if 0
-	sioOutPrintf( xw.xwSos, "%*s<--  m[%d]=%d teLevel= %d -->\n",
-			    4+ 4* ncxLevel, "",
-			    ncxLevel, m[ncxLevel], te->teLevel );
-#	endif
-
-	while( m[ncxLevel] > te->teLevel )
-	    { docEpubCloseNavPoint( &xw, --ncxLevel );	}
-
-	sprintf( src, "%s#%.*s", DocEpubNameDocAbs,
-					    te->teMarkName->mbSize,
-					    te->teMarkName->mbBytes );
-
-	utilEmptyMemoryBuffer( &mbLabel );
-	if  ( docCalculateRefFieldValue( &mbLabel, te->teMarkName, bd ) )
-	    { LDEB(1); rval= -1; goto ready;	}
-
-	sprintf( id, "np-%d", playOrder );
-	docEpubStartNavPoint( &xw, ncxLevel, id, playOrder++, &mbLabel, src );
-	m[++ncxLevel]= te->teLevel+ 1;
-
-#	if 0
-	sioOutPrintf( xw.xwSos, "%*s<--  m[%d]:=%d teLevel= %d -->\n",
-			    4+ 4* ncxLevel, "",
-			    ncxLevel, m[ncxLevel], te->teLevel );
-#	endif
-	}
-
-    while( ncxLevel > 0 )
-	{ docEpubCloseNavPoint( &xw, --ncxLevel );	}
-
-    sioOutPutString( "    </navMap>\n", xw.xwSos );
-
-    sioOutPutString( DocEpubNcxTail, xw.xwSos );
-
-  ready:
-
-    utilCleanMemoryBuffer( &mbLabel );
-
-    if  ( xw.xwSos && sioOutClose( xw.xwSos ) )
-	{ LDEB(1); rval= -1;	}
 
     return rval;
     }
@@ -757,13 +186,13 @@ static int docEpubGetCssNameX(		MemoryBuffer *		target,
     {
     if  ( relative )
 	{
-	if  ( utilMemoryBufferSetString( target,DocEpubNameCssRel ) )
+	if  ( utilMemoryBufferSetString( target, DocEpubNameCssRel ) )
 	    { LDEB(1); return -1;	}
 
 	return 0;
 	}
     else{
-	if  ( utilMemoryBufferSetString( target,DocEpubNameCssAbs ) )
+	if  ( utilMemoryBufferSetString( target, DocEpubNameCssAbs ) )
 	    { LDEB(1); return -1;	}
 
 	return 0;
@@ -824,17 +253,21 @@ static int docEpubWriteCss(		HtmlWritingContext *	hwc )
 /*									*/
 /************************************************************************/
 
-static int docEpubEmitDocument(	HtmlWritingContext *		hwc,
+static int docEpubEmitDocument(	const HtmlWritingContext *	hwcEpub,
 				struct BufferDocument *		bd,
 				const char *			relativeName,
 				const DocumentSelection *	ds )
     {
     int				rval= 0;
-    EpubWriter *		ew= (EpubWriter *)hwc->hwcPrivate;
+    EpubWriter *		ew= (EpubWriter *)hwcEpub->hwcPrivate;
 
     char			absoluteName[200+1];
     SimpleOutputStream *	sosDoc= (SimpleOutputStream *)0;
     const int			compressed= 1;
+
+    HtmlWritingContext		hwcDoc;
+
+    docInitHtmlWritingContext( &hwcDoc );
 
     if  ( DocEpubNameContentLen+ 1+ strlen(relativeName)+ 1 >=
 							sizeof(absoluteName) )
@@ -846,28 +279,20 @@ static int docEpubEmitDocument(	HtmlWritingContext *		hwc,
     if  ( ! sosDoc )
 	{ SXDEB(absoluteName,sosDoc); rval= -1; goto ready;	}
 
-    hwc->hwcXmlWriter.xwSos= sosDoc;
-    hwc->hwcXmlWriter.xwColumn= 0;
+    docStartHtmlWritingContext( &hwcDoc, hwcEpub->hwcSettings, sosDoc );
 
-    if  ( docHtmlStartDocument( hwc ) )
+    if  ( docHtmlStartDocument( &hwcDoc ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( docHtmlSaveSelection( hwc, &(bd->bdBody), ds ) )
+    if  ( docHtmlSaveSelection( &hwcDoc, &(bd->bdBody), ds ) )
 	{ XDEB(ds); rval= -1; goto ready;	}
 
-    if  ( ! hwc->hwcInlineNotes )
-	{
-	if  ( hwc->hwcNoteRefCount > 0	&&
-	      docHtmlSaveNotes( hwc )	)
-	    { LDEB(hwc->hwcNoteRefCount); rval= -1; goto ready;	}
-	}
-
-    if  ( docHtmlFinishDocument( hwc ) )
+    if  ( docHtmlFinishDocumentBody( &hwcDoc ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
   ready:
 
-    hwc->hwcXmlWriter.xwSos= (SimpleOutputStream *)0; /* Only for this doc! */
+    docCleanHtmlWritingContext( &hwcDoc );
 
     if  ( sosDoc )
 	{ sioOutClose( sosDoc );	}
@@ -892,7 +317,7 @@ static DocumentField * docHtmlGetTocForEpub(	TocField *		tf,
 
     for ( fieldNr= 0; fieldNr < fieldCount; fieldNr++ )
 	{
-	DocumentField *		df= docGetFieldByNumber( dfl, fieldNr );
+	DocumentField *		df= docGetFieldByNumber( bd, fieldNr );
 
 	if  ( ! df						||
 	      df->dfKind != DOCfkTOC				||
@@ -913,10 +338,11 @@ static DocumentField * docHtmlGetTocForEpub(	TocField *		tf,
 /*									*/
 /************************************************************************/
 
-int docEpubSaveDocument(	SimpleOutputStream *	sos,
-				struct BufferDocument *	bd,
+int docEpubSaveDocument(	SimpleOutputStream *		sos,
+				struct BufferDocument *		bd,
 				const struct LayoutContext *	lc )
     {
+    HtmlWritingSettings		hws;
     HtmlWritingContext		hwc;
     int				rval= 0;
     EpubWriter			ew;
@@ -934,6 +360,7 @@ int docEpubSaveDocument(	SimpleOutputStream *	sos,
     utilInitMemoryBuffer( &title );
 
     docInitHtmlWritingContext( &hwc );
+    docInitHtmlWritingSettings( &hws );
     docInitEpubWriter( &ew );
 
     if  ( utilMemoryBufferSetString( &identifier, identifier_X ) )
@@ -941,25 +368,27 @@ int docEpubSaveDocument(	SimpleOutputStream *	sos,
     if  ( utilMemoryBufferSetString( &identifier, title_X ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    hwc.hwcSupportsBullets= 0;
-    hwc.hwcEmitBackground= 0;
-
     ew.ewZipOutput.zoSosZip= sos;
 
     ew.ewCalculateToc.ctBdDoc= bd;
 
-    hwc.hwcXmlWriter.xwSos= (SimpleOutputStream *)0; /* sos is not for HTML */
+    hws.hwsInlineCss= 0;
+    hws.hwsGetCssName= docEpubGetCssName;
+    hws.hwsInlineImages= 0;
+    hws.hwsOpenImageStream= docEpubOpenImageStream;
+    hws.hwsGetImageSrc= docEpubGetImageSrc;
+    hws.hwsInlineNotes= 1;
+
+    hws.hwsEmitBackground= 0;
+
+    hws.hwsLayoutContext= lc;
+    hws.hwsDocument= bd;
+
     hwc.hwcXmlWriter.xwCrlf= 0;
 
-    hwc.hwcLayoutContext= lc;
-    hwc.hwcOpenImageStream= docEpubOpenImageStream;
-    hwc.hwcGetImageSrc= docEpubGetImageSrc;
-    hwc.hwcGetCssName= docEpubGetCssName;
     hwc.hwcPrivate= (void *)&ew;
-    hwc.hwcDocument= bd;
-    hwc.hwcInlineCss= 0;
-    hwc.hwcInlineNotes= 1;
-    hwc.hwcInlineImages= 0;
+						    /* sos is not for HTML */
+    docStartHtmlWritingContext( &hwc, &hws, (SimpleOutputStream *)0 );
 
     if  ( ! utilMemoryBufferIsEmpty( &(dp->dpTitle) ) )
 	{
@@ -978,28 +407,29 @@ int docEpubSaveDocument(	SimpleOutputStream *	sos,
 	if  ( docCollectTocInput( &(ew.ewCalculateToc) ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 
-	if  ( docEpubEmitSimpleOpf( &(ew.ewZipOutput), &hwc,
-						&title, &identifier ) )
+	if  ( docEpubEmitSimpleOpf( &hwc, &title, &identifier ) )
 	    { LDEB(1); rval= -1; goto ready;	}
-	if  ( docEpubEmitCompositeNcx( &ew, &title, &identifier, bd ) )
+	if  ( docEpubEmitCompositeNcx( &hwc, &title, &identifier ) )
+	    { LDEB(1); rval= -1; goto ready;	}
+	if  ( docEpubEmitCompositeNavig( &hwc, &title, &identifier ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 	if  ( docEpubEmitDocument( &hwc, bd, DocEpubNameDocRel,
 					    (const DocumentSelection *)0 ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 	}
     else{
-	if  ( docEpubEmitSimpleOpf( &(ew.ewZipOutput), &hwc,
-						&title, &identifier ) )
+	if  ( docEpubEmitSimpleOpf( &hwc, &title, &identifier ) )
 	    { LDEB(1); rval= -1; goto ready;	}
-	if  ( docEpubEmitSimpleNcx( &(ew.ewZipOutput),
-						&title, &identifier ) )
+	if  ( docEpubEmitSimpleNcx( &hwc, &title, &identifier ) )
+	    { LDEB(1); rval= -1; goto ready;	}
+	if  ( docEpubEmitSimpleNavig( &hwc, &title, &identifier ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 	if  ( docEpubEmitDocument( &hwc, bd, DocEpubNameDocRel,
 					    (const DocumentSelection *)0 ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 	}
 
-    if  ( ! hwc.hwcInlineCss && docEpubWriteCss( &hwc ) )
+    if  ( ! hws.hwsInlineCss && docEpubWriteCss( &hwc ) )
 	{ LDEB(1); rval= -1; return -1;	}
 
     if  ( docHtmlSaveImageFiles( &hwc ) )
@@ -1025,11 +455,11 @@ int docEpubSaveDocument(	SimpleOutputStream *	sos,
 /*									*/
 /************************************************************************/
 
-static int docEpubGetImageSrcX(		MemoryBuffer *		target,
-					int			relative,
-					int			n,
-					const InsertedObject *	io,
-					const char *		ext )
+int docEpubGetImageSrcX(	MemoryBuffer *		target,
+				int			relative,
+				int			n,
+				const InsertedObject *	io,
+				const char *		ext )
     {
     const PictureProperties *	pip= &(io->ioPictureProperties);
 

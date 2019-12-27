@@ -310,6 +310,10 @@ typedef enum ParagraphProperty
     PPprop_FULL_COUNT
     } ParagraphProperty;
 
+# define PP_IS_ONE_PAGE( pp ) ( \
+		    (pp)->ppKeepOnPage		|| \
+		    (pp)->ppKeepWithNext	)
+
 /************************************************************************/
 /*									*/
 /*  Routine declarations.						*/

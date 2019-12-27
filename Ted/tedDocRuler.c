@@ -34,6 +34,7 @@
 #   include	<docStripFrame.h>
 #   include	<docRulerColumnSeparator.h>
 #   include	<docScreenRuler.h>
+#   include	<layoutContext.h>
 
 #   include	<appDebugon.h>
 

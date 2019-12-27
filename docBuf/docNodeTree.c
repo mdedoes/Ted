@@ -85,13 +85,13 @@ NOTE: I am educated as a biologist. My trees have their root at the
 /************************************************************************/
 
 static void docCleanNode(	struct BufferDocument *	bd,
-				struct DocumentTree *		dt,
-				struct BufferItem *		node )
+				struct DocumentTree *	tree,
+				struct BufferItem *	node )
     {
     int				i;
 
     for ( i= node->biChildCount- 1; i >= 0; i-- )
-	{ docFreeNode( bd, dt, node->biChildren[i] ); }
+	{ docFreeNode( bd, tree, node->biChildren[i] ); }
     if  ( node->biChildren )
 	{ free( node->biChildren );	}
 
@@ -125,7 +125,7 @@ static void docCleanNode(	struct BufferDocument *	bd,
 	    break;
 
 	case DOClevPARA:
-	    docCleanParaNode( bd, dt, node );
+	    docCleanParaNode( bd, tree, node );
 	    break;
 
 	default:
@@ -139,10 +139,10 @@ static void docCleanNode(	struct BufferDocument *	bd,
     }
 
 void docFreeNode(	struct BufferDocument *	bd,
-			struct DocumentTree *		dt,
-			struct BufferItem *		node )
+			struct DocumentTree *	tree,
+			struct BufferItem *	node )
     {
-    docCleanNode( bd, dt, node );
+    docCleanNode( bd, tree, node );
     free( node );
     }
 
@@ -336,7 +336,7 @@ static void docParagraphsDeleted(	struct BufferItem *	node,
 
 /*  1  */
 void docDeleteNodes(	struct BufferDocument *	bd,
-			struct DocumentTree *	dt,
+			struct DocumentTree *	tree,
 			struct BufferItem *	node,
 			int			first,
 			int			count )
@@ -377,7 +377,7 @@ void docDeleteNodes(	struct BufferDocument *	bd,
 
     n= first+ count- 1;
     while( n >= first )
-	{ docFreeNode( bd, dt, node->biChildren[n] ); n--; }
+	{ docFreeNode( bd, tree, node->biChildren[n] ); n--; }
 
     node->biChildCount -= count;
 
@@ -406,14 +406,14 @@ void docDeleteNodes(	struct BufferDocument *	bd,
 
 /*  2  */
 void docDeleteNode(	struct BufferDocument *	bd,
-			struct DocumentTree *	dt,
+			struct DocumentTree *	tree,
 			struct BufferItem *	node )
     {
     if  ( node->biParent )
 	{
-	docDeleteNodes( bd, dt, node->biParent, node->biNumberInParent, 1 );
+	docDeleteNodes( bd, tree, node->biParent, node->biNumberInParent, 1 );
 	}
-    else{ docFreeNode( bd, dt, node );					}
+    else{ docFreeNode( bd, tree, node );					}
     }
 
 /************************************************************************/
@@ -425,10 +425,10 @@ void docDeleteNode(	struct BufferDocument *	bd,
 /************************************************************************/
 
 void docDeleteDocumentTree(	struct BufferDocument *	bd,
-				struct DocumentTree *		dt )
+				struct DocumentTree *	tree )
     {
-    docFreeNode( bd, dt, dt->dtRoot );
-    dt->dtRoot= (struct BufferItem *)0;
+    docFreeNode( bd, tree, tree->dtRoot );
+    tree->dtRoot= (struct BufferItem *)0;
     }
 
 /************************************************************************/
@@ -805,9 +805,9 @@ int docSplitGroupNode(			struct BufferDocument *	bd,
 /************************************************************************/
 
 int docSplitGroupNodeAtLevel(	struct BufferDocument *	bd,
-				struct BufferItem **		pBeforeNode,
-				struct BufferItem **		pAfterNode,
-				struct BufferItem *		splitNode,
+				struct BufferItem **	pBeforeNode,
+				struct BufferItem **	pAfterNode,
+				struct BufferItem *	splitNode,
 				int			n,
 				int			level )
     {
@@ -989,10 +989,10 @@ int docNumberOfParagraph(	const struct BufferItem *	node )
     }
 
 struct BufferItem * docGetParagraphByNumber(
-				const struct DocumentTree *	dt,
+				const struct DocumentTree *	tree,
 				int				paraNr )
     {
-    struct BufferItem *	node= dt->dtRoot;
+    struct BufferItem *	node= tree->dtRoot;
 
     if  ( paraNr < 1 )
 	{ LDEB(paraNr); return (struct BufferItem *)0;	}

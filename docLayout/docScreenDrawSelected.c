@@ -9,6 +9,7 @@
 #   include	"docScreenDraw.h"
 #   include	"docDraw.h"
 #   include	"docDrawLine.h"
+#   include	"layoutContext.h"
 #   include	<docSelect.h>
 #   include	<docScanner.h>
 #   include	<docTreeNode.h>
@@ -25,7 +26,7 @@ static int docTextLineSelectedDrawRectangle(
     {
     struct DrawTextLine *	dtl= (struct DrawTextLine *)vdtl;
     DrawingContext *		dc= dtl->dtlDrawingContext;
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
 
     drawFillRectangle( lc->lcDrawingSurface, dr );
 
@@ -37,7 +38,7 @@ static int docStartTextLineSelected(
 				int				x0Twips )
     {
     DrawingContext *		dc= dtl->dtlDrawingContext;
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
     ScreenDrawingData *		sdd= (ScreenDrawingData *)dtl->dtlThrough;
 
     int				res;

@@ -10,11 +10,11 @@
 #   include	<ctype.h>
 
 #   include	"tedEdit.h"
+#   include	"tedEditOperation.h"
 #   include	<tedDocFront.h>
 #   include	"tedDocument.h"
 #   include	<docIntermediaryDocument.h>
 #   include	<docRtfTrace.h>
-#   include	<docTreeNode.h>
 #   include	<docParaParticules.h>
 #   include	<docEditCommand.h>
 #   include	<docDocumentCopyJob.h>
@@ -134,29 +134,11 @@ int tedDocRollRowsInTableImpl(	TedEditOperation *		teo,
 				int				rowsdown )
     {
     EditOperation *		eo= &(teo->teoEo);
-    int				rval= 0;
 
     struct BufferItem *		parentNode;
 
-    int				col;
-    int				row;
-    int				tabRow0;
-    int				tabRow1;
-
-    DocumentPosition		dp;
-
-    EditRange			selectedRange= eo->eoSelectedRange;
-    int				paraNr;
-    int				paraOff0;
-    int				paraOff1;
-    int				selRow0= tr->trRow0;
-    int				selRow1= tr->trRow1;
-
-    const int			recursively= 0;
-
-    int				row0= selRow0;
-    int				row1= selRow1;
-    int				rowsHigh;
+    int				row0= tr->trRow0;
+    int				row1= tr->trRow1;
 
     if  ( move )
 	{
@@ -166,70 +148,16 @@ int tedDocRollRowsInTableImpl(	TedEditOperation *		teo,
 	    { row1 += rowsdown;	}
 	}
 
-    rowsHigh= row1- row0+ 1;
-
     if  ( docDelimitTable( eo->eoHeadDp.dpNode, &parentNode,
-					    &col, &tabRow0, &row, &tabRow1 ) )
-	{ LDEB(1); rval= -1; goto ready;	}
+				(int *)0, (int *)0, (int *)0, (int *)0 ) )
+	{ LDEB(1); return -1;	}
 
     tedEditIncludeRowsInRedraw( teo, parentNode, row0, row1 );
 
-    if  ( rowsdown < 0 )
-	{ rowsdown= rowsHigh+ rowsdown;	}
+    if  ( docDocRollRowsInTable( eo, tr, parentNode, row0, row1, rowsdown ) )
+	{ LLDEB(move,rowsdown); return -1;	}
 
-    if  ( row0 >= row1 )
-	{ LLDEB(row0,row1); rval= -1; goto ready;	}
-    if  ( row0 < tabRow0 || row0 > tabRow1 )
-	{ LLLDEB(tabRow0,row0,tabRow1); rval= -1; goto ready;	}
-    if  ( row1 < tabRow0 || row1 > tabRow1 )
-	{ LLLDEB(tabRow0,row1,tabRow1); rval= -1; goto ready;	}
-    if  ( rowsdown < 1 || rowsdown >= rowsHigh )
-	{ LLDEB(rowsdown,rowsHigh); rval= -1; goto ready;	}
-
-    docInitDocumentPosition( &dp );
-    if  ( docHeadPosition( &dp, parentNode->biChildren[selRow0] ) )
-	{ LDEB(selRow0); rval= -1; goto ready;	}
-    paraNr= docNumberOfParagraph( dp.dpNode );
-    paraOff0= selectedRange.erHead.epParaNr- paraNr;
-    if  ( docHeadPosition( &dp, parentNode->biChildren[selRow1] ) )
-	{ LDEB(selRow1); rval= -1; goto ready;	}
-    paraNr= docNumberOfParagraph( dp.dpNode );
-    paraOff1= selectedRange.erTail.epParaNr- paraNr;
-    if  ( paraOff0 < 0 || paraOff1 < 0 )
-	{ LLDEB(paraOff0,paraOff1); rval= -1; goto ready;	}
-
-    if  ( docRollNodeChildren( eo, parentNode, row0, row1+ 1, rowsdown ) )
-	{ LLLDEB(row0,row1,rowsdown); rval= -1; goto ready;	}
-
-    docEditIncludeNodeInReformatRange( eo, parentNode );
-
-    docDelimitTables( parentNode, recursively );
-
-    selRow0 += rowsdown;
-    if  ( selRow0 > row1 )
-	{ selRow0 -= rowsHigh;	}
-    selRow1 += rowsdown;
-    if  ( selRow1 > row1 )
-	{ selRow1 -= rowsHigh;	}
-
-    if  ( docHeadPosition( &dp, parentNode->biChildren[selRow0] ) )
-	{ LDEB(selRow0); rval= -1; goto ready;	}
-    paraNr= docNumberOfParagraph( dp.dpNode );
-    selectedRange.erHead.epParaNr= paraNr+ paraOff0;
-    if  ( docHeadPosition( &dp, parentNode->biChildren[selRow1] ) )
-	{ LDEB(selRow1); rval= -1; goto ready;	}
-    paraNr= docNumberOfParagraph( dp.dpNode );
-    selectedRange.erTail.epParaNr= paraNr+ paraOff1;
-    if  ( selectedRange.erHead.epParaNr < 0	||
-	  selectedRange.erTail.epParaNr < 0	)
-	{ LDEB(1); rval= -1; goto ready;	}
-
-    eo->eoSelectedRange= selectedRange;
-    eo->eoAffectedRange= selectedRange;
-
-  ready:
-
-    return rval;
+    return 0;
     }
 
 /************************************************************************/
@@ -240,7 +168,7 @@ int tedDocRollRowsInTableImpl(	TedEditOperation *		teo,
 
 static int tedSplitColumnInRows(	TedEditOperation *	teo,
 					DocumentPosition *	dpNew,
-					struct BufferItem *		parentNode,
+					struct BufferItem *	parentNode,
 					int			row0,
 					int			row,
 					int			row1,

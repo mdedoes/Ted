@@ -20,6 +20,7 @@
 #   include	<docSelect.h>
 #   include	<docTextParticule.h>
 #   include	<docBreakKind.h>
+#   include	<docRecalculateFields.h>
 
 #   include	<docDebug.h>
 #   include	<appDebugon.h>
@@ -290,16 +291,20 @@ static int docRtfHierarchyCell(	const RtfControlWord *	rcw,
 		  rts->rtsNode->biNumberInParent > 0	)
 		{
 		BufferItem *	cellNode= rts->rtsNode->biParent;
-		BufferItem *	freshNode;
+		BufferItem *	freshCellNode;
+		BufferItem *	freshRowNode;
 
-		if  ( docSplitGroupNode( rr->rrDocument, &freshNode, cellNode,
+		if  ( docSplitGroupNode( rr->rrDocument,
+					    &freshCellNode, cellNode,
 					    rts->rtsNode->biNumberInParent ) )
 		    { LDEB(rts->rtsNode->biNumberInParent); return -1;	}
 
-		if  ( docSplitGroupNode( rr->rrDocument, &freshNode,
+		if  ( docSplitGroupNode( rr->rrDocument, &freshRowNode,
 					    cellNode->biParent,
 					    cellNode->biNumberInParent ) )
 		    { LDEB(cellNode->biNumberInParent); return -1;	}
+
+		docRowNodeResetRowProperties( freshRowNode, rr->rrDocument );
 		}
 	    }
 
@@ -494,17 +499,25 @@ static int docRtfStartCell(	RtfReader *	rr )
 int docRtfFinishCurrentTree(	const RtfControlWord *	rcw,
 				RtfReader *		rr )
     {
+    int			rval= 0;
     RtfTreeStack *	rts= rr->rrTreeStack;
 
-    while(  rts->rtsNode )
+    if  ( docRtfPopTreeFromFieldStack( rr, rts ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+
+    docRenumberSeqFields( (int *)0, rts->rtsTree, rr->rrDocument );
+
+    while( rts->rtsNode )
 	{
 	if  ( docRtfCloseNode( rr, rts->rtsNode ) )
-	    { LDEB(1); return -1;	}
+	    { LDEB(1); rval= -1; goto ready;	}
 
 	rts->rtsNode= rts->rtsNode->biParent;
 	}
 
-    return 0;
+  ready:
+
+    return rval;
     }
 
 /************************************************************************/
@@ -695,8 +708,10 @@ int docRtfBreakParticule(	const RtfControlWord *	rcw,
 	    int			done= 0;
 	    int			paraStrlen= docParaStrlen( paraNode );
 
-	    if  ( paraStrlen == 0				||
-		  paraStrlen == rr->rrParaHeadFieldTailOffset	)
+	    int			atHead= paraStrlen == 0 ||
+					paraStrlen == rr->rrParaHeadFieldTailOffset;
+
+	    if  ( atHead )
 		{
 		if  ( rr->rrParagraphBreakOverride == -1		   &&
 		      paraNode->biParaProperties->ppBreakKind == DOCibkNONE )

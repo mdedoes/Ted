@@ -27,6 +27,7 @@
 #   include	<appEditApplication.h>
 #   include	<docBuf.h>
 #   include	<appDocFront.h>
+#   include	<layoutContext.h>
 
 #   include	<guiKeys.h>
 
@@ -305,6 +306,59 @@ static int tedFindMousePosition( APP_WIDGET			w,
 
 /************************************************************************/
 /*									*/
+/*  Try to use the click event for navigation (follow link etc)		*/
+/*									*/
+/************************************************************************/
+
+static int tedUseClickForNavigation(
+				EditDocument *			ed,
+				const DraggingContext *		dc,
+				unsigned int			keyState )
+    {
+    int				rval= 0;
+    HyperlinkField		hf;
+
+    TedDocument *		td= (TedDocument *)ed->edPrivateData;
+    struct BufferDocument *	bd= td->tdDocument;
+
+    docInitHyperlinkField( &hf );
+
+    if  ( ed->edFileReadOnly || ( keyState & KEY_CONTROL_MASK ) )
+	{
+	struct DocumentField *		dfHyperlink;
+	struct DocumentField *		dfChftn;
+
+	dfHyperlink= docFindTypedFieldForPosition( bd,
+				&(dc->dcAnchorPosition), DOCfkHYPERLINK, 0 );
+
+	if  ( dfHyperlink )
+	    {
+	    if  ( ! docGetHyperlinkField( &hf, dfHyperlink ) )
+		{
+		tedDocFollowLink( (APP_WIDGET)0, ed,
+					    &(hf.hfFile), &(hf.hfBookmark) );
+		rval= 1; goto ready;
+		}
+	    }
+
+	dfChftn= docFindTypedFieldForPosition( bd,
+				&(dc->dcAnchorPosition), DOCfkCHFTN, 0 );
+	if  ( dfChftn )
+	    {
+	    tedGotoNoteOther(ed, dfChftn, &(dc->dcAnchorPosition) );
+	    rval= 1; goto ready;
+	    }
+	}
+
+  ready:
+
+    docCleanHyperlinkField( &hf );
+
+    return rval;
+    }
+
+/************************************************************************/
+/*									*/
 /*  Select the current position of the mouse.				*/
 /*									*/
 /************************************************************************/
@@ -317,7 +371,7 @@ static int tedSelectMousePosition(
 				APP_EVENT *			downEvent )
     {
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    struct BufferDocument *		bd= td->tdDocument;
+    struct BufferDocument *	bd= td->tdDocument;
 
     int				docX= 0;
 
@@ -365,6 +419,9 @@ static int tedSelectMousePosition(
 
 	goto ready;
 	}
+
+    if  ( tedUseClickForNavigation( ed, dc, keyState ) )
+	{ return 1;	}
 
     docAvoidParaHeadField( &(dc->dcAnchorPosition), (int *)0, bd );
 
@@ -462,41 +519,18 @@ static void tedButton1Pressed(	APP_WIDGET			w,
 				APP_EVENT *			downEvent )
     {
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    struct BufferDocument *	bd= td->tdDocument;
 
     DraggingContext		dc;
     unsigned int		keyState;
 
     int				startedWithObject;
 
-    HyperlinkField		hf;
-
-    docInitHyperlinkField( &hf );
-
     guiFocusToWidget( ed->edDocumentWidget.dwWidget );
 
     if  ( tedSelectMousePosition( &keyState, w, ed, &dc, downEvent ) )
-	{ goto ready;	}
+	{ return;	}
 
     startedWithObject= td->tdSelectionDescription.sdIsObjectSelection;
-
-    if  ( ed->edFileReadOnly || ( keyState & KEY_CONTROL_MASK ) )
-	{
-	struct DocumentField *		dfHyperlink;
-
-	dfHyperlink= docFindTypedFieldForPosition( bd,
-				&(dc.dcAnchorPosition), DOCfkHYPERLINK, 0 );
-
-	if  ( dfHyperlink )
-	    {
-	    if  ( ! docGetHyperlinkField( &hf, dfHyperlink ) )
-		{
-		tedDocFollowLink( (APP_WIDGET)0, ed,
-					    &(hf.hfFile), &(hf.hfBookmark) );
-		goto ready;
-		}
-	    }
-	}
 
     guiRunDragLoop( w, ed->edApplication->eaContext, downEvent,
 				(APP_EVENT_HANDLER_T)0, tedInputDragMouseMove,
@@ -508,10 +542,6 @@ static void tedButton1Pressed(	APP_WIDGET			w,
     if  ( startedWithObject					&&
 	  ! td->tdSelectionDescription.sdIsObjectSelection	)
 	{ tedHideObjectWindows( ed );	}
-
-  ready:
-
-    docCleanHyperlinkField( &hf );
 
     return;
     }

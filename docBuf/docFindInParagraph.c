@@ -9,7 +9,6 @@
 #   include	<ctype.h>
 
 #   include	<textRegexp.h>
-#   include	"docBuf.h"
 #   include	"docTreeNode.h"
 #   include	"docFind.h"
 #   include	"docSelect.h"
@@ -32,7 +31,7 @@ int docFindSetPattern(		void **			pProg,
     int				options= 0;
 
     if  ( ! useRegex )
-	{ options |= REGflagESCAPE_REGEX;	}
+	{ options |= REGflagNO_REGEX;		}
     if  ( asWord )
 	{ options |= REGflagAS_WORD;		}
     if  ( ! caseSensitive )

@@ -396,8 +396,8 @@ void docSelectionGeometry(	SelectionGeometry *		sg,
     int			lastOneHead= PARAfindFIRST;
     int			lastOneTail= PARAfindFIRST;
 
-    int			lineHead;
-    int			lineTail;
+    int			lineHead= -1;
+    int			lineTail= -1;
 
     BlockFrame		bfHead;
     BlockFrame		bfTail;

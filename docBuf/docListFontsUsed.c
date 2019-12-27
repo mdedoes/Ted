@@ -36,7 +36,7 @@
 typedef struct GetCharsUsed
     {
     struct BufferDocument *		gcuDocument;
-    DocumentFontList *			gcuDocumentFontList;
+    struct DocumentFontList *		gcuDocumentFontList;
     } GetCharsUsed;
 
 # ifdef __GNUC__
@@ -48,7 +48,7 @@ static int docCharsUsedGotSpan(	const TextRun *			tr,
 				void *				through )
     {
     GetCharsUsed *		gcu= (GetCharsUsed *)through;
-    DocumentFontList *		dfl= gcu->gcuDocumentFontList;
+    struct DocumentFontList *	dfl= gcu->gcuDocumentFontList;
     const char *		s;
 
     DocumentFont *		df;
@@ -57,18 +57,18 @@ static int docCharsUsedGotSpan(	const TextRun *			tr,
     int				from;
     int				upto;
 
-    if  ( fontNumber < 0			||
-	  fontNumber >= dfl->dflFontCount	)
-	{
-	if  ( fontNumber >= dfl->dflFontCount )
-	    { LLDEB(fontNumber,dfl->dflFontCount);	}
-
-	fontNumber= docGetDefaultFont( gcu->gcuDocument );
-	}
+    if  ( fontNumber < 0 )
+	{ fontNumber= docGetDefaultFont( gcu->gcuDocument );	}
 
     df= fontFontListGetFontByNumber( dfl, fontNumber );
     if  ( ! df )
-	{ LXDEB(fontNumber,df); return -1;	}
+	{
+	LXDEB(fontNumber,df);
+	fontNumber= docGetDefaultFont( gcu->gcuDocument );
+	df= fontFontListGetFontByNumber( dfl, fontNumber );
+	if  ( ! df )
+	    { LXDEB(fontNumber,df); return -1;	}
+	}
 
     if  ( tr->trStrlen == 0 )
 	{
@@ -105,14 +105,14 @@ static int docCharsUsedGotSpan(	const TextRun *			tr,
 # endif
 
 static int docInludeFontOfAttribute(	const struct BufferDocument *	bd,
-					const TextAttribute *	ta )
+					const TextAttribute *		ta )
     {
-    const DocumentFontList *		dfl= bd->bdProperties->dpFontList;
+    const struct DocumentFontList *	dfl= bd->bdProperties->dpFontList;
     DocumentFont *			df;
 
     df= fontFontListGetFontByNumber( dfl, ta->taFontNumber );
     if  ( ! df )
-	{ LXDEB(ta->taFontNumber,df); return -1;	}
+	{ LXDEB(ta->taFontNumber,df); return 0;	}
 
     if  ( utilIndexSetAdd( &(df->dfUnicodesUsed), 0x20 ) )
 	{ XDEB(0x20); return -1;	}
@@ -130,7 +130,7 @@ static int docCharsListObject(	const VisitParticule *		vp,
 				void *				through )
     {
     GetCharsUsed *		gcu= (GetCharsUsed *)through;
-    DocumentFontList *		dfl= gcu->gcuDocumentFontList;
+    struct DocumentFontList *	dfl= gcu->gcuDocumentFontList;
     DocumentFont *		df;
 
     df= fontFontListGetFontByNumber( dfl, vp->vpTextAttribute->taFontNumber );
@@ -150,7 +150,7 @@ static int docCharsListObject(	const VisitParticule *		vp,
 int docGetCharsUsed(	struct BufferDocument *		bd )
     {
     int				i;
-    DocumentFontList *		dfl= bd->bdProperties->dpFontList;
+    struct DocumentFontList *	dfl= bd->bdProperties->dpFontList;
 
     const DocumentProperties *	dp= bd->bdProperties;
     const ListAdmin *		la= dp->dpListAdmin;

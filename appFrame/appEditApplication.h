@@ -145,6 +145,7 @@ typedef struct EditApplication
 				struct EditDocument *		ed,
 				const struct MemoryBuffer *	filename );
     int			(*eaLayoutDocument)(
+				const struct EditApplication *	ea,
 				DocumentRectangle *		drScreen,
 				DocumentRectangle *		drVisible,
 				void *				privateData,

@@ -9,7 +9,6 @@
 
 struct LayoutPosition;
 struct BufferDocument;
-struct DocumentTree;
 struct BlockFrame;
 struct ParagraphFrame;
 struct FrameProperties;
@@ -55,8 +54,7 @@ extern void docParaBlockFrameTwips(
 				struct BufferItem *		paraNode,
 				const struct BufferItem *	bodySectNode,
 				struct BufferDocument *		bd,
-				int				page,
-				int				column );
+				const struct LayoutPosition *	lpHere );
 
 extern void docParagraphFrameTwips(
 				struct ParagraphFrame *		pf,
@@ -89,29 +87,5 @@ extern void docLayoutFrameY(	struct BlockFrame *		bfTextFrame,
 				const struct BlockFrame *	bfRef,
 				int				frameHighProp,
 				int				frameHighVal );
-
-extern int docDrawWhatPageHeader( struct DocumentTree **	pTree,
-				int *				pIsEmpty,
-				const struct BufferItem *	bodySectNode,
-				int				page,
-				const struct BufferDocument *	bd );
-
-extern int docDrawWhatPageFooter( struct DocumentTree **		pTree,
-				int *				pIsEmpty,
-				const struct BufferItem *	bodySectNode,
-				int				page,
-				const struct BufferDocument *	bd );
-
-extern int docLayoutWhatPageHeader( struct DocumentTree **	pTree,
-				int *				pIsEmpty,
-				const struct BufferItem *	bodySectNode,
-				int				page,
-				const struct BufferDocument *	bd );
-
-extern int docLayoutWhatPageFooter( struct DocumentTree **	pTree,
-				int *				pIsEmpty,
-				const struct BufferItem *	bodySectNode,
-				int				page,
-				const struct BufferDocument *	bd );
 
 #   endif	/*  DOC_PAGE_GRID_H  */

@@ -24,6 +24,7 @@ WFLAGS=	-Wall			\
 INCLUDES=			\
 	-I../docRtf		\
 	-I../docBuf		\
+	-I../docField		\
 	-I../docBase		\
 	-I../bitmap		\
 	-I../utilPs		\
@@ -39,8 +40,9 @@ CFLAGS=	\
 
 #CFLAGS= -g -O2 $(WFLAGS) $(INCLUDES)
 
-# 42!!obs
+# 45!!obs
 OBS	=	\
+		docUndo.o\
 		docTrace.o\
 		docTocResult.o\
 		docTocBookmarks.o\
@@ -50,12 +52,14 @@ OBS	=	\
 		docRtfReadTrace.o\
 		docRecalculateTocFields.o\
 		docMapTextAttribute.o\
+		docJsonReport.o\
 		docIntermediaryDocument.o\
 		docIncludeDocument.o\
 		docFontReport.o\
 		docEditTrace.o\
 		docEditTable.o\
 		docEditStep.o\
+		docEditSetSelectionProperties.o\
 		docEditSetProperties.o\
 		docEditSection.o\
 		docEditParagraph.o\
@@ -96,16 +100,14 @@ duplicates:
 includes:
 	includes.sh docEditConfig.h $(INCLUDES)
 
-# deps -I. -I../include -I../docBuf -I../docRtf -I../docBase -I../bitmap  -I../textEncoding -I../utilGeo -I../appUtil -I ../docFont -I../utilPs
+# deps -I. -I../include -I../docBuf -I../docRtf -I../docField -I../docBase -I../bitmap  -I../textEncoding -I../utilGeo -I../appUtil -I ../docFont -I../utilPs
 ######################################## !! sh
 
 docAppendDocument.o: \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
-    ../docBase/docChildFields.h \
     ../docBase/docDocumentAttributeMap.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
     ../docBase/docInsertedObjectList.h \
@@ -126,8 +128,11 @@ docAppendDocument.o: \
     docDocumentCopyJob.h \
     docEditConfig.h \
     docEditOperation.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilPs/textAttribute.h \
     docAppendDocument.c
 
 docCalculateIncludeTextField.o: \
@@ -138,17 +143,11 @@ docCalculateIncludeTextField.o: \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
-    ../docBase/docChildFields.h \
+    ../appUtil/utilTree.h \
     ../docBase/docDocumentAttributeMap.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docFieldKind.h \
-    ../docBase/docFieldScanner.h \
-    ../docBase/docIncludeTextField.h \
     ../docBase/docInsertedObjectList.h \
     ../docBase/docListNumberTree.h \
     ../docBase/docNotesProperties.h \
@@ -157,6 +156,7 @@ docCalculateIncludeTextField.o: \
     ../docBase/docStyleSheet.h \
     ../docBase/docTreeType.h \
     ../docBuf/docBuf.h \
+    ../docBuf/docDebug.h \
     ../docBuf/docDocumentTree.h \
     ../docBuf/docDrawingShapeList.h \
     ../docBuf/docFields.h \
@@ -168,6 +168,13 @@ docCalculateIncludeTextField.o: \
     docEditConfig.h \
     docEdit.h \
     docEditOperation.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentField.h \
+    ../docField/docDocumentFieldList.h \
+    ../docField/docFieldInstructions.h \
+    ../docField/docFieldKind.h \
+    ../docField/docFieldScanner.h \
+    ../docField/docIncludeTextField.h \
     docRecalculateIncludeTextField.h \
     ../docRtf/docPlainReadWrite.h \
     ../docRtf/docRtfFlags.h \
@@ -176,6 +183,7 @@ docCalculateIncludeTextField.o: \
     ../include/appDebugon.h \
     ../utilGeo/geoDocumentPageSetup.h \
     ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
     docCalculateIncludeTextField.c
 
 docCalculateToc.o: \
@@ -183,16 +191,10 @@ docCalculateToc.o: \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
-    ../docBase/docBookmarkField.h \
     ../docBase/docCellProperties.h \
-    ../docBase/docChildFields.h \
     ../docBase/docDocumentAttributeMap.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docFieldKind.h \
     ../docBase/docInsertedObjectList.h \
     ../docBase/docLayoutPosition.h \
     ../docBase/docListDepth.h \
@@ -202,15 +204,14 @@ docCalculateToc.o: \
     ../docBase/docRowProperties.h \
     ../docBase/docSectProperties.h \
     ../docBase/docSelectionScope.h \
-    ../docBase/docSeqField.h \
     ../docBase/docStyle.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docTextParticule.h \
-    ../docBase/docTocField.h \
     ../docBase/docTreeType.h \
     ../docBuf/docBlockFrame.h \
     ../docBuf/docBuf.h \
     ../docBuf/docCellNode.h \
+    ../docBuf/docDebug.h \
     ../docBuf/docDocumentTree.h \
     ../docBuf/docDrawingShapeList.h \
     ../docBuf/docFields.h \
@@ -225,6 +226,14 @@ docCalculateToc.o: \
     ../docBuf/docTreeNode.h \
     docCalculateToc.h \
     docEditConfig.h \
+    ../docField/docBookmarkField.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentField.h \
+    ../docField/docDocumentFieldList.h \
+    ../docField/docFieldInstructions.h \
+    ../docField/docFieldKind.h \
+    ../docField/docSeqField.h \
+    ../docField/docTocField.h \
     docIntermediaryDocument.h \
     docTocBookmarks.h \
     ../include/appDebug.h \
@@ -239,9 +248,7 @@ docCopyNodeTree.o: \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
-    ../docBase/docChildFields.h \
     ../docBase/docDocumentAttributeMap.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
     ../docBase/docInsertedObjectList.h \
@@ -251,6 +258,7 @@ docCopyNodeTree.o: \
     ../docBase/docStyleSheet.h \
     ../docBuf/docBuf.h \
     ../docBuf/docCellNode.h \
+    ../docBuf/docDebug.h \
     ../docBuf/docDocumentTree.h \
     ../docBuf/docDrawingShapeList.h \
     ../docBuf/docNodeTree.h \
@@ -265,8 +273,11 @@ docCopyNodeTree.o: \
     docEditConfig.h \
     docEdit.h \
     docEditOperation.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilPs/textAttribute.h \
     docCopyNodeTree.c
 
 docCopyParagraph.o: \
@@ -275,18 +286,10 @@ docCopyParagraph.o: \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPalette.h \
-    ../appUtil/utilPropMask.h \
     ../bitmap/bitmap.h \
-    ../docBase/docBookmarkField.h \
-    ../docBase/docChildFields.h \
     ../docBase/docDocumentAttributeMap.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docFieldKind.h \
-    ../docBase/docHyperlinkField.h \
     ../docBase/docInsertedObjectList.h \
     ../docBase/docLayoutPosition.h \
     ../docBase/docListNumberTree.h \
@@ -310,6 +313,7 @@ docCopyParagraph.o: \
     ../docBuf/docParaBuilder.h \
     ../docBuf/docParaNode.h \
     ../docBuf/docParaParticuleAdmin.h \
+    ../docBuf/docParaParticules.h \
     ../docBuf/docParaString.h \
     ../docBuf/docRowNode.h \
     ../docBuf/docSectNode.h \
@@ -320,8 +324,16 @@ docCopyParagraph.o: \
     docEditConfig.h \
     docEdit.h \
     docEditOperation.h \
+    ../docField/docBookmarkField.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentField.h \
+    ../docField/docDocumentFieldList.h \
+    ../docField/docFieldInstructions.h \
+    ../docField/docFieldKind.h \
+    ../docField/docHyperlinkField.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilPs/textAttribute.h \
     docCopyParagraph.c
 
 docDocumentCopyJob.o: \
@@ -333,9 +345,7 @@ docDocumentCopyJob.o: \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPalette.h \
     ../docBase/docBorderPropertyAdmin.h \
-    ../docBase/docChildFields.h \
     ../docBase/docDocumentAttributeMap.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
     ../docBase/docFramePropertiesAdmin.h \
@@ -357,22 +367,21 @@ docDocumentCopyJob.o: \
     docDocumentCopyJob.h \
     docEditConfig.h \
     docEditOperation.h \
-    ../docFont/fontDocFontList.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../docFont/fontDocFontListImpl.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilPs/textAttribute.h \
     docDocumentCopyJob.c
 
 docEdit.o: \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
-    ../docBase/docChildFields.h \
     ../docBase/docDocumentAttributeMap.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
-    ../docBase/docFieldInstructions.h \
     ../docBase/docInsertedObjectList.h \
     ../docBase/docLayoutPosition.h \
     ../docBase/docListNumberTree.h \
@@ -401,15 +410,18 @@ docEdit.o: \
     docEdit.h \
     docEditImpl.h \
     docEditOperation.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentField.h \
+    ../docField/docDocumentFieldList.h \
+    ../docField/docFieldInstructions.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilPs/textAttribute.h \
     docEdit.c
 
 docEditAdmin.o: \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilPagedList.h \
-    ../docBase/docChildFields.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
     ../docBase/docInsertedObjectList.h \
@@ -429,8 +441,11 @@ docEditAdmin.o: \
     docEdit.h \
     docEditImpl.h \
     docEditOperation.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilPs/textAttribute.h \
     docEditAdmin.c
 
 docEditChangeDocumentProperties.o: \
@@ -438,8 +453,6 @@ docEditChangeDocumentProperties.o: \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
-    ../docBase/docChildFields.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
@@ -458,34 +471,28 @@ docEditChangeDocumentProperties.o: \
     docEditConfig.h \
     docEditOperation.h \
     docEditSetProperties.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../utilGeo/geoDocumentPageSetup.h \
     ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
     docEditChangeDocumentProperties.c
 
 docEditChangeParaProperties.o: \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
-    ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
-    ../docBase/docChildFields.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
-    ../docBase/docInsertedObjectList.h \
     ../docBase/docLayoutPosition.h \
-    ../docBase/docListNumberTree.h \
     ../docBase/docParaProperties.h \
     ../docBase/docRowProperties.h \
     ../docBase/docSelectionScope.h \
-    ../docBase/docStyleSheet.h \
     ../docBase/docTextParticule.h \
     ../docBuf/docAttributes.h \
-    ../docBuf/docBuf.h \
     ../docBuf/docCellNode.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBuf/docDrawingShapeList.h \
     ../docBuf/docFields.h \
     ../docBuf/docParaNode.h \
     ../docBuf/docParaParticuleAdmin.h \
@@ -527,6 +534,7 @@ docEditChangeTableProperties.o: \
     docEditSetProperties.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilPs/textAttribute.h \
     docEditChangeTableProperties.c
 
 docEditCopyProperties.o: \
@@ -535,9 +543,7 @@ docEditCopyProperties.o: \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
     ../docBase/docCellProperties.h \
-    ../docBase/docChildFields.h \
     ../docBase/docDocumentAttributeMap.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
     ../docBase/docInsertedObjectList.h \
@@ -565,8 +571,11 @@ docEditCopyProperties.o: \
     docEdit.h \
     docEditOperation.h \
     docEditSetProperties.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilPs/textAttribute.h \
     docEditCopyProperties.c
 
 docEditDocumentTree.o: \
@@ -576,9 +585,7 @@ docEditDocumentTree.o: \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPalette.h \
     ../bitmap/bitmap.h \
-    ../docBase/docChildFields.h \
     ../docBase/docDocumentAttributeMap.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
     ../docBase/docInsertedObjectList.h \
@@ -598,10 +605,13 @@ docEditDocumentTree.o: \
     docEditConfig.h \
     docEditImpl.h \
     docEditOperation.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../utilGeo/geoAffineTransform.h \
     ../utilGeo/geoRectangle.h \
+    ../utilPs/textAttribute.h \
     docEditDocumentTree.c
 
 docEditField.o: \
@@ -609,18 +619,15 @@ docEditField.o: \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
-    ../docBase/docChildFields.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
-    ../docBase/docFieldInstructions.h \
     ../docBase/docInsertedObjectList.h \
     ../docBase/docLayoutPosition.h \
     ../docBase/docListNumberTree.h \
     ../docBase/docSelectionScope.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docTextParticule.h \
+    ../docBuf/docAttributes.h \
     ../docBuf/docBuf.h \
     ../docBuf/docCellNode.h \
     ../docBuf/docDocumentTree.h \
@@ -640,30 +647,24 @@ docEditField.o: \
     docEditConfig.h \
     docEdit.h \
     docEditOperation.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentField.h \
+    ../docField/docDocumentFieldList.h \
+    ../docField/docFieldInstructions.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilPs/textAttribute.h \
     docEditField.c
 
 docEditInsertNode.o: \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
-    ../appUtil/utilPagedList.h \
-    ../appUtil/utilPropMask.h \
-    ../docBase/docChildFields.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
-    ../docBase/docInsertedObjectList.h \
     ../docBase/docLayoutPosition.h \
-    ../docBase/docListNumberTree.h \
-    ../docBase/docParaProperties.h \
     ../docBase/docSelectionScope.h \
-    ../docBase/docStyleSheet.h \
     ../docBase/docTextParticule.h \
-    ../docBuf/docBuf.h \
     ../docBuf/docCellNode.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBuf/docDrawingShapeList.h \
     ../docBuf/docNodeTree.h \
     ../docBuf/docParaNode.h \
     ../docBuf/docParaParticuleAdmin.h \
@@ -676,34 +677,53 @@ docEditInsertNode.o: \
     docEditOperation.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilPs/textAttribute.h \
     docEditInsertNode.c
 
 docEditList.o: \
+    ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
-    ../docBase/docChildFields.h \
-    ../docBase/docDocumentFieldList.h \
+    ../docBase/docCellProperties.h \
     ../docBase/docDocumentList.h \
+    ../docBase/docDocumentProperties.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
     ../docBase/docInsertedObjectList.h \
+    ../docBase/docLayoutPosition.h \
     ../docBase/docListDepth.h \
     ../docBase/docListLevel.h \
     ../docBase/docListNumberTree.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
     ../docBase/docSelectionScope.h \
     ../docBase/docStyleSheet.h \
     ../docBuf/docBuf.h \
+    ../docBuf/docCellNode.h \
     ../docBuf/docDocumentTree.h \
     ../docBuf/docDrawingShapeList.h \
     ../docBuf/docField.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
     ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docBuf/docTreeNode.h \
     docEditConfig.h \
     docEdit.h \
+    docEditImpl.h \
     docEditOperation.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../docFont/docExpandedTextAttribute.h \
+    docRtfTrace.h \
+    docSelectionDescription.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docEditList.c
 
@@ -712,8 +732,6 @@ docEditListImpl.o: \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
-    ../docBase/docChildFields.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docInsertedObjectList.h \
@@ -730,6 +748,8 @@ docEditListImpl.o: \
     ../docBuf/docDrawingShapeList.h \
     docEditConfig.h \
     docEditImpl.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../utilGeo/geoDocumentPageSetup.h \
@@ -741,8 +761,6 @@ docEditMakeField.o: \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
-    ../docBase/docChildFields.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
     ../docBase/docInsertedObjectList.h \
@@ -767,8 +785,11 @@ docEditMakeField.o: \
     docEditConfig.h \
     docEdit.h \
     docEditOperation.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilPs/textAttribute.h \
     docEditMakeField.c
 
 docEditNodeProperties.o: \
@@ -776,8 +797,6 @@ docEditNodeProperties.o: \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
-    ../docBase/docChildFields.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
     ../docBase/docInsertedObjectList.h \
@@ -811,32 +830,27 @@ docEditNodeProperties.o: \
     docEditConfig.h \
     docEdit.h \
     docEditOperation.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../utilGeo/geoDocumentPageSetup.h \
     ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
     docEditNodeProperties.c
 
 docEditNodeTree.o: \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
-    ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
-    ../docBase/docChildFields.h \
     ../docBase/docDocumentAttributeMap.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
-    ../docBase/docInsertedObjectList.h \
     ../docBase/docLayoutPosition.h \
-    ../docBase/docListNumberTree.h \
     ../docBase/docParaProperties.h \
     ../docBase/docSelectionScope.h \
-    ../docBase/docStyleSheet.h \
-    ../docBuf/docBuf.h \
     ../docBuf/docCellNode.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docDebug.h \
     ../docBuf/docField.h \
     ../docBuf/docNodeTree.h \
     ../docBuf/docObjects.h \
@@ -853,6 +867,7 @@ docEditNodeTree.o: \
     docEditOperation.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilPs/textAttribute.h \
     docEditNodeTree.c
 
 docEditNotes.o: \
@@ -860,13 +875,9 @@ docEditNotes.o: \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
-    ../docBase/docChildFields.h \
     ../docBase/docDocumentAttributeMap.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
-    ../docBase/docFieldInstructions.h \
     ../docBase/docInsertedObjectList.h \
     ../docBase/docLayoutPosition.h \
     ../docBase/docListNumberTree.h \
@@ -885,6 +896,7 @@ docEditNotes.o: \
     ../docBuf/docDrawingShapeList.h \
     ../docBuf/docField.h \
     ../docBuf/docFields.h \
+    ../docBuf/docNodeTree.h \
     ../docBuf/docNotes.h \
     ../docBuf/docParaBuilder.h \
     ../docBuf/docParaNode.h \
@@ -900,6 +912,10 @@ docEditNotes.o: \
     docEditConfig.h \
     docEditImpl.h \
     docEditOperation.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentField.h \
+    ../docField/docDocumentFieldList.h \
+    ../docField/docFieldInstructions.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../utilPs/textAttribute.h \
@@ -910,12 +926,8 @@ docEditOperation.o: \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
-    ../docBase/docChildFields.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
-    ../docBase/docFieldInstructions.h \
     ../docBase/docInsertedObjectList.h \
     ../docBase/docLayoutPosition.h \
     ../docBase/docListNumberTree.h \
@@ -939,33 +951,29 @@ docEditOperation.o: \
     ../docBuf/docTreeNode.h \
     docEditConfig.h \
     docEditOperation.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentField.h \
+    ../docField/docDocumentFieldList.h \
+    ../docField/docFieldInstructions.h \
     ../docRtf/docRtfWriter.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilPs/textAttribute.h \
     docEditOperation.c
 
 docEditParagraph.o: \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
-    ../appUtil/utilPagedList.h \
-    ../appUtil/utilPropMask.h \
     ../docBase/docBreakKind.h \
-    ../docBase/docChildFields.h \
     ../docBase/docDocumentAttributeMap.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
-    ../docBase/docInsertedObjectList.h \
     ../docBase/docLayoutPosition.h \
-    ../docBase/docListNumberTree.h \
     ../docBase/docParaProperties.h \
     ../docBase/docSelectionScope.h \
-    ../docBase/docStyleSheet.h \
     ../docBase/docTextParticule.h \
-    ../docBuf/docBuf.h \
     ../docBuf/docCellNode.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docDebug.h \
     ../docBuf/docField.h \
     ../docBuf/docFields.h \
     ../docBuf/docNodeTree.h \
@@ -986,15 +994,14 @@ docEditParagraph.o: \
     docEditOperation.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilPs/textAttribute.h \
     docEditParagraph.c
 
 docEditSection.o: \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
-    ../docBase/docChildFields.h \
     ../docBase/docDocumentAttributeMap.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
     ../docBase/docInsertedObjectList.h \
@@ -1019,10 +1026,13 @@ docEditSection.o: \
     docDocumentCopyJob.h \
     docEditConfig.h \
     docEditOperation.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../utilGeo/geoDocumentPageSetup.h \
     ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
     docEditSection.c
 
 docEditSetProperties.o: \
@@ -1051,7 +1061,38 @@ docEditSetProperties.o: \
     docEditSetProperties.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilPs/textAttribute.h \
     docEditSetProperties.c
+
+docEditSetSelectionProperties.o: \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyleSheet.h \
+    ../docBuf/docAttributes.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docSelect.h \
+    docEditConfig.h \
+    docEdit.h \
+    docEditOperation.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
+    docEditSetSelectionProperties.c
 
 docEditStep.o: \
     ../appUtil/utilIndexSet.h \
@@ -1059,9 +1100,7 @@ docEditStep.o: \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
     ../docBase/docCellProperties.h \
-    ../docBase/docChildFields.h \
     ../docBase/docDocumentAttributeMap.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docEditPosition.h \
@@ -1080,6 +1119,7 @@ docEditStep.o: \
     ../docBase/docStyleSheet.h \
     ../docBuf/docBuf.h \
     ../docBuf/docCellNode.h \
+    ../docBuf/docDocument.h \
     ../docBuf/docDocumentTree.h \
     ../docBuf/docDrawingShapeList.h \
     ../docBuf/docParaNode.h \
@@ -1088,6 +1128,8 @@ docEditStep.o: \
     ../docBuf/docTreeNode.h \
     docEditConfig.h \
     docEditStep.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
     docIntermediaryDocument.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
@@ -1100,34 +1142,27 @@ docEditTable.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
-    ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
     ../docBase/docBorderProperties.h \
     ../docBase/docCellProperties.h \
-    ../docBase/docChildFields.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
-    ../docBase/docInsertedObjectList.h \
     ../docBase/docLayoutPosition.h \
-    ../docBase/docListNumberTree.h \
     ../docBase/docParaProperties.h \
     ../docBase/docRowProperties.h \
     ../docBase/docSelectionScope.h \
-    ../docBase/docStyleSheet.h \
     ../docBase/docTextParticule.h \
     ../docBuf/docAttributes.h \
-    ../docBuf/docBuf.h \
     ../docBuf/docCellNode.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBuf/docDrawingShapeList.h \
     ../docBuf/docNodeTree.h \
     ../docBuf/docParaNode.h \
     ../docBuf/docParaNodeProperties.h \
+    ../docBuf/docParaParticules.h \
     ../docBuf/docRowNode.h \
     ../docBuf/docRowNodeProperties.h \
     ../docBuf/docSectNode.h \
     ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
     ../docBuf/docTreeNode.h \
     ../docBuf/docTreeScanner.h \
     docEditConfig.h \
@@ -1165,9 +1200,7 @@ docFontReport.o: \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
-    ../docBase/docChildFields.h \
     ../docBase/docDocumentAttributeMap.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
@@ -1179,6 +1212,7 @@ docFontReport.o: \
     ../docBase/docStyleSheet.h \
     ../docBuf/docBuf.h \
     ../docBuf/docCellNode.h \
+    ../docBuf/docDocument.h \
     ../docBuf/docDocumentTree.h \
     ../docBuf/docDrawingShapeList.h \
     ../docBuf/docField.h \
@@ -1192,8 +1226,12 @@ docFontReport.o: \
     docDocumentCopyJob.h \
     docEditConfig.h \
     docEditOperation.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../docField/docMergeField.h \
     ../docFont/fontDocFont.h \
     ../docFont/fontDocFontList.h \
+    ../docFont/fontDocFontListImpl.h \
     ../docFont/fontMatchFont.h \
     docFontsDocuments.h \
     ../docRtf/docRtfFlags.h \
@@ -1201,6 +1239,7 @@ docFontReport.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../textEncoding/textOfficeCharset.h \
+    ../textEncoding/ucdBidiClass.h \
     ../textEncoding/ucdBlock.h \
     ../textEncoding/ucdGeneralCategory.h \
     ../textEncoding/uniUtf8.h \
@@ -1211,16 +1250,14 @@ docFontReport.o: \
     ../utilPs/psFontInfo.h \
     ../utilPs/psGlyphs.h \
     ../utilPs/psPostScriptFontList.h \
+    ../utilPs/textAttribute.h \
     docFontReport.c
 
 docIncludeDocument.o: \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
-    ../appUtil/utilPropMask.h \
-    ../docBase/docChildFields.h \
     ../docBase/docDocumentAttributeMap.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
@@ -1250,10 +1287,13 @@ docIncludeDocument.o: \
     docEdit.h \
     docEditImpl.h \
     docEditOperation.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../utilGeo/geoDocumentPageSetup.h \
     ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
     docIncludeDocument.c
 
 docIntermediaryDocument.o: \
@@ -1264,8 +1304,6 @@ docIntermediaryDocument.o: \
     ../appUtil/utilNumberedPropertiesAdmin.h \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPalette.h \
-    ../docBase/docChildFields.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docInsertedObjectList.h \
     ../docBase/docLayoutPosition.h \
@@ -1279,6 +1317,7 @@ docIntermediaryDocument.o: \
     ../docBase/docStyleSheet.h \
     ../docBuf/docBuf.h \
     ../docBuf/docCellNode.h \
+    ../docBuf/docDocument.h \
     ../docBuf/docDocumentTree.h \
     ../docBuf/docDrawingShapeList.h \
     ../docBuf/docNodeTree.h \
@@ -1287,7 +1326,9 @@ docIntermediaryDocument.o: \
     ../docBuf/docSectNode.h \
     ../docBuf/docTreeNode.h \
     docEditConfig.h \
-    ../docFont/fontDocFontList.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../docFont/fontDocFontListImpl.h \
     docIntermediaryDocument.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
@@ -1295,15 +1336,50 @@ docIntermediaryDocument.o: \
     ../utilGeo/geoRectangleOffsets.h \
     docIntermediaryDocument.c
 
+docJsonReport.o: \
+    ../appUtil/sioFileio.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyleSheet.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docField.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRecalculateFields.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docTreeNode.h \
+    docEditConfig.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentField.h \
+    ../docField/docDocumentFieldList.h \
+    ../docField/docFieldInstructions.h \
+    ../docField/docMergeField.h \
+    docJsonReport.h \
+    docRecalculateIncludeTextField.h \
+    ../docRtf/docRtfFlags.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/jsonPath.h \
+    docJsonReport.c
+
 docMapTextAttribute.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
-    ../docBase/docChildFields.h \
     ../docBase/docDocumentAttributeMap.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
@@ -1320,6 +1396,8 @@ docMapTextAttribute.o: \
     docDocumentCopyJob.h \
     docEditConfig.h \
     docEditOperation.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
     ../docFont/docExpandedTextAttribute.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
@@ -1332,13 +1410,8 @@ docRecalculateTocFields.o: \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
-    ../docBase/docChildFields.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docFieldKind.h \
     ../docBase/docInsertedObjectList.h \
     ../docBase/docListNumberTree.h \
     ../docBase/docSelectionScope.h \
@@ -1347,8 +1420,14 @@ docRecalculateTocFields.o: \
     ../docBuf/docBuf.h \
     ../docBuf/docDocumentTree.h \
     ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docFields.h \
     ../docBuf/docRecalculateFields.h \
     docEditConfig.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentField.h \
+    ../docField/docDocumentFieldList.h \
+    ../docField/docFieldInstructions.h \
+    ../docField/docFieldKind.h \
     docRecalculateTocField.h \
     docTocBookmarks.h \
     ../include/appDebug.h \
@@ -1368,14 +1447,11 @@ docRtfReadTrace.o: \
     ../appUtil/utilPropMask.h \
     ../docBase/docBorderProperties.h \
     ../docBase/docCellProperties.h \
-    ../docBase/docChildFields.h \
     ../docBase/docDocumentAttributeMap.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
-    ../docBase/docFormField.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docInsertedObjectList.h \
     ../docBase/docItemShading.h \
@@ -1398,12 +1474,17 @@ docRtfReadTrace.o: \
     ../docBase/docTreeType.h \
     ../docBuf/docAttributes.h \
     ../docBuf/docBuf.h \
+    ../docBuf/docDocument.h \
     ../docBuf/docDocumentTree.h \
     ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docNodeTree.h \
     docEditCommand.h \
     docEditConfig.h \
     docEditStep.h \
     docEditTrace.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../docField/docFormField.h \
     ../docFont/fontDocFont.h \
     ../docFont/fontEncodedFont.h \
     ../docRtf/docRtfControlWord.h \
@@ -1433,13 +1514,9 @@ docRtfWriteTrace.o: \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
     ../docBase/docCellProperties.h \
-    ../docBase/docChildFields.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
-    ../docBase/docFieldInstructions.h \
     ../docBase/docInsertedObjectList.h \
     ../docBase/docLayoutPosition.h \
     ../docBase/docListNumberTree.h \
@@ -1464,6 +1541,10 @@ docRtfWriteTrace.o: \
     docEditConfig.h \
     docEditOperation.h \
     docEditTrace.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentField.h \
+    ../docField/docDocumentFieldList.h \
+    ../docField/docFieldInstructions.h \
     ../docRtf/docRtfFlags.h \
     ../docRtf/docRtfTags.h \
     ../docRtf/docRtfTraceImpl.h \
@@ -1483,13 +1564,8 @@ docSelectionDescription.o: \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
     ../docBase/docCellProperties.h \
-    ../docBase/docChildFields.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docFieldKind.h \
     ../docBase/docFrameProperties.h \
     ../docBase/docInsertedObjectList.h \
     ../docBase/docLayoutPosition.h \
@@ -1503,6 +1579,7 @@ docSelectionDescription.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docTreeType.h \
+    ../docBuf/docAttributes.h \
     ../docBuf/docBuf.h \
     ../docBuf/docCellNode.h \
     ../docBuf/docDocumentNote.h \
@@ -1524,6 +1601,11 @@ docSelectionDescription.o: \
     ../docBuf/docTreeNode.h \
     docEditCommand.h \
     docEditConfig.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentField.h \
+    ../docField/docDocumentFieldList.h \
+    ../docField/docFieldInstructions.h \
+    ../docField/docFieldKind.h \
     docSelectionDescription.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
@@ -1537,8 +1619,6 @@ docShiftIndent.o: \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
-    ../docBase/docChildFields.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docEditPosition.h \
@@ -1565,6 +1645,8 @@ docShiftIndent.o: \
     docEditConfig.h \
     docEdit.h \
     docEditOperation.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../utilGeo/geoDocumentPageSetup.h \
@@ -1575,15 +1657,10 @@ docShiftIndent.o: \
 docTocBookmarks.o: \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilMemoryBufferPrintf.h \
     ../appUtil/utilPagedList.h \
-    ../docBase/docBookmarkField.h \
-    ../docBase/docChildFields.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docFieldKind.h \
     ../docBase/docInsertedObjectList.h \
     ../docBase/docLayoutPosition.h \
     ../docBase/docListNumberTree.h \
@@ -1593,6 +1670,7 @@ docTocBookmarks.o: \
     ../docBase/docTreeType.h \
     ../docBuf/docBuf.h \
     ../docBuf/docCellNode.h \
+    ../docBuf/docDebug.h \
     ../docBuf/docDocumentTree.h \
     ../docBuf/docDrawingShapeList.h \
     ../docBuf/docField.h \
@@ -1607,9 +1685,16 @@ docTocBookmarks.o: \
     docEditConfig.h \
     docEdit.h \
     docEditOperation.h \
+    ../docField/docBookmarkField.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentField.h \
+    ../docField/docDocumentFieldList.h \
+    ../docField/docFieldInstructions.h \
+    ../docField/docFieldKind.h \
     docTocBookmarks.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilPs/textAttribute.h \
     docTocBookmarks.c
 
 docTocResult.o: \
@@ -1618,24 +1703,16 @@ docTocResult.o: \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
     ../docBase/docCellProperties.h \
-    ../docBase/docChildFields.h \
     ../docBase/docDocumentAttributeMap.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
-    ../docBase/docFieldInstructions.h \
-    ../docBase/docFieldKind.h \
-    ../docBase/docHyperlinkField.h \
     ../docBase/docInsertedObjectList.h \
     ../docBase/docLayoutPosition.h \
     ../docBase/docListDepth.h \
     ../docBase/docListNumberTree.h \
     ../docBase/docNotesProperties.h \
-    ../docBase/docPagerefField.h \
     ../docBase/docParaProperties.h \
-    ../docBase/docRefField.h \
     ../docBase/docRowProperties.h \
     ../docBase/docSectProperties.h \
     ../docBase/docSelectionScope.h \
@@ -1644,7 +1721,6 @@ docTocResult.o: \
     ../docBase/docTabStop.h \
     ../docBase/docTabStopList.h \
     ../docBase/docTextParticule.h \
-    ../docBase/docTocField.h \
     ../docBuf/docAttributes.h \
     ../docBuf/docBlockFrame.h \
     ../docBuf/docBuf.h \
@@ -1668,6 +1744,15 @@ docTocResult.o: \
     docEditConfig.h \
     docEdit.h \
     docEditOperation.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentField.h \
+    ../docField/docDocumentFieldList.h \
+    ../docField/docFieldInstructions.h \
+    ../docField/docFieldKind.h \
+    ../docField/docHyperlinkField.h \
+    ../docField/docPagerefField.h \
+    ../docField/docRefField.h \
+    ../docField/docTocField.h \
     docIntermediaryDocument.h \
     docRecalculateTocField.h \
     ../include/appDebug.h \
@@ -1687,15 +1772,11 @@ docTrace.o: \
     ../appUtil/utilPropMask.h \
     ../bitmap/bitmap.h \
     ../docBase/docCellProperties.h \
-    ../docBase/docChildFields.h \
     ../docBase/docDocumentAttributeMap.h \
-    ../docBase/docDocumentField.h \
-    ../docBase/docDocumentFieldList.h \
     ../docBase/docDocumentList.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
-    ../docBase/docFieldInstructions.h \
     ../docBase/docInsertedObjectList.h \
     ../docBase/docLayoutPosition.h \
     ../docBase/docListDepth.h \
@@ -1711,11 +1792,58 @@ docTrace.o: \
     ../docBase/docStyle.h \
     ../docBase/docStyleSheet.h \
     ../docBuf/docBuf.h \
-    ../docBuf/docCellNode.h \
     ../docBuf/docDocumentTree.h \
     ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docSelect.h \
+    docEditConfig.h \
+    docEditOperation.h \
+    docEditStep.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentField.h \
+    ../docField/docDocumentFieldList.h \
+    ../docField/docFieldInstructions.h \
+    docTrace.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
+    docTrace.c
+
+docUndo.o: \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docDocumentList.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListDepth.h \
+    ../docBase/docListLevel.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docSectProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyle.h \
+    ../docBase/docStyleSheet.h \
+    ../docBase/docTreeType.h \
+    ../docBuf/docAttributes.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDebug.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docNodeTree.h \
     ../docBuf/docParaNode.h \
     ../docBuf/docRowNode.h \
+    ../docBuf/docRowNodeProperties.h \
     ../docBuf/docSectNode.h \
     ../docBuf/docSelect.h \
     ../docBuf/docTreeNode.h \
@@ -1725,11 +1853,13 @@ docTrace.o: \
     docEdit.h \
     docEditOperation.h \
     docEditStep.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
     docTrace.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../utilGeo/geoDocumentPageSetup.h \
     ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
-    docTrace.c
+    docUndo.c
 

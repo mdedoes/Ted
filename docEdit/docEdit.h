@@ -27,6 +27,9 @@ struct RowProperties;
 struct SectionProperties;
 struct SelectionScope;
 struct TextAttribute;
+struct TableRectangle;
+struct SelectionDescription;
+struct ExpandedTextAttribute;
 
 /************************************************************************/
 /*									*/
@@ -62,12 +65,13 @@ extern int docParaDeleteText(
 
 extern int docParaInsertTail(
 			struct DocumentCopyJob *	dcj,
-			int				paraNrTo,
-			struct DocumentPosition *	dpTail,
-			const struct DocumentPosition *	dpTo,
-			const struct DocumentPosition *	dpFrom );
+			int				paraNrTarget,
+			struct DocumentPosition *	dpTargetTail,
+			const struct DocumentPosition *	dpTgtTo,
+			const struct DocumentPosition *	dpSrcFrom,
+			const struct DocumentPosition *	dpSrcUpto );
 
-extern int docSplitParaNode(	struct BufferItem **	pNewParaNode,
+extern int docEditSplitParaNode( struct BufferItem **	pNewParaNode,
 				struct EditOperation *	eo,
 				int			splitLevel );
 
@@ -107,15 +111,8 @@ extern int docDeleteSelection(
 
 extern int docMergeParagraphsInSelection(	struct EditOperation *	eo );
 
-extern int docInsertTableRows(	struct DocumentSelection *	dsRows,
-				struct EditOperation *	eo,
-				struct BufferItem *	sectNode,
-				const struct BufferItem * refRowNode,
-				const struct RowProperties *	rp,
-				int			textAttributeNr,
-				int			n,
-				int			paraNr,
-				int			rows );
+extern int docEditAddRowToTable(	struct EditOperation *	eo,
+					int			after );
 
 extern int docSplitColumnInRows(	struct BufferItem **	pNewParaNode,
 					struct EditOperation *	eo,
@@ -132,6 +129,13 @@ extern int docDeleteColumnsFromRows(	struct EditOperation *	eo,
 					int			delRow1,
 					int			delCol0,
 					int			delCol1 );
+
+extern int docDocRollRowsInTable( struct EditOperation *	eo,
+				const struct TableRectangle *	tr,
+				struct BufferItem *		parentNode,
+				int				row0,
+				int				row1,
+				int				rowsdown );
 
 extern void docEditShiftReferences(
 				struct EditOperation *		eo,
@@ -155,6 +159,13 @@ extern int docEditUpdParaProperties(
 				const struct PropertyMask *	ppSetMask,
 				const struct ParagraphProperties *	ppNew,
 				const struct DocumentAttributeMap *	dam );
+
+extern int docEditTransferParaProperties(
+		struct EditOperation *			eo,
+		struct BufferItem *			paraNodeTo,
+		const struct BufferItem *		paraNodeFrom,
+		int					alsoTableNesting,
+		const struct DocumentAttributeMap *     dam );
 
 extern int docEditUpdSectProperties(
 				struct EditOperation *		eo,
@@ -188,7 +199,14 @@ extern int docEditFixParaBreakKind(
 				struct BufferDocument *		bd,
 				int				paraNr );
 
+extern int docIncludeSelection(
+			struct DocumentCopyJob *		dcjInsert,
+			const struct DocumentSelection *	dsFrom );
+
 extern int docIncludeDocument(	struct DocumentCopyJob *	dcj );
+
+extern int docEditIncludeDocument(	struct EditOperation *		eo,
+					struct DocumentCopyJob *	dcj );
 
 extern int docSectionParagraph( struct EditOperation *	eo,
 			struct BufferItem **		pParaNode,
@@ -241,6 +259,23 @@ extern int docChangeSelectionProperties(
 			const struct PropertyMask *	dpSetMask,
 			const struct DocumentProperties *	dpSet );
 
+extern int docEditChangeSelectionPropertiesImpl(
+			int *					pRefreshRect,
+			struct EditOperation *			eo,
+			const struct DocumentSelection *	ds,
+			const struct PropertyMask *		taSetMask,
+			const struct TextAttribute *		taSet,
+			const struct PropertyMask *		ppSetMask,
+			const struct ParagraphProperties *	ppSet,
+			const struct PropertyMask *		cpSetMask,
+			const struct CellProperties *		cpSet,
+			const struct PropertyMask *		rpSetMask,
+			const struct RowProperties *		rpSet,
+			const struct PropertyMask *		spSetMask,
+			const struct SectionProperties *	spSet,
+			const struct PropertyMask *		dpSetMask,
+			const struct DocumentProperties *	dpSet );
+
 extern int docInsertParagraph(	struct EditOperation *	eo,
 				struct DocumentPosition *	dpNew,
 				struct BufferItem *	paraNode,
@@ -260,6 +295,26 @@ extern int docEditChangeList(	struct EditOperation *		eo,
 				struct ListOverride *		lo,
 				const struct DocumentList *	dlNew );
 
+extern int docUpdateListLevelAttributes(
+			struct DocumentList *			dlNew,
+			const struct PropertyMask *		taSetMask,
+			const struct ExpandedTextAttribute *	etaSet,
+			const struct SelectionDescription *	sd,
+			struct BufferDocument *			bd );
+
+extern int docEditSetNewList(
+			int *					pRefreshRect,
+			struct EditOperation *			eo,
+			struct DocumentSelection *		ds,
+			const struct SelectionDescription *	sd,
+			int					traceEdits );
+
+extern int docChangeCurrentList(
+			struct EditOperation *			eo,
+			const struct SelectionDescription *	sd,
+			const struct DocumentList *		dlNew,
+			int					traceEdits );
+
 extern int docCopySelectionProperties(
 			struct DocumentCopyJob *		dcj,
 			const struct DocumentSelection *	dsTo,
@@ -277,10 +332,6 @@ extern int docEditShiftIndent(		struct EditOperation *	eo,
 
 extern int docDeleteField(	struct DocumentSelection *	dsExInside,
 				struct EditOperation *		eo,
-				struct BufferItem *		paraNodeHead,
-				struct BufferItem *		paraNodeTail,
-				int				partHead,
-				int				partTail,
 				struct DocumentField *		df );
 
 extern int docFillTableDocument( struct BufferDocument *	bdTable,

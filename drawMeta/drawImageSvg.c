@@ -1,16 +1,12 @@
 #   include	"drawMetaConfig.h"
 
 #   include	<stddef.h>
-#   include	<string.h>
 
 #   include	"drawImageSvg.h"
-#   include	<sioBase64.h>
 #   include	<bmio.h>
-#   include	<bmObjectReader.h>
 #   include	<svgWriter.h>
 #   include	<bitmap.h>
 #   include	<sioGeneral.h>
-#   include	<sioUtil.h>
 
 #   include	<appDebugon.h>
 
@@ -57,8 +53,8 @@ int drawRasterImageSvg(		SvgWriter *			sw,
 
     if  ( drSrc )
 	{
-	if  ( drSrc->drX0 != 0					||
-	      drSrc->drY0 != 0					||
+	if  ( drSrc->drX0 != 0						||
+	      drSrc->drY0 != 0						||
 	      drSrc->drX1 != riSrc->riDescription.bdPixelsWide- 1	||
 	      drSrc->drY1 != riSrc->riDescription.bdPixelsHigh- 1	)
 	    {
@@ -70,16 +66,13 @@ int drawRasterImageSvg(		SvgWriter *			sw,
 	}
 
     drawSvgStartImage( sw, drDest );
-    xmlStartDataUrl( xw, "xlink:href", "image/png" );
-
-    sosBase64= sioOutBase64Open( xw->xwSos );
+    sosBase64= xmlStartDataUrl( xw, "xlink:href", "image/png" );
     if  ( ! sosBase64 )
 	{ XDEB(sosBase64); rval= -1; goto ready;	}
+
     if  ( bmPngWritePng( &(ri->riDescription), ri->riBytes, sosBase64 ) )
 	{ XDEB(sosBase64); rval= -1; goto ready;	}
-    sioOutClose( sosBase64 ); sosBase64= (SimpleOutputStream *)0;
-    xmlPutString( "\"", xw );
-    xmlNewLine( xw );
+    xmlFinishDataUrl( xw, sosBase64 ); sosBase64= (SimpleOutputStream *)0;
 
     xmlPutString( "/>", xw );
     xmlNewLine( xw );
@@ -109,41 +102,12 @@ int drawRasterImageSvgFromData(	SvgWriter *			sw,
     int				rval= 0;
     XmlWriter *			xw= &(sw->swXmlWriter);
 
-    SimpleOutputStream *	sosBase64= (SimpleOutputStream *)0;
-    ObjectReader		or;
-
-    bmInitObjectReader( &or );
-
     drawSvgStartImage( sw, drDest );
 
-    xmlPutString( " xlink:href=\"data:", xw );
-    xmlEscapeCharacters( xw, contentType, strlen( contentType ) );
-    xmlPutString( ";base64,", xw );
-    xmlNewLine( xw );
-
-    sosBase64= sioOutBase64Open( xw->xwSos );
-    if  ( ! sosBase64 )
-	{ XDEB(sosBase64); rval= -1; goto ready;	}
-
-    if  ( bmOpenObjectReader( &or, mb ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-
-    if  ( sioCopyStream( sosBase64, or.orSisHex ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-
-    sioOutClose( sosBase64 ); sosBase64= (SimpleOutputStream *)0;
-    xmlPutString( "\"", xw );
-    xmlNewLine( xw );
+    xmlWriteDataUrl( xw, "xlink:href", contentType, mb );
 
     xmlPutString( "/>", xw );
     xmlNewLine( xw );
-
-  ready:
-
-    bmCleanObjectReader( &or );
-
-    if  ( sosBase64 )
-	{ sioOutClose( sosBase64 );	}
 
     return rval;
     }

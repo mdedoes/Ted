@@ -7,8 +7,6 @@
 #   ifndef	DOC_LAYOUT_H
 #   define	DOC_LAYOUT_H
 
-#   include	"layoutContext.h"
-
 struct BufferItem;
 struct BufferDocument;
 struct DocumentTree;
@@ -33,6 +31,7 @@ struct BlockFrame;
 struct NotesReservation;
 struct TextRun;
 struct LineLayoutJob;
+struct LayoutContext;
 
 /************************************************************************/
 /*									*/
@@ -47,7 +46,7 @@ typedef int (*SCREEN_LAYOUT_LINE)(
 typedef int (*START_SCREEN_PARAGRAPH)(
 				struct BufferItem *		node,
 				const struct ParagraphFrame *	pf,
-				const LayoutContext *		lc );
+				const struct LayoutContext *	lc );
 
 /************************************************************************/
 /*									*/
@@ -77,7 +76,7 @@ typedef struct LayoutJob
 				 * the document and methods to lookup fonts
 				 * etc.
 				 */
-    LayoutContext		ljContext;
+    const struct LayoutContext * ljContext;
 
 				/**
 				 * Set to true when the layout job reaches 
@@ -131,7 +130,7 @@ extern void docCleanLayoutJob(		LayoutJob *	lj );
 
 extern int docLayoutParagraphLineExtents(
 				int *				pFontSize,
-				const LayoutContext *		lc,
+				const struct LayoutContext *	lc,
 				struct BufferItem *		node );
 
 extern int docLayoutNodeAndParents(	struct BufferItem *	node,
@@ -198,14 +197,12 @@ extern void docCommitStripLayout(
 				int *				pAdvanced,
 				int				advanceAnyway,
 				struct ParagraphLayoutJob *	plj,
-				int				page,
-				int				column,
+				const struct LayoutPosition *	lpHere,
 				const struct BufferItem *	cellNode );
 
 extern void docFindStripLayoutOrigin(
 				struct ParagraphLayoutJob *	plj,
-				int				page,
-				int				column,
+				const struct LayoutPosition *	lpHere,
 				const struct BufferItem *	cellNode );
 
 extern void docLayoutBlockFrame( struct BlockFrame *		bf,
@@ -246,7 +243,7 @@ extern int docNoteSeparatorRectangle(
 				const struct DocumentNote *	dnFirstNote,
 				int				treeType,
 				const struct BufferItem *	bodySectNode,
-				const LayoutContext *		lc );
+				const struct LayoutContext *	lc );
 
 extern int docGetBoxAroundTree(
 				struct DocumentRectangle *	dr,
@@ -254,7 +251,7 @@ extern int docGetBoxAroundTree(
 				int				justUsed,
 				int				page,
 				int				column,
-				const LayoutContext *		lc );
+				const struct LayoutContext *	lc );
 
 extern int docTreePrelayout(	struct DocumentTree *		ei,
 				const struct BufferItem *	bodySectNode,
@@ -362,15 +359,15 @@ extern int docSectNotesPrelayout(
 extern void docLayoutSetNodeBottom(
 				int *				pChanged,
 				struct BufferItem *		node,
-				const struct LayoutPosition *		lp,
-				const LayoutContext *		lc,
+				const struct LayoutPosition *	lp,
+				const struct LayoutContext *	lc,
 				struct DocumentRectangle *	drChanged );
 
 extern void docLayoutSetBottomPosition(
 			int *					pChanged,
 			struct LayoutPosition *			lpBelow,
 			const struct LayoutPosition *		lp,
-			const LayoutContext *			lc,
+			const struct LayoutContext *		lc,
 			struct DocumentRectangle *		drChanged );
 
 extern int docLayoutGetInitialFrame(
@@ -401,7 +398,7 @@ extern const struct AfmFontInfo * docLayoutGetAfi(
 			int *					pTextAttrNr,
 			const struct TextAttribute **		pTa,
 			unsigned char *				pLineFlags,
-			const LayoutContext *			lc,
+			const struct LayoutContext *		lc,
 			const struct BufferItem *		paraNode,
 			int					part );
 
@@ -494,13 +491,13 @@ extern void docLineFrameRectanglePixels(
 				const struct LayoutContext *	lc );
 
 extern void docGetPixelRect(	struct DocumentRectangle *	drPixels,
-				const LayoutContext *		lc,
+				const struct LayoutContext *	lc,
 				const struct DocumentRectangle * drTwips,
 				int				page );
 
 extern void docGetPixelRectForPos(
 				struct DocumentRectangle *	drPixels,
-				const LayoutContext *		lc,
+				const struct LayoutContext *	lc,
 				int				x0Twips,
 				int				x1Twips,
 				const struct LayoutPosition *	lpTop,
@@ -508,12 +505,12 @@ extern void docGetPixelRectForPos(
 
 extern void docGetPageRectPixels(
 				struct DocumentRectangle *	drPixels,
-				const LayoutContext *		lc,
+				const struct LayoutContext *	lc,
 				int				page );
 
 extern void docGetPixelRectangleForPages(
 				struct DocumentRectangle *	drPixels,
-				const LayoutContext *		lc,
+				const struct LayoutContext *	lc,
 				int				page0,
 				int				page1 );
 
@@ -521,27 +518,29 @@ extern void docPixelRectangleForPositions(
 				struct DocumentRectangle *	drPixels,
 				const struct PositionGeometry *	pgB,
 				const struct PositionGeometry *	pgE,
-				const LayoutContext *		lc );
+				const struct LayoutContext *	lc );
 
-extern int docLayoutScapsScreenFont(	const LayoutContext *		lc,
-					const struct TextAttribute *	ta );
+extern int docLayoutScapsScreenFont(
+				const struct LayoutContext *	lc,
+				const struct TextAttribute *	ta );
 
 extern void docNodeRectangle(	struct DocumentRectangle *	drPixels,
 				const struct BufferItem *	node,
-				const LayoutContext *		lc,
+				const struct LayoutContext *	lc,
 				const struct BlockOrigin *	bo );
 
 extern int docGetFirstSectionOnPage(	struct BufferDocument *	bd,
 					int			page );
 
-extern int docFindHeaderFooterForY(	struct DocumentTree **	pTree,
-					struct BufferItem **	pSelSectNode,
-					int *			pColumn,
-					const LayoutContext *	lc,
-					struct BufferItem *	bodySectNode,
-					struct BufferDocument *	bd,
-					int			page,
-					int			docY );
+extern int docFindHeaderFooterForY(
+				struct DocumentTree **		pTree,
+				struct BufferItem **		pSelSectNode,
+				int *				pColumn,
+				const struct LayoutContext *	lc,
+				struct BufferItem *		bodySectNode,
+				struct BufferDocument *		bd,
+				int				page,
+				int				docY );
 
 extern void docPageRectsPixels(	struct DocumentRectangle *	drOutside,
 				struct DocumentRectangle *	drInside,
@@ -550,19 +549,19 @@ extern void docPageRectsPixels(	struct DocumentRectangle *	drOutside,
 				const struct BufferDocument *	bd );
 
 extern int docAdjustLayoutToChangedTree(
-				struct LayoutPosition *		lpHere,
-				struct BufferItem *		node,
+				struct DocumentTree *		tree,
+				struct BufferItem *		bodyNode,
 				LayoutJob *			lj );
 
 extern void docLayoutAdjustFrame( struct BlockFrame *		bf,
 				const struct BufferItem *	node );
 
-extern int docLayoutSelectedRoot(	const LayoutContext *	lc,
-					struct DocumentTree *	treeFound,
-					struct BufferItem *	rootNodeFound,
-					struct BufferItem *	bodySectNodeSet,
-					int			page,
-					int			column );
+extern int docLayoutSelectedRoot( const struct LayoutContext *	lc,
+				struct DocumentTree *		treeFound,
+				struct BufferItem *		rootNodeFound,
+				struct BufferItem *		bodySectNodeSet,
+				int				page,
+				int				column );
 
 extern int docLayoutLineXOfPosition(
 				int *				pDocXPixels,

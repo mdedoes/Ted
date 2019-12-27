@@ -10,7 +10,8 @@
 #   include	<drawMetafilePsList.h>
 #   include	"docPsPrintImpl.h"
 #   include	<docObjectProperties.h>
-#   include	<bmObjectReader.h>
+#   include	<sioGeneral.h>
+#   include	<sioHexedMemory.h>
 #   include	<docObject.h>
 #   include	"docMetafileObject.h"
 #   include	<psFace.h>
@@ -45,11 +46,9 @@ int docPsListImageFonts(	struct PostScriptTypeList *	pstl,
     int				rval= 0;
     MetafileWriteListPs		listFontsPs;
 
-    ObjectReader		or;
+    SimpleInputStream *		sisData= (SimpleInputStream *)0;
 
     MetafilePlayer		mp;
-
-    bmInitObjectReader( &or );
 
     switch( pip->pipType )
 	{
@@ -69,17 +68,19 @@ int docPsListImageFonts(	struct PostScriptTypeList *	pstl,
 	    LDEB(pip->pipType); goto ready;
 	}
 
-    if  ( bmOpenObjectReader( &or, mb ) )
-	{ LDEB(1); rval= -1; goto ready;	}
+    sisData= sioInHexedMemoryOpen( mb );
+    if  ( ! sisData )
+	{ XDEB(sisData); rval= -1; goto ready;	}
 
-    docSetMetafilePlayer( &mp, or.orSisHex, lc, pip, 0, 0 );
+    docSetMetafilePlayer( &mp, sisData, lc, pip, 0, 0 );
 
     if  ( (*listFontsPs)( pstl, &mp, prefix ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
   ready:
 
-    bmCleanObjectReader( &or );
+    if  ( sisData )
+	{ sioInClose( sisData );	}
 
     return rval;
     }

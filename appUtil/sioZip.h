@@ -6,6 +6,9 @@
 /*									*/
 /************************************************************************/
 
+#   ifndef		SIO_ZIP_H
+#   define		SIO_ZIP_H
+
 #   include	"utilPagedList.h"
 
 struct SimpleOutputStream;
@@ -36,3 +39,5 @@ extern struct SimpleOutputStream * sioOutZipOpen(
 					ZipOutput *		zipOutput,
 					const char *		fileName,
 					int			compressed );
+
+#   endif	/*	SIO_ZIP_H	*/

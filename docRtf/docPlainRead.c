@@ -11,6 +11,7 @@
 
 #   include	<sioMemory.h>
 #   include	<docBuf.h>
+#   include	<docDocument.h>
 #   include	<docNodeTree.h>
 #   include	<sioUtf8.h>
 #   include	<textAttribute.h>

@@ -16,16 +16,17 @@
 #   include	<docDocumentProperties.h>
 #   include	<psTextExtents.h>
 #   include	<textAttribute.h>
+#   include	<fontDocFontList.h>
 #   include	"docAttributes.h"
 
 #   include	<appDebugon.h>
 
 /************************************************************************/
 
-int docGetDefaultFont(		struct BufferDocument *	bd )
+int docGetDefaultFont(		const BufferDocument *	bd )
     {
-    int				i;
-    const DocumentFontList *	dfl= bd->bdProperties->dpFontList;
+    int					i;
+    const struct DocumentFontList *	dfl= bd->bdProperties->dpFontList;
 
     if  ( bd->bdProperties->dpDefaultFont >= 0			&&
 	  bd->bdProperties->dpDefaultFont < dfl->dflFontCount	)
@@ -42,6 +43,14 @@ int docGetDefaultFont(		struct BufferDocument *	bd )
 
     /*LDEB(bd->bdProperties->dpDefaultFont);*/
     return bd->bdProperties->dpDefaultFont;
+    }
+
+/************************************************************************/
+
+int docGetFontByName(		const struct BufferDocument *	bd,
+				const char *			name )
+    {
+    return fontListGetFontByName( bd->bdProperties->dpFontList, name );
     }
 
 /************************************************************************/
@@ -75,7 +84,7 @@ void docGetColorByNumber(	RGB8Color *		rgb8,
 /*									*/
 /************************************************************************/
 
-int docTextAttributeNumber(	struct BufferDocument *	bd,
+int docTextAttributeNumber(	const BufferDocument *	bd,
 				const TextAttribute *	ta )
     {
     NumberedPropertiesList *	taList= &(bd->bdPropertyLists->dplTextAttributeList);
@@ -90,7 +99,7 @@ int docTextAttributeNumber(	struct BufferDocument *	bd,
 	  taCopy.taFontNumber >= dfl->dflFontCount	)
 	{
 	if  ( taCopy.taFontNumber >= dfl->dflFontCount )
-	    { LLDEB(taCopy.taFontNumber,dfl->dflFontCount);	}
+	    { LLSDEB(taCopy.taFontNumber,dfl->dflFontCount,"Using default font");	}
 
 	taCopy.taFontNumber= docGetDefaultFont( bd );
 

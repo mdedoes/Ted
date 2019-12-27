@@ -17,14 +17,19 @@
 #   include	<docObjectProperties.h>
 #   include	<docMetafileObject.h>
 #   include	<docShape.h>
-#   include	<bmObjectReader.h>
 #   include	<docObjectIo.h>
 #   include	<docObject.h>
 #   include	<sioGeneral.h>
+#   include	<sioHexedMemory.h>
 #   include	<svgWriter.h>
 #   include	<docLayoutObject.h>
 
 #   include	<appDebugon.h>
+
+			/**
+			 * Map sizes: Assume 96 dpi
+			 */
+#   define	TWIPS_TO_PIXELS(x)	(((x)+7)/15)
 
 /************************************************************************/
 /*									*/
@@ -36,20 +41,18 @@ static int docSvgDrawMetafile(	SvgWriter *			sw,
 				const PictureProperties *	pip,
 				const MemoryBuffer *		mb,
 				int				objectKind,
-				const LayoutContext *		lc,
+				const struct LayoutContext *	lc,
 				const DocumentRectangle *	drDest )
     {
     XmlWriter *			xw= &(sw->swXmlWriter);
     int				rval= 0;
 
-    ObjectReader		or;
+    SimpleInputStream *		sisData= (SimpleInputStream *)0;
 
     MetafilePlayer		mp;
     MetafileWriteSvg		playMetafile;
 
     DocumentRectangle		drSrc;
-
-    bmInitObjectReader( &or );
 
     switch( objectKind )
 	{
@@ -71,12 +74,13 @@ static int docSvgDrawMetafile(	SvgWriter *			sw,
 	    LDEB(pip->pipType); goto ready;
 	}
 
-    if  ( bmOpenObjectReader( &or, mb ) )
-	{ LDEB(1); rval= -1; goto ready;	}
+    sisData= sioInHexedMemoryOpen( mb );
+    if  ( ! sisData )
+	{ XDEB(sisData); rval= -1; goto ready;	}
 
     docObjectGetSourceRect( &drSrc, pip );
 
-    docSetMetafilePlayer( &mp, or.orSisHex, lc, pip, 0, 0 );
+    docSetMetafilePlayer( &mp, sisData, lc, pip, 0, 0 );
 
     sioOutPutString( "<svg ", xw->xwSos );
     svgWriteRectangleAttributes( sw, drDest );
@@ -92,7 +96,63 @@ static int docSvgDrawMetafile(	SvgWriter *			sw,
 
   ready:
 
-    bmCleanObjectReader( &or );
+    if  ( sisData )
+	{ sioInClose( sisData );	}
+
+    return rval;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Save metafile to SVG.						*/
+/*									*/
+/************************************************************************/
+
+int docSvgPlayMetafileToDocument(
+			const struct LayoutContext *	lc,
+			InsertedObject *		io,
+			int				includeSvgDeclaration,
+			const MemoryBuffer *		objectData,
+			MetafileWriteSvg		playMetafile,
+			SimpleOutputStream *		sosImage )
+    {
+    int				rval= 0;
+
+    const PictureProperties *	pip= &(io->ioPictureProperties);
+
+    DocumentRectangle		drDest;
+
+    SimpleInputStream *		sisData= (SimpleInputStream *)0;
+
+    SvgWriter			sw;
+    MetafilePlayer		mp;
+
+    svgInitSvgWriter( &sw );
+
+    sisData= sioInHexedMemoryOpen( objectData );
+    if  ( ! sisData )
+	{ XDEB(sisData); rval= -1; goto ready;	}
+
+    sw.swXmlWriter.xwSos= sosImage;
+
+    docObjectGetPageRect( &drDest, io, 0, 0 );
+    docObjectGetSourceRect( &(sw.swViewBox), pip );
+    sw.swWide= TWIPS_TO_PIXELS(drDest.drX1- drDest.drX0+ 1);
+    sw.swHigh= TWIPS_TO_PIXELS(drDest.drY1- drDest.drY0+ 1);
+
+    docSetMetafilePlayer( &mp, sisData, lc, pip, sw.swWide, sw.swHigh );
+
+    svgStartDocument( &sw, includeSvgDeclaration );
+
+    if  ( (*playMetafile)( &sw, &mp ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+
+    svgFinishDocument( &sw );
+
+  ready:
+
+    if  ( sisData )
+	{ sioInClose( sisData );	}
 
     return rval;
     }
@@ -146,7 +206,7 @@ static int docSvgDrawRasterImage( SvgWriter *			sw,
 
 /************************************************************************/
 /*									*/
-/*  Emit a bitmap image included in the document.			*/
+/*  Emit a raster image included in the document.			*/
 /*									*/
 /************************************************************************/
 
@@ -199,7 +259,7 @@ int docSvgDrawShapeImage(	SvgWriter *			sw,
 				const AffineTransform2D *	at )
     {
     const PictureProperties *	pip= &(ds->dsPictureProperties);
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const struct LayoutContext *	lc= dc->dcLayoutContext;
 
     switch( pip->pipType )
 	{
@@ -242,7 +302,7 @@ int docSvgDrawInlineObject(	const DrawTextLine *		dtl,
     SvgWriter *			sw= (SvgWriter *)dtl->dtlThrough;
 
     DrawingContext *		dc= dtl->dtlDrawingContext;
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const struct LayoutContext * lc= dc->dcLayoutContext;
 
     switch( io->ioKind )
 	{

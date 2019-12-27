@@ -12,6 +12,7 @@
 #   include	"docScreenDraw.h"
 #   include	"docDraw.h"
 #   include	"docDrawLine.h"
+#   include	"layoutContext.h"
 #   include	<docTextRun.h>
 #   include	<docTabStop.h>
 #   include	<geoGrid.h>
@@ -40,7 +41,7 @@ static void docScreenDrawParticuleLine(	DrawingContext *	dc,
     {
     struct BufferItem *		paraNode= dtl->dtlParaNode;
 
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
     const ParagraphFrame *	pf= dtl->dtlParagraphFrame;
     TextLine *			tl= (TextLine *)dtl->dtlTextLine;
     const TextParticule *	tp= paraNode->biParaParticules;
@@ -97,7 +98,7 @@ int docScreenDrawRunUnderline(	const DrawTextLine *	dtl,
     {
     ScreenDrawingData *		sdd= (ScreenDrawingData *)dtl->dtlThrough;
     DrawingContext *		dc= dtl->dtlDrawingContext;
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
 
     int				baselinePixels;
     int				screenFont;
@@ -128,7 +129,7 @@ int docScreenDrawRunStrikethrough( const DrawTextLine *	dtl,
     {
     ScreenDrawingData *		sdd= (ScreenDrawingData *)dtl->dtlThrough;
     DrawingContext *		dc= dtl->dtlDrawingContext;
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
 
     int				baselinePixels;
     int				screenFont;
@@ -166,7 +167,7 @@ static int tedDrawTabImpl(	const DrawTextLine *		dtl,
     {
     ScreenDrawingData *		sdd= (ScreenDrawingData *)dtl->dtlThrough;
     DrawingContext *		dc= dtl->dtlDrawingContext;
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
 
     drawSetLineAttributes( lc->lcDrawingSurface,
 			lineWidth, lineStyle, LineCapButt, LineJoinMiter,
@@ -191,7 +192,7 @@ int docScreenDrawTab(	const DrawTextLine *		dtl,
 			const LayoutPosition *		baseLine )
     {
     DrawingContext *		dc= dtl->dtlDrawingContext;
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
     double			xfac= lc->lcPixelsPerTwip;
 
     int				screenFont;
@@ -332,7 +333,7 @@ int docScreenDrawFtnsep( const DrawTextLine *		dtl,
     {
     ScreenDrawingData *		sdd= (ScreenDrawingData *)dtl->dtlThrough;
     DrawingContext *		dc= dtl->dtlDrawingContext;
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
 
     int				y0;
     int				h;
@@ -385,7 +386,7 @@ static void docScreenDrawSegments(
 				const int *		segments,
 				int			segmentCount )
     {
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
     int				seg;
 
     DocumentRectangle		drText;
@@ -437,7 +438,7 @@ int docScreenDrawTextRun(	const TextRun *		tr,
 
     ScreenDrawingData *		sdd= (ScreenDrawingData *)dtl->dtlThrough;
     DrawingContext *		dc= dtl->dtlDrawingContext;
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
 
     char *			scratchString= (char *)0;
     int *			segments= (int *)0;
@@ -495,6 +496,7 @@ int docScreenDrawTextRun(	const TextRun *		tr,
 
 	default:
 	    LDEB(tr->trTextAttribute->taSuperSub);
+	    /*FALLTHROUGH*/
 	case TEXTvaREGULAR:
 	    y= baselinePixels;
 	    break;

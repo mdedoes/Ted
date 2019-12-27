@@ -100,8 +100,7 @@ int docCalculateDocDateFieldString(
 	scratch[dtf.dtfPicture.mbSize]= '\0';
 
 	appWordFormatDate( target, sizeof(target)-1, tm, scratch );
-	utilMemoryBufferAppendBytes( mbResult,
-				(unsigned char *)target, strlen( target ) );
+	utilMemoryBufferAppendString( mbResult, target );
 	*pCalculated= 1; goto ready;
 	}
     else{
@@ -111,8 +110,7 @@ int docCalculateDocDateFieldString(
 						    defaultFormat, tm ) < 1 )
 	    { *pCalculated= 0; goto ready;	}
 
-	utilMemoryBufferAppendBytes( mbResult,
-				(unsigned char *)target, strlen( target ) );
+	utilMemoryBufferAppendString( mbResult, target );
 	*pCalculated= 1; goto ready;
 	}
 

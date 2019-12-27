@@ -230,7 +230,7 @@ void tedAppSetTocField(		EditApplication *	ea,
     EditDocument *	ed= ea->eaCurrentDocument;
 
     if  ( ! ed )
-	{ XDEB(ed);	}
+	{ XDEB(ed); return;	}
 
     tedDocSetTocField( ed, tf, ((TedDocument *)ed->edPrivateData)->tdTraced );
     appShowShellWidget( ea, ed->edToplevel.atTopWidget );
@@ -242,7 +242,7 @@ void tedAppAddTocField(		EditApplication *	ea,
     EditDocument *	ed= ea->eaCurrentDocument;
 
     if  ( ! ed )
-	{ XDEB(ed);	}
+	{ XDEB(ed); return;	}
 
     tedDocAddTocField( ed, tf, ((TedDocument *)ed->edPrivateData)->tdTraced );
     appShowShellWidget( ea, ed->edToplevel.atTopWidget );

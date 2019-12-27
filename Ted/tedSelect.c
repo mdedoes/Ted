@@ -15,7 +15,6 @@
 #   include	"tedLayout.h"
 #   include	"tedDocument.h"
 #   include	<docDescribeSetSelection.h>
-#   include	<docParaParticules.h>
 #   include	<docTreeNode.h>
 #   include	<docParaProperties.h>
 #   include	<appEditDocument.h>
@@ -26,6 +25,7 @@
 #   include	<docBuf.h>
 #   include	<docFields.h>
 #   include	<appDocFront.h>
+#   include	<layoutContext.h>
 
 #   include	<appDebugon.h>
 
@@ -98,7 +98,8 @@ void tedScrollToSelection(	EditDocument *		ed,
     tedSetScreenLayoutContext( &lc, ed );
 
     if  ( tedGetSelection( &dsDoc, &sgDoc, &sdDoc,
-			    (struct DocumentTree **)0, (struct BufferItem **)0, ed ) )
+			    (struct DocumentTree **)0,
+			    (struct BufferItem **)0, ed ) )
 	{ LDEB(1); return;	}
 
     tedScrollToPositions( ed, &(sgDoc.sgHead), &(sgDoc.sgTail),
@@ -107,175 +108,8 @@ void tedScrollToSelection(	EditDocument *		ed,
     return;
     }
 
-/************************************************************************/
-/*									*/
-/*  Extend a selection that begins outside a table cell and ends inside	*/
-/*  that cell.								*/
-/*									*/
-/*  The speccial cases that occur when the selection begins in a table	*/
-/*  are covered by tedExtendSelectionFromTable(), that has priority	*/
-/*  over tedExtendSelectionIntoTable().					*/
-/*									*/
-/************************************************************************/
-
-static int tedExtendSelectionIntoTable(	DocumentPosition *	dpEnd )
-    {
-    struct BufferItem *	cellNode= dpEnd->dpNode->biParent;
-    struct BufferItem *	rowNode= cellNode->biParent;
-
-    int			col1= rowNode->biChildCount -1;
-
-    docTailPosition( dpEnd, rowNode->biChildren[col1] );
-
-    return 0;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Extend a selection that begins inside a table cell and ends outside	*/
-/*  that cell.								*/
-/*									*/
-/*  1)  Not in same section.						*/
-/*  2)  Look for selection end in same table.				*/
-/*  3)  Found?								*/
-/*									*/
-/************************************************************************/
-
-static int tedExtendSelectionFromTable(	DocumentPosition *	dpHead,
-					DocumentPosition *	dpTail,
-					int *			pCol0,
-					int *			pCol1 )
-    {
-    struct BufferItem *	hCellNode= dpHead->dpNode->biParent;
-    struct BufferItem *	hRowNode= hCellNode->biParent;
-    struct BufferItem *	hParentNode= hRowNode->biParent;
-
-    struct BufferItem *	tRowNode= dpTail->dpNode->biParent->biParent;
-    struct BufferItem *	tParentNode= tRowNode->biParent;
-
-    int			row1= hRowNode->biNumberInParent;
-
-    int			col0= -1;
-    int			col1= -1;
-
-    /*  1  */
-    if  ( tParentNode != hParentNode )
-	{
-	docHeadPosition( dpHead, hRowNode->biChildren[0] );
-
-	if  ( dpTail->dpNode->biParaProperties->ppTableNesting > 0 )
-	    { tedExtendSelectionIntoTable( dpTail ); }
-
-	return 0;
-	}
-
-    /*  2  */
-    while( row1 < hRowNode->biRowTablePast- 1 )
-	{
-	if  ( tRowNode == hParentNode->biChildren[row1] )
-	    { break;	}
-
-	row1++;
-	}
-
-    if  ( tRowNode == hParentNode->biChildren[row1] )
-	{
-	if  ( dpTail->dpNode->biParent->biNumberInParent <
-					    hCellNode->biNumberInParent )
-	    {
-	    col0= dpTail->dpNode->biParent->biNumberInParent;
-	    col1= dpHead->dpNode->biParent->biNumberInParent;
-
-	    docHeadPosition( dpHead, hRowNode->biChildren[col0] );
-	    hRowNode= dpTail->dpNode->biParent->biParent;
-	    docTailPosition( dpTail, hRowNode->biChildren[col1] );
-	    }
-	else{
-	    docHeadPosition( dpHead, dpHead->dpNode->biParent );
-	    docTailPosition( dpTail, dpTail->dpNode->biParent );
-	    }
-
-	col0= dpHead->dpNode->biParent->biNumberInParent;
-	col1= dpTail->dpNode->biParent->biNumberInParent;
-	}
-    else{
-	docHeadPosition( dpHead, hRowNode->biChildren[0] );
-
-	if  ( dpTail->dpNode->biParaProperties->ppTableNesting > 0 )
-	    { tedExtendSelectionIntoTable( dpTail ); }
-
-	return 0;
-	}
-
-    *pCol0= col0; *pCol1= col1; return 0;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Extend the selection upon subsequent MotionNotify events.		*/
-/*									*/
-/*  1)  Do not update the tools and the ruler: The mouse up handler	*/
-/*	will do so.							*/
-/*									*/
-/************************************************************************/
-
-static void tedSetExtendedSelection(
-				EditDocument *			ed,
-				int				direction,
-				const struct BufferItem *	bodySectNode,
-				const DocumentPosition *	dpTo,
-				const DocumentPosition *	dpBegin,
-				const DocumentPosition *	dpEnd )
-    {
-    TedDocument *		td= (TedDocument *)ed->edPrivateData;
-
-    DocumentSelection		dsDoc;
-    SelectionGeometry		sgDoc;
-    SelectionDescription	sdDoc;
-
-    PositionGeometry		pgTo;
-
-    int				scrolledX= 0;
-    int				scrolledY= 0;
-    const int			lastLine= 0;
-
-    LayoutContext		lc;
-    int				lastOne= (direction>0)?PARAfindLAST:PARAfindFIRST;
-
-    layoutInitContext( &lc );
-    tedSetScreenLayoutContext( &lc, ed );
-
-    docPositionGeometry( &pgTo, dpTo, lastOne, &lc );
-    tedScrollToPositions( ed, &pgTo, &pgTo, &lc, &scrolledX, &scrolledY );
-
-    if  ( tedGetSelection( &dsDoc, &sgDoc, &sdDoc,
-					(struct DocumentTree **)0,
-					(struct BufferItem **)0, ed ) )
-	{ LDEB(1); return;	}
-
-    appDocExposeRectangle( ed, &(sgDoc.sgRectangle), scrolledX, scrolledY );
-
-    docSetRangeSelection( &(td->tdSelection), dpBegin, dpEnd, direction );
-    docSelectionGeometry( &(td->tdSelectionGeometry),
-				    &(td->tdSelection), bodySectNode,
-				    lastLine, &lc );
-    /*  1  */
-    tedDescribeSelection( ed );
-
-    if  ( tedGetSelection( &dsDoc, &sgDoc, &sdDoc,
-					(struct DocumentTree **)0,
-					(struct BufferItem **)0, ed ) )
-	{ LDEB(1); return;	}
-
-    appDocExposeRectangle( ed, &(sgDoc.sgRectangle), scrolledX, scrolledY );
-
-    tedManagePrimarySelection( ed );
-
-    return;
-    }
-
 static void tedBalanceFieldSelection(	struct BufferDocument *	bd,
-					struct DocumentTree *		tree,
+					struct DocumentTree *	tree,
 					int *			pBalanced,
 					DocumentPosition *	dpBegin,
 					DocumentPosition *	dpEnd )
@@ -297,225 +131,6 @@ static void tedBalanceFieldSelection(	struct BufferDocument *	bd,
 	{ *pBalanced= 1;	}
 
     return;
-    }
-
-int tedExtendSelectionToPosition(
-				EditDocument *			ed,
-				const DocumentPosition *	dpAnchor,
-				const DocumentPosition *	dpFound )
-    {
-    TedDocument *		td= (TedDocument *)ed->edPrivateData;
-
-    int				col0= -1;
-    int				col1= -1;
-
-    DocumentPosition		dpFrom;
-    DocumentPosition		dpTo;
-
-    int				directionToAnchor;
-    int				directionBeginAnchor;
-    int				directionEndAnchor;
-    int				dir;
-
-    int				scrolledX= 0;
-    int				scrolledY= 0;
-
-    int				cellChanged= 0;
-    int				balanced= 0;
-
-    DocumentSelection		dsDoc;
-    SelectionGeometry		sgDoc;
-    SelectionDescription	sdDoc;
-
-    struct DocumentTree *		tree;
-    struct BufferItem *		bodySectNode;
-
-    dpFrom= *dpAnchor;
-    dpTo= *dpFound;
-
-    if  ( tedGetSelection( &dsDoc, &sgDoc, &sdDoc, &tree, &bodySectNode, ed ) )
-	{ LDEB(1); return -1;	}
-
-    directionToAnchor= docComparePositions( &dpTo, dpAnchor );
-    directionBeginAnchor= docComparePositions( &(dsDoc.dsHead), dpAnchor );
-    directionEndAnchor= docComparePositions( &(dsDoc.dsTail), dpAnchor );
-
-    /********************/
-    /*  Before anchor.	*/
-    /********************/
-    if  ( directionToAnchor < 0 )
-	{
-	int		directionToBegin;
-
-	if  ( docPositionsInsideCell( &dpTo, &dpFrom ) )
-	    {
-	    if  ( dpFrom.dpNode->biParaProperties->ppTableNesting > 0 )
-		{ col0= col1= dpFrom.dpNode->biParent->biNumberInParent; }
-	    }
-	else{
-	    if  ( dpTo.dpNode->biParaProperties->ppTableNesting > 0 )
-		{
-		if  ( tedExtendSelectionFromTable( &dpTo, &dpFrom,
-							    &col0, &col1 ) )
-		    { LDEB(1); return -1;	}
-		}
-	    else{
-		if  ( dpFrom.dpNode->biParaProperties->ppTableNesting > 0 )
-		    {
-		    if  ( tedExtendSelectionIntoTable( &dpFrom ) )
-			{ LDEB(1); return -1;	}
-		    }
-		}
-	    }
-
-	tedBalanceFieldSelection( td->tdDocument, tree,
-					    &balanced, &dpTo, &dpFrom );
-
-	directionToBegin= docComparePositions( &dpTo, &(dsDoc.dsHead) );
-	cellChanged= ! docPositionsInsideCell( &dpTo, &(dsDoc.dsHead) );
-
-	/****************************************/
-	/*  Undraw selection after the anchor.	*/
-	/****************************************/
-	if  ( directionEndAnchor > 0	||
-	      balanced			||
-	      cellChanged		)
-	    {
-	    appDocExposeRectangle( ed, &(sgDoc.sgRectangle),
-						    scrolledX, scrolledY );
-	    }
-
-	/************************/
-	/*  Extended Left.	*/
-	/************************/
-	if  ( directionToBegin < 0 )
-	    {
-	    dir= -1;
-	    tedSetExtendedSelection( ed, dir, bodySectNode,
-						&dpTo, &dpTo, &dpFrom );
-
-	    td->tdVisibleSelectionCopied= 0;
-	    return 0;
-	    }
-
-	/************************/
-	/*  Shrunk Left.	*/
-	/************************/
-	if  ( directionToBegin > 0 )
-	    {
-	    dir= -1;
-	    tedSetExtendedSelection( ed, dir, bodySectNode,
-						&dpTo, &dpTo, &dpFrom );
-
-	    td->tdVisibleSelectionCopied= 0;
-	    return 0;
-	    }
-
-	return 0;
-	}
-
-    /********************/
-    /*  After anchor.	*/
-    /********************/
-    if  ( directionToAnchor > 0 )
-	{
-	int		directionToEnd;
-
-	if  ( docPositionsInsideCell( &dpTo, &dpFrom ) )
-	    {
-	    if  ( dpFrom.dpNode->biParaProperties->ppTableNesting > 0 )
-		{ col0= col1= dpFrom.dpNode->biParent->biNumberInParent; }
-	    }
-	else{
-	    if  ( dpFrom.dpNode->biParaProperties->ppTableNesting > 0 )
-		{
-		if  ( tedExtendSelectionFromTable( &dpFrom, &dpTo,
-							    &col0, &col1 ) )
-		    { LDEB(1); return -1;	}
-		}
-	    else{
-		if  ( dpTo.dpNode->biParaProperties->ppTableNesting > 0 )
-		    {
-		    if  ( tedExtendSelectionIntoTable( &dpTo ) )
-			{ LDEB(1); return -1;	}
-		    }
-		}
-	    }
-
-	tedBalanceFieldSelection( td->tdDocument, tree,
-					    &balanced, &dpFrom, &dpTo );
-
-	directionToEnd= docComparePositions( &dpTo, &(dsDoc.dsTail) );
-	cellChanged= ! docPositionsInsideCell( &dpTo, &(dsDoc.dsTail) );
-
-	/****************************************/
-	/*  Undraw selection before the anchor.	*/
-	/****************************************/
-	if  ( directionBeginAnchor < 0	||
-	      balanced			||
-	      cellChanged		)
-	    {
-	    appDocExposeRectangle( ed, &(sgDoc.sgRectangle),
-						    scrolledX, scrolledY );
-	    }
-
-	/************************/
-	/*  Extended Right.	*/
-	/************************/
-	if  ( directionToEnd > 0 )
-	    {
-	    dir= 1;
-	    tedSetExtendedSelection( ed, dir, bodySectNode,
-						    &dpTo, &dpFrom, &dpTo );
-
-	    td->tdVisibleSelectionCopied= 0;
-	    return 0;
-	    }
-
-	/************************/
-	/*  Shrunk Right.	*/
-	/************************/
-	if  ( directionToEnd < 0 )
-	    {
-	    dir= 1;
-	    tedSetExtendedSelection( ed, dir, bodySectNode,
-						    &dpTo, &dpFrom, &dpTo );
-
-	    td->tdVisibleSelectionCopied= 0;
-	    return 0;
-	    }
-
-	return 0;
-	}
-
-    /********************/
-    /*  At anchor.	*/
-    /********************/
-	{
-	dpFrom= *dpAnchor;
-	dpTo= *dpAnchor;
-
-	tedBalanceFieldSelection( td->tdDocument, tree, &balanced, &dpFrom, &dpTo );
-
-	/****************************************/
-	/*  Undraw selection before the anchor.	*/
-	/*  Undraw selection after the anchor.	*/
-	/****************************************/
-	if  ( directionBeginAnchor < 0	||
-	      directionEndAnchor > 0	)
-	    {
-	    appDocExposeRectangle( ed, &(sgDoc.sgRectangle),
-						    scrolledX, scrolledY );
-	    }
-
-	dir= 0;
-	tedSetExtendedSelection( ed, dir, bodySectNode,
-						&dpFrom, &dpFrom, &dpTo );
-
-	td->tdVisibleSelectionCopied= 0;
-	}
-
-    return 0;
     }
 
 /************************************************************************/
@@ -633,7 +248,8 @@ void tedSetSelectionLow(	EditDocument *			ed,
     td->tdEditTrace.etTyping= TYPING_NO;
 
     if  ( tedGetSelection( &dsOld, &sgOld, &sdOld,
-				(struct DocumentTree **)0, (struct BufferItem **)0, ed ) )
+				(struct DocumentTree **)0,
+				(struct BufferItem **)0, ed ) )
 	{ LDEB(1); return;	}
 
     /*  0  */
@@ -868,7 +484,8 @@ int tedDocSelectWholeParagraph(	EditDocument *		ed,
 	{ XDEB(ed); return -1;	}
 
     if  ( tedGetSelection( &dsNew, &sg, &sd,
-				(struct DocumentTree **)0, (struct BufferItem **)0, ed ) )
+				(struct DocumentTree **)0,
+				(struct BufferItem **)0, ed ) )
 	{ LDEB(1); return -1;	}
 
     ret= docSelectWholeParagraph( &dsNew, direction );
@@ -910,7 +527,8 @@ int tedDocSelectWholeSection(	EditDocument *		ed,
 	{ XDEB(ed); return -1;	}
 
     if  ( tedGetSelection( &dsNew, &sg, &sd,
-				(struct DocumentTree **)0, (struct BufferItem **)0, ed ) )
+				(struct DocumentTree **)0,
+				(struct BufferItem **)0, ed ) )
 	{ LDEB(1); return -1;	}
 
     ret= docSelectWholeSection( &dsNew, direction );

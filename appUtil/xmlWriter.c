@@ -9,9 +9,19 @@
 #   include	<stdio.h>
 #   include	<string.h>
 #   include	"sioGeneral.h"
+#   include	"sioBase64.h"
+#   include	"sioUtil.h"
+#   include	"sioHexedMemory.h"
 #   include	"xmlWriter.h"
 #   include	"utilColor.h"
 #   include	"utilMemoryBuffer.h"
+
+#   include	<appDebugon.h>
+
+/************************************************************************/
+
+const char	XML_DECLARATION[]=
+			"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
 
 /************************************************************************/
 
@@ -154,14 +164,70 @@ void xmlEscapeBuffer(	XmlWriter *		xw,
     xmlEscapeCharacters( xw, (const char *)mb->mbBytes, mb->mbSize );
     }
 
-void xmlStartDataUrl(	XmlWriter *		xw,
+SimpleOutputStream * xmlStartDataUrl(
+			XmlWriter *		xw,
 			const char *		attributeName,
 			const char *		contentType )
     {
+    SimpleOutputStream *	sosDataUrl= (SimpleOutputStream *)0;
+
     xmlPutString( " ", xw );
     xmlPutString( attributeName, xw );
     xmlPutString( "=\"data:", xw );
     xmlPutString( contentType, xw );
     xmlPutString( ";base64,", xw );
+    /* NO! xmlNewLine( xw ); */
+
+    sosDataUrl= sioOutBase64OpenFolded( xw->xwSos, 0, 0 );
+    if  ( ! sosDataUrl )
+	{ XDEB(sosDataUrl); return sosDataUrl; }
+
+    return sosDataUrl;
+    }
+
+void xmlFinishDataUrl(	XmlWriter *		xw,
+			SimpleOutputStream *	sosImage )
+    {
+    sioOutClose( sosImage );
+
+    xmlPutString( "\"", xw );
     xmlNewLine( xw );
     }
+
+int xmlWriteDataUrl(	XmlWriter *		xw,
+			const char *		attributeName,
+			const char *		contentType,
+			const MemoryBuffer *	objectData )
+    {
+    int				rval= 0;
+
+    SimpleInputStream *		sisData= (SimpleInputStream *)0;
+    SimpleOutputStream *	sosImage= (SimpleOutputStream *)0;
+
+    sisData= sioInHexedMemoryOpen( objectData );
+    if  ( ! sisData )
+	{ XDEB(sisData); rval= -1; goto ready;	}
+
+    sosImage= xmlStartDataUrl( xw, attributeName, contentType );
+    if  ( ! sosImage )
+	{ XDEB(sosImage); rval= -1; goto ready; }
+
+    if  ( sioCopyStream( sosImage, sisData ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+
+    sioInClose( sisData );
+    sisData= (SimpleInputStream *)0;
+
+    xmlFinishDataUrl( xw, sosImage );
+    sosImage= (SimpleOutputStream *)0;
+
+  ready:
+
+    if  ( sisData )
+	{ sioInClose( sisData );	}
+    if  ( sosImage )
+	{ sioOutClose( sosImage );	}
+
+    return rval;
+    }
+

@@ -290,6 +290,8 @@ static void appSpellToolFindNext(	SpellTool *	st )
     ssj.ssjComplain= appSpellToolComplain;
     ssj.ssjThrough= (void *)st;
 
+    utilEmptyMemoryBuffer( &(st->stRejectedText) );
+
     if  ( ! (*sc->scFindNext)( st->stApplication,
 					&(st->stRejectedText), &ssj ) )
 	{

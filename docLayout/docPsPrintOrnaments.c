@@ -11,6 +11,7 @@
 
 #   include	"docDraw.h"
 #   include	"docPsPrintImpl.h"
+#   include	"layoutContext.h"
 #   include	<psShading.h>
 #   include	<docBorderProperties.h>
 #   include	<docItemShading.h>
@@ -309,7 +310,7 @@ int docPsPrintOrnaments(	const BlockOrnaments *		bo,
 				struct DrawingContext *		dc )
     {
     PrintingState *		ps= (PrintingState *)through;
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
     const struct BufferDocument *	bd= lc->lcDocument;
     const DocumentProperties *	dp= bd->bdProperties;
 

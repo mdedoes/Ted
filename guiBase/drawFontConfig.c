@@ -19,6 +19,8 @@
 
 #   if USE_FONTCONFIG			/*  {{	*/
 
+# define LOG_MATCHES 0
+
 static int		APP_FontConfigInitialized= 0;
 static FcConfig *	APP_FcConfig= 0;
 
@@ -54,7 +56,8 @@ static void drawFcScaleRect(	DocumentRectangle *	abb,
 static void drawFcScaleInt(	int *		pV,
 				int		upm )
     {
-    *pV= ( 1000* *pV )/ upm;
+    if  ( *pV != 0 )
+	{ *pV= ( 1000* *pV )/ upm;	}
     }
 
 /************************************************************************/
@@ -81,8 +84,9 @@ static int drawFcGetEncodingsFromUnicode(AfmFontInfo *		afi,
 	    if  ( charcode == 'H' )
 		{ afi->afiCapHeight= afi->afiMetrics[glyphIdx]->acmBBox.drY1; }
 
-	    /*  Only support UTF16 */
-	    if  ( charcode <= 0xffff )
+	    /*  Only support UCS-2 */
+	    if  ( charcode <= 0xD7FF				||
+	    	  ( charcode >= 0xE000 && charcode <= 0xFFFF )	)
 		{
 		if  ( psFontInfoSetGlyphUnicode( afi, glyphIdx, charcode ) )
 		    { SLXDEB(afi->afiFontName,glyphIdx,charcode); return -1; }
@@ -94,6 +98,9 @@ static int drawFcGetEncodingsFromUnicode(AfmFontInfo *		afi,
 					psUnicodeToGlyphName( charcode ) );
 		    }
 		}
+#		if 0
+		else { SXDEB(afi->afiFamilyName,charcode); }
+#		endif
 	    }
 
 	charcode= FT_Get_Next_Char( ftFace, charcode, &glyphIdx );
@@ -275,7 +282,7 @@ FT_Face drawFcGetFace(	const AfmFontInfo *	afi )
 /*									*/
 /************************************************************************/
 
-int drawFcGetFontMetrics(	AfmFontInfo *	afi )
+static int drawFcGetFontMetrics(	AfmFontInfo *	afi )
     {
     int			rval= 0;
     FT_Face		ftFace= (FT_Face)0;
@@ -284,6 +291,7 @@ int drawFcGetFontMetrics(	AfmFontInfo *	afi )
     int			invalidComposites= 0;
 
     int			fterror;
+    int			unitsPerEM;
 
     /*  1  */
     ftFace= drawFcGetFace( afi );
@@ -325,16 +333,22 @@ int drawFcGetFontMetrics(	AfmFontInfo *	afi )
     afi->afiUnderlineThickness= ftFace->underline_thickness;
 
     afi->afiCapHeight= afi->afiAscender;
-    afi->afiXHeight= ftFace->units_per_EM/ 2;
+    unitsPerEM= ftFace->units_per_EM;
+    if  ( unitsPerEM == 0 )
+	{
+	SFDEB(afi->afiFontName,ftFace->units_per_EM);
+	unitsPerEM= 2048;
+	}
+    afi->afiXHeight= unitsPerEM/ 2;
 
-    drawFcScaleRect( &(afi->afiFontBBox), ftFace->units_per_EM );
-    drawFcScaleInt( &(afi->afiAscender), ftFace->units_per_EM );
-    drawFcScaleInt( &(afi->afiDescender), ftFace->units_per_EM );
-    drawFcScaleInt( &(afi->afiUnderlinePosition), ftFace->units_per_EM );
-    drawFcScaleInt( &(afi->afiUnderlineThickness), ftFace->units_per_EM );
+    drawFcScaleRect( &(afi->afiFontBBox), unitsPerEM );
+    drawFcScaleInt( &(afi->afiAscender), unitsPerEM );
+    drawFcScaleInt( &(afi->afiDescender), unitsPerEM );
+    drawFcScaleInt( &(afi->afiUnderlinePosition), unitsPerEM );
+    drawFcScaleInt( &(afi->afiUnderlineThickness), unitsPerEM );
 
-    drawFcScaleInt( &(afi->afiCapHeight), ftFace->units_per_EM );
-    drawFcScaleInt( &(afi->afiXHeight), ftFace->units_per_EM );
+    drawFcScaleInt( &(afi->afiCapHeight), unitsPerEM );
+    drawFcScaleInt( &(afi->afiXHeight), unitsPerEM );
 
     /*  4  */
     for ( glyphIdx= 0; glyphIdx < ftFace->num_glyphs; glyphIdx++ )
@@ -367,8 +381,8 @@ int drawFcGetFontMetrics(	AfmFontInfo *	afi )
 	abb.drY1= ftFace->glyph->metrics.horiBearingY;
 	abb.drY0= abb.drY1- ftFace->glyph->metrics.height;
 
-	drawFcScaleInt( &WX, ftFace->units_per_EM );
-	drawFcScaleRect( &abb, ftFace->units_per_EM );
+	drawFcScaleInt( &WX, unitsPerEM );
+	drawFcScaleRect( &abb, unitsPerEM );
 
 	if  ( FT_HAS_GLYPH_NAMES( ftFace ) )
 	    {
@@ -437,7 +451,7 @@ int drawFcGetFontMetrics(	AfmFontInfo *	afi )
 /************************************************************************/
 
 static int drawFcListOneFont(	struct PostScriptFontList *	psfl,
-				FcPattern *		font )
+				FcPattern *			font )
     {
     int			rval= 0;
 
@@ -465,6 +479,7 @@ static int drawFcListOneFont(	struct PostScriptFontList *	psfl,
 	{ SDEB((char *)family); goto ready; }
     FcPatternGetInteger( font, FC_INDEX, 0, &idx );
 
+    /* Skip if no family name can be retrieved */
     if  ( ! family )
 	{ XDEB(family); goto ready;	}
     if  ( ! style )
@@ -473,11 +488,13 @@ static int drawFcListOneFont(	struct PostScriptFontList *	psfl,
     /************************/
     {
     char *	s;
+    int		size= strlen( (char *)family )+ 1+ strlen( (char *)style )+ 1;
 
-    fontName= (char *)malloc(
-	    strlen( (char *)family )+ 1+ strlen( (char *)style )+ 1 );
-    fullName= (char *)malloc(
-	    strlen( (char *)family )+ 1+ strlen( (char *)style )+ 1 );
+    fontName= (char *)malloc( size );
+    fullName= (char *)malloc( size );
+
+    if  ( ! fontName || ! fullName )
+	{ XXDEB(fontName,fullName); rval= -1; goto ready;	}
 
     if  ( strlen( (char *)style ) > 0 )
 	{
@@ -656,26 +673,26 @@ static int drawFcAddChar(	int		unicode,
 
 /************************************************************************/
 
-# define LOG_MATCHES 0
-
 static AfmFontInfo * drawFcGetFontInfoFromFont(
 				FcPattern *			font,
 				const PostScriptFontList *	psfl )
     {
     AfmFontInfo *	afi= (AfmFontInfo *)0;
     FcChar8 *		file= (FcChar8 *)0;
+
+    FcPatternGetString( font, FC_FILE, 0, &file );
+
 #   if LOG_MATCHES
+    {
     FcChar8 *		family= (FcChar8 *)0;
     FcChar8 *		style= (FcChar8 *)0;
 
     FcPatternGetString( font, FC_FAMILY, 0, &family );
     FcPatternGetString( font, FC_STYLE, 0, &style );
-#   endif
-    FcPatternGetString( font, FC_FILE, 0, &file );
 
-#   if LOG_MATCHES
-    drawDebug( "TRY: file=\"%s\" family= \"%s\" style=\"%s\"\n",
+    appDebug( "TRY: file=\"%s\" family=\"%s\" style=\"%s\"\n",
 				(char *)file, (char *)family, (char *)style );
+    }
 #   endif
 
     afi= psPostScriptFontListGetFontInfoByFaceFile( psfl, (char *)file );
@@ -806,6 +823,11 @@ AfmFontInfo * drawFcGetFontInfoForAttribute(
 
     if  ( ! rval )
 	{ rval= drawFcGetFontInfoFromList( pat, psfl );	}
+
+#   if LOG_MATCHES
+    if  ( rval && strcmp( rval->afiFamilyName, familyName ) )
+	{ SSDEB(familyName,rval->afiFamilyName);	}
+#   endif
 
     if  ( ! rval )
 	{ SXDEB(scratch,rval); goto ready;	}

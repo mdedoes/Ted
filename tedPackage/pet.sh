@@ -12,7 +12,7 @@ DATADIR=${7}
 PKG_OWNER=${8}
 PKG_GROUP=${9}
 
-BASE=ted-2.23h-${ARCH}
+BASE=ted-2.23nx-${ARCH}
 PETARCHIVE=${BASE}.pet
 
 HERE=`pwd`
@@ -25,7 +25,7 @@ then
 fi
 mkdir -p ${DESTDIR}${PREFIX}
 
-cat ted-2.23h-linux-*.tar.gz | ( cd ${DESTDIR} && umask 0 && tar xfz - )
+cat ted-2.23nx-linux-*.tar.gz | ( cd ${DESTDIR} && umask 0 && tar xfz - )
 
 INSTSIZE=`du -sk ${DESTDIR}${PREFIX} | ( read instsize name; echo $instsize )`
 sed -e "s/@INSTSIZE@/${INSTSIZE}/g" pet.specs.in | \

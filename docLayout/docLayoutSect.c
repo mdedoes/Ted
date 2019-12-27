@@ -6,19 +6,19 @@
 
 #   include	"docLayoutConfig.h"
 
-#   include	<stddef.h>
-
 #   include	<docPageGrid.h>
 #   include	"docLayout.h"
+#   include	"layoutContext.h"
 #   include	<docTreeType.h>
 #   include	<docTreeNode.h>
 #   include	<docRowProperties.h>
 #   include	<docSelect.h>
-#   include	<docDocumentProperties.h>
 #   include	<docSectProperties.h>
 #   include	<docBreakKind.h>
 #   include	<docBuf.h>
 #   include	<docBlockFrame.h>
+#   include	<docNodeTree.h>
+#   include	<docNotes.h>
 
 #   include	<docDebug.h>
 #   include	<appDebugon.h>
@@ -77,7 +77,8 @@ static void docLayoutPlaceSectTop(	struct BufferItem *	sectNode,
 	}
 
     breakKind= docSectGetBreakKind( sectNode->biSectProperties,
-				lj->ljContext.lcDocument->bdProperties );
+				lj->ljContext->lcDocument->bdProperties,
+				lj->ljContext->lcHonourSpecialSectBreaks );
 
     switch( breakKind )
 	{
@@ -151,7 +152,7 @@ int docLayoutSectChildren(	LayoutPosition *	lpBelow,
 				BlockFrame *		bf,
 				LayoutJob *		lj )
     {
-    const LayoutContext *	lc= &(lj->ljContext);
+    const LayoutContext *	lc= lj->ljContext;
     int				i;
 
     LayoutPosition		lpHere= *lpTop;
@@ -216,18 +217,13 @@ int docLayoutSectChildren(	LayoutPosition *	lpBelow,
 	}
 
     /*  5  */
-    {
-    const DocumentProperties *	dp= lc->lcDocument->bdProperties;
-    const NotesProperties *	npEndnotes= &(dp->dpNotesProps.fepEndnotesProps);
-
-    if  ( sectNode->biTreeType == DOCinBODY		&&
-	  npEndnotes->npPlacement == FTNplaceSECT_END	)
+    if  ( sectNode->biTreeType == DOCinBODY				&&
+	  docGetEndnotePlacement( lc->lcDocument ) == FTNplaceSECT_END	)
 	{
 	if  ( docLayoutEndnotesForSection( &lpHere, &lpHere,
 					sectNode->biNumberInParent, bf, lj ) )
 	    { LDEB(sectNode->biNumberInParent); return -1;	}
 	}
-    }
 
     *lpBelow= lpHere;
     return 0;
@@ -262,8 +258,8 @@ static int docBalanceSectionColumns(	LayoutPosition *	lpBelow,
 					const LayoutJob *	refLj )
     {
     int				rval= 0;
-    const LayoutContext *	lc= &(refLj->ljContext);
-    struct BufferDocument *		bd= lc->lcDocument;
+    const LayoutContext *	lc= refLj->ljContext;
+    struct BufferDocument *	bd= lc->lcDocument;
     int				l, m, r;
 
     int				fromSectTop;
@@ -377,6 +373,7 @@ static int docBalanceSectionColumns(	LayoutPosition *	lpBelow,
     *lpBelow= lpHere;
 
   ready:
+
     docLayoutCleanBlockFrame( &bfCol );
     docLayoutCleanBlockFrame( &bfFrom );
 

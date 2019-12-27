@@ -1,6 +1,7 @@
 /************************************************************************/
 /*									*/
 /*  Font Encodings							*/
+/*  See https://github.com/adobe-type-tools/agl-aglfn/blob/master/glyphlist.txt */
 /*									*/
 /************************************************************************/
 
@@ -8,6 +9,7 @@
 
 #   include	<stdio.h>
 #   include	<string.h>
+#   include	<stdlib.h>
 
 #   include	"psGlyphs.h"
 #   include	"psFontInfo.h"
@@ -10680,10 +10682,15 @@ const char * psUnicodeToGlyphName(	int	unicode )
 /*  As the callers use the names to identify glyphs by name, use the	*/
 /*  adobe glyph list and some heuristics to perform the mapping.	*/
 /*									*/
+/*  See https://github.com/adobe-type-tools/agl-specification for more	*/
+/*	detail.								*/
+/*									*/
 /************************************************************************/
 
-int psGlyphNameToUnicode(	const char * glyphname )
+int psGlyphNameToUnicode( const char * glyphname )
     {
+    int		rval= -1;
+
     int		l= 0;
     int		r= sizeof(psGlyphNameToUnicodes)/sizeof(UnicodeToGlyphName);
     int		m= ( l+ r )/ 2;
@@ -10692,17 +10699,35 @@ int psGlyphNameToUnicode(	const char * glyphname )
     char		c;
     int			cmp;
 
-    if  ( sscanf( glyphname, "uni%x%c", &unicode, &c ) == 1 )
-	{
-	if  ( unicode >= 256* 256 )
-	    { /* SXDEB(glyphname,unicode); */ return -1;	}
+    const char *	normalized;
+    char *		scratch;
 
-	return unicode;
+    const char *	dot= strchr( glyphname, '.' );
+
+    if  ( dot == (char *)0 )
+	{
+	scratch= (char *)0;
+	normalized= glyphname;
+	}
+    else{
+	int len= dot- glyphname;
+	scratch= malloc( len+ 1 );
+	strncpy( scratch, glyphname, len )[len]= '\0';
+	normalized= scratch;
+	}
+
+    if  ( sscanf( normalized, "uni%x%c", &unicode, &c ) == 1 )
+	{
+	/* Only support UCS2/UTF16 unicodes */
+	if  ( unicode >= 256* 256 )
+	    { /* SXDEB(normalized,unicode); */ goto ready;	}
+
+	rval= unicode; goto ready;
 	}
 
     while( m != l )
 	{
-	cmp= strcmp( psGlyphNameToUnicodes[m].utgGlyphName, glyphname );
+	cmp= strcmp( psGlyphNameToUnicodes[m].utgGlyphName, normalized );
 
 	if  ( cmp > 0 )
 	    { r= m;	}
@@ -10711,11 +10736,15 @@ int psGlyphNameToUnicode(	const char * glyphname )
 	m= ( l+ r )/ 2;
 	}
 
-    cmp= strcmp( psGlyphNameToUnicodes[m].utgGlyphName, glyphname );
+    cmp= strcmp( psGlyphNameToUnicodes[m].utgGlyphName, normalized );
     if  ( cmp == 0 )
-	{ return  psGlyphNameToUnicodes[m].utgUnicode;	}
+	{ rval= psGlyphNameToUnicodes[m].utgUnicode; goto ready;	}
 
-    return -1;
+  ready:
+    if  ( scratch )
+	{ free( scratch );	}
+
+    return rval;
     }
 
 /************************************************************************/

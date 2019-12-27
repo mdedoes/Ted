@@ -10,11 +10,13 @@
 #   include	"docScreenDraw.h"
 #   include	"docLayout.h"
 #   include	"docResizeHandles.h"
+#   include	"layoutContext.h"
 #   include	<docDocumentTree.h>
 #   include	<docTreeNode.h>
 #   include	"docScreenLayout.h"
 #   include	"docSelectionGeometry.h"
 #   include	<geo2DInteger.h>
+#   include	<docTreeType.h>
 
 #   include	<docDebug.h>
 #   include	<appDebugon.h>
@@ -28,7 +30,7 @@
 void docOriginalClipping(	DrawingContext *		dc,
 				ScreenDrawingData *		sdd )
     {
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
 
     if  ( dc->dcClipRect )
 	{
@@ -54,7 +56,7 @@ void docScreenDrawPageRect(	ScreenDrawingData *		sdd,
 				DrawingContext *		dc,
 				int				page )
     {
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
 
     DocumentRectangle		drPage;
 
@@ -113,7 +115,7 @@ void docScreenDrawObjectBlocks(	const DocumentRectangle *	drObj,
 				DrawingContext *		dc,
 				ScreenDrawingData *		sdd )
     {
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
 
     int				i;
 
@@ -166,7 +168,7 @@ static void docScreenDrawTreeBox( ScreenDrawingData *		sdd,
 				DrawingContext *		dc,
 				const DocumentRectangle *	drBox )
     {
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
     static unsigned char	dot[]= { 1, 2 };
     RGB8Color			rgb8;
 
@@ -199,7 +201,7 @@ int docScreenDrawBoxAroundTree(
 			    ScreenDrawingData *		sdd,
 			    DrawingContext *		dc )
     {
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
     
     DocumentRectangle		drIntersect;
     DocumentRectangle		drBox;
@@ -273,13 +275,14 @@ static int docScreenDrawStartPage(
 				void *				vsdd,
 				const struct DocumentGeometry *	dgPage,
 				DrawingContext *		dc,
+				const char *			why,
 				int				page )
     {
     ScreenDrawingData *		sdd= (ScreenDrawingData *)vsdd;
     struct DocumentTree *	selRootTree= sdd->sddSelRootTree;
     struct BufferItem *		selRootNode= sdd->sddSelRootNode;
 
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
 
     const int			justUsed= 0;
     DocumentRectangle		drBox;
@@ -319,7 +322,7 @@ void docScreenDrawBackground(		DrawingContext *	dc,
 					ScreenDrawingData *	sdd,
 					const RGB8Color *	bgColor )
     {
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
     DocumentRectangle		drFill= *(dc->dcClipRect);
 
     int				page;

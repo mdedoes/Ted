@@ -20,7 +20,6 @@
 #   include	<docDocumentNote.h>
 #   include	<docDocumentField.h>
 #   include	<docFieldKind.h>
-#   include	<docBuf.h>
 #   include	<docFields.h>
 #   include	<docIncludePictureField.h>
 
@@ -344,8 +343,7 @@ int docRtfSaveFieldHead(	RtfWriter *			rw,
     const FieldKindInformation *	fki;
     const TextParticule *		tp= paraNode->biParaParticules+ part;
 
-    df= docGetFieldByNumber( &(rw->rwDocument->bdFieldList),
-							tp->tpObjectNumber );
+    df= docGetFieldByNumber( rw->rwDocument, tp->tpObjectNumber );
     if  ( ! df )
 	{ LPDEB(tp->tpObjectNumber,df); return 0;	}
 
@@ -428,8 +426,7 @@ int docRtfSaveFieldTail(	RtfWriter *			rw,
     if  ( tp->tpObjectNumber < 0 )
 	{ LDEB(tp->tpObjectNumber); return 0; }
 
-    df= docGetFieldByNumber( &(rw->rwDocument->bdFieldList),
-						    tp->tpObjectNumber );
+    df= docGetFieldByNumber( rw->rwDocument, tp->tpObjectNumber );
     if  ( ! df )
 	{ LPDEB(tp->tpObjectNumber,df); return 0;	}
 

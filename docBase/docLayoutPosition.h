@@ -56,8 +56,11 @@ typedef struct BlockOrigin
 
 			/**
 			 *  Use boOverridePage and boOverrideColumn, rather 
-			 *  than the one s from the document position. If 
+			 *  than the ones from the document position. If 
 			 *  boOverrideFrame != 0
+			 *
+			 *  This is used to draw table headers on a different 
+			 *  page.
 			 */
     unsigned char	boOverrideFrame;
     } BlockOrigin;

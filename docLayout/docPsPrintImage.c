@@ -11,7 +11,7 @@
 
 #   include	"docDraw.h"
 #   include	"docDrawLine.h"
-#   include	<bmObjectReader.h>
+#   include	<sioHexedMemory.h>
 #   include	"docPsPrintImpl.h"
 #   include	<drawMetafilePs.h>
 #   include	<docShape.h>
@@ -24,6 +24,7 @@
 #   include	<psFace.h>
 #   include	<psPrint.h>
 #   include	<geoAffineTransform.h>
+#   include	<bmio.h>
 
 #   include	<appDebugon.h>
 
@@ -37,7 +38,7 @@ static int docPsPrintMetafile(	PrintingState *			ps,
 				const PictureProperties *	pip,
 				const MemoryBuffer *		mb,
 				int				objectKind,
-				const LayoutContext *		lc,
+				const struct LayoutContext *	lc,
 				int				x0,
 				int				baseline )
     {
@@ -45,7 +46,7 @@ static int docPsPrintMetafile(	PrintingState *			ps,
     int				scaleX= pip->pipScaleXUsed;
     int				scaleY= pip->pipScaleYUsed;
 
-    ObjectReader		or;
+    SimpleInputStream *		sisData= (SimpleInputStream *)0;
 
     PostScriptTypeList		pstl;
 
@@ -54,7 +55,6 @@ static int docPsPrintMetafile(	PrintingState *			ps,
     MetafilePlayer		mp;
     MetafileWritePs		playMetafile;
 
-    bmInitObjectReader( &or );
     psInitPostScriptFaceList( &pstl );
 
     if  ( docPsListImageFonts( &pstl, pip, mb, lc, "pf" ) )
@@ -80,10 +80,11 @@ static int docPsPrintMetafile(	PrintingState *			ps,
 	    LDEB(pip->pipType); goto ready;
 	}
 
-    if  ( bmOpenObjectReader( &or, mb ) )
-	{ LDEB(1); rval= -1; goto ready;	}
+    sisData= sioInHexedMemoryOpen( mb );
+    if  ( ! sisData )
+	{ XDEB(sisData); rval= -1; goto ready;	}
 
-    docSetMetafilePlayer( &mp, or.orSisHex, lc, pip, 0, 0 );
+    docSetMetafilePlayer( &mp, sisData, lc, pip, 0, 0 );
 
     y0= baseline- ( ( scaleY/100.0 )* mp.mpTwipsHigh );
 
@@ -115,7 +116,8 @@ static int docPsPrintMetafile(	PrintingState *			ps,
 
   ready:
 
-    bmCleanObjectReader( &or );
+    if  ( sisData )
+	{ sioInClose( sisData );	}
 
     psCleanPostScriptFaceList( &pstl );
 
@@ -128,15 +130,15 @@ static int docPsPrintIncludeEpsObject(	PrintingState *		ps,
 					int			baseLine )
     {
     int				rval= 0;
-    ObjectReader		or;
+
+    SimpleInputStream *		sisData= (SimpleInputStream *)0;
 
     DocumentRectangle		drTo;
     DocumentRectangle		drBBox;
 
-    bmInitObjectReader( &or );
-
-    if  ( bmOpenObjectReader( &or, &(io->ioResultData) ) )
-	{ LDEB(1); rval= -1; goto ready;	}
+    sisData= sioInHexedMemoryOpen( &(io->ioResultData) );
+    if  ( ! sisData )
+	{ XDEB(sisData); rval= -1; goto ready;	}
 
     drBBox.drX0= 0;
     drBBox.drY0= 0;
@@ -150,7 +152,7 @@ static int docPsPrintIncludeEpsObject(	PrintingState *		ps,
 
     psBeginEpsObject( ps->psSos, &drTo, &drBBox, &(io->ioObjectData) );
 
-    if  ( psIncludeEpsFile( ps->psSos, or.orSisHex ) )
+    if  ( psIncludeEpsFile( ps->psSos, sisData ) )
 	{ LDEB(1); rval= -1;	}
 
     psEndEpsObject( ps->psSos );
@@ -159,7 +161,8 @@ static int docPsPrintIncludeEpsObject(	PrintingState *		ps,
 
   ready:
 
-    bmCleanObjectReader( &or );
+    if  ( sisData )
+	{ sioInClose( sisData );	}
 
     return rval;
     }
@@ -300,7 +303,7 @@ int docPsPrintShapeImage(	PrintingState *			ps,
 				const struct AffineTransform2D * at )
     {
     const PictureProperties *	pip= &(ds->dsPictureProperties);
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const struct LayoutContext * lc= dc->dcLayoutContext;
 
     const int			x0= 0;
     const int			y0= 0;
@@ -346,37 +349,38 @@ static int docPsPrintJpegImage( PrintingState *			ps,
 
     const PictureProperties *	pip= &(io->ioPictureProperties);
 
-    ObjectReader		or;
+    SimpleInputStream *		sisData= (SimpleInputStream *)0;
 
     double		scaleX= pip->pipScaleXUsed/ 100.0;
     double		scaleY= pip->pipScaleYUsed/ 100.0;
 
-    bmInitObjectReader( &or );
-
-    if  ( bmOpenObjectReader( &or, mb ) )
-	{ LDEB(1); rval= -1; goto ready;	}
+    sisData= sioInHexedMemoryOpen( mb );
+    if  ( ! sisData )
+	{ XDEB(sisData); rval= -1; goto ready;	}
 
     if  ( bmEpsTestJpegEmbeddable( &pixelsWide, &pixelsHigh,
-		    &componentCount, &bitsPerComponent, or.orSisHex ) )
+		    &componentCount, &bitsPerComponent, sisData ) )
 	{ rval= 1; goto ready;	}
 
-    bmCleanObjectReader( &or );
-    bmInitObjectReader( &or );
+    sioInClose( sisData );
+    sisData= (SimpleInputStream *)0;
 
-    if  ( bmOpenObjectReader( &or, mb ) )
-	{ LDEB(1); rval= -1; goto ready;	}
+    sisData= sioInHexedMemoryOpen( mb );
+    if  ( ! sisData )
+	{ XDEB(sisData); rval= -1; goto ready;	}
 
     if  ( bmPsPrintJpegImage( ps->psSos,
 		    pip->pipTwipsWide* scaleX, -pip->pipTwipsHigh* scaleY,
 		    componentCount, x0, baseLine,
-		    pixelsWide, pixelsHigh, bitsPerComponent, or.orSisHex ) )
+		    pixelsWide, pixelsHigh, bitsPerComponent, sisData ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     ps->psLastPageMarked= ps->psPagesPrinted;
 
   ready:
 
-    bmCleanObjectReader( &or );
+    if  ( sisData )
+	{ sioInClose( sisData );	}
 
     return rval;
     }
@@ -430,7 +434,7 @@ int docPsPrintInlineObject(	const DrawTextLine *		dtl,
     {
     PrintingState *		ps= (PrintingState *)dtl->dtlThrough;
     DrawingContext *		dc= dtl->dtlDrawingContext;
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const struct LayoutContext * lc= dc->dcLayoutContext;
     const PictureProperties *	pip= &(io->ioPictureProperties);
 
     switch( io->ioKind )

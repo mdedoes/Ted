@@ -119,6 +119,9 @@ static AppConfigurableResource TEDApplicationResourceTable[]=
     APP_RESOURCE( "inlineHtmlImages",
 		offsetof(TedAppResources,tarInlineHtmlImagesString),
 		"0" ),
+    APP_RESOURCE( "honourSpecialSectBreaks",
+		offsetof(TedAppResources,tarHonourSpecialSectBreaksString),
+		"0" ),
 };
 
 
@@ -196,6 +199,8 @@ static AppSelectionTargetType TedClipboardTargets[]=
 {
     { "application/rtf", (APP_ATOM)0,	tedPasteClipboardRtf,
 					tedCopyClipboardRtf		},
+    { "text/html", (APP_ATOM)0,		(APP_PASTE_REPLY)0,
+					tedCopyClipboardHtml		},
     { "UTF8_STRING", (APP_ATOM)0,	tedPasteClipboardString,
 					tedCopyClipboardString		},
     { "STRING",	(APP_ATOM)0,		tedPasteClipboardString,
@@ -221,6 +226,8 @@ AppSelectionTargetType TedClipboardTextTargets[]=
 {
     { "application/rtf", (APP_ATOM)0,	tedPasteClipboardRtf,
 					tedCopyClipboardRtf		},
+    { "text/html", (APP_ATOM)0,		(APP_PASTE_REPLY)0,
+					tedCopyClipboardHtml		},
     { "UTF8_STRING", (APP_ATOM)0,	tedPasteClipboardString,
 					tedCopyClipboardString		},
     { "STRING",	(APP_ATOM)0,		tedPasteClipboardString,
@@ -362,6 +369,7 @@ static SpecialCall TedSpecialCalls[]=
     { "FontsDocuments",		tedFontsDocuments,		},
     { "Concatenate",		tedConcatenate,			},
     { "ConcatenateText",	tedConcatenateText,		},
+    { "MergeJson",		tedMergeJson,			},
 };
 
 /************************************************************************/
@@ -436,7 +444,7 @@ static EditApplication	TedApplication=
 		    /****************************************************/
     "Ted",
     TED_ConfigString,
-    "Ted 2.23e, Mar 9, 2014",
+    "Ted 2.23nx, Sep 9, 2018",
     "http://www.nllgg.nl/Ted",
     MY_PLATFORM " " MY_RELEASE,
     "\"" MY_HOST_DATE "\"",

@@ -16,6 +16,7 @@
 #   include	<bmio.h>
 #   include	<sioGeneral.h>
 #   include	<fontDocFont.h>
+#   include	<fontDocFontList.h>
 
 #   include	<appDebugon.h>
 

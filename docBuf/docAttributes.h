@@ -21,6 +21,8 @@ struct FrameProperties;
 struct BorderProperties;
 struct TabStopList;
 struct BufferItem;
+struct PropertyMask;
+struct DocumentSelection;
 
 /************************************************************************/
 /*									*/
@@ -28,14 +30,17 @@ struct BufferItem;
 /*									*/
 /************************************************************************/
 
-extern int docGetDefaultFont(		struct BufferDocument *	bd );
+extern int docGetDefaultFont(		const struct BufferDocument *	bd );
+
+extern int docGetFontByName(		const struct BufferDocument *	bd,
+					const char *			name );
 
 extern int docGetSolidRgbShadeOfItem(	int *			pIsFilled,
 					struct RGB8Color *		rgb8,
 					const struct BufferDocument *	bd,
 					const struct ItemShading *	is );
 
-extern int docTextAttributeNumber(	struct BufferDocument *		bd,
+extern int docTextAttributeNumber(	const struct BufferDocument *	bd,
 					const struct TextAttribute *	ta );
 
 extern const struct TextAttribute * docGetTextAttributeByNumber(
@@ -95,5 +100,20 @@ extern int docGetEffectiveTextAttributes(
 				struct BufferDocument *		bd,
 				const struct BufferItem *	paraNode,
 				int				part );
+
+extern int docChangeParticuleAttributes( int *			pChanged,
+				struct PropertyMask *		pTaAllMask,
+				struct BufferDocument *		bd,
+				struct BufferItem *		paraNode,
+				int				part,
+				int				partUpto,
+				const struct TextAttribute *	taSet,
+				const struct PropertyMask *	taSetMask );
+
+extern int docGetSelectionAttributes(
+				struct TextAttribute *		ta,
+				struct PropertyMask *		pUpdMask,
+				struct BufferDocument *		bd,
+				const struct DocumentSelection * ds );
 
 #   endif

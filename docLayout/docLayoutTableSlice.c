@@ -95,12 +95,9 @@ static int docLayoutRows(	LayoutPosition *	lpBelow,
 	    { break;	}
 
 	if  ( stayInThisColumn						&&
+	      RP_IS_ONE_PAGE( rowNode->biRowProperties )		&&
 	      docCompareLayoutPositionFrames( &lpHere, &lpDone ) > 0	)
-	    {
-	    *lpBelow= lpDone;
-	    return row;
-	    break;
-	    }
+	    { *lpBelow= lpDone; return row;	}
 
 	if  ( row < upto- 1 )
 	    {
@@ -113,6 +110,8 @@ static int docLayoutRows(	LayoutPosition *	lpBelow,
 	    }
 
 	stayInThisColumn= honourKeep && docKeepRowWithNext( rowNode, row );
+	if  ( ! stayInThisColumn )
+	    { next= row+ 1;	}
 
 	row++;
 	inNewFrame= 0;
@@ -125,9 +124,9 @@ static int docLayoutRows(	LayoutPosition *	lpBelow,
 
 /************************************************************************/
 /*									*/
-/*  Try to format a series of rows in a column. If part of them can be	*/
-/*  placed in the column, do so, if not, make successive attempts to	*/
-/*  place them in the next column etc.					*/
+/*  Try to format a series of rows in a (newspaper style) column. If	*/
+/*  part of them can be	placed in the column, do so, if not, make	*/
+/*  successive attempts to place them in the next column etc.		*/
 /*									*/
 /*  Give up if the attempts fail.					*/
 /*									*/

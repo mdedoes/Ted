@@ -25,68 +25,20 @@
 
 #   include	<appDebugon.h>
 
-void docInitHtmlWritingContext(	HtmlWritingContext *	hwc )
-    {
-    xmlInitXmlWriter( &(hwc->hwcXmlWriter) );
-
-    hwc->hwcLayoutContext= (const struct LayoutContext *)0;
-    docLayoutInitBlockFrame( &(hwc->hwcBlockFrame) );
-    docInitParagraphFrame( &(hwc->hwcParagraphFrame) );
-
-    hwc->hwcOpenImageStream= (HtmlOpenImageStream)0;
-    hwc->hwcGetImageSrc= (HtmlGetImageSrc)0;
-    hwc->hwcGetCssName= (HtmlGetCssName)0;
-    hwc->hwcPrivate= (void *)0;
-    hwc->hwcDocument= (struct BufferDocument *)0;
-
-    utilInitIndexMapping( &(hwc->hwcDeferredNotes) );
-
-    hwc->hwcInlineCss= 0;
-    hwc->hwcInlineNotes= 0;
-    hwc->hwcInlineImages= 0;
-
-    hwc->hwcInHyperlink= 0;
-    hwc->hwcInBookmark= 0;
-    hwc->hwcInPageref= 0;
-    hwc->hwcBytesInLink= 0;
-
-    docPlainTextAttribute( &(hwc->hwcDefaultAttribute), hwc->hwcDocument );
-    hwc->hwcDefaultAttribute.taFontSizeHalfPoints= 24;
-    hwc->hwcDefaultAttribute.taFontNumber= -1;
-
-    docInitParagraphProperties( &(hwc->hwcParagraphProperties) );
-
-    hwc->hwcImageCount= 0;
-    hwc->hwcNoteRefCount= 0;
-    hwc->hwcNoteDefCount= 0;
-
-    hwc->hwcTableNesting= 0;
-
-    hwc->hwcCurrentAttributeNumber= -1;
-
-    hwc->hwcSupportsBullets= 0;
-    hwc->hwcEmitBackground= 0;
-    hwc->hwcEmitBackground= 0;
-    return;
-    }
-
-void docCleanHtmlWritingContext(	HtmlWritingContext *	hwc )
-    {
-    utilCleanIndexMapping( &(hwc->hwcDeferredNotes) );
-
-    docCleanParagraphProperties( &(hwc->hwcParagraphProperties) );
-
-    docLayoutCleanBlockFrame( &(hwc->hwcBlockFrame) );
-    /*docCleanParagraphFrame( &(hwc->hwcParagraphFrame) );*/
-
-    return;
-    }
-
 /************************************************************************/
 /*									*/
 /*  Save a tag with an argument.					*/
 /*									*/
 /************************************************************************/
+
+void docHtmlWritelnCloseElement(	const char *		element,
+					HtmlWritingContext *	hwc )
+    {
+    docHtmlPutString( "</", hwc );
+    docHtmlPutString( element, hwc );
+    docHtmlPutString( ">", hwc );
+    docHtmlNewLine( hwc );
+    }
 
 void docHtmlPutString(		const char *		s,
 				HtmlWritingContext *	hwc )
@@ -161,7 +113,8 @@ void docHtmlEmitBackgroundProperty(
 				const ItemShading *		is,
 				HtmlWritingContext *		hwc )
     {
-    const struct BufferDocument *	bd= hwc->hwcDocument;
+    const HtmlWritingSettings *	hws= hwc->hwcSettings;
+    const struct BufferDocument * bd= hws->hwsDocument;
 
     int				isFilled= 0;
     RGB8Color			rgb8;
@@ -206,10 +159,79 @@ static void docHtmlSaveMetaElement(	HtmlWritingContext *	hwc,
 
 /************************************************************************/
 
+int docHtmlEmitProlog(	HtmlWritingContext *	hwc,
+			const char *		localeTag,
+			const char *		extraNameSpaces )
+    {
+    docHtmlPutString( "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\r\n", hwc );
+
+#   define USE_HTML5 1
+#   if USE_HTML5
+    docHtmlPutString( "<!DOCTYPE html", hwc );
+#   else
+    docHtmlPutString( "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.1//EN\" ",
+									hwc );
+    docHtmlPutString( "\"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd\"",
+									hwc );
+#   endif
+
+    docHtmlPutString( ">", hwc );
+    docHtmlNewLine( hwc );
+
+    docHtmlPutString( "<html", hwc );
+    docHtmlWriteStringAttribute( hwc,
+				"xmlns", "http://www.w3.org/1999/xhtml" );
+
+    if  ( extraNameSpaces )
+	{
+	docHtmlPutString( " ", hwc );
+	docHtmlPutString( extraNameSpaces, hwc );
+	}
+
+    if  ( localeTag )
+	{
+	docHtmlWriteStringAttribute( hwc, "lang", localeTag );
+	docHtmlWriteStringAttribute( hwc, "xml:lang", localeTag );
+	}
+    docHtmlPutString( ">", hwc );
+    docHtmlNewLine( hwc );
+
+    return 0;
+    }
+
+int docHtmlWriteStyleLink(	HtmlWritingContext *	hwc,
+				const MemoryBuffer *	mbStylesheet )
+    {
+    docHtmlPutString( "<link ", hwc );
+    docHtmlWriteStringAttribute( hwc, "rel", "stylesheet" );
+    docHtmlWriteStringAttribute( hwc, "type", "text/css; charset=UTF-8" );
+    docHtmlWriteStringAttribute( hwc, "href",
+				utilMemoryBufferGetString( mbStylesheet ) );
+    docHtmlPutString( "/>", hwc );
+    docHtmlNewLine( hwc );
+
+    return 0;
+    }
+
+int docHtmlWriteTitle(	HtmlWritingContext *	hwc,
+			const MemoryBuffer *	mbTitle )
+    {
+    docHtmlPutString( "<title>", hwc );
+
+    if  ( ! utilMemoryBufferIsEmpty( mbTitle ) )
+	{ docHtmlEscapeString( utilMemoryBufferGetString( mbTitle ), hwc ); }
+    else{ docHtmlEscapeString( ".", hwc );	}
+
+    docHtmlPutString( "</title>", hwc );
+
+    return 0;
+    }
+
 int docHtmlStartDocument(	HtmlWritingContext *	hwc )
     {
     int				rval= 0;
-    const DocumentProperties *	dp= hwc->hwcDocument->bdProperties;
+    const HtmlWritingSettings *	hws= hwc->hwcSettings;
+    const DocumentProperties *	dp= hws->hwsDocument->bdProperties;
 
     MemoryBuffer		stylesheet;
     const char *		localeTag;
@@ -218,55 +240,27 @@ int docHtmlStartDocument(	HtmlWritingContext *	hwc )
 
     localeTag= textGetMsLocaleTagById( dp->dpDefaultLocaleId );
 
-    docHtmlPutString( "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\r\n", hwc );
-    docHtmlPutString( "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.1//EN\" ",
-									hwc );
-    docHtmlPutString( "\"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd\">\r\n",
-									hwc );
-
-    docHtmlNewLine( hwc );
-    docHtmlPutString( "<html", hwc );
-    docHtmlWriteStringAttribute( hwc,
-				"xmlns", "http://www.w3.org/1999/xhtml" );
-    if  ( localeTag )
-	{ docHtmlWriteStringAttribute( hwc, "xml:lang", localeTag );	}
-    docHtmlPutString( ">", hwc );
-    docHtmlNewLine( hwc );
+    docHtmlEmitProlog( hwc, localeTag, (const char *)0 );
 
     docHtmlPutString( "<head>", hwc );
     docHtmlNewLine( hwc );
     docHtmlPutString( "<meta ", hwc );
-    docHtmlWriteStringAttribute( hwc, "http-equiv", "Content-Type" );
+    docHtmlWriteStringAttribute( hwc, "http-equiv", "content-type" );
     docHtmlWriteStringAttribute( hwc, "content", "text/html; charset=UTF-8" );
     docHtmlPutString( "/>", hwc );
     docHtmlNewLine( hwc );
 
-    docHtmlPutString( "<title>", hwc );
-    if  ( ! utilMemoryBufferIsEmpty( &(dp->dpTitle) ) )
-	{
-	docHtmlEscapeString( utilMemoryBufferGetString( &(dp->dpTitle) ), hwc );
-	}
-    else{
-	docHtmlEscapeString( ".", hwc );
-	}
-    docHtmlPutString( "</title>", hwc );
-    docHtmlNewLine( hwc );
+    docHtmlWriteTitle( hwc, &(dp->dpTitle) );
 
-    if  ( ! hwc->hwcInlineCss )
+    if  ( ! hws->hwsInlineCss )
 	{
-	if  ( ! hwc->hwcGetCssName )
-	    { XDEB(hwc->hwcInlineCss); rval= -1; goto ready;	}
+	if  ( ! hws->hwsGetCssName )
+	    { XDEB(hws->hwsInlineCss); rval= -1; goto ready;	}
 
-	if  ( (*hwc->hwcGetCssName)( &stylesheet, hwc ) < 0 )
+	if  ( (*hws->hwsGetCssName)( &stylesheet, hwc ) < 0 )
 	    { LDEB(1); return -1;	}
 
-	docHtmlPutString( "<link ", hwc );
-	docHtmlWriteStringAttribute( hwc, "rel", "stylesheet" );
-	docHtmlWriteStringAttribute( hwc, "type", "text/css; charset=UTF-8" );
-	docHtmlWriteStringAttribute( hwc, "href",
-				    utilMemoryBufferGetString( &stylesheet ) );
-	docHtmlPutString( "/>", hwc );
-	docHtmlNewLine( hwc );
+	docHtmlWriteStyleLink( hwc, &stylesheet );
 	}
 
     docHtmlSaveMetaElement( hwc, "description", &(dp->dpSubject) );
@@ -282,7 +276,7 @@ int docHtmlStartDocument(	HtmlWritingContext *	hwc )
 	docHtmlNewLine( hwc );
 	}
 
-    if  ( hwc->hwcInlineCss )
+    if  ( hws->hwsInlineCss )
 	{
 	docHtmlPutString( "<style type=\"text/css\">", hwc );
 	docHtmlNewLine( hwc );
@@ -314,7 +308,7 @@ int docHtmlStartDocument(	HtmlWritingContext *	hwc )
     return rval;
     }
 
-int docHtmlFinishDocument(	HtmlWritingContext *	hwc )
+int docHtmlFinishDocumentBody(	HtmlWritingContext *	hwc )
     {
     docHtmlPutString( "</body></html>", hwc );
     docHtmlNewLine( hwc );

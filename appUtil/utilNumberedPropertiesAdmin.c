@@ -171,8 +171,8 @@ int docMergeNumberedPropertiesLists(
     if  ( fromCount > 0 )
 	{
 	int		n;
-	int *		propMap= (int *)malloc( fromCount* sizeof(int) );
 
+	propMap= (int *)malloc( fromCount* sizeof(int) );
 	if  ( ! propMap )
 	    { LXDEB(fromCount,propMap); rval= -1; goto ready; }
 
@@ -222,9 +222,9 @@ int docMergeNumberedPropertiesLists(
 	    if  ( nplTo->nplPagedList.plInitItem )
 		{ (*nplTo->nplPagedList.plInitItem)( scratch );	}
 	    }
-
-	*pPropMap= propMap; propMap= (int *)0; /* steal */
 	}
+
+    *pPropMap= propMap; propMap= (int *)0; /* steal */
 
   ready:
 

@@ -8,7 +8,6 @@
 
 #   include	<stdlib.h>
 
-#   include	"docBuf.h"
 #   include	"docShape.h"
 #   include	"docParaParticules.h"
 #   include	<docObjectProperties.h>
@@ -30,11 +29,9 @@
 /************************************************************************/
 
 void docCleanParaNode(	struct BufferDocument *	bd,
-			struct DocumentTree *		dt,
-			struct BufferItem *		paraNode )
+			struct DocumentTree *	dt,
+			struct BufferItem *	paraNode )
     {
-    const DocumentFieldList *	dfl= &(bd->bdFieldList);
-    const int			fieldCount= dfl->dflPagedList.plItemCount;
     int				i;
     TextParticule *		tp;
 
@@ -50,12 +47,7 @@ void docCleanParaNode(	struct BufferDocument *	bd,
 
 		if  ( tp->tpObjectNumber < 0 )
 		    { continue;	}
-		/*  Is a normal situation as we try for HEAD and TAIL */
-		if  ( tp->tpObjectNumber >= fieldCount	)
-		    { /*LLDEB(tp->tpObjectNumber,fieldCount);*/ continue; }
-
-		df= docGetFieldByNumber( &(bd->bdFieldList),
-						    tp->tpObjectNumber );
+		df= docGetFieldByNumber( bd, tp->tpObjectNumber );
 		if  ( df )
 		    {
 		    if  ( docDeleteFieldFromParent( dt, df ) )
@@ -63,6 +55,7 @@ void docCleanParaNode(	struct BufferDocument *	bd,
 
 		    docDeleteFieldFromDocument( bd, df );
 		    }
+		else{ /*LXDEB(tp->tpObjectNumber,df);*/ } /*  Is a normal situation as we try for HEAD and TAIL */
 		}
 		break;
 

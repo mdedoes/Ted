@@ -36,6 +36,7 @@
 #   include	<docBuf.h>
 #   include	<docParaProperties.h>
 #   include	<appDocFront.h>
+#   include	<docFind.h>
 
 #   include	<appDebugon.h>
 
@@ -388,14 +389,6 @@ APP_MENU_CALLBACK_H( tedDocInsertColumnBreak, option, voided, e )
     EditDocument *	ed= (EditDocument *)voided;
     TedDocument *	td= (TedDocument *)ed->edPrivateData;
 
-    /*
-    const int		redoLayout= 1;
-
-    tedEditInsertSpecialParticule( ed,
-		    TPkindCOLUMNBREAK, EDITcmdREPLACE_BODY_LEVEL,
-		    redoLayout, td->tdTraced );
-    */
-
     tedDocSplitParagraph( ed, DOCibkCOL,
 				EDITcmdREPLACE_BODY_LEVEL, td->tdTraced );
 
@@ -501,7 +494,6 @@ APP_MENU_CALLBACK_H( tedDocTableInsertTable, option, voided, e )
 
     int			rows= 2;
     int			columns= 2;
-
 
     if  ( tedInsertTable( ed, rows, columns, td->tdTraced ) )
 	{ LLDEB(rows,columns);	}
@@ -639,7 +631,6 @@ static void tedDocShowFindTool(	EditDocument *		ed )
     EditApplication *	ea= ed->edApplication;
     TedDocument *	td= (TedDocument *)ed->edPrivateData;
 
-XDEB(ed->edToolbar);
     if  ( ed->edToolbar )
 	{
 	tedDocBuildFormatTool( ed );

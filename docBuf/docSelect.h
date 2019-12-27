@@ -96,7 +96,7 @@ extern int docGetObjectSelection(
 				const struct BufferDocument *	bd,
 				const DocumentSelection *	ds );
 
-extern void docSetRangeSelection(
+extern int docSetRangeSelection(
 				DocumentSelection *		ds,
 				const DocumentPosition *	dpHead,
 				const DocumentPosition *	dpTail,
@@ -299,7 +299,7 @@ extern void docConstrainSelectionToOneParagraph(
 extern int docPositionForEditPosition(
 				struct DocumentPosition *	dpNew,
 				const struct EditPosition *	ep,
-				const struct DocumentTree *	dt );
+				const struct DocumentTree *	tree );
 
 extern int docSelectionForEditPositionsInDoc(
 				struct DocumentSelection *	ds,
@@ -310,8 +310,15 @@ extern int docSelectionForEditPositionsInDoc(
 
 extern int docSelectionForEditPositionsInTree(
 				struct DocumentSelection *	ds,
-				const struct DocumentTree *	dt,
+				const struct DocumentTree *	tree,
 				const struct EditPosition *	epHead,
 				const struct EditPosition *	epTail );
+
+extern int docExtendSelectionFromTable(	struct DocumentPosition *	dpHead,
+					struct DocumentPosition *	dpTail,
+					int *				pCol0,
+					int *				pCol1 );
+
+extern int docExtendSelectionIntoTable(	struct DocumentPosition *	dpEnd );
 
 #   endif	/*	DOC_SELECT_H	*/

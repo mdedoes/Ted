@@ -9,6 +9,7 @@
 
 #   include	"docLayout.h"
 #   include	"docLayoutLine.h"
+#   include	"layoutContext.h"
 
 #   include	<docObjectProperties.h>
 #   include	<docTextLine.h>

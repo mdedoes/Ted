@@ -11,7 +11,6 @@
 
 #   include	"tedLayout.h"
 #   include	"tedDocument.h"
-#   include	"tedEdit.h"
 #   include	<docSelectLayout.h>
 #   include	<docTreeType.h>
 #   include	<docParaParticules.h>
@@ -23,6 +22,7 @@
 #   include	"tedKeyboard.h"
 #   include	"tedSelect.h"
 #   include	<docBuf.h>
+#   include	<layoutContext.h>
 
 #   include	<appDebugon.h>
 
@@ -354,7 +354,7 @@ static void tedMoveOnPageUpKey(	struct EditDocument *		ed,
 				const SelectionGeometry *	sg )
     {
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    struct BufferDocument *		bd= td->tdDocument;
+    struct BufferDocument *	bd= td->tdDocument;
 
     DocumentPosition		dpNew;
 

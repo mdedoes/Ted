@@ -18,6 +18,7 @@
 #   include	<docListDepth.h>
 #   include	<docTextParticule.h>
 #   include	<docParaProperties.h>
+#   include	<docTreeType.h>
 #   include	"docParaBuilder.h"
 
 #   include	"docDebug.h"

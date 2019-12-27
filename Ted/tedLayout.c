@@ -4,7 +4,7 @@
 
 #   include	<drawMatchFont.h>
 
-#   include	"tedEdit.h"
+#   include	"tedEditOperation.h"
 #   include	"tedLayout.h"
 #   include	"docScreenObjects.h"
 #   include	"tedDocument.h"
@@ -15,6 +15,7 @@
 #   include	<docLayout.h>
 #   include	<docNodeTree.h>
 #   include	<geo2DInteger.h>
+#   include	"tedAppResources.h"
 
 #   include	<appDebugon.h>
 
@@ -53,7 +54,7 @@ int tedAdjustParagraphLayout(	TedEditOperation *		teo,
 
     docInitLayoutJob( &lj );
 
-    lj.ljContext= teo->teoLayoutContext;
+    lj.ljContext= &(teo->teoLayoutContext);
     docSetScreenLayoutFunctions( &lj );
     lj.ljChangedRectanglePixels= &(teo->teoChangedRect);
     lj.ljChangedNode= paraNode;
@@ -75,10 +76,12 @@ int tedAdjustParagraphLayout(	TedEditOperation *		teo,
 
 /************************************************************************/
 
-void tedSetDocumentLayoutContext( LayoutContext *			lc,
-				DrawingSurface				ds,
-				const struct PostScriptFontList *	psfl,
-				struct TedDocument *			td )
+void tedSetDocumentLayoutContext(
+		LayoutContext *				lc,
+		DrawingSurface				ds,
+		const struct PostScriptFontList *	psfl,
+		int					specialSectBreaks,
+		struct TedDocument *			td )
     {
     lc->lcDrawingSurface= ds;
     lc->lcPostScriptFontList= psfl;
@@ -91,16 +94,19 @@ void tedSetDocumentLayoutContext( LayoutContext *			lc,
     lc->lcPageGapPixels= td->tdPageGapPixels;
 
     lc->lcLocale= td->tdLocale;
+    lc->lcHonourSpecialSectBreaks= specialSectBreaks;
     }
 
 void tedSetScreenLayoutContext(	LayoutContext *		lc,
 				EditDocument *		ed )
     {
     EditApplication *		ea= ed->edApplication;
+    TedAppResources *		tar= (TedAppResources *)ea->eaResourceData;
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
 
     tedSetDocumentLayoutContext( lc, ed->edDrawingSurface,
-					    &(ea->eaPostScriptFontList), td );
+				    &(ea->eaPostScriptFontList),
+				    tar->tarHonourSpecialSectBreaksInt, td );
 
     lc->lcDrawingSurface= ed->edDrawingSurface;
     lc->lcOx= ed->edVisibleRect.drX0;

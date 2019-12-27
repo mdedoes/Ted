@@ -199,7 +199,7 @@ AfmFontInfo * psPostScriptFontListGetFontInfoByFaceFile(
 	{ return (AfmFontInfo *)0;	}
 
     afi= (AfmFontInfo *)utilTreeGetEQ( psfl->psflFontFileToInfo,
-							(const char **)0, file );
+						    (const char **)0, file );
     return afi;
     }
 

@@ -37,16 +37,13 @@ CFLAGS=	\
 
 #CFLAGS= -g -O2 $(WFLAGS) $(INCLUDES)
 
-# 81!!obs
+# 57!!obs
 OBS	=	\
 		docTreeType.o\
-		docTocField.o\
 		docTextParticule.o\
 		docTextLine.o\
-		docTcField.o\
 		docTabStopList.o\
 		docTabStop.o\
-		docSymbolField.o\
 		docStyleSheet.o\
 		docStyle.o\
 		docStatistics.o\
@@ -54,12 +51,10 @@ OBS	=	\
 		docShapePath.o\
 		docShapeGeometry.o\
 		docShapeDrawing.o\
-		docSeqField.o\
 		docSelectionScope.o\
 		docSectProperties.o\
 		docRowPropertyAdmin.o\
 		docRowProperties.o\
-		docRefField.o\
 		docReadWmfObject.o\
 		docReadFileObject.o\
 		docReadEpsObject.o\
@@ -70,12 +65,9 @@ OBS	=	\
 		docParaTabsAdmin.o\
 		docParaPropertyAdmin.o\
 		docParaProperties.o\
-		docPagerefField.o\
 		docObject.o\
-		docNumericField.o\
 		docNotesProperties.o\
 		docNoteProperties.o\
-		docMergeField.o\
 		docListTable.o\
 		docListOverrideTable.o\
 		docListOverrideLevel.o\
@@ -87,36 +79,20 @@ OBS	=	\
 		docItemShading.o\
 		docItemShadingAdmin.o\
 		docInsertedObjectList.o\
-		docIncludeTextField.o\
-		docIncludePictureField.o\
-		docIfField.o\
-		docHyperlinkField.o\
 		docFrameProperties.o\
 		docFramePropertiesAdmin.o\
-		docFormulaField.o\
-		docFormField.o\
-		docFormatField.o\
-		docFileNameField.o\
-		docFieldTree.o\
-		docFieldInstructions.o\
-		docFieldGetSet.o\
 		docEditRange.o\
 		docEditPosition.o\
 		docDrawShapeArrow.o\
 		docDocumentProperties.o\
 		docDocumentList.o\
-		docDocumentFieldList.o\
-		docDocumentField.o\
 		docDocumentAttributeMap.o\
 		docDebugListNumberTree.o\
 		docDebugList.o\
-		docDebugFieldInstructions.o\
-		docDateField.o\
 		docCellPropertyAdmin.o\
 		docCellProperties.o\
 		docBorderPropertyAdmin.o\
 		docBorderProperties.o\
-		docBookmarkField.o\
 		docBlockOrnaments.o
 
 ../lib/docBase.a:	$(OBS)
@@ -133,7 +109,7 @@ duplicates:
 includes:
 	includes.sh docBaseConfig.h $(INCLUDES)
 
-# deps -I. -I../include -I../textEncoding -I../utilGeo -I../appUtil -I../bitmap -I../docFont -I../drawMeta -I../utilPs
+# deps -I../include -I../textEncoding -I../utilGeo -I../appUtil -I../bitmap -I../docFont -I../drawMeta -I../utilPs
 ######################################## !! sh
 
 docBlockOrnaments.o: \
@@ -143,23 +119,6 @@ docBlockOrnaments.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     docBlockOrnaments.c
-
-docBookmarkField.o: \
-    ../appUtil/utilMemoryBuffer.h \
-    docBaseConfig.h \
-    docBookmarkField.h \
-    docChildFields.h \
-    docDocumentField.h \
-    docEditPosition.h \
-    docEditRange.h \
-    docFieldInstructions.h \
-    docFieldKind.h \
-    docSelectionScope.h \
-    ../include/appDebug.h \
-    ../include/appDebugon.h \
-    ../textEncoding/ucdGeneralCategory.h \
-    ../textEncoding/uniUtf8.h \
-    docBookmarkField.c
 
 docBorderProperties.o: \
     ../appUtil/utilColor.h \
@@ -209,29 +168,6 @@ docCellPropertyAdmin.o: \
     ../include/appDebugon.h \
     docCellPropertyAdmin.c
 
-docDateField.o: \
-    ../appUtil/utilMemoryBuffer.h \
-    docBaseConfig.h \
-    docChildFields.h \
-    docDateField.h \
-    docDocumentField.h \
-    docEditPosition.h \
-    docEditRange.h \
-    docFieldInstructions.h \
-    docFieldKind.h \
-    docSelectionScope.h \
-    ../include/appDebug.h \
-    ../include/appDebugon.h \
-    docDateField.c
-
-docDebugFieldInstructions.o: \
-    ../appUtil/utilMemoryBuffer.h \
-    docBaseConfig.h \
-    docFieldInstructions.h \
-    ../include/appDebug.h \
-    ../include/appDebugon.h \
-    docDebugFieldInstructions.c
-
 docDebugList.o: \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPropMask.h \
@@ -264,39 +200,6 @@ docDocumentAttributeMap.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     docDocumentAttributeMap.c
-
-docDocumentField.o: \
-    ../appUtil/utilMemoryBuffer.h \
-    docBaseConfig.h \
-    docChildFields.h \
-    docDocumentField.h \
-    docEditPosition.h \
-    docEditRange.h \
-    docFieldInstructions.h \
-    docFieldKind.h \
-    docFieldProperty.h \
-    docSelectionScope.h \
-    ../include/appDebug.h \
-    ../include/appDebugon.h \
-    docDocumentField.c
-
-docDocumentFieldList.o: \
-    ../appUtil/utilIndexSet.h \
-    ../appUtil/utilMemoryBuffer.h \
-    ../appUtil/utilPagedList.h \
-    docBaseConfig.h \
-    docBookmarkField.h \
-    docChildFields.h \
-    docDocumentField.h \
-    docDocumentFieldList.h \
-    docEditPosition.h \
-    docEditRange.h \
-    docFieldInstructions.h \
-    docFieldKind.h \
-    docSelectionScope.h \
-    ../include/appDebug.h \
-    ../include/appDebugon.h \
-    docDocumentFieldList.c
 
 docDocumentList.o: \
     ../appUtil/utilMemoryBuffer.h \
@@ -360,95 +263,6 @@ docEditRange.o: \
     ../include/appDebugon.h \
     docEditRange.c
 
-docFieldGetSet.o: \
-    ../appUtil/utilMemoryBuffer.h \
-    docBaseConfig.h \
-    docFieldFormat.h \
-    docFieldInstructions.h \
-    ../include/appDebug.h \
-    ../include/appDebugon.h \
-    docFieldGetSet.c
-
-docFieldInstructions.o: \
-    ../appUtil/utilMemoryBuffer.h \
-    ../appUtil/utilMemoryBufferPrintf.h \
-    docBaseConfig.h \
-    docFieldInstructions.h \
-    ../include/appDebug.h \
-    ../include/appDebugon.h \
-    docFieldInstructions.c
-
-docFieldTree.o: \
-    ../appUtil/utilMemoryBuffer.h \
-    docBaseConfig.h \
-    docChildFields.h \
-    docDocumentField.h \
-    docEditPosition.h \
-    docEditRange.h \
-    docFieldInstructions.h \
-    docFieldScanner.h \
-    docScanner.h \
-    docSelectionScope.h \
-    docTreeType.h \
-    ../include/appDebug.h \
-    ../include/appDebugon.h \
-    docFieldTree.c
-
-docFileNameField.o: \
-    ../appUtil/utilMemoryBuffer.h \
-    docBaseConfig.h \
-    docChildFields.h \
-    docDocumentField.h \
-    docEditPosition.h \
-    docEditRange.h \
-    docFieldInstructions.h \
-    docFieldKind.h \
-    docFileNameField.h \
-    docSelectionScope.h \
-    ../include/appDebug.h \
-    ../include/appDebugon.h \
-    docFileNameField.c
-
-docFormField.o: \
-    ../appUtil/utilMemoryBuffer.h \
-    docBaseConfig.h \
-    docFormField.h \
-    ../include/appDebug.h \
-    ../include/appDebugon.h \
-    docFormField.c
-
-docFormatField.o: \
-    ../appUtil/utilMemoryBuffer.h \
-    ../appUtil/utilNumberFormat.h \
-    docBaseConfig.h \
-    docChildFields.h \
-    docDocumentField.h \
-    docEditPosition.h \
-    docEditRange.h \
-    docFieldFormat.h \
-    docFieldInstructions.h \
-    docSelectionScope.h \
-    ../include/appDebug.h \
-    ../include/appDebugon.h \
-    ../textEncoding/numbersBase26.h \
-    ../textEncoding/numbersRoman.h \
-    docFormatField.c
-
-docFormulaField.o: \
-    ../appUtil/utilMemoryBuffer.h \
-    docBaseConfig.h \
-    docChildFields.h \
-    docDocumentField.h \
-    docEditPosition.h \
-    docEditRange.h \
-    docFieldInstructions.h \
-    docFieldKind.h \
-    docFormulaField.h \
-    docSelectionScope.h \
-    ../include/appDebug.h \
-    ../include/appDebugon.h \
-    docFormulaField.c
-
 docFrameProperties.o: \
     docBaseConfig.h \
     docFrameProperties.h \
@@ -468,66 +282,6 @@ docFramePropertiesAdmin.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     docFramePropertiesAdmin.c
-
-docHyperlinkField.o: \
-    ../appUtil/utilMemoryBuffer.h \
-    docBaseConfig.h \
-    docChildFields.h \
-    docDocumentField.h \
-    docEditPosition.h \
-    docEditRange.h \
-    docFieldInstructions.h \
-    docFieldKind.h \
-    docHyperlinkField.h \
-    docSelectionScope.h \
-    ../include/appDebug.h \
-    ../include/appDebugon.h \
-    docHyperlinkField.c
-
-docIfField.o: \
-    ../appUtil/utilMemoryBuffer.h \
-    docBaseConfig.h \
-    docChildFields.h \
-    docDocumentField.h \
-    docEditPosition.h \
-    docEditRange.h \
-    docFieldInstructions.h \
-    docFieldKind.h \
-    docIfField.h \
-    docSelectionScope.h \
-    ../include/appDebug.h \
-    ../include/appDebugon.h \
-    docIfField.c
-
-docIncludePictureField.o: \
-    ../appUtil/utilMemoryBuffer.h \
-    docBaseConfig.h \
-    docChildFields.h \
-    docDocumentField.h \
-    docEditPosition.h \
-    docEditRange.h \
-    docFieldInstructions.h \
-    docFieldKind.h \
-    docIncludePictureField.h \
-    docSelectionScope.h \
-    ../include/appDebug.h \
-    ../include/appDebugon.h \
-    docIncludePictureField.c
-
-docIncludeTextField.o: \
-    ../appUtil/utilMemoryBuffer.h \
-    docBaseConfig.h \
-    docChildFields.h \
-    docDocumentField.h \
-    docEditPosition.h \
-    docEditRange.h \
-    docFieldInstructions.h \
-    docFieldKind.h \
-    docIncludeTextField.h \
-    docSelectionScope.h \
-    ../include/appDebug.h \
-    ../include/appDebugon.h \
-    docIncludeTextField.c
 
 docInsertedObjectList.o: \
     ../appUtil/utilColor.h \
@@ -668,22 +422,6 @@ docListTable.o: \
     ../utilPs/textAttribute.h \
     docListTable.c
 
-docMergeField.o: \
-    ../appUtil/utilMemoryBuffer.h \
-    docBaseConfig.h \
-    docChildFields.h \
-    docDocumentField.h \
-    docEditPosition.h \
-    docEditRange.h \
-    docFieldFormat.h \
-    docFieldInstructions.h \
-    docFieldKind.h \
-    docMergeField.h \
-    docSelectionScope.h \
-    ../include/appDebug.h \
-    ../include/appDebugon.h \
-    docMergeField.c
-
 docNoteProperties.o: \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPropMask.h \
@@ -702,21 +440,6 @@ docNotesProperties.o: \
     ../include/appDebugon.h \
     docNotesProperties.c
 
-docNumericField.o: \
-    ../appUtil/utilMemoryBuffer.h \
-    docBaseConfig.h \
-    docChildFields.h \
-    docDocumentField.h \
-    docEditPosition.h \
-    docEditRange.h \
-    docFieldFormat.h \
-    docFieldInstructions.h \
-    docNumericField.h \
-    docSelectionScope.h \
-    ../include/appDebug.h \
-    ../include/appDebugon.h \
-    docNumericField.c
-
 docObject.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -732,22 +455,6 @@ docObject.o: \
     ../utilGeo/geoGrid.h \
     ../utilGeo/geoRectangle.h \
     docObject.c
-
-docPagerefField.o: \
-    ../appUtil/utilMemoryBuffer.h \
-    docBaseConfig.h \
-    docChildFields.h \
-    docDocumentField.h \
-    docEditPosition.h \
-    docEditRange.h \
-    docFieldFormat.h \
-    docFieldInstructions.h \
-    docFieldKind.h \
-    docPagerefField.h \
-    docSelectionScope.h \
-    ../include/appDebug.h \
-    ../include/appDebugon.h \
-    docPagerefField.c
 
 docParaProperties.o: \
     ../appUtil/utilPropMask.h \
@@ -808,6 +515,7 @@ docPropertiesAdmin.o: \
     docBorderPropertyAdmin.h \
     docCellPropertyAdmin.h \
     ../docFont/fontDocFontList.h \
+    ../docFont/fontDocFontListImpl.h \
     docFramePropertiesAdmin.h \
     docItemShadingAdmin.h \
     docListAdmin.h \
@@ -825,8 +533,7 @@ docPropertiesAdmin.o: \
 docReadBitmapObject.o: \
     ../appUtil/sioFileio.h \
     ../appUtil/sioGeneral.h \
-    ../appUtil/sioHex.h \
-    ../appUtil/sioMemory.h \
+    ../appUtil/sioHexedMemory.h \
     ../appUtil/sioUtil.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -849,8 +556,7 @@ docReadBitmapObject.o: \
 docReadEmfObject.o: \
     ../appUtil/sioFileio.h \
     ../appUtil/sioGeneral.h \
-    ../appUtil/sioHex.h \
-    ../appUtil/sioMemory.h \
+    ../appUtil/sioHexedMemory.h \
     ../appUtil/sioUtil.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -858,8 +564,6 @@ docReadEmfObject.o: \
     ../bitmap/bitmap.h \
     ../bitmap/bmEmf.h \
     ../bitmap/bmEmfIo.h \
-    ../bitmap/bmio.h \
-    ../bitmap/bmObjectReader.h \
     docBaseConfig.h \
     docLayoutPosition.h \
     docObject.h \
@@ -875,8 +579,7 @@ docReadEmfObject.o: \
 
 docReadEpsObject.o: \
     ../appUtil/sioGeneral.h \
-    ../appUtil/sioHex.h \
-    ../appUtil/sioMemory.h \
+    ../appUtil/sioHexedMemory.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPalette.h \
@@ -916,16 +619,13 @@ docReadWmfObject.o: \
     ../appUtil/sioEndian.h \
     ../appUtil/sioFileio.h \
     ../appUtil/sioGeneral.h \
-    ../appUtil/sioHex.h \
-    ../appUtil/sioMemory.h \
+    ../appUtil/sioHexedMemory.h \
     ../appUtil/sioUtil.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPalette.h \
     ../bitmap/bitmap.h \
     ../bitmap/bmcolor.h \
-    ../bitmap/bmio.h \
-    ../bitmap/bmObjectReader.h \
     ../bitmap/bmWmf.h \
     ../bitmap/bmWmfIo.h \
     docBaseConfig.h \
@@ -938,21 +638,6 @@ docReadWmfObject.o: \
     ../include/appDebugon.h \
     ../utilGeo/geoRectangle.h \
     docReadWmfObject.c
-
-docRefField.o: \
-    ../appUtil/utilMemoryBuffer.h \
-    docBaseConfig.h \
-    docChildFields.h \
-    docDocumentField.h \
-    docEditPosition.h \
-    docEditRange.h \
-    docFieldInstructions.h \
-    docFieldKind.h \
-    docRefField.h \
-    docSelectionScope.h \
-    ../include/appDebug.h \
-    ../include/appDebugon.h \
-    docRefField.c
 
 docRowProperties.o: \
     ../appUtil/utilPropMask.h \
@@ -999,22 +684,6 @@ docSelectionScope.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     docSelectionScope.c
-
-docSeqField.o: \
-    ../appUtil/utilMemoryBuffer.h \
-    docBaseConfig.h \
-    docChildFields.h \
-    docDocumentField.h \
-    docEditPosition.h \
-    docEditRange.h \
-    docFieldFormat.h \
-    docFieldInstructions.h \
-    docFieldKind.h \
-    docSelectionScope.h \
-    docSeqField.h \
-    ../include/appDebug.h \
-    ../include/appDebugon.h \
-    docSeqField.c
 
 docShapeDrawing.o: \
     ../appUtil/utilColor.h \
@@ -1107,21 +776,6 @@ docStyleSheet.o: \
     ../utilPs/textAttribute.h \
     docStyleSheet.c
 
-docSymbolField.o: \
-    ../appUtil/utilMemoryBuffer.h \
-    docBaseConfig.h \
-    docChildFields.h \
-    docDocumentField.h \
-    docEditPosition.h \
-    docEditRange.h \
-    docFieldInstructions.h \
-    docFieldKind.h \
-    docSelectionScope.h \
-    docSymbolField.h \
-    ../include/appDebug.h \
-    ../include/appDebugon.h \
-    docSymbolField.c
-
 docTabStop.o: \
     docBaseConfig.h \
     docTabStop.h \
@@ -1137,20 +791,6 @@ docTabStopList.o: \
     ../include/appDebugon.h \
     docTabStopList.c
 
-docTcField.o: \
-    ../appUtil/utilMemoryBuffer.h \
-    docBaseConfig.h \
-    docChildFields.h \
-    docDocumentField.h \
-    docEditPosition.h \
-    docEditRange.h \
-    docFieldInstructions.h \
-    docFieldKind.h \
-    docSelectionScope.h \
-    ../include/appDebug.h \
-    ../include/appDebugon.h \
-    docTcField.c
-
 docTextLine.o: \
     docBaseConfig.h \
     docLayoutPosition.h \
@@ -1164,24 +804,6 @@ docTextParticule.o: \
     docBaseConfig.h \
     docTextParticule.h \
     docTextParticule.c
-
-docTocField.o: \
-    ../appUtil/utilMemoryBuffer.h \
-    ../appUtil/utilMemoryBufferPrintf.h \
-    ../appUtil/utilRanges.h \
-    docBaseConfig.h \
-    docChildFields.h \
-    docDocumentField.h \
-    docEditPosition.h \
-    docEditRange.h \
-    docFieldInstructions.h \
-    docFieldKind.h \
-    docListDepth.h \
-    docSelectionScope.h \
-    docTocField.h \
-    ../include/appDebug.h \
-    ../include/appDebugon.h \
-    docTocField.c
 
 docTreeType.o: \
     docTreeType.h \

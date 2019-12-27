@@ -108,15 +108,15 @@ static int docSetAttributeMap(	DocumentAttributeMap *		dam,
     {
     int		rval= 0;
 
-    int *	fontMap= (int *)0;
     int *	colorMap= (int *)0;
     int *	borderMap= (int *)0;
     int *	shadingMap= (int *)0;
     int *	frameMap= (int *)0;
+    int *	rulerMap= (int *)0;
     int *	cellMap= (int *)0;
     int *	rowMap= (int *)0;
-    int *	lsmap= (int *)0;
-    int *	rulerMap= (int *)0;
+    int *	fontMap= (int *)0;
+    int *	lsMap= (int *)0;
 
     const DocumentPropertyLists *	dplFrom= bdFrom->bdPropertyLists;
     DocumentPropertyLists *		dplTo= bdTo->bdPropertyLists;
@@ -152,27 +152,19 @@ static int docSetAttributeMap(	DocumentAttributeMap *		dam,
     */
 
     /*  Not needed: We never refer to rows by property number
-    if  ( docMergeCellPropertiesLists( &rowMap, borderMap, shadingMap,
+    if  ( docMergeRowPropertiesLists( &rowMap, borderMap, shadingMap,
 					&(dplTo->dplRowPropertyList),
 					&(dplFrom->dplRowPropertyList) ) )
 	{ LDEB(1); rval= -1; goto ready;	}
     */
 
-    if  ( docMergeDocumentLists( &fontMap, &lsmap, bdTo, bdFrom,
+    if  ( docMergeDocumentLists( &fontMap, &lsMap, bdTo, bdFrom,
 						    colorMap, rulerMap ) )
 	{ LDEB(1); rval= -1; goto ready;	}
-
-    if  ( dam->damFontMap )
-	{ free( dam->damFontMap );	}
-    dam->damFontMap= fontMap; fontMap= (int *)0; /* steal */
 
     if  ( dam->damColorMap )
 	{ free( dam->damColorMap );	}
     dam->damColorMap= colorMap; colorMap= (int *)0; /* steal */
-
-    if  ( dam->damRulerMap )
-	{ free( dam->damRulerMap );	}
-    dam->damRulerMap= rulerMap; rulerMap= (int *)0; /* steal */
 
     if  ( dam->damBorderMap )
 	{ free( dam->damBorderMap );	}
@@ -186,18 +178,28 @@ static int docSetAttributeMap(	DocumentAttributeMap *		dam,
 	{ free( dam->damFrameMap );	}
     dam->damFrameMap= frameMap; frameMap= (int *)0; /* steal */
 
+    if  ( dam->damRulerMap )
+	{ free( dam->damRulerMap );	}
+    dam->damRulerMap= rulerMap; rulerMap= (int *)0; /* steal */
+
     if  ( dam->damCellMap )
 	{ free( dam->damCellMap );	}
     dam->damCellMap= cellMap; cellMap= (int *)0; /* steal */
 
+    if  ( dam->damRowMap )
+	{ free( dam->damRowMap );	}
+    dam->damRowMap= rowMap; cellMap= (int *)0; /* steal */
+
+    if  ( dam->damFontMap )
+	{ free( dam->damFontMap );	}
+    dam->damFontMap= fontMap; fontMap= (int *)0; /* steal */
+
     if  ( dam->damListStyleMap )
 	{ free( dam->damListStyleMap );	}
-    dam->damListStyleMap= lsmap; lsmap= (int *)0;/* steal */
+    dam->damListStyleMap= lsMap; lsMap= (int *)0;/* steal */
 
   ready:
 
-    if  ( fontMap )
-	{ free( fontMap );	}
     if  ( colorMap )
 	{ free( colorMap );	}
     if  ( borderMap )
@@ -206,14 +208,16 @@ static int docSetAttributeMap(	DocumentAttributeMap *		dam,
 	{ free( shadingMap );	}
     if  ( frameMap )
 	{ free( frameMap );	}
+    if  ( rulerMap )
+	{ free( rulerMap );	}
     if  ( cellMap )
 	{ free( cellMap );	}
     if  ( rowMap )
 	{ free( rowMap );	}
-    if  ( lsmap )
-	{ free( lsmap );	}
-    if  ( rulerMap )
-	{ free( rulerMap );	}
+    if  ( fontMap )
+	{ free( fontMap );	}
+    if  ( lsMap )
+	{ free( lsMap );	}
 
     return rval;
     }
@@ -298,7 +302,7 @@ int docSetTraceDocumentCopyJob(	DocumentCopyJob *	dcj,
 int docSet2DocumentCopyJob(	DocumentCopyJob *	dcj,
 				EditOperation *		eo,
 				struct BufferDocument *	bdFrom,
-				struct DocumentTree *		eiFrom,
+				struct DocumentTree *	sourceTree,
 				const MemoryBuffer *	refFileName,
 				int			forceAttributeTo )
     {
@@ -310,7 +314,7 @@ int docSet2DocumentCopyJob(	DocumentCopyJob *	dcj,
     dcj->dcjTargetSelectionScope= eo->eoSelectionScope;
     dcj->dcjTargetTree= eo->eoTree;
     dcj->dcjSourceDocument= bdFrom;
-    dcj->dcjSourceTree= eiFrom;
+    dcj->dcjSourceTree= sourceTree;
     dcj->dcjCopyFields= 1;
     dcj->dcjStealFields= 0;
     dcj->dcjForceAttributeTo= forceAttributeTo;

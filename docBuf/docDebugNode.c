@@ -13,6 +13,7 @@
 #   include	<bidiTree.h>
 #   include	<uniUtf8.h>
 #   include	<bidiScanner.h>
+#   include	<docTreeType.h>
 
 #   include	"docDebug.h"
 #   include	<appDebugon.h>
@@ -151,14 +152,13 @@ static int docCheckChild(	const BufferItem *	parent,
 
     if  ( child->biLevel == DOClevPARA )
 	{
-	int	tableNesting= docTableNesting( child );
-	int	nodeTableNesting= child->biParaProperties->ppTableNesting;
+	int	tableNestingTree= docTableNesting( child );
+	int	tableNestingProp= child->biParaProperties->ppTableNesting;
 
-	if  ( tableNesting != nodeTableNesting )
+	if  ( tableNestingTree != tableNestingProp )
 	    {
-	    SDEB("#######");
-	    LLDEB(tableNesting,nodeTableNesting);
-	    if  ( tableNesting > 0 && nodeTableNesting == 0 )
+	    SLLDEB("#######",tableNestingTree,tableNestingProp);
+	    if  ( tableNestingTree > 0 && tableNestingProp == 0 )
 		{
 		const BufferItem *	rowNode;
 
@@ -191,10 +191,10 @@ static int docCheckParaNode(	const struct BufferItem *	paraNode )
     int				part;
     const TextParticule *	tp;
     int				stroff;
-    int				tableNesting= docTableNesting( paraNode );
-    int				nodeTableNesting;
+    int				tableNestingTree= docTableNesting( paraNode );
+    int				tableNestingProp;
 
-    nodeTableNesting= paraNode->biParaProperties->ppTableNesting;
+    tableNestingProp= paraNode->biParaProperties->ppTableNesting;
 
     if  ( paraNode->biLeftParagraphs != paraNode->biNumberInParent+ 1 )
 	{
@@ -203,10 +203,9 @@ static int docCheckParaNode(	const struct BufferItem *	paraNode )
 	LLDEB(paraNode->biLeftParagraphs,paraNode->biNumberInParent+1);
 	}
 
-    if  ( tableNesting != nodeTableNesting )
+    if  ( tableNestingTree != tableNestingProp )
 	{
-	SDEB("#######");
-	LLDEB(tableNesting,nodeTableNesting);
+	SLLDEB("#######",tableNestingTree,tableNestingProp);
 	rval= -1;
 	}
 
@@ -627,7 +626,8 @@ static void docListParaNode(	int				indent,
     const ParagraphProperties *	pp= paraNode->biParaProperties;
     int				listFlat= 0;
     struct BufferItem *		rowNode;
-    int				tableNesting= 0;
+    int				tablenestingTree= 0;
+    int				tableNestingProp= paraNode->biParaProperties->ppTableNesting;
 
     appDebug( "%*s{ NR= %d TN=%d brk=%s %d bytes %d particules, %d lines\n",
 			    IS* indent+ IS, "",
@@ -657,19 +657,17 @@ static void docListParaNode(	int				indent,
 		}
 	    }
 
-	tableNesting++;
+	tablenestingTree++;
 	rowNode= docGetRowNode( rowNode->biParent );
 	while( rowNode )
 	    {
-	    tableNesting++;
+	    tablenestingTree++;
 	    rowNode= docGetRowNode( rowNode->biParent );
 	    }
 	}
 
-    if  ( paraNode->biParaProperties->ppTableNesting != tableNesting )
-	{
-	SLLDEB("####",paraNode->biParaProperties->ppTableNesting,tableNesting);
-	}
+    if  ( tableNestingProp != tablenestingTree )
+	{ SLLDEB("####",tableNestingProp,tablenestingTree); }
 
 #   if LIST_PARA_STRING
     docListParaString( indent, paraNode, 0, docParaStrlen( paraNode ) );
@@ -732,16 +730,18 @@ static void docListRowNodeSpecific(
     const RowProperties *	rp= rowNode->biRowProperties;
 
     if  ( rowNode->biRowTableFirst >= 0			||
-	  rowNode->biRowTablePast >= 0				||
-	  rowNode->biRowPastHeaderRow >= 0			)
+	  rowNode->biRowTablePast >= 0			||
+	  rowNode->biRowPastHeaderRow >= 0		)
 	{
 	appDebug(
-	    "%*s  Table Head: %d .. %d Body %d .. %d\n",
-		    IS* indent+ IS, "",
-		    rowNode->biRowTableFirst,
-		    rowNode->biRowPastHeaderRow,
-		    rowNode->biRowPastHeaderRow,
-		    rowNode->biRowTablePast );
+	    "%*s  Table Head: %d .. %d Body: %d .. %d %s %s\n",
+		IS* indent+ IS, "",
+		rowNode->biRowTableFirst,
+		rowNode->biRowPastHeaderRow,
+		rowNode->biRowPastHeaderRow,
+		rowNode->biRowTablePast,
+		(rowNode)->biRowProperties->rpKeepOnOnePage? "TRKEEP":"",
+		(rowNode)->biRowProperties->rp_Keepfollow? "TRKEEPFOLLOW":"" );
 
 	if  ( rowNode->biRowTableFirst		>=
 	      rowNode->biParent->biChildCount	)

@@ -7,6 +7,7 @@ void layoutInitContext(		LayoutContext *	lc )
     lc->lcAttributeToScreenFont= (struct IndexMapping *)0;
     lc->lcPostScriptFontList= (const struct PostScriptFontList *)0;
     lc->lcDocument= (struct BufferDocument *)0;
+    lc->lcHonourSpecialSectBreaks= 0;
 
     lc->lcOx= 0;
     lc->lcOy= 0;

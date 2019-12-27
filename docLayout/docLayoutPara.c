@@ -16,6 +16,7 @@
 #   include	"docParagraphLayout.h"
 #   include	"docStripLayoutJob.h"
 #   include	"docRowLayout.h"
+#   include	"layoutContext.h"
 #   include	<docTreeType.h>
 #   include	<docTreeNode.h>
 #   include	<docTextParticule.h>
@@ -37,6 +38,7 @@
 #   include	<docObjectProperties.h>
 #   include	"docLayoutDocumentTree.h"
 #   include	<docBlockOrnaments.h>
+#   include	<docNodeTree.h>
 
 #   include	<docDebug.h>
 #   include	<appDebugon.h>
@@ -162,8 +164,8 @@ void docLayoutCalculateParaTopInset(
     int				topInset= 0;
     int				nrAbove= -1;
     const BorderProperties *	bpTop= (const BorderProperties *)0;
-    const struct BufferItem *		cellNode= paraNode->biParent;
-    const struct BufferItem *		rowNode= cellNode->biParent;
+    const struct BufferItem *	cellNode= paraNode->biParent;
+    const struct BufferItem *	rowNode= cellNode->biParent;
     const RowProperties *	rp= rowNode->biRowProperties;
 
     int				cellMargin= 0;
@@ -237,14 +239,14 @@ void docLayoutCalculateParaTopInset(
     }
 
 void docLayoutCalculateParaBottomInset(
-				    const struct BufferDocument *	bd,
-				    struct BufferItem *		paraNode )
+				const struct BufferDocument *	bd,
+				struct BufferItem *		paraNode )
     {
     int				bottomInset= 0;
     int				nrBelow= -1;
     const BorderProperties *	bpBottom= (const BorderProperties *)0;
-    const struct BufferItem *		cellNode= paraNode->biParent;
-    const struct BufferItem *		rowNode= cellNode->biParent;
+    const struct BufferItem *	cellNode= paraNode->biParent;
+    const struct BufferItem *	rowNode= cellNode->biParent;
     const RowProperties *	rp= rowNode->biRowProperties;
 
     int				cellMargin= 0;
@@ -719,7 +721,7 @@ int docLayoutStartParagraph(	const LayoutJob *		lj,
 				const BlockFrame *		bf,
 				ParagraphLayoutPosition *	plp )
     {
-    const LayoutContext *	lc= &(lj->ljContext);
+    const LayoutContext *	lc= lj->ljContext;
     int				paraBreakKind;
 
 #   if 0

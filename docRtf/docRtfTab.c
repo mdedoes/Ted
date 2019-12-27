@@ -146,9 +146,17 @@ int docRtfApplyRawBytesGroup(	const RtfControlWord *	rcw,
 
 #   endif
 
-# define	RTF_BORDER(s,sc,id,sp) \
+# define	RTF_BORDER_POSITIVE(s,sc,id,sp) \
 		    { \
-		    s, sc, id, RTCtypeANY, sp, 0, \
+		    s, sc, id, RTCtypeBORDER_POSITIVE, sp, 0, \
+		    docRtfBeginBorder, \
+		    (RtfCommitGroup)0, \
+		    docRtfBrdrProperty, \
+		    }
+
+# define	RTF_BORDER_ANYWAY(s,sc,id,sp) \
+		    { \
+		    s, sc, id, RTCtypeBORDER_ANYWAY, sp, 0, \
 		    docRtfBeginBorder, \
 		    (RtfCommitGroup)0, \
 		    docRtfBrdrProperty, \
@@ -225,7 +233,7 @@ static RtfControlWord	docRtfPropertyWords[]=
 		    }
 
 # define	RTF_TEXT_BORDER(s,id)  \
-		    RTF_BORDER(s,RTCscopeTEXT,id,docRtfRememberTextProperty)
+		    RTF_BORDER_ANYWAY(s,RTCscopeTEXT,id,docRtfRememberTextProperty)
 
 # define	RTF_TEXT_SHD_ENUM(s,id,v) \
 		    { \
@@ -275,7 +283,7 @@ static RtfControlWord	docRtfPropertyWords[]=
     RTF_TEXT_FLAG( "b",			TApropFONTBOLD ),
     RTF_TEXT_FLAG( "i",			TApropFONTSLANTED ),
 
-    RTF_TEXT_FLAG( "ul",		TApropTEXTUNDERLINED ), /* flag! */
+    RTF_TEXT_ENUM( "ul",		TApropTEXTUNDERLINED, 1 ),
     RTF_TEXT_ENUM( "ulnone",		TApropTEXTUNDERLINED, 0 ),
     
     RTF_TEXT_FLAG_X( "uld",		TApropTEXTUNDERLINED ),
@@ -456,7 +464,7 @@ static RtfControlWord	docRtfPropertyWords[]=
 		    }
 
 # define	RTF_PARA_BORDER(s,id) \
-			RTF_BORDER(s,RTCscopePARA, id,docRtfRememberParagraphProperty)
+			RTF_BORDER_ANYWAY(s,RTCscopePARA, id,docRtfRememberParagraphProperty)
 
 # define	RTF_PARA_SHD_NUMBER(s,id) \
 		    { \
@@ -792,7 +800,7 @@ static RtfControlWord	docRtfPropertyWords[]=
 		    }
 
 # define	RTF_CELL_BORDER(s,id) \
-			RTF_BORDER(s,RTCscopeCELL, id, docRtfRememberCellProperty)
+			RTF_BORDER_POSITIVE(s,RTCscopeCELL, id, docRtfRememberCellProperty)
 
 # define	RTF_CELL_SHD_ENUM(s,id,v) \
 		    { \
@@ -819,6 +827,9 @@ static RtfControlWord	docRtfPropertyWords[]=
     RTF_CELL_BORDER( "clbrdrb",		CLpropBOTTOM_BORDER ),
     RTF_CELL_BORDER( "clbrdrl",		CLpropLEFT_BORDER ),
     RTF_CELL_BORDER( "clbrdrr",		CLpropRIGHT_BORDER ),
+
+    RTF_CELL_BORDER( "cldglu",		CLpropLEFT_RIGHT_DIAGONAL ),
+    RTF_CELL_BORDER( "cldgll",		CLpropRIGHT_LEFT_DIAGONAL ),
 
     RTF_CELL_SHD_ENUM( "clbghoriz",	ISpropPATTERN, PSshdHORIZ ),
     RTF_CELL_SHD_ENUM( "clbgvert",	ISpropPATTERN, PSshdVERT ),
@@ -965,9 +976,9 @@ static RtfControlWord	docRtfPropertyWords[]=
 		    }
 
 # define	RTF_ROW_BORDER(s,id) \
-		    RTF_BORDER(s,RTCscopeROW,id,docRtfRememberRowProperty)
+		    RTF_BORDER_POSITIVE(s,RTCscopeROW,id,docRtfRememberRowProperty)
 # define	RTF_ROW_BORDER_X(s,id) \
-		    RTF_BORDER(s,RTCscopeANY,id,docRtfRememberRowProperty)
+		    RTF_BORDER_POSITIVE(s,RTCscopeANY,id,docRtfRememberRowProperty)
 
 # define	RTF_ROW_SHD_NUMBER(s,id) \
 		    { \
@@ -1020,12 +1031,12 @@ static RtfControlWord	docRtfPropertyWords[]=
     RTF_ROW_BORDER( "trbrdrv",		RPpropVERT_BORDER ),
 
 					/* In table styles */
-    RTF_ROW_BORDER_X( "tsbrdrt",		RPpropTOP_BORDER ),
-    RTF_ROW_BORDER_X( "tsbrdrb",		RPpropBOTTOM_BORDER ),
-    RTF_ROW_BORDER_X( "tsbrdrl",		RPpropLEFT_BORDER ),
-    RTF_ROW_BORDER_X( "tsbrdrr",		RPpropRIGHT_BORDER ),
-    RTF_ROW_BORDER_X( "tsbrdrh",		RPpropHORIZ_BORDER ),
-    RTF_ROW_BORDER_X( "tsbrdrv",		RPpropVERT_BORDER ),
+    RTF_ROW_BORDER_X( "tsbrdrt",	RPpropTOP_BORDER ),
+    RTF_ROW_BORDER_X( "tsbrdrb",	RPpropBOTTOM_BORDER ),
+    RTF_ROW_BORDER_X( "tsbrdrl",	RPpropLEFT_BORDER ),
+    RTF_ROW_BORDER_X( "tsbrdrr",	RPpropRIGHT_BORDER ),
+    RTF_ROW_BORDER_X( "tsbrdrh",	RPpropHORIZ_BORDER ),
+    RTF_ROW_BORDER_X( "tsbrdrv",	RPpropVERT_BORDER ),
 
     RTF_ROW_BORDER_X( "tsbrdrdgl",	RPprop_IGNORED ),
     RTF_ROW_BORDER_X( "tsbrdrdgr",	RPprop_IGNORED ),
@@ -1165,7 +1176,7 @@ static RtfControlWord	docRtfPropertyWords[]=
 		    }
 
 # define	RTF_DOC_BORDER(s,id) \
-			RTF_BORDER(s,RTCscopeDOC, id,docRtfRememberDocProperty)
+		    RTF_BORDER_ANYWAY(s,RTCscopeDOC,id,docRtfRememberDocProperty)
 
     RTF_DOC_NUMBER( "margl",		DGpropLEFT_MARGIN ),
     RTF_DOC_NUMBER( "margr",		DGpropRIGHT_MARGIN ),
@@ -1379,6 +1390,7 @@ static RtfControlWord	docRtfPropertyWords[]=
     RTF_SECT_ENUM( "rtlsect",		SPpropRTOL, 1 ),
     RTF_SECT_ENUM( "ltrsect",		SPpropRTOL, 0 ),
 
+					/*  Count from 1! */
     RTF_SECT_NUMBER( "pgnstarts",	SPpropSTART_PAGE ),
 
     RTF_SECT_NUMBER( "cols",		SPpropCOLUMN_COUNT ),
@@ -2071,10 +2083,10 @@ static RtfControlWord	docRtfPropertyWords[]=
 		    docRtfTextSpecialChar, \
 		    }
 
-    RTF_SPECIAL_CHAR( "bullet",		ISO1_periodcentered ),
-    RTF_SPECIAL_CHAR( "emdash",		ISO1_hyphen ),
+    RTF_SPECIAL_CHAR( "bullet",		0x2022 ),
+    RTF_SPECIAL_CHAR( "emdash",		0x2014 ),
     RTF_SPECIAL_CHAR( "emspace",	ISO1_space ),
-    RTF_SPECIAL_CHAR_X( "endash",	ISO1_hyphen ),
+    RTF_SPECIAL_CHAR_X( "endash",	0x2013 ),
     RTF_SPECIAL_CHAR_X( "enspace",	ISO1_space ),
     RTF_SPECIAL_CHAR( "ldblquote",	ISO1_quotedbl ),
     RTF_SPECIAL_CHAR( "lquote",		ASCII_quoteleft ),

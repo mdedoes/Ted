@@ -11,6 +11,7 @@ zypper install \
     gtk2-devel \
     libpaper-devel \
     libenchant-devel \
+    libasan \
     rpm-build
 
 echo if zypper complains about libpaper.. your SuSE version does not 

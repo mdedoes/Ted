@@ -11,7 +11,6 @@
 #   include	"docRtfReaderImpl.h"
 #   include	"docRtfReadTreeStack.h"
 #   include	"docRtfFindProperty.h"
-#   include	<docRecalculateFields.h>
 #   include	<docTreeType.h>
 #   include	<docNodeTree.h>
 #   include	<docNotes.h>
@@ -21,8 +20,10 @@
 #   include	<docSelect.h>
 #   include	<docTreeNode.h>
 #   include	<docBuf.h>
+#   include	<docFields.h>
 
 #   include	<appDebugon.h>
+#   include	<docDebug.h>
 
 /************************************************************************/
 /*									*/
@@ -60,6 +61,7 @@ int docRtfReadDocumentTree(	const RtfControlWord *	rcw,
 	{ LDEB(1); return -1;	}
 
     docRtfPushReadingState( rr, &internRrs );
+    /* popped in docRtfFinishCurrentTree() */
     docRtfPushTreeStack( rr, &internRts, ss, tree );
 
     docRtfResetParagraphProperties( &internRrs );
@@ -68,7 +70,8 @@ int docRtfReadDocumentTree(	const RtfControlWord *	rcw,
     /*  3  */
     if  ( docRtfReadGroup( rcw, 0, 0, rr,
 			    docRtfDocumentGroups,
-			    docRtfGotText, docRtfFinishCurrentTree ) )
+			    docRtfGotText,
+			    docRtfFinishCurrentTree ) )
 	{ LDEB(1); rval= -1;	}
 
     /*  5  */
@@ -106,15 +109,7 @@ int docRtfReadDocumentTree(	const RtfControlWord *	rcw,
 	}
     }
 
-    /*  4  */
-    if  ( docRtfPopTreeFromFieldStack( rr, &internRts ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-
-    docRenumberSeqFields( (int *)0, tree, rr->rrDocument );
-
     *pTreeType= internRts.rtsSelectionScope.ssTreeType;
-
-  ready:
 
     /*  6  */
     docRtfPopTreeStack( rr );
@@ -252,8 +247,7 @@ int docRtfReadNote(		const RtfControlWord *	rcw,
 	    }
 	}
 
-    dfNote= docGetFieldByNumber( &(bd->bdFieldList),
-				    rr->rrTreeStack->rtsLastFieldNumber );
+    dfNote= docGetFieldByNumber( bd, rr->rrTreeStack->rtsLastFieldNumber );
     if  ( ! dfNote )
 	{
 	LPDEB(rr->rrTreeStack->rtsLastFieldNumber,dfNote);

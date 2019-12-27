@@ -6,8 +6,6 @@
 
 #   include	"docEditConfig.h"
 
-#   include	<stdio.h>
-
 #   include	<docBuf.h>
 #   include	<docField.h>
 #   include	<docParaParticules.h>
@@ -23,7 +21,9 @@
 #   include	<docTextParticule.h>
 #   include	<docFields.h>
 #   include	<docNodeTree.h>
+#   include	<utilMemoryBufferPrintf.h>
 
+#   include	<docDebug.h>
 #   include	<appDebugon.h>
 
 /************************************************************************/
@@ -32,26 +32,18 @@
 /*									*/
 /************************************************************************/
 
-static int docSetTocBookmark(	FieldInstructions *	fiBookmark,
-				struct BufferDocument *	bd )
+static long docFindFreeTocBookmarkId(	struct BufferDocument *	bd )
     {
-    int			rval= 0;
     DocumentFieldList *	dfl= &(bd->bdFieldList);
     const int		fieldCount= dfl->dflPagedList.plItemCount;
     int			fieldNr;
 
-    char		markName[DOCmaxBOOKMARK+1];
-
     long		id0= 0;
     long		id1= 0;
 
-    MemoryBuffer	mbBookmark;
-
-    utilInitMemoryBuffer( &mbBookmark );
-
     for ( fieldNr= 0; fieldNr < fieldCount; fieldNr++ )
 	{
-	DocumentField *		df= docGetFieldByNumber( dfl, fieldNr );
+	DocumentField *		df= docGetFieldByNumber( bd, fieldNr );
 	long			id;
 
 	if  ( ! df )
@@ -67,14 +59,26 @@ static int docSetTocBookmark(	FieldInstructions *	fiBookmark,
 	}
 
     if  ( id0 > 1 )
-	{ sprintf( markName, "_Toc%ld", id0- 1 );	}
-    else{ sprintf( markName, "_Toc%ld", id1+ 1 );	}
+	{ return id0- 1;	}
+    else{ return id1+ 1;	}
+    }
 
-    if  ( utilMemoryBufferSetString( &mbBookmark, markName ) )
+static int docSetTocBookmark(	FieldInstructions *	fiBookmark,
+				struct BufferDocument *	bd )
+    {
+    int			rval= 0;
+
+    long		id= docFindFreeTocBookmarkId( bd );
+
+    MemoryBuffer	mbBookmark;
+
+    utilInitMemoryBuffer( &mbBookmark );
+
+    if  ( utilMemoryBufferPrintf( &mbBookmark, "_Toc%ld", id ) < 0 )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     if  ( docSetBookmarkField( fiBookmark, &mbBookmark ) )
-	{ SDEB(markName); rval= -1; goto ready;	}
+	{ LDEB(id); rval= -1; goto ready;	}
 
   ready:
 
@@ -98,7 +102,7 @@ void docRemoveUnbalancedTocBookmarks(	struct BufferDocument *	bdDoc )
 
     for ( fieldNr= 0; fieldNr < fieldCount; fieldNr++ )
 	{
-	struct DocumentField *	df= docGetFieldByNumber( dfl, fieldNr );
+	struct DocumentField *	df= docGetFieldByNumber( bdDoc, fieldNr );
 
 	if  ( ! df )
 	    { continue;		}
@@ -110,11 +114,11 @@ void docRemoveUnbalancedTocBookmarks(	struct BufferDocument *	bdDoc )
 				      df->dfTailPosition.epParaNr	&&
 	      docIsTocBookmark( (long *)0, df )				)
 	    {
+	    DocumentSelection	dsExInside;
 	    DocumentSelection	dsInside;
 	    DocumentSelection	dsAround;
 	    int			headPart;
 	    int			tailPart;
-	    DocumentSelection	dsExInside;
 
 	    if  ( docDelimitFieldInDoc( &dsInside, &dsAround,
 					    &headPart, &tailPart, bdDoc, df ) )
@@ -123,9 +127,7 @@ void docRemoveUnbalancedTocBookmarks(	struct BufferDocument *	bdDoc )
 	    if  ( docStartEditOperation( &eo, &dsInside, bdDoc, df ) )
 		{ LDEB(fieldNr); 	}
 
-	    if  ( docDeleteField( &dsExInside, &eo,
-			dsInside.dsHead.dpNode, dsInside.dsTail.dpNode,
-			headPart, tailPart, df ) )
+	    if  ( docDeleteField( &dsExInside, &eo, df ) )
 		{ LDEB(fieldNr);	}
 	    }
 	}
@@ -178,13 +180,25 @@ static int docFindParaTocBookmark(	DocumentField **	pDfBookmark,
     dfBookmark= docFindTypedFieldInSelection( bd, &ds, DOCfkBOOKMARK, 0 );
     if  ( dfBookmark )
 	{
-	if  ( docSelectionForEditPositionsInTree( dsBookmark, dt,
-					    &(dfBookmark->dfHeadPosition),
-					    &(dfBookmark->dfTailPosition) ) )
+	DocumentSelection	dsInsideBookmark;
+	DocumentSelection	dsAroundBookmark;
+
+	if  ( docDelimitFieldInDoc( &dsInsideBookmark, &dsAroundBookmark,
+				(int *)0, (int *)0, bd, dfBookmark ) )
 	    { LDEB(1); return -1;	}
 
-	*pDfBookmark= dfBookmark;
-	return 0;
+	if  ( dsAroundBookmark.dsHead.dpStroff > ds.dsHead.dpStroff	||
+	      dsAroundBookmark.dsTail.dpStroff < ds.dsTail.dpStroff	)
+	    {
+	    *dsBookmark= ds;
+	    *pDfBookmark= (DocumentField *)0;
+	    return 1;
+	    }
+	else{
+	    *dsBookmark= dsAroundBookmark;
+	    *pDfBookmark= dfBookmark;
+	    return 0;
+	    }
 	}
     else{
 	if  ( ds.dsTail.dpStroff < ds.dsHead.dpStroff )
@@ -251,9 +265,6 @@ const DocumentField * docGetParaTocBookmark(
 	{
 	if  ( ! docIsIBarSelection( &dsBookmark ) )
 	    {
-	    if  ( docSetNodeSelection( &dsBookmark, paraNode ) )
-		{ LDEB(1); goto ready;	}
-
 	    if  ( docSetParaTocBookmark( &dfBookmark, &eo, bd,
 						&dsBookmark, &fiBookmark ) )
 		{ LDEB(1); goto ready;	}
@@ -335,7 +346,7 @@ int docSetTocBookmarks(	struct BufferDocument *		bd )
 
     for ( fieldNr= 0; fieldNr < fieldCount; fieldNr++ )
 	{
-	DocumentField *		dfTc= docGetFieldByNumber( dfl, fieldNr );
+	DocumentField *		dfTc= docGetFieldByNumber( bd, fieldNr );
 	DocumentField *		dfBookmark;
 	DocumentSelection	dsInsideTc;
 	DocumentSelection	dsAroundTc;

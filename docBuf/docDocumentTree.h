@@ -5,8 +5,8 @@
 /*									*/
 /************************************************************************/
 
-#   ifndef	DOC_EXTERNAL_ITEM_H
-#   define	DOC_EXTERNAL_ITEM_H
+#   ifndef	DOC_DOCUMENT_TREE_H
+#   define	DOC_DOCUMENT_TREE_H
 
 #   include	<docListNumberTree.h>
 #   include	<docChildFields.h>

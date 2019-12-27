@@ -6,8 +6,8 @@
 
 #   include	"docLayoutConfig.h"
 
-#   include	"docLayout.h"
 #   include	"docLayoutLine.h"
+#   include	"layoutContext.h"
 #   include	<docTabStop.h>
 #   include	<docTreeType.h>
 #   include	<docObject.h>
@@ -18,7 +18,6 @@
 #   include	<docTextLine.h>
 #   include	<docParaProperties.h>
 #   include	"docParticuleData.h"
-#   include	<docBuf.h>
 #   include	<docObjects.h>
 #   include	<docListLevel.h>
 

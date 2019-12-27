@@ -580,6 +580,33 @@ int docSelectTableRight(	DocumentSelection *		dsSlice,
     return 0;
     }
 
+static int docSelectTableOther(	DocumentSelection *		dsSlice,
+				BufferItem *			cellNode,
+				BufferItem *			headRowNode,
+				BufferItem *			tailRowNode )
+    {
+    int			hcol;
+    int			tcol;
+
+    DocumentPosition	dpHead;
+    DocumentPosition	dpTail;
+
+    hcol= docGetMatchingCell( headRowNode, cellNode );
+    tcol= docGetMatchingCell( tailRowNode, cellNode );
+
+    if  ( hcol < 0 || tcol < 0 )
+	{ LLDEB(hcol,tcol); return -1;	}
+
+    if  ( docHeadPosition( &dpHead, headRowNode->biChildren[hcol] ) )
+	{ LDEB(1); return -1;	}
+    if  ( docTailPosition( &dpTail, tailRowNode->biChildren[tcol] ) )
+	{ LDEB(1); return -1;	}
+
+    docSetRangeSelection( dsSlice, &dpHead, &dpTail, 1 );
+
+    return 0;
+    }
+
 int docSelectTableAbove(	DocumentSelection *		dsSlice,
 				struct BufferItem *		childNode )
     {
@@ -588,15 +615,9 @@ int docSelectTableAbove(	DocumentSelection *		dsSlice,
     int			row;
     int			row1;
 
-    int			hcol;
-    int			tcol;
-
     struct BufferItem *	parentNode;
     struct BufferItem *	rowNode;
     struct BufferItem *	cellNode;
-
-    DocumentPosition	dpHead;
-    DocumentPosition	dpTail;
 
     if  ( docDelimitTable( childNode, &parentNode, &col, &row0, &row, &row1 ) )
 	{ LDEB(1); return -1;	}
@@ -607,19 +628,10 @@ int docSelectTableAbove(	DocumentSelection *		dsSlice,
     rowNode= parentNode->biChildren[row];
     cellNode= rowNode->biChildren[col];
 
-    hcol= docGetMatchingCell( parentNode->biChildren[row0], cellNode );
-    tcol= docGetMatchingCell( parentNode->biChildren[row-1], cellNode );
-    if  ( hcol < 0 || tcol < 0 )
-	{ LLDEB(hcol,tcol); return -1;	}
-
-    if  ( docHeadPosition( &dpHead,
-			    parentNode->biChildren[row0]->biChildren[hcol] ) )
-	{ LDEB(1); return -1;	}
-    if  ( docTailPosition( &dpTail,
-			    parentNode->biChildren[row-1]->biChildren[tcol] ) )
-	{ LDEB(1); return -1;	}
-
-    docSetRangeSelection( dsSlice, &dpHead, &dpTail, 1 );
+    if  ( docSelectTableOther( dsSlice, cellNode,
+				    parentNode->biChildren[row0],
+				    parentNode->biChildren[row- 1] ) )
+	{ LLLDEB(col,row0,row- 1); return -1;	}
 
     return 0;
     }
@@ -632,15 +644,9 @@ int docSelectTableBelow(	DocumentSelection *		dsSlice,
     int			row;
     int			row1;
 
-    int			hcol;
-    int			tcol;
-
     struct BufferItem *	parentNode;
     struct BufferItem *	rowNode;
     struct BufferItem *	cellNode;
-
-    DocumentPosition	dpHead;
-    DocumentPosition	dpTail;
 
     if  ( docDelimitTable( childNode, &parentNode, &col, &row0, &row, &row1 ) )
 	{ LDEB(1); return -1;	}
@@ -651,19 +657,10 @@ int docSelectTableBelow(	DocumentSelection *		dsSlice,
     rowNode= parentNode->biChildren[row];
     cellNode= rowNode->biChildren[col];
 
-    hcol= docGetMatchingCell( parentNode->biChildren[row+1], cellNode );
-    tcol= docGetMatchingCell( parentNode->biChildren[row1], cellNode );
-    if  ( hcol < 0 || tcol < 0 )
-	{ LLDEB(hcol,tcol); return -1;	}
-
-    if  ( docHeadPosition( &dpHead,
-			    parentNode->biChildren[row+1]->biChildren[hcol] ) )
-	{ LDEB(1); return -1;	}
-    if  ( docTailPosition( &dpTail,
-			    parentNode->biChildren[row1]->biChildren[tcol] ) )
-	{ LDEB(1); return -1;	}
-
-    docSetRangeSelection( dsSlice, &dpHead, &dpTail, 1 );
+    if  ( docSelectTableOther( dsSlice, cellNode,
+				    parentNode->biChildren[row0+ 1],
+				    parentNode->biChildren[row1] ) )
+	{ LLLDEB(col,row0+ 1,row1); return -1;	}
 
     return 0;
     }

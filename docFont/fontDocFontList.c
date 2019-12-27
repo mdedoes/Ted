@@ -9,6 +9,7 @@
 #   include	<stdlib.h>
 
 #   include	"fontDocFontList.h"
+#   include	"fontDocFontListImpl.h"
 #   include	"fontDocFont.h"
 #   include	<textOfficeCharset.h>
 #   include	<psDocumentFontStyle.h>
@@ -440,3 +441,96 @@ void fontListClearCharsUsed(	DocumentFontList *	dfl )
 	utilInitIndexMapping( &(df->dfUnicodeToCharset) );
 	}
     }
+
+int fontListMergeLists(		DocumentFontList *		dflTo,
+				const DocumentFontList *	dflFrom,
+				int *				fontMap,
+				const unsigned char *		fontUsed )
+    {
+    int		from;
+
+    for ( from= 0; from < dflFrom->dflFontCount; from++ )
+	{
+	const DocumentFont *	dfFrom;
+	int			to;
+	DocumentFont *		dfTo;
+
+	if  ( ! fontUsed || ! fontUsed[from] )
+	    { continue;	}
+
+	dfFrom= fontFontListGetFontByNumber( dflFrom, from );
+	if  ( ! dfFrom )
+	    { continue;	}
+	if  ( utilMemoryBufferIsEmpty( &(dfFrom->dfName) ) )
+	    { LDEB(from); continue;	}
+
+	to= fontMergeFontIntoList( dflTo, dfFrom );
+	if  ( to < 0 )
+	    { LDEB(to); return -1;	}
+
+	if  ( fontMap )
+	    { fontMap[from]= to;	}
+
+	dfTo= fontFontListGetFontByNumber( dflTo, to );
+	if  ( ! dfTo )
+	    { XDEB(dfTo); continue;	}
+	}
+
+    return 0;
+    }
+
+int fontListAllocateMergeAdmin(	int **				pFontMap,
+				unsigned char **		pFontUsed,
+				const DocumentFontList *	dflFrom )
+    {
+    int			rval= 0;
+
+    int			from;
+
+    int *		fontMap= (int *)0;
+    unsigned char *	fontUsed= (unsigned char *)0;
+
+    if  ( dflFrom->dflFontCount > 0 )
+	{
+	fontMap= (int *)malloc( dflFrom->dflFontCount* sizeof( int ) );
+	if  ( ! fontMap )
+	    { LXDEB(dflFrom->dflFontCount,fontMap); rval= -1; goto ready; }
+	fontUsed= (unsigned char *)malloc(
+			    dflFrom->dflFontCount* sizeof( unsigned char ) );
+	if  ( ! fontUsed )
+	    { LXDEB(dflFrom->dflFontCount,fontUsed); rval= -1; goto ready; }
+
+	for ( from= 0; from < dflFrom->dflFontCount; from++ )
+	    { fontMap[from]= -1; fontUsed[from]= 0; }
+	}
+
+    *pFontMap= fontMap; fontMap= (int *)0; /*  steal */
+    *pFontUsed= fontUsed; fontUsed= (unsigned char *)0; /*  steal */
+
+  ready:
+
+    if  ( fontMap )
+	{ free( fontMap );	}
+    if  ( fontUsed )
+	{ free( fontUsed );	}
+
+    return rval;
+    }
+
+void fontListFontList( const DocumentFontList *	dfl )
+    {
+    int		i;
+
+    appDebug( "FONTLIST: %d fonts\n", dfl->dflFontCount );
+    for ( i= 0; i < dfl->dflFontCount; i++ )
+	{
+	const DocumentFont *	df= fontFontListGetFontByNumber( dfl, i );
+
+	if  ( ! df )
+	    { continue;	}
+
+	appDebug( "FONT %6d: \"%s\"\n", df->dfDocFontNumber,
+				utilMemoryBufferGetString( &(df->dfName) ) );
+	}
+    }
+

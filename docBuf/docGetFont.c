@@ -307,7 +307,7 @@ const DocumentFont * docGetFontOfAttribute(
 				TextAttribute *			ta )
     {
     DocumentProperties *	dp= bd->bdProperties;
-    DocumentFontList *		dfl= dp->dpFontList;
+    struct DocumentFontList *	dfl= dp->dpFontList;
     const DocumentFont *	df;
 
     if  ( ta->taFontNumber < 0 )

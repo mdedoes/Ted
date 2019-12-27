@@ -9,7 +9,7 @@
 #   include	<ctype.h>
 
 #   include	"docRtfWriterImpl.h"
-#   include	"docRtfTags.h"
+#   include	"docRtfControlWord.h"
 #   include	<docFrameProperties.h>
 #   include	<docCellProperties.h>
 #   include	<utilPropMask.h>
@@ -23,83 +23,48 @@
 /*									*/
 /************************************************************************/
 
-void docRtfSaveRowProperties(		RtfWriter *		rw,
+static const int RowRegularProperties[]=
+{
+    RPpropROW_NUMBER,
+    RPpropROW_BAND_NUMBER,
+    RPpropROW_STYLE,
+    RPpropRTOL,
+    RPpropGAP_WIDTH,
+    RPpropLEFT_INDENT,
+    RPpropHEIGHT,
+    RPpropIS_TABLE_HEADER,
+    RPpropKEEP_ON_ONE_PAGE,
+    RPprop_KEEPFOLLOW,
+    RPpropAUTOFIT,
+    RPpropTOP_BORDER,
+    RPpropLEFT_BORDER,
+    RPpropRIGHT_BORDER,
+    RPpropBOTTOM_BORDER,
+    RPpropVERT_BORDER,
+    RPpropHORIZ_BORDER,
+};
+
+static const int RowRegularPropertyCount=
+			sizeof(RowRegularProperties)/sizeof(int);
+
+int docRtfSaveRowProperties(		RtfWriter *		rw,
 					const PropertyMask *	rpSetMask,
 					const RowProperties *	rpSet,
 					int			col0,
 					int			col1 )
     {
-    const int			anyway= 0;
+    const int			scope= RTCscopeROW;
 
-    const struct DocumentAttributeMap * const dam0= (const struct DocumentAttributeMap *)0;
-
-    if  ( PROPmaskISSET( rpSetMask, RPpropROW_NUMBER ) )
-	{ docRtfWriteArgTag( rw, "irow", rpSet->rpRowNumber ); }
-    if  ( PROPmaskISSET( rpSetMask, RPpropROW_BAND_NUMBER ) )
-	{ docRtfWriteArgTag( rw, "irowband", rpSet->rpRowBandNumber ); }
-    if  ( PROPmaskISSET( rpSetMask, RPpropROW_STYLE ) )
-	{ docRtfWriteArgTag( rw, "ts", rpSet->rpRowStyle ); }
-
-    if  ( PROPmaskISSET( rpSetMask, RPpropRTOL ) )
-	{
-	docRtfWriteAltTag( rw, "rtlrow", "ltrrow", rpSet->rpRToL );
-	}
-
-    if  ( PROPmaskISSET( rpSetMask, RPpropGAP_WIDTH ) )
-	{ docRtfWriteArgTag( rw, "trgaph", rpSet->rpHalfGapWidthTwips ); }
-    if  ( PROPmaskISSET( rpSetMask, RPpropLEFT_INDENT ) )
-	{ docRtfWriteArgTag( rw, "trleft", rpSet->rpLeftIndentTwips ); }
-    if  ( PROPmaskISSET( rpSetMask, RPpropHEIGHT ) )
-	{ docRtfWriteArgTag( rw, "trrh", rpSet->rpHeightTwips ); }
-
-    if  ( PROPmaskISSET( rpSetMask, RPpropIS_TABLE_HEADER ) )
-	{ docRtfWriteFlagTag( rw, "trhdr", rpSet->rpIsTableHeader ); }
-    if  ( PROPmaskISSET( rpSetMask, RPpropKEEP_ON_ONE_PAGE ) )
-	{ docRtfWriteFlagTag( rw, "trkeep", rpSet->rpKeepOnOnePage ); }
-    if  ( PROPmaskISSET( rpSetMask, RPprop_KEEPFOLLOW ) )
-	{ docRtfWriteFlagTag( rw, "trkeepfollow", rpSet->rp_Keepfollow ); }
-    if  ( PROPmaskISSET( rpSetMask, RPpropAUTOFIT ) )
-	{ docRtfWriteArgTag( rw, "trautofit", rpSet->rpAutofit ); }
-
-    docRtfWriteNextLine( rw );
-
-    if  ( PROPmaskISSET( rpSetMask, RPpropTOP_BORDER ) )
-	{
-	docRtfSaveBorderByNumber( rw, "trbrdrt",
-				    rpSet->rpTopBorderNumber, anyway );
-	}
-    if  ( PROPmaskISSET( rpSetMask, RPpropLEFT_BORDER ) )
-	{
-	docRtfSaveBorderByNumber( rw, "trbrdrl",
-				    rpSet->rpLeftBorderNumber, anyway );
-	}
-    if  ( PROPmaskISSET( rpSetMask, RPpropRIGHT_BORDER ) )
-	{
-	docRtfSaveBorderByNumber( rw, "trbrdrr",
-				    rpSet->rpRightBorderNumber, anyway );
-	}
-    if  ( PROPmaskISSET( rpSetMask, RPpropBOTTOM_BORDER ) )
-	{
-	docRtfSaveBorderByNumber( rw, "trbrdrb",
-				    rpSet->rpBottomBorderNumber, anyway );
-	}
-    if  ( PROPmaskISSET( rpSetMask, RPpropVERT_BORDER ) )
-	{
-	docRtfSaveBorderByNumber( rw, "trbrdrv",
-				    rpSet->rpVerticalBorderNumber, anyway );
-	}
-    if  ( PROPmaskISSET( rpSetMask, RPpropHORIZ_BORDER ) )
-	{
-	docRtfSaveBorderByNumber( rw, "trbrdrh",
-				    rpSet->rpHorizontalBorderNumber, anyway );
-	}
+    if  ( docRtfWriteItemProperties( rw, scope, rpSet,
+			(RtfGetIntProperty)docGetRowProperty, rpSetMask,
+			RowRegularProperties, RowRegularPropertyCount ) )
+	{ LLDEB(scope,RowRegularPropertyCount); return -1;	}
 
     /**/
     if  ( PROPmaskISSET( rpSetMask, RPpropSHADING ) )
 	{
-	docRtfSaveShadingByNumber( rw, rpSet->rpShadingNumber,
-		DOCrtf_RowShadingTags, DOCrtf_RowShadingTagCount,
-		"trcfpat", "trcbpat", "trshdng" );
+	docRtfSaveShadingByNumber( rw, RTCscopeROW_SHADING,
+						rpSet->rpShadingNumber );
 	}
 
     /**/
@@ -209,6 +174,9 @@ void docRtfSaveRowProperties(		RtfWriter *		rw,
     if  ( PROPmaskISSET( rpSetMask, RPprop_CELL_COUNT )	||
 	  PROPmaskISSET( rpSetMask, RPprop_CELL_PROPS )	)
 	{
+	const struct DocumentAttributeMap * const dam0=
+				    (const struct DocumentAttributeMap *)0;
+
 	int			leftOffset= rpSet->rpLeftIndentTwips;
 	PropertyMask		cpAllMask;
 	const CellProperties *	cp= rpSet->rpCells;
@@ -232,7 +200,10 @@ void docRtfSaveRowProperties(		RtfWriter *		rw,
 		docCellPropertyDifference( &cpSetMask, &cpRef, &cpAllMask,
 								    cp, dam0 );
 
-		docRtfSaveCellProperties( rw, &cpSetMask, cp, leftOffset );
+		if  ( docRtfSaveCellProperties( rw, &cpSetMask,
+							cp, leftOffset ) )
+		    { LDEB(col); return -1;	}
+
 		leftOffset += cp->cpWide;
 		}
 	    }
@@ -240,6 +211,6 @@ void docRtfSaveRowProperties(		RtfWriter *		rw,
 	/*docCleanCellProperties( &cpRef );*/
 	}
 
-    return;
+    return 0;
     }
 

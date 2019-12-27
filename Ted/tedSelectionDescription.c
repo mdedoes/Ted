@@ -19,8 +19,8 @@
 #   include	<docEditCommand.h>
 #   include	<appEditApplication.h>
 #   include	<appEditDocument.h>
-#   include	<docLayout.h>
 #   include	<docBuf.h>
+#   include	<layoutContext.h>
 
 #   include	<appDebugon.h>
 

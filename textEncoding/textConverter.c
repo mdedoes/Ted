@@ -30,6 +30,57 @@
 #	define	ICONV_NONE	((struct TextConverterImpl *)-1)
 #   endif
 
+typedef struct TextconverterCodePage
+    {
+    const char * const		tcpName;
+    const int * const		tcpGlyphUnicodes;
+    IndexMapping * const	tcpUnicodeToGlyphMapping;
+    } TextconverterCodePage;
+
+const TextconverterCodePage	TEXT_CONVERTER_FALLBACK_PAGES[] =
+{
+    { "SYMBOL",
+	    uniSymbolGlyphUnicodes,
+	    &UNI_SymbolToGlyphMapping,		},
+    { "DINGBATS",
+	    uniDingbatsGlyphUnicodes,
+	    &UNI_DingbatsToGlyphMapping,	},
+    { "CP1250",
+	    uniWinCp1250GlyphUnicodes,
+	    &UNI_CP1250ToGlyphMapping		},
+    { "CP1251",
+	    uniWinCp1251GlyphUnicodes,
+	    &UNI_CP1251ToGlyphMapping		},
+    { "CP1252", /* IS A MUST-SUPPORT as CP1252 is the default RTF encoding */
+	    uniWinCp1252GlyphUnicodes,
+	    &UNI_CP1252ToGlyphMapping		},
+    { "CP1253",
+	    uniWinCp1253GlyphUnicodes,
+	    &UNI_CP1253ToGlyphMapping		},
+    { "CP1254",
+	    uniWinCp1254GlyphUnicodes,
+	    &UNI_CP1254ToGlyphMapping		},
+};
+
+static const TextconverterCodePage * textConverterGetCodePageByName(
+					const char *	name )
+    {
+    const int	n= sizeof(TEXT_CONVERTER_FALLBACK_PAGES)/
+				    sizeof(TextconverterCodePage);
+    int		i;
+
+    for ( i= 0; i < n; i++ )
+	{
+	const	TextconverterCodePage *	tcp= TEXT_CONVERTER_FALLBACK_PAGES+ i;
+
+	if  ( ! strcmp( tcp->tcpName, name ) )
+	    { return tcp;	}
+	}
+
+    SDEB(name);
+    return (TextconverterCodePage *)0;
+    }
+
 const char * textConverterGetNativeEncodingName(	TextConverter *	tc )
     {
     return tc->tcNativeEncodingName;
@@ -173,6 +224,8 @@ static int textConverterConvertBytesToUtf8(
 
     while( len > 0 )
 	{
+	int	unicode;
+
 	if  ( buffered >= scratchLen )
 	    {
 	    step= textConverterProduce( tc, through, produced, scratch, buffered );
@@ -181,15 +234,25 @@ static int textConverterConvertBytesToUtf8(
 	    produced += step; buffered= 0;
 	    }
 
-	if  ( unicodes[*text&0xff] < 0 )
+	unicode= unicodes[*text&0xff];
+	if  ( unicode < 0 )
 	    {
-	    step= uniPutUtf8( scratch+ buffered, *text&0xff );	
+	    if  ( *text == '\0' )
+		{
+		scratch[buffered]= '\0';
+		step= 1;
+		}
+	    else{
+		step= uniPutUtf8( scratch+ buffered, *text&0xff );	
+		if  ( step < 1 )
+		    { XLDEB(*text,step); return -1;	}
+		}
 	    }
 	else{
 	    step= uniPutUtf8( scratch+ buffered, unicodes[*text&0xff] );
+	    if  ( step < 1 )
+		{ XXLDEB(*text,unicodes[*text&0xff],step); return -1;	}
 	    }
-	if  ( step < 1 )
-	    { LDEB(step); return -1;	}
 
 	text++; len--; consumed++; buffered += step;
 	}
@@ -395,36 +458,19 @@ int textConverterConvertToUtf8(	TextConverter *		tc,
 			iconv_open( "UTF-8", tc->tcNativeEncodingName );
 #	    endif
 
-	    if  ( tc->tcIconvToUtf8 == ICONV_NONE		&&
-		  ! strcmp( tc->tcNativeEncodingName, "SYMBOL" )	)
-		{
-		return textConverterConvertBytesToUtf8( tc,
-					    uniSymbolGlyphUnicodes,
-					    through, pConsumed,
-					    produced, text, len );
-		}
-
-	    if  ( tc->tcIconvToUtf8 == ICONV_NONE		&&
-		  ! strcmp( tc->tcNativeEncodingName, "DINGBATS" )	)
-		{
-		return textConverterConvertBytesToUtf8( tc,
-					    uniDingbatsGlyphUnicodes,
-					    through, pConsumed,
-					    produced, text, len );
-		}
-
-	    /* IS A MUST-SUPPORT as it is the default RTF encoding */
-	    if  ( tc->tcIconvToUtf8 == ICONV_NONE		&&
-		  ! strcmp( tc->tcNativeEncodingName, "CP1252" ) )
-		{
-		return textConverterConvertBytesToUtf8( tc,
-					    uniWinCp1252GlyphUnicodes,
-					    through, pConsumed,
-					    produced, text, len );
-		}
-
 	    if  ( tc->tcIconvToUtf8 == ICONV_NONE )
 		{
+		const TextconverterCodePage * const	tcp=
+		    textConverterGetCodePageByName( tc->tcNativeEncodingName );
+
+		if  ( tcp )
+		    {
+		    return textConverterConvertBytesToUtf8( tc,
+					    tcp->tcpGlyphUnicodes,
+					    through, pConsumed,
+					    produced, text, len );
+		    }
+
 		SXDEB(tc->tcNativeEncodingName,tc->tcIconvToUtf8);
 		return -1;
 		}
@@ -475,8 +521,10 @@ int textConverterConvertFromUtf8(	TextConverter *		tc,
 					const char *		text,
 					int			len )
     {
-    if  ( tc				&&
-	  tc->tcNativeEncodingName	&&
+    if  ( ! tc )
+	{ XDEB(tc); return -1;	}
+
+    if  ( tc->tcNativeEncodingName	&&
 	  tc->tcNativeEncodingName[0]	)
 	{
 	if  ( tc->tcIconvFrUtf8 == ICONV_NONE )
@@ -486,17 +534,7 @@ int textConverterConvertFromUtf8(	TextConverter *		tc,
 			    iconv_open( tc->tcNativeEncodingName, "UTF-8" );
 #	    endif
 
-	    if  ( tc->tcIconvFrUtf8 == ICONV_NONE		&&
-		  ! strcmp( tc->tcNativeEncodingName, "SYMBOL" )	)
-		{
-		return textConverterConvertBytesFromUtf8(
-					    &UNI_SymbolToGlyphMapping,
-					    uniSymbolGlyphUnicodes,
-					    through, tc->tcProduce, pConsumed,
-					    produced, text, len );
-		}
-
-	    if  ( tc->tcIconvFrUtf8 == ICONV_NONE		&&
+	    if  ( tc->tcIconvFrUtf8 == ICONV_NONE			&&
 		  ! strcmp( tc->tcNativeEncodingName, "DINGBATS" )	)
 		{
 #		if 1
@@ -511,19 +549,20 @@ int textConverterConvertFromUtf8(	TextConverter *		tc,
 #		endif
 		}
 
-	    /* IS A MUST-SUPPORT as it is the default RTF encoding */
-	    if  ( tc->tcIconvFrUtf8 == ICONV_NONE			&&
-		  ! strcmp( tc->tcNativeEncodingName, "CP1252" )	)
-		{
-		return textConverterConvertBytesFromUtf8(
-					    &UNI_CP1252ToGlyphMapping,
-					    uniWinCp1252GlyphUnicodes,
-					    through, tc->tcProduce, pConsumed,
-					    produced, text, len );
-		}
-
 	    if  ( tc->tcIconvFrUtf8 == ICONV_NONE )
 		{
+		const TextconverterCodePage * const	tcp=
+		    textConverterGetCodePageByName( tc->tcNativeEncodingName );
+
+		if  ( tcp )
+		    {
+		    return textConverterConvertBytesFromUtf8(
+					    tcp->tcpUnicodeToGlyphMapping,
+					    tcp->tcpGlyphUnicodes,
+					    through, tc->tcProduce, pConsumed,
+					    produced, text, len );
+		    }
+
 		SXDEB(tc->tcNativeEncodingName,tc->tcIconvFrUtf8);
 		return -1;
 		}

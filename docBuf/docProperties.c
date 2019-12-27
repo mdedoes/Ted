@@ -21,7 +21,6 @@
 #   include	<utilPalette.h>
 #   include	<docListAdmin.h>
 #   include	<fontDocFontList.h>
-#   include	<fontDocFont.h>
 #   include	"docAttributes.h"
 
 #   include	"docDebug.h"
@@ -205,10 +204,10 @@ int docMergeDocumentLists(	int **				pFontMap,
     int				rval= 0;
 
     DocumentProperties *	dpTo= bdTo->bdProperties;
-    DocumentFontList *		dflTo= dpTo->dpFontList;
+    struct DocumentFontList *	dflTo= dpTo->dpFontList;
 
     const DocumentProperties *	dpFrom= bdFrom->bdProperties;
-    const DocumentFontList *	dflFrom= dpFrom->dpFontList;
+    const struct DocumentFontList *	dflFrom= dpFrom->dpFontList;
 
     const ListAdmin *		laFrom= dpFrom->dpListAdmin;
     const DocumentListTable *	dltFrom= &(laFrom->laListTable);
@@ -223,7 +222,6 @@ int docMergeDocumentLists(	int **				pFontMap,
     int *			listIndexMap= (int *)0;
 
     int				from;
-    int				to;
 
     DocumentPosition		dpBeginFrom;
     DocumentSelection		dsIgnored;
@@ -233,19 +231,8 @@ int docMergeDocumentLists(	int **				pFontMap,
 
     /*****/
 
-    if  ( dflFrom->dflFontCount > 0 )
-	{
-	fontMap= (int *)malloc( dflFrom->dflFontCount* sizeof( int ) );
-	if  ( ! fontMap )
-	    { LXDEB(dflFrom->dflFontCount,fontMap); rval= -1; goto ready; }
-	fontUsed= (unsigned char *)malloc(
-			    dflFrom->dflFontCount* sizeof( unsigned char ) );
-	if  ( ! fontUsed )
-	    { LXDEB(dflFrom->dflFontCount,fontUsed); rval= -1; goto ready; }
-
-	for ( from= 0; from < dflFrom->dflFontCount; from++ )
-	    { fontMap[from]= -1; fontUsed[from]= 0; }
-	}
+    if  ( fontListAllocateMergeAdmin( &fontMap, &fontUsed, dflFrom ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
     if  ( lotFrom->lotOverrideCount > 0 )
 	{
@@ -294,30 +281,8 @@ int docMergeDocumentLists(	int **				pFontMap,
 
     /*****/
 
-    for ( from= 0; from < dflFrom->dflFontCount; from++ )
-	{
-	const DocumentFont *	dfFrom;
-	DocumentFont *		dfTo;
-
-	if  ( ! fontUsed || ! fontUsed[from] )
-	    { continue;	}
-
-	dfFrom= fontFontListGetFontByNumber( dflFrom, from );
-	if  ( ! dfFrom )
-	    { continue;	}
-	if  ( utilMemoryBufferIsEmpty( &(dfFrom->dfName) ) )
-	    { LDEB(from); continue;	}
-
-	to= fontMergeFontIntoList( dflTo, dfFrom );
-	if  ( to < 0 )
-	    { LDEB(to); rval= -1; goto ready;	}
-
-	fontMap[from]= to;
-
-	dfTo= fontFontListGetFontByNumber( dflTo, to );
-	if  ( ! dfTo )
-	    { XDEB(dfTo); continue;	}
-	}
+    if  ( fontListMergeLists( dflTo, dflFrom, fontMap, fontUsed ) )
+	{ LDEB(1); rval= -1; goto ready;	}
 
     /*****/
 
@@ -326,9 +291,8 @@ int docMergeDocumentLists(	int **				pFontMap,
 						fontMap, colorMap, rulerMap ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    /*  steal */
-    *pFontMap= fontMap; fontMap= (int *)0;
-    *pListStyleMap= lsMap; lsMap= (int *)0;
+    *pFontMap= fontMap; fontMap= (int *)0; /*  steal */
+    *pListStyleMap= lsMap; lsMap= (int *)0; /*  steal */
 
   ready:
 

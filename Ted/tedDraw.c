@@ -21,6 +21,7 @@
 #   include	<docDocumentTree.h>
 #   include	<docBuf.h>
 #   include	<geo2DInteger.h>
+#   include	<layoutContext.h>
 
 #   include	<docDebug.h>
 #   include	<appDebugon.h>
@@ -117,7 +118,7 @@ static int tedDrawSelection(	TedDocument *			td,
     if  ( sdd->sddSelRootNode->biTreeType != DOCinBODY			&&
 	  sdd->sddSelRootNode->biTreeType != DOCinSHPTXT		&&
 	  docScreenDrawCheckPageOfSelectedTree( sg, &bodySectNode, ds,
-			sdd->sddSelRootTree, &(dc->dcLayoutContext) )	)
+			sdd->sddSelRootTree, dc->dcLayoutContext )	)
 	{ LDEB(1); return -1; }
 
     if  ( ! sd->sdIsIBarSelection )
@@ -143,12 +144,12 @@ static int tedDrawSelection(	TedDocument *			td,
 	DocumentRectangle		drIBarPixels;
 
 	docScreenGetIBarRect( &drIBarPixels, &(sg->sgHead),
-						&(dc->dcLayoutContext) );
+						dc->dcLayoutContext );
 
 	if  ( geoIntersectRectangle( &drIBarPixels,
 				    &drIBarPixels, dc->dcClipRect )	&&
 	      ! td->tdShowIBarId					)
-	    { docScreenDrawIBar( &drIBarPixels, &(dc->dcLayoutContext) ); }
+	    { docScreenDrawIBar( &drIBarPixels, dc->dcLayoutContext ); }
 	}
     else{
 	struct InsertedObject *	io;
@@ -166,7 +167,7 @@ static int tedDrawSelection(	TedDocument *			td,
 	    const int		afterObject= 0;
 
 	    tedGetObjectRectangle( &drObject, xp, io, &(sg->sgHead),
-				    &(dc->dcLayoutContext), afterObject, td );
+				    dc->dcLayoutContext, afterObject, td );
 
 	    if  ( geoIntersectRectangle( (DocumentRectangle *)0,
 						&drObject, dc->dcClipRect ) )
@@ -222,7 +223,7 @@ static void tedSetScreenDrawingData(
     return;
     }
 
-static void tedSetDrawingContext(
+static void tedSetDrawingContext( LayoutContext *		lc,
 				DrawingContext *		dc,
 				EditDocument *			ed,
 				const DocumentRectangle *	drClipPixels )
@@ -232,9 +233,10 @@ static void tedSetDrawingContext(
     struct BufferDocument *	bd= td->tdDocument;
     struct BufferItem * const	rootNode= bd->bdBody.dtRoot;
 
-    tedSetScreenLayoutContext( &(dc->dcLayoutContext), ed );
-
+    tedSetScreenLayoutContext( lc, ed );
     docScreenDrawSetFunctions( dc );
+
+    dc->dcLayoutContext= lc;
 
     dc->dcDrawTableGrid= ( td->tdDrawTableGrid >= 0 );
     dc->dcClipRect= drClipPixels;
@@ -249,9 +251,9 @@ static void tedSetDrawingContext(
     dc->dcSelectionTailPositionFlags= 0;
     dc->dcSelectionIsTableRectangle= 0;
 
-    dc->dcFirstPage= docGetPageForYPixels( &(dc->dcLayoutContext),
+    dc->dcFirstPage= docGetPageForYPixels( dc->dcLayoutContext,
 						    drClipPixels->drY0 );
-    dc->dcLastPage=  docGetPageForYPixels( &(dc->dcLayoutContext),
+    dc->dcLastPage=  docGetPageForYPixels( dc->dcLayoutContext,
 						    drClipPixels->drY1 );
 
     if  ( dc->dcFirstPage > rootNode->biBelowPosition.lpPage )
@@ -297,6 +299,8 @@ void tedDrawRectangle(		EditDocument *		ed,
     struct DocumentTree *	selRootTree= (struct DocumentTree *)0;
     struct BufferItem *		selRootBodySectNode= (struct BufferItem *)0;
 
+    LayoutContext		lc;
+
 #   if LOG_REDRAWS
     geoLogRectangle( "REDRAW", drClipPixels );
 #   endif
@@ -312,9 +316,10 @@ void tedDrawRectangle(		EditDocument *		ed,
 	{ highlightColor= &(td->tdCopiedSelColor);	}
     else{ highlightColor= &(td->tdSelColor);		}
 
+    layoutInitContext( &lc );
     docInitDrawingContext( &dc );
 
-    tedSetDrawingContext( &dc, ed, drClipPixels );
+    tedSetDrawingContext( &lc, &dc, ed, drClipPixels );
 
     /*  2a  */
     if  ( tedHasSelection( ed ) )
@@ -350,7 +355,7 @@ void tedDrawRectangle(		EditDocument *		ed,
 	DocumentRectangle	drHair;
 	int			blackSet= 0;
 
-	const LayoutContext *	lc= &(dc.dcLayoutContext);
+	const LayoutContext *	lc= dc.dcLayoutContext;
 	int			ox= lc->lcOx;
 	int			oy= lc->lcOy;
 

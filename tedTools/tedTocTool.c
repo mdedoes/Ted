@@ -73,7 +73,7 @@ static AppConfigurableResource TED_TedTocSubjectResourceTable[]=
     {
     APP_RESOURCE( "tocToolToc",
 		offsetof(InspectorSubjectResources,isrSubjectName),
-		"Contents" ),
+		"Table of Contents" ),
 
     APP_RESOURCE( "tocToolChangeToc",
 		offsetof(InspectorSubjectResources,isrApplyToSubject),

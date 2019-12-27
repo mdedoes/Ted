@@ -341,6 +341,10 @@ BitmapFileFormat	bmFileFormats[]=
 			    COMPRESSION_THUNDERSCAN,	&bmTiffFile },
 	{ "TIFF  JPEG", "tiffJpegFile",
 			    COMPRESSION_JPEG,		&bmTiffFile },
+	{ "TIFF  Deflate", "tiffDeflateFile",
+			    COMPRESSION_DEFLATE,	&bmTiffFile },
+	{ "TIFF  Adobe Deflate", "tiffAdobeDeflateFile",
+			    COMPRESSION_ADOBE_DEFLATE,	&bmTiffFile },
 #	endif /* USE_LIBTIFF */
 
 #	if USE_LIBXPM
@@ -355,19 +359,19 @@ BitmapFileFormat	bmFileFormats[]=
 			    2,				&bmWebpFile },
 #	endif
 
-	{ "PGM  Gray Map (Text)", "pgm2File",
+	{ "PGM  Gray Map (2:Text)", "pgm2File",
 			    2,				&bmPgmFile },
-	{ "PGM  Gray Map (Raw)", "pgm5File",
+	{ "PGM  Gray Map (5:Raw)", "pgm5File",
 			    5,				&bmPgmFile },
-	{ "PBM  Bitmap (Text)", "pgm1File",
+	{ "PBM  Bitmap (1:Text)", "pgm1File",
 			    1,				&bmPbmFile },
-	{ "PBM  Bitmap (Raw)", "pgm4File",
+	{ "PBM  Bitmap (4:Raw)", "pgm4File",
 			    4,				&bmPbmFile },
-	{ "PPM  Pixmap (Text)", "pgm3File",
+	{ "PPM  Pixmap (3:Text)", "pgm3File",
 			    3,				&bmPbmFile },
-	{ "PPM  Pixmap (Raw)", "pgm6File",
+	{ "PPM  Pixmap (6:Raw)", "pgm6File",
 			    6,				&bmPbmFile },
-	{ "WBMP  Wireless Bitmap", "wbmp0File",
+	{ "WBMP Wireless Bitmap", "wbmp0File",
 			    0,				&bmWbmpFile },
 	{ "WMF  Windows Meta File", "wmfFile",
 			    0,				&bmWmfFile },

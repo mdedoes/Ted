@@ -51,11 +51,12 @@ void docSetIBarSelection(	DocumentSelection *		ds,
     return;
     }
 
-void docSetRangeSelection(	DocumentSelection *		ds,
+int docSetRangeSelection(	DocumentSelection *		ds,
 				const DocumentPosition *	dpHead,
 				const DocumentPosition *	dpTail,
 				int				direction )
     {
+    int			rval;
     DocumentSelection	dsHere;
 
     docInitDocumentSelection( &dsHere );
@@ -80,11 +81,20 @@ void docSetRangeSelection(	DocumentSelection *		ds,
 	      rowNode0->biRowTableFirst == rowNode1->biRowTableFirst	)
 	    {
 	    if  ( rowNode0->biRowTablePast != rowNode1->biRowTablePast )
-		{ LLDEB(rowNode0->biRowTablePast,rowNode1->biRowTablePast); }
+		{
+		LLDEB(rowNode0->biRowTablePast,rowNode1->biRowTablePast);
+		rval= -1;
+		}
 	    if  ( rowNode0->biNumberInParent < rowNode1->biRowTableFirst )
-		{ LLDEB(rowNode0->biNumberInParent,rowNode1->biRowTableFirst); }
+		{
+		LLDEB(rowNode0->biNumberInParent,rowNode1->biRowTableFirst);
+		rval= -1;
+		}
 	    if  ( rowNode0->biNumberInParent >= rowNode1->biRowTablePast )
-		{ LLDEB(rowNode0->biNumberInParent,rowNode1->biRowTablePast); }
+		{
+		LLDEB(rowNode0->biNumberInParent,rowNode1->biRowTablePast);
+		rval= -1;
+		}
 
 	    if  ( cellNode0->biNumberInParent > cellNode1->biNumberInParent )
 		{
@@ -106,7 +116,7 @@ void docSetRangeSelection(	DocumentSelection *		ds,
     docSetSelectionScope( &dsHere );
 
     *ds= dsHere;
-    return;
+    return rval;
     }
 
 int docIsIBarSelection( const DocumentSelection *		ds )

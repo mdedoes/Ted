@@ -334,7 +334,7 @@ int appMakeDocumentWidget(	EditDocument *		ed )
 
 static int appDocMakeToolbar(	EditDocument *		ed )
     {
-#   if 1
+#   if 0
     Arg			al[20];
     int			ac= 0;
 

@@ -11,6 +11,7 @@
 #   include	<ctype.h>
 
 #   include	"tedEdit.h"
+#   include	"tedEditOperation.h"
 #   include	<docRtfTrace.h>
 #   include	<docTreeNode.h>
 #   include	<appEditDocument.h>
@@ -21,38 +22,10 @@
 #   include	<docSelectionGeometry.h>
 #   include	<docSelectionDescription.h>
 #   include	<docBuf.h>
+#   include	<docTreeType.h>
 
 #   include	<docDebug.h>
 #   include	<appDebugon.h>
-
-/************************************************************************/
-/*									*/
-/*  Wrapper around docIncludeDocument(): More relayout admin.		*/
-/*									*/
-/************************************************************************/
-
-int tedIncludeDocument(	TedEditOperation *		teo,
-			struct DocumentCopyJob *	dcj )
-    {
-    EditOperation *	eo= &(teo->teoEo);
-    int			beginStrlenOld= docParaStrlen( eo->eoHeadDp.dpNode );
-
-    if  ( docIncludeDocument( dcj ) )
-	{ LDEB(1); return -1;	}
-
-    if  ( eo->eoParagraphsInserted == 0 )
-	{
-	int	beginStrlenNew= docParaStrlen( eo->eoHeadDp.dpNode );
-	int	stroffTail= eo->eoSelectedRange.erTail.epStroff;
-	int	stroffShift= beginStrlenNew- beginStrlenOld;
-
-	/*  C  */
-	docSetParagraphAdjust( eo, eo->eoHeadDp.dpNode,
-						stroffShift, stroffTail );
-	}
-
-    return 0;
-    }
 
 /************************************************************************/
 /*									*/
@@ -75,7 +48,7 @@ int tedEditIncludeDocument(	TedEditOperation *		teo,
 	{ LDEB(1); return -1;	}
 
     /*  7  */
-    if  ( tedIncludeDocument( teo, dcj ) )
+    if  ( docEditIncludeDocument( eo, dcj ) )
 	{ LDEB(1); return -1;	}
 
     switch( posWhere )
@@ -157,7 +130,7 @@ int tedIncludePlainDocument(	EditDocument *		ed,
 
     /*  5,6  */
     if  ( docSet2DocumentCopyJob( &dcj, eo, bdFrom, &(bdFrom->bdBody),
-			&(ed->edFilename), teo.teoSavedTextAttributeNumber ) )
+			&(ed->edFilename), eo->eoSavedTextAttributeNumber ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     /*  7  */
@@ -206,6 +179,13 @@ int tedIncludeRtfDocument(	EditDocument *		ed,
     docInitDocumentCopyJob( &dcj );
 
     tedStartEditOperation( &teo, &sg, &sd, ed, fullWidth, traced );
+
+    if  ( sd.sdInTreeType != DOCinBODY		&&
+	  bdFrom->bdNotesList.nlNoteCount > 0	)
+	{
+	SLDEB(docTreeTypeStr(sd.sdInTreeType),bdFrom->bdNotesList.nlNoteCount);
+	goto ready;
+	}
 
     /*  1  */
     if  ( bdFrom->bdProperties->dpContainsTables )

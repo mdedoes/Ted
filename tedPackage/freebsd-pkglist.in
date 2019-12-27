@@ -1,7 +1,7 @@
 @name ted
 @comment @display Ted, An easy rich text processor
 @comment Maintainer: Mark de Does <mark@mdedoes.com>
-@comment Version: 2.23h
+@comment Version: 2.23nx
 
 @comment use pkg_info -E -x '.*tiff.*' to find dependencies
 @pkgdep @PCRE_VERSION@
@@ -113,7 +113,7 @@ share/Ted/varia/Ted.mailcap
 share/Ted/varia/Ted.desktop
 share/Ted/varia/base35.fonts.conf
 share/Ted/varia/base35.rtf
-share/Ted/varia/ted-2.23h.lsm
+share/Ted/varia/ted-2.23nx.lsm
 share/Ted/varia/README
 
 share/Ted/config/ted.gtkrc-2.0

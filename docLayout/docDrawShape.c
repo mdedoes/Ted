@@ -75,12 +75,12 @@ static int docDrawDrawingShape(	const DocumentRectangle *	drOutside,
 				DrawingContext *		dc,
 				void *				through )
     {
-    int				rval= 0;
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    int					rval= 0;
+    const struct LayoutContext *	lc= dc->dcLayoutContext;
 
-    AffineTransform2D		atHere;
-    DocumentRectangle		drHere;
-    DocumentRectangle		drNorm;
+    AffineTransform2D			atHere;
+    DocumentRectangle			drHere;
+    DocumentRectangle			drNorm;
 
     const struct BufferItem *	saveBodySectNode= dc->dcBodySectNode;
 
@@ -159,13 +159,13 @@ int docDrawShapeText(	const DocumentRectangle *	drOutside,
 			DrawingContext *		dc,
 			void *				through )
     {
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const struct LayoutContext *	lc= dc->dcLayoutContext;
 
-    BlockOrigin			bo ;
-    LayoutPosition		lpBelow;
+    BlockOrigin				bo ;
+    LayoutPosition			lpBelow;
 
-    RectangleOffsets		padding;
-    DocumentRectangle		drInside;
+    RectangleOffsets			padding;
+    DocumentRectangle			drInside;
 
     docInitBlockOrigin( &bo );
     docInitLayoutPosition( &lpBelow );
@@ -202,7 +202,7 @@ int docDrawShape(	DrawingContext *		dc,
 			const struct DocumentRectangle * drOutside,
 			const InsertedObject *		io )
     {
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const struct LayoutContext * lc= dc->dcLayoutContext;
     DrawingShape *		ds= io->ioDrawingShape;
 
     int				page= io->ioY0Position.lpPage;

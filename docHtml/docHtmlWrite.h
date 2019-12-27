@@ -33,7 +33,6 @@ extern int docHtmlSaveDocument(	struct SimpleOutputStream *	sos,
 
 extern int docEmlSaveDocument(	struct SimpleOutputStream *	sos,
 				struct BufferDocument *		bd,
-				const char *			mimeBoundary,
 				const struct LayoutContext *	lc );
 
 extern int docEpubSaveDocument(	struct SimpleOutputStream *	sos,

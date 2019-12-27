@@ -36,7 +36,7 @@ int docSelectionSameRoot(
     return docSelectionSameScope( ssFrom, ssTo );
     }
 
-int docSelectionSameInstance(	const struct DocumentTree *		tree,
+int docSelectionSameInstance(	const struct DocumentTree *	tree,
 				int				page,
 				int				column )
     {

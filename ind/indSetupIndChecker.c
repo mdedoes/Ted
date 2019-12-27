@@ -74,8 +74,7 @@ static int indSpellPrivateDictionaryName(
     if  ( utilMemoryBufferSetString( &relative, locale ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( utilMemoryBufferAppendBytes( &relative,
-		    (const unsigned char *)suffix, strlen( suffix ) ) )
+    if  ( utilMemoryBufferAppendString( &relative, suffix ) )
 	{ LDEB(1); return -1;	}
 
     if  ( fileAbsoluteName( dictName, &relative, 0, &dicts ) < 0 )

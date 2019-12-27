@@ -55,6 +55,9 @@ typedef struct TedAppResources
     char *			tarInlineHtmlImagesString;
     int				tarInlineHtmlImagesInt;
 
+    char *			tarHonourSpecialSectBreaksString;
+    int				tarHonourSpecialSectBreaksInt;
+
 				/****************************************/
 				/*  Global data.			*/
 				/****************************************/

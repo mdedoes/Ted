@@ -100,7 +100,7 @@ static int docFindPositionDrawParticule(
     PositionFindJob *		pfj= (PositionFindJob *)dtl->dtlThrough;
 
     const DrawingContext *	dc= dtl->dtlDrawingContext;
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
 
     int				x0Pixels= docLayoutXPixels( lc, x0Twips );
     int				x1Pixels= docLayoutXPixels( lc, x1Twips );
@@ -410,7 +410,7 @@ static int docFindPositionDrawTextRun(
     int				rval= SCANadviceOK;
 
     const DrawingContext *	dc= dtl->dtlDrawingContext;
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
 
     const char *		printString= outputString;
     char *			scratchString= (char *)0;
@@ -579,7 +579,7 @@ static int docFindPositionStartTextLine(
 
     {
     const DrawingContext *	dc= dtl->dtlDrawingContext;
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
     int				xPixels;
 
     xPixels= docLayoutXPixels( lc, x0Twips );
@@ -596,7 +596,7 @@ static int docFindPositionFinishTextLine(
 				int				x1Twips )
     {
     const DrawingContext *	dc= dtl->dtlDrawingContext;
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
     int				x1Pixels;
 
     x1Pixels= docLayoutXPixels( lc, x1Twips );
@@ -649,7 +649,7 @@ static int docFindPositionDrawFtnsep(
 /************************************************************************/
 
 void docSetFindPositionJob(	PositionFindJob *		pfj,
-				const LayoutContext *		lc,
+				const struct LayoutContext *	lc,
 				int				docXPixels,
 				int				docYPixels )
 
@@ -661,7 +661,7 @@ void docSetFindPositionJob(	PositionFindJob *		pfj,
     pfj->pfjPage= docGetPageForYPixels( lc, docYPixels );
     docGetPageRectPixels( &(pfj->pfjPageRectPixels), lc, pfj->pfjPage );
 
-    dc->dcLayoutContext= *lc;
+    dc->dcLayoutContext= lc;
     dc->dcDrawTableGrid= 0;
     dc->dcClipRect= &(pfj->pfjPageRectPixels);
 

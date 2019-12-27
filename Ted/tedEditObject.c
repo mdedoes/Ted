@@ -12,23 +12,19 @@
 #   include	<ctype.h>
 
 #   include	"tedEdit.h"
+#   include	"tedEditOperation.h"
 #   include	<tedDocFront.h>
 #   include	"tedSelect.h"
 #   include	"tedLayout.h"
 #   include	"docScreenObjects.h"
 #   include	"tedDocument.h"
 #   include	<docRtfTrace.h>
-#   include	<docObjectProperties.h>
-#   include	<sioMemory.h>
-#   include	<sioHex.h>
 #   include	<docTreeNode.h>
 #   include	<docLayoutObject.h>
 #   include	<docTextParticule.h>
 #   include	<docEditCommand.h>
 #   include	<docObjectIo.h>
-#   include	<bmio.h>
 #   include	<appEditDocument.h>
-#   include	<sioGeneral.h>
 #   include	<docObject.h>
 #   include	<docObjects.h>
 #   include	<docBuf.h>
@@ -50,7 +46,7 @@ static int tedReplaceSelectionWithObject(
 
     EditOperation *		eo= &(teo->teoEo);
 
-    if  ( tedEditDeleteSelection( teo ) )
+    if  ( docDeleteSelection( eo ) )
 	{ LDEB(1); return -1;	}
 
     tp= docEditParaSpecialParticule( eo, TPkindOBJECT );
@@ -236,7 +232,8 @@ int tedReplaceSelectionWithRasterImage(	EditDocument *		ed,
 
     tedStartEditOperation( &teo, &sg, &sd, ed, fullWidth, traced );
 
-    if  ( tedEditStartReplace( &dsTraced, &teo, EDITcmdREPLACE, DOClevSPAN, 0 ) )
+    if  ( tedEditStartReplace( &dsTraced, &teo,
+					EDITcmdREPLACE, DOClevSPAN, 0 ) )
 	{ LDEB(1); goto ready;	}
 
     io= tedObjectMakeRasterObject( &objectNumber, ed,
@@ -273,7 +270,8 @@ static void tedScaleObjectToSelectedParagraph(	EditDocument *		ed,
     SelectionDescription	sd;
 
     if  ( tedGetSelection( &ds, &sg, &sd,
-				(struct DocumentTree **)0, (struct BufferItem **)0, ed ) )
+				(struct DocumentTree **)0,
+				(struct BufferItem **)0, ed ) )
 	{ LDEB(1); return;	}
 
     docScaleObjectToParagraph( bd, ds.dsHead.dpNode, xfac, io );
@@ -340,8 +338,6 @@ int tedDocInsertImageFile(	EditDocument *		ed,
     if  ( tedReplaceSelectionWithObject( &teo, objectNumber, io ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    io= (InsertedObject *)0;
-
   ready:
 
     tedCleanEditOperation( &teo );
@@ -362,89 +358,15 @@ InsertedObject * tedObjectMakeRasterObject(
 				EditDocument *		ed,
 				struct BufferItem *	node,
 				const LayoutContext *	lc,
-				RasterImage *		ri )
+				struct RasterImage *	ri )
     {
-    struct BufferDocument *		bd= lc->lcDocument;
-
+    struct BufferDocument *	bd= lc->lcDocument;
     InsertedObject *		io;
-    PictureProperties *		pip;
-
-    MemoryBuffer		mb;
-    SimpleOutputStream *	sosMem;
-    SimpleOutputStream *	sosHex;
-
     int				objectNumber;
-    int				includesAsRaster= 0;
 
-    const char *		contentType="?";
-
-    io= docClaimObject( &objectNumber, bd );
+    io= docMakeRasterObject( &objectNumber, bd, ri );
     if  ( ! io )
 	{ XDEB(io); return (InsertedObject *)0;	}
-    pip= &(io->ioPictureProperties);
-
-    utilInitMemoryBuffer( &mb );
-
-    sosMem= sioOutMemoryOpen( &mb );
-    if  ( ! sosMem )
-	{ XDEB(sosMem); return (InsertedObject *)0;	}
-
-    sosHex= sioOutHexOpen( sosMem );
-    if  ( ! sosHex )
-	{ XDEB(sosHex); return (InsertedObject *)0;	}
-
-    if  ( ri->riFormat >= 0 )
-	{ contentType= bmGetContentTypeOfFormat( ri->riFormat );	}
-
-    if  ( ! includesAsRaster			&&
-	  ! strcmp( contentType, "image/png" )	)
-	{
-	if  ( bmPngWritePng( &(ri->riDescription), ri->riBytes, sosHex ) )
-	    { LDEB(1); return (InsertedObject *)0;	}
-
-	io->ioKind= DOCokPICTPNGBLIP;
-	pip->pipType= DOCokPICTPNGBLIP;
-	includesAsRaster= 1;
-	}
-
-    if  ( ! includesAsRaster			&&
-	  ! strcmp( contentType, "image/jpeg" )	)
-	{
-	if  ( bmJpegWriteJfif( &ri->riDescription, ri->riBytes, sosHex ) )
-	    { LDEB(1); return (InsertedObject *)0;	}
-
-	io->ioKind= DOCokPICTJPEGBLIP;
-	pip->pipType= DOCokPICTJPEGBLIP;
-	includesAsRaster= 1;
-	}
-
-    if  ( ! includesAsRaster )
-	{
-	if  ( bmWmfWriteWmf( &(ri->riDescription), ri->riBytes, sosHex ) )
-	    { LDEB(1); return (InsertedObject *)0;	}
-
-	pip->pipMetafileIsRaster= 1;
-	pip->pipMetafileBitmapBpp= ri->riDescription.bdBitsPerPixel;
-
-	io->ioKind= DOCokPICTWMETAFILE;
-	pip->pipType= DOCokPICTWMETAFILE;
-	pip->pipMapMode= 8;
-	}
-
-    sioOutClose( sosHex );
-    sioOutClose( sosMem );
-
-    io->ioObjectData= mb;
-
-    bmImageSizeTwips( &(pip->pipTwipsWide), &(pip->pipTwipsHigh),
-							&(ri->riDescription) );
-    io->ioTwipsWide= pip->pipTwipsWide;
-    io->ioTwipsHigh= pip->pipTwipsHigh;
-
-    bmCleanRasterImage( &(io->ioRasterImage) );
-    io->ioRasterImage= *ri; /* steal */
-    bmInitRasterImage( ri );
-    bmFreeRasterImage( ri );
 
     tedScaleObjectToSelectedParagraph( ed, lc, io );
 

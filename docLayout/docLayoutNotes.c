@@ -13,6 +13,7 @@
 #   include	<stddef.h>
 
 #   include	"docLayout.h"
+#   include	"layoutContext.h"
 #   include	<docPageGrid.h>
 #   include	<docTreeType.h>
 #   include	<docTreeNode.h>
@@ -25,6 +26,7 @@
 #   include	<docSelect.h>
 #   include	<docDocumentProperties.h>
 #   include	<docBuf.h>
+#   include	<docFields.h>
 #   include	<docBlockFrame.h>
 
 #   include	<appDebugon.h>
@@ -69,12 +71,13 @@ static void docLayoutCommitNotesReservation(
 /*									*/
 /************************************************************************/
 
-static int docLayoutCollectOneFootnote( NotesReservation *	nr,
-					int *			pHigh,
-					struct BufferDocument *	bd,
-					const struct BufferItem *	bodySectNode,
-					const DocumentNote *	dn,
-					DocumentField *		dfNote )
+static int docLayoutCollectOneFootnote(
+				NotesReservation *		nr,
+				int *				pHigh,
+				struct BufferDocument *		bd,
+				const struct BufferItem *	bodySectNode,
+				const DocumentNote *		dn,
+				DocumentField *			dfNote )
     {
     const struct DocumentTree *	tree;
     int				high;
@@ -100,7 +103,8 @@ static int docLayoutCollectOneFootnote( NotesReservation *	nr,
     nr->nrFootnoteCount++;
     nr->nrFootnoteHeight += high;
 
-    *pHigh= high;
+    if  ( pHigh )
+	{ *pHigh= high;	}
 
     return 0;
     }
@@ -113,14 +117,15 @@ static int docLayoutCollectOneFootnote( NotesReservation *	nr,
 /*									*/
 /************************************************************************/
 
-int docLayoutCollectParaFootnoteHeight(	NotesReservation *	nrTotal,
-					int			referringPage,
-					int			referringColumn,
-					struct BufferDocument *	bd,
-					const struct BufferItem *	bodySectNode,
-					const struct BufferItem *	paraNode,
-					int			partFrom,
-					int			partUpto )
+int docLayoutCollectParaFootnoteHeight(
+				NotesReservation *		nrTotal,
+				int				referringPage,
+				int				referringColumn,
+				struct BufferDocument *		bd,
+				const struct BufferItem *	bodySectNode,
+				const struct BufferItem *	paraNode,
+				int				partFrom,
+				int				partUpto )
     {
     int			part;
     TextParticule *	tp;
@@ -140,11 +145,10 @@ int docLayoutCollectParaFootnoteHeight(	NotesReservation *	nrTotal,
 	{
 	DocumentField *	df;
 	DocumentNote *	dn;
-	int		high;
 
 	if  ( tp->tpKind != TPkindFIELDHEAD )
 	    { continue;	}
-	df= docGetFieldByNumber( &(bd->bdFieldList), tp->tpObjectNumber );
+	df= docGetFieldByNumber( bd, tp->tpObjectNumber );
 	if  ( ! df || df->dfKind != DOCfkCHFTN )
 	    { continue;	}
 	dn= docGetNoteOfField( df, bd );
@@ -154,19 +158,19 @@ int docLayoutCollectParaFootnoteHeight(	NotesReservation *	nrTotal,
 	dn->dnReferringPage= referringPage;
 	dn->dnReferringColumn= referringColumn;
 
-	if  ( dn->dnNoteProperties.npTreeType != DOCinFOOTNOTE )
-	    { continue;	}
-
-	if  ( docLayoutCollectOneFootnote( &nrLocal, &high,
+	if  ( docGetNotePosition( dn, bd ) == FTNplacePAGE_END )
+	    {
+	    if  ( docLayoutCollectOneFootnote( &nrLocal, (int *)0,
 						    bd, bodySectNode, dn, df ) )
-	    { LDEB(df->dfNoteIndex); return -1;	}
+		{ LDEB(df->dfNoteIndex); return -1;	}
 
-#	if SHOW_NOTE_LAYOUT > 1
-	appDebug( "PAGE %3d:%d FOOTNOTE      --%5dtw note %d (Reserve)\n",
-					    referringPage,
-					    referringColumn,
-					    high, df->dfNoteIndex );
-#	endif
+#	    if SHOW_NOTE_LAYOUT > 1
+	    appDebug( "PAGE %3d:%d FOOTNOTE      --%5dtw note %d (Reserve)\n",
+						referringPage,
+						referringColumn,
+						high, df->dfNoteIndex );
+#	    endif
+	    }
 	}
 
     docLayoutCommitNotesReservation( nrTotal, &nrLocal );
@@ -348,7 +352,7 @@ int docLayoutFootnotesForColumn(	LayoutPosition *	lpBelowNotes,
 					int			belowText,
 					const LayoutJob *	refLj )
     {
-    const LayoutContext *	lc= &(refLj->ljContext);
+    const LayoutContext *	lc= refLj->ljContext;
     struct BufferDocument *	bd= lc->lcDocument;
     const NotesReservation *	refNr= &(refBf->bfNotesReservation);
     const DocumentProperties *	dp= bd->bdProperties;
@@ -357,8 +361,8 @@ int docLayoutFootnotesForColumn(	LayoutPosition *	lpBelowNotes,
     LayoutJob			notesLj;
     LayoutPosition		lpHere;
 
-    struct DocumentTree *		tree;
-    struct DocumentTree *		eiNoteSep;
+    struct DocumentTree *	tree;
+    struct DocumentTree *	noteSepTree;
     int				notesDone;
 
     int				sepHigh= 0;
@@ -370,13 +374,13 @@ int docLayoutFootnotesForColumn(	LayoutPosition *	lpBelowNotes,
 	{ LDEB(refBf->bfFootnotesPlaced); return 0;	}
 
     /*  2  */
-    eiNoteSep= docDocumentNoteSeparator( bd, DOCinFTNSEP );
-    if  ( ! eiNoteSep )
-	{ LXDEB(DOCinFTNSEP,eiNoteSep); return -1;	}
-    if  ( ! eiNoteSep->dtRoot )
-	{ LXDEB(DOCinFTNSEP,eiNoteSep->dtRoot);	}
+    noteSepTree= docDocumentNoteSeparator( bd, DOCinFTNSEP );
+    if  ( ! noteSepTree )
+	{ LXDEB(DOCinFTNSEP,noteSepTree); return -1;	}
+    if  ( ! noteSepTree->dtRoot )
+	{ LXDEB(DOCinFTNSEP,noteSepTree->dtRoot);	}
 
-    sepHigh= eiNoteSep->dtY1UsedTwips- eiNoteSep->dtY0UsedTwips;
+    sepHigh= noteSepTree->dtY1UsedTwips- noteSepTree->dtY0UsedTwips;
 
     /*  3  */
     notesLj= *refLj;
@@ -426,7 +430,7 @@ int docLayoutFootnotesForColumn(	LayoutPosition *	lpBelowNotes,
 	int			y0Twips= lpHere.lpPageYTwips;
 
 	/*  7  */
-	docInvalidateTreeLayout( eiNoteSep );
+	docInvalidateTreeLayout( noteSepTree );
 
 	if  ( ! dn )
 	    { XDEB(dn); continue;	}
@@ -438,11 +442,11 @@ int docLayoutFootnotesForColumn(	LayoutPosition *	lpBelowNotes,
 	      tree->dtColumnFormattedFor != lpBelowText->lpColumn	||
 	      tree->dtY0UsedTwips != y0Twips			)
 	    {
-	    struct DocumentTree *	eiBody;
+	    struct DocumentTree *	bodyTree;
 	    BlockFrame		bfNote;
 	    struct BufferItem *	bodySectNode;
 
-	    if  ( docGetRootOfSelectionScope( &eiBody, &bodySectNode,
+	    if  ( docGetRootOfSelectionScope( &bodyTree, &bodySectNode,
 					    bd, &(dfNote->dfSelectionScope) ) )
 		{ LDEB(1); return -1;	}
 
@@ -499,6 +503,55 @@ int docLayoutFootnotesForColumn(	LayoutPosition *	lpBelowNotes,
     }
 
 /************************************************************************/
+
+static int docLayoutEndnoteSeparator(	LayoutPosition *	lpHere,
+					struct DocumentTree *	noteSepTree,
+					BlockFrame *		bf,
+					LayoutJob *		lj )
+    {
+    int		y0Twips= lpHere->lpPageYTwips;
+
+    /*  3  */
+    if  ( docLayoutNodeImplementation( lpHere, lpHere,
+					noteSepTree->dtRoot, bf, lj ) )
+	{ LDEB(1); return -1;	}
+
+    noteSepTree->dtPageFormattedFor=
+			    noteSepTree->dtRoot->biTopPosition.lpPage;
+    noteSepTree->dtColumnFormattedFor=
+			    noteSepTree->dtRoot->biTopPosition.lpColumn;
+    noteSepTree->dtY0UsedTwips= y0Twips;
+    noteSepTree->dtY1UsedTwips= lpHere->lpPageYTwips;
+
+    /*  7  */
+    docInvalidateTreeLayout( noteSepTree );
+
+    return 0;
+    }
+
+static int docLayoutEndnote(	LayoutPosition *	lpHere,
+				struct DocumentTree *	noteTree,
+				BlockFrame *		bf,
+				LayoutJob *		lj )
+    {
+    int		y0Twips= lpHere->lpPageYTwips;
+
+    if  ( ! noteTree->dtRoot )
+	{ XDEB(noteTree->dtRoot); return 0;	}
+
+    if  ( docLayoutNodeImplementation( lpHere, lpHere,
+					noteTree->dtRoot, bf, lj ) )
+	{ LDEB(1); return -1;	}
+
+    noteTree->dtPageFormattedFor= noteTree->dtRoot->biTopPosition.lpPage;
+    noteTree->dtColumnFormattedFor= noteTree->dtRoot->biTopPosition.lpColumn;
+    noteTree->dtY0UsedTwips= y0Twips;
+    noteTree->dtY1UsedTwips= lpHere->lpPageYTwips;
+
+    return 0;
+    }
+
+/************************************************************************/
 /*									*/
 /*  Place the notes belonging to a section immediately below its text.	*/
 /*									*/
@@ -508,6 +561,8 @@ int docLayoutFootnotesForColumn(	LayoutPosition *	lpBelowNotes,
 /*	first.								*/
 /*  3)  Layout of separator.						*/
 /*  4)  Layout of the endnotes of this section.				*/
+/*	If the first note modes to the next page, retry with the	*/
+/*	separator on that page as well.					*/
 /*  7)  Force the footnote separator to be reformatted later on.	*/
 /*									*/
 /************************************************************************/
@@ -518,7 +573,7 @@ int docLayoutEndnotesForSection(	LayoutPosition *	lpBelow,
 					BlockFrame *		bf,
 					LayoutJob *		lj )
     {
-    const LayoutContext *	lc= &(lj->ljContext);
+    const LayoutContext *	lc= lj->ljContext;
     struct BufferDocument *	bd= lc->lcDocument;
     const DocumentProperties *	dp= bd->bdProperties;
     const NotesProperties *	npFootnotes= &(dp->dpNotesProps.fepFootnotesProps);
@@ -526,8 +581,7 @@ int docLayoutEndnotesForSection(	LayoutPosition *	lpBelow,
     DocumentNote *		dn;
     DocumentField *		dfFirstNote;
 
-    struct DocumentTree *		tree;
-    struct DocumentTree *		eiNoteSep;
+    struct DocumentTree *	noteSepTree;
 
     int				attempt;
 
@@ -546,11 +600,11 @@ int docLayoutEndnotesForSection(	LayoutPosition *	lpBelow,
 	{ return 0;	}
 
     /*  2  */
-    eiNoteSep= docDocumentNoteSeparator( bd, DOCinAFTNSEP );
-    if  ( ! eiNoteSep )
-	{ LXDEB(DOCinAFTNSEP,eiNoteSep); return -1;	}
-    if  ( ! eiNoteSep->dtRoot )
-	{ LXDEB(DOCinAFTNSEP,eiNoteSep->dtRoot);	}
+    noteSepTree= docDocumentNoteSeparator( bd, DOCinAFTNSEP );
+    if  ( ! noteSepTree )
+	{ LXDEB(DOCinAFTNSEP,noteSepTree); return -1;	}
+    if  ( ! noteSepTree->dtRoot )
+	{ LXDEB(DOCinAFTNSEP,noteSepTree->dtRoot);	}
 
     /*  2a  */
     if  ( BF_HAS_FOOTNOTES( bf )				&&
@@ -570,24 +624,11 @@ int docLayoutEndnotesForSection(	LayoutPosition *	lpBelow,
 	int		retry= 0;
 	DocumentField *	dfNote;
 
-	if  ( eiNoteSep->dtRoot )
+	/*  3  */
+	if  ( noteSepTree->dtRoot )
 	    {
-	    int		y0Twips= lpHere.lpPageYTwips;
-
-	    /*  3  */
-	    if  ( docLayoutNodeImplementation( &lpHere, &lpHere,
-						eiNoteSep->dtRoot, bf, lj ) )
+	    if  ( docLayoutEndnoteSeparator( &lpHere, noteSepTree, bf, lj ) )
 		{ LDEB(1); return -1;	}
-
-	    eiNoteSep->dtPageFormattedFor=
-				    eiNoteSep->dtRoot->biTopPosition.lpPage;
-	    eiNoteSep->dtColumnFormattedFor=
-				    eiNoteSep->dtRoot->biTopPosition.lpColumn;
-	    eiNoteSep->dtY0UsedTwips= y0Twips;
-	    eiNoteSep->dtY1UsedTwips= lpHere.lpPageYTwips;
-
-	    /*  7  */
-	    docInvalidateTreeLayout( eiNoteSep );
 	    }
 
 	/*  4  */
@@ -596,28 +637,16 @@ int docLayoutEndnotesForSection(	LayoutPosition *	lpBelow,
 	      dfNote= docGetNextNoteInSection( &dn, bd, sect,
 						    dfNote, DOCinENDNOTE ) )
 	    {
-	    int		y0Twips= lpHere.lpPageYTwips;
-
-	    tree= &(dn->dnDocumentTree);
-	    if  ( ! tree->dtRoot )
-		{ XDEB(tree->dtRoot); continue;	}
-
-	    if  ( docLayoutNodeImplementation( &lpHere, &lpHere,
-							tree->dtRoot, bf, lj ) )
+	    if  ( docLayoutEndnote( &lpHere, &(dn->dnDocumentTree), bf, lj ) )
 		{ LDEB(1); return -1;	}
-
-	    tree->dtPageFormattedFor= tree->dtRoot->biTopPosition.lpPage;
-	    tree->dtColumnFormattedFor= tree->dtRoot->biTopPosition.lpColumn;
-	    tree->dtY0UsedTwips= y0Twips;
-	    tree->dtY1UsedTwips= lpHere.lpPageYTwips;
 
 	    if  ( attempt == 0						&&
 		  dfNote == dfFirstNote					&&
-		  eiNoteSep->dtRoot					&&
-		  eiNoteSep->dtRoot->biTopPosition.lpPage <
-				    tree->dtRoot->biTopPosition.lpPage	)
+		  noteSepTree->dtRoot					&&
+		  noteSepTree->dtRoot->biTopPosition.lpPage <
+			dn->dnDocumentTree.dtRoot->biTopPosition.lpPage	)
 		{
-		lpHere= tree->dtRoot->biTopPosition;
+		lpHere= dn->dnDocumentTree.dtRoot->biTopPosition;
 		retry= 1;
 		break;
 		}
@@ -647,7 +676,7 @@ int docLayoutEndnotesForDocument(	LayoutPosition *	lpBelow,
 /************************************************************************/
 
 int docNoteSeparatorRectangle(	DocumentRectangle *		drExtern,
-				struct DocumentTree **		pEiNoteSep,
+				struct DocumentTree **		pNoteSepTree,
 				int *				pY0Twips,
 				const DocumentNote *		dnFirstNote,
 				int				treeType,
@@ -655,7 +684,7 @@ int docNoteSeparatorRectangle(	DocumentRectangle *		drExtern,
 				const LayoutContext *		lc )
     {
     const struct DocumentTree *	eiFirstNote= &(dnFirstNote->dnDocumentTree);
-    struct DocumentTree *	eiNoteSep;
+    struct DocumentTree *	noteSepTree;
 
     int				page;
     int				column;
@@ -668,16 +697,16 @@ int docNoteSeparatorRectangle(	DocumentRectangle *		drExtern,
     BlockFrame			bfNoteSep;
     DocumentRectangle		drTwips;
 
-    eiNoteSep= docDocumentNoteSeparator( lc->lcDocument, treeType );
-    if  ( ! eiNoteSep )
-	{ LXDEB(treeType,eiNoteSep); return -1;	}
-    if  ( ! eiNoteSep->dtRoot )
-	{ LXDEB(treeType,eiNoteSep->dtRoot); return 1;	}
+    noteSepTree= docDocumentNoteSeparator( lc->lcDocument, treeType );
+    if  ( ! noteSepTree )
+	{ LXDEB(treeType,noteSepTree); return -1;	}
+    if  ( ! noteSepTree->dtRoot )
+	{ LXDEB(treeType,noteSepTree->dtRoot); return 1;	}
 
     page= eiFirstNote->dtRoot->biTopPosition.lpPage;
     column= eiFirstNote->dtRoot->biTopPosition.lpColumn;
     y1Twips= eiFirstNote->dtRoot->biTopPosition.lpPageYTwips;
-    high= eiNoteSep->dtY1UsedTwips- eiNoteSep->dtY0UsedTwips;
+    high= noteSepTree->dtY1UsedTwips- noteSepTree->dtY0UsedTwips;
     y0Twips= y1Twips- high;
 
     docLayoutInitBlockFrame( &bfNoteSep );
@@ -691,7 +720,7 @@ int docNoteSeparatorRectangle(	DocumentRectangle *		drExtern,
 
     docGetPixelRect( drExtern, lc, &drTwips, page );
 
-    *pEiNoteSep= eiNoteSep;
+    *pNoteSepTree= noteSepTree;
     *pY0Twips= y0Twips;
     return 0;
     }
@@ -730,12 +759,12 @@ void docLayoutReserveNoteHeight(	BlockFrame *			bf,
     return;
     }
 
-int docSectNotesPrelayout(	int			sect,
+int docSectNotesPrelayout(	int				sect,
 				const struct BufferItem *	bodySectNode,
-				LayoutJob *		lj )
+				LayoutJob *			lj )
     {
-    const LayoutContext *	lc= &(lj->ljContext);
-    struct BufferDocument *		bd= lc->lcDocument;
+    const LayoutContext *	lc= lj->ljContext;
+    struct BufferDocument *	bd= lc->lcDocument;
 
     DocumentField *		dfNote;
     DocumentNote *		dn;

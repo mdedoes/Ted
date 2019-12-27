@@ -270,6 +270,7 @@ int appMakeDocumentWidget(	EditDocument *		ed )
 
 static int appDocMakeToolbar(	EditDocument *		ed )
     {
+# if 0
 #   if GTK_MAJOR_VERSION < 3
     ed->edToolbar= gtk_vbox_new( FALSE, COLUMN_SPACING_GTK );
 #   else
@@ -286,6 +287,7 @@ Disables arrow keys for one reason or another
 LDEB(1);gtk_widget_set_can_focus(ed->edToolbar,1);
 */
 
+# endif
     return 0;
     }
 
@@ -402,9 +404,9 @@ void appDocSetVerticalScrollbarValues(
     gtk_adjustment_set_value( ed->edVerticalAdjustment, value );
     gtk_adjustment_set_page_size( ed->edVerticalAdjustment, sliderSize );
     gtk_adjustment_set_page_increment( ed->edVerticalAdjustment,
-				    ( 9* sliderSize+ 9 )/10 );
+			( 9* sliderSize+ 9 )/10 );
     gtk_adjustment_set_step_increment( ed->edVerticalAdjustment,
-				    ( sliderSize+ SCROLL_BAR_STEP- 1 )/ SCROLL_BAR_STEP );
+			( sliderSize+ SCROLL_BAR_STEP- 1 )/ SCROLL_BAR_STEP );
 
     gtk_adjustment_changed( ed->edVerticalAdjustment );
 
@@ -425,9 +427,9 @@ void appDocSetHorizontalScrollbarValues(
 
     /* Otherwise, the contols at the end are inactive: */
     gtk_adjustment_set_page_increment( ed->edHorizontalAdjustment,
-				    ( 9* sliderSize+ 9 )/10 );
+			( 9* sliderSize+ 9 )/10 );
     gtk_adjustment_set_step_increment( ed->edHorizontalAdjustment,
-				    ( sliderSize+ SCROLL_BAR_STEP- 1 )/ SCROLL_BAR_STEP );
+			( sliderSize+ SCROLL_BAR_STEP- 1 )/ SCROLL_BAR_STEP );
 
     gtk_adjustment_changed( ed->edHorizontalAdjustment );
     }

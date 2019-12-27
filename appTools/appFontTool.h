@@ -13,7 +13,7 @@
 #   include	<utilPropMask.h>
 #   include	<utilMemoryBuffer.h>
 #   include	<fontDocFont.h>
-#   include	<fontDocFontList.h>
+#   include	<fontDocFontListImpl.h>
 
 struct EditApplication;
 struct AppInspector;

@@ -10,7 +10,7 @@
 
 #   include	"docRtfWriterImpl.h"
 #   include	"docRtfTags.h"
-#   include	<docPropVal.h>
+#   include	"docRtfControlWord.h"
 #   include	<docBreakKind.h>
 #   include	<docFrameProperties.h>
 #   include	<utilPropMask.h>
@@ -64,76 +64,79 @@ void docRtfSaveParaTableNesting(	RtfWriter *		rw,
 /*									*/
 /************************************************************************/
 
-void docRtfSaveParagraphProperties(
+static const int ParaRegularProperties[]=
+{
+    PPpropHYPHPAR,
+    PPpropWIDCTLPAR,
+    PPpropRTOL,
+    PPpropKEEP,
+    PPpropKEEPN,
+    PPpropOUTLINELEVEL,
+    PPpropFIRST_INDENT,
+    PPpropLEFT_INDENT,
+    PPpropRIGHT_INDENT,
+    PPpropSPACE_BEFORE,
+    PPpropSPACE_AFTER,
+};
+
+static const int ParaRegularPropertyCount=
+			sizeof(ParaRegularProperties)/sizeof(int);
+
+static const int ParaRegularBorders[]=
+{
+    PPpropTOP_BORDER,
+    PPpropBOTTOM_BORDER,
+    PPpropLEFT_BORDER,
+    PPpropRIGHT_BORDER,
+    PPpropBETWEEN_BORDER,
+    PPpropBAR_BORDER,
+};
+
+static const int ParaRegularBorderCount=
+			sizeof(ParaRegularBorders)/sizeof(int);
+
+int docRtfSaveParagraphProperties(
 				RtfWriter *			rw,
-				const struct PropertyMask *	updMask,
+				const struct PropertyMask *	ppSetMask,
 				const ParagraphProperties *	pp )
     {
-    const int			anyway= 1;
+    const int			scope= RTCscopePARA;
 
-    if  ( PROPmaskISSET( updMask, PPpropSTYLE ) )
-	{ docRtfWriteArgTag( rw, "s", pp->ppStyleNumber ); }
+    if  ( PROPmaskISSET( ppSetMask, PPpropSTYLE ) )
+	{
+	if  ( docRtfWriteProperty( rw, scope,
+					PPpropSTYLE, pp->ppStyleNumber ) )
+	    { LLLDEB(scope,PPpropSTYLE,pp->ppStyleNumber); return -1;	}
+	}
 
-    if  ( PROPmaskISSET( updMask, PPpropLISTOVERRIDE ) )
+    if  ( PROPmaskISSET( ppSetMask, PPpropLISTOVERRIDE ) )
 	{ docRtfWriteArgTag( rw, "ls", pp->ppListOverride ); }
-    if  ( PROPmaskISSET( updMask, PPpropLISTLEVEL ) )
+    if  ( PROPmaskISSET( ppSetMask, PPpropLISTLEVEL ) )
 	{ docRtfWriteArgTag( rw, "ilvl", pp->ppListLevel ); }
 
-    if  ( PROPmaskISSET( updMask, PPpropTABLE_NESTING ) )
+    if  ( PROPmaskISSET( ppSetMask, PPpropTABLE_NESTING ) )
 	{ docRtfSaveParaTableNesting( rw, pp->ppTableNesting ); }
 
-    if  ( PROPmaskISSET( updMask, PPpropHYPHPAR ) )
-	{ docRtfWriteFlagTag( rw, "hyphpar", pp->ppHyphenateParagraph ); }
+    if  ( docRtfWriteItemProperties( rw, scope, pp,
+			(RtfGetIntProperty)docGetParaProperty, ppSetMask,
+			ParaRegularProperties, ParaRegularPropertyCount ) )
+	{ LLDEB(scope,ParaRegularPropertyCount); return -1;	}
 
-    if  ( PROPmaskISSET( updMask, PPpropWIDCTLPAR ) )
-	{
-	docRtfWriteAltTag( rw, "widctlpar", "nowidctlpar", pp->ppWidowControl );
-	}
-
-    if  ( PROPmaskISSET( updMask, PPpropRTOL ) )
-	{
-	docRtfWriteAltTag( rw, "rtlpar", "ltrpar", pp->ppRToL );
-	}
-
-    if  ( PROPmaskISSET( updMask, PPpropKEEP ) )
-	{ docRtfWriteFlagTag( rw, "keep", pp->ppKeepOnPage );	}
-
-    if  ( PROPmaskISSET( updMask, PPpropKEEPN ) )
-	{ docRtfWriteFlagTag( rw, "keepn", pp->ppKeepWithNext );	}
-
-    if  ( PROPmaskISSET( updMask, PPpropOUTLINELEVEL ) )
-	{ docRtfWriteArgTag( rw, "outlinelevel", pp->ppOutlineLevel ); }
-
-    if  ( PROPmaskISSET( updMask, PPpropFIRST_INDENT ) )
-	{ docRtfWriteArgTag( rw, "fi", pp->ppFirstIndentTwips ); }
-
-    if  ( PROPmaskISSET( updMask, PPpropLEFT_INDENT ) )
-	{ docRtfWriteArgTag( rw, "li", pp->ppLeftIndentTwips ); }
-
-    if  ( PROPmaskISSET( updMask, PPpropRIGHT_INDENT ) )
-	{ docRtfWriteArgTag( rw, "ri", pp->ppRightIndentTwips ); }
-
-    if  ( PROPmaskISSET( updMask, PPpropSPACE_BEFORE ) )
-	{ docRtfWriteArgTag( rw, "sb", pp->ppSpaceBeforeTwips ); }
-
-    if  ( PROPmaskISSET( updMask, PPpropSPACE_AFTER ) )
-	{ docRtfWriteArgTag( rw, "sa", pp->ppSpaceAfterTwips ); }
-
-    if  ( PROPmaskISSET( updMask, PPpropLINE_SPACING_DIST ) ||
-	  PROPmaskISSET( updMask, PPpropLINE_SPACING_MULT ) )
+    if  ( PROPmaskISSET( ppSetMask, PPpropLINE_SPACING_DIST ) ||
+	  PROPmaskISSET( ppSetMask, PPpropLINE_SPACING_MULT ) )
 	{
 	docRtfWriteArgTag( rw, "sl", pp->ppLineSpacingTwips );
 	docRtfWriteArgTag( rw, "slmult", pp->ppLineSpacingIsMultiple );
 	}
 
-    if  ( PROPmaskISSET( updMask, PPpropALIGNMENT ) )
+    if  ( PROPmaskISSET( ppSetMask, PPpropALIGNMENT ) )
 	{
-	docRtfWriteEnumTag( rw, DOCrtf_ParaAlignTags,
-			    pp->ppAlignment,
-			    DOCrtf_ParaAlignTagCount, DOCtha_COUNT );
+	if  ( docRtfWriteProperty( rw, scope,
+					PPpropALIGNMENT, pp->ppAlignment ) )
+	    { LLLDEB(scope,PPpropALIGNMENT,pp->ppAlignment); return -1;	}
 	}
 
-    if  ( PROPmaskISSET( updMask, PPpropTAB_STOPS )	&&
+    if  ( PROPmaskISSET( ppSetMask, PPpropTAB_STOPS )	&&
 	  pp->ppTabStopListNumber >= 0			)
 	{
 	const struct TabStopList *	tsl;
@@ -144,43 +147,12 @@ void docRtfSaveParagraphProperties(
 	docRtfSaveTabStopList( rw, tsl );
 	}
 
-    if  ( PROPmaskISSET( updMask, PPpropTOP_BORDER ) )
-	{
-	docRtfSaveBorderByNumber( rw, "brdrt",
-					pp->ppTopBorderNumber, anyway );
-	}
+    if  ( docRtfWriteItemProperties( rw, scope, pp,
+			(RtfGetIntProperty)docGetParaProperty, ppSetMask,
+			ParaRegularBorders, ParaRegularBorderCount ) )
+	{ LLDEB(scope,ParaRegularBorderCount); return -1;	}
 
-    if  ( PROPmaskISSET( updMask, PPpropBOTTOM_BORDER ) )
-	{
-	docRtfSaveBorderByNumber( rw, "brdrb",
-					pp->ppBottomBorderNumber, anyway );
-	}
-
-    if  ( PROPmaskISSET( updMask, PPpropLEFT_BORDER ) )
-	{
-	docRtfSaveBorderByNumber( rw, "brdrl",
-					pp->ppLeftBorderNumber, anyway );
-	}
-
-    if  ( PROPmaskISSET( updMask, PPpropRIGHT_BORDER ) )
-	{
-	docRtfSaveBorderByNumber( rw, "brdrr",
-					pp->ppRightBorderNumber, anyway );
-	}
-
-    if  ( PROPmaskISSET( updMask, PPpropBETWEEN_BORDER ) )
-	{
-	docRtfSaveBorderByNumber( rw, "brdrbtw",
-					pp->ppBetweenBorderNumber, anyway );
-	}
-
-    if  ( PROPmaskISSET( updMask, PPpropBAR_BORDER ) )
-	{
-	docRtfSaveBorderByNumber( rw, "brdrbar",
-					pp->ppBarNumber, anyway );
-	}
-
-    if  ( PROPmaskISSET( updMask, PPpropFRAME ) )
+    if  ( PROPmaskISSET( ppSetMask, PPpropFRAME ) )
 	{
 	const FrameProperties *	fp;
 
@@ -190,20 +162,19 @@ void docRtfSaveParagraphProperties(
 	    { docRtfSaveParaFrameProperties( rw, fp );	}
 	}
 
-    if  ( PROPmaskISSET( updMask, PPpropSHADING ) )
+    if  ( PROPmaskISSET( ppSetMask, PPpropSHADING ) )
 	{
-	docRtfSaveShadingByNumber( rw, pp->ppShadingNumber,
-		DOCrtf_ParaShadingTags, DOCrtf_ParaShadingTagCount,
-		"cfpat", "cbpat", "shading" );
+	docRtfSaveShadingByNumber( rw, RTCscopePARA_SHADING,
+						    pp->ppShadingNumber );
 	}
 
     /*  MUST be last, as DOCibkCOL results in a particule	*/
-    if  ( PROPmaskISSET( updMask, PPpropBREAK_KIND ) )
+    if  ( PROPmaskISSET( ppSetMask, PPpropBREAK_KIND ) )
 	{
 	docRtfWriteEnumTag( rw, DOCrtf_ParaBreakTags, pp->ppBreakKind,
 				DOCrtf_ParaBreakTagCount, DOCibkpara_COUNT );
 	}
 
-    return;
+    return 0;
     }
 

@@ -6,8 +6,6 @@
 
 #   include	"docFontConfig.h"
 
-#   include	<string.h>
-
 #   include	<psDocumentFontStyle.h>
 
 #   include	"fontDocFont.h"

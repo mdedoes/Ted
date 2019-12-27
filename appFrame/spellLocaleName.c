@@ -118,7 +118,7 @@ int appGetLocaleNames(		MsLcid **		pLocaleNames,
 
     ml= malloc( APP_localeNameCount* sizeof(MsLcid) );
     if  ( ! ml )
-	{ LXDEB(APP_localeNameCount,ml);	}
+	{ LXDEB(APP_localeNameCount,ml); return -1;	}
 
     n= 0;
     for ( i= 0; i < APP_localeNameCount; i++ )

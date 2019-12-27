@@ -25,7 +25,6 @@
 #   include	<docTreeNode.h>
 #   include	<docParaBuilder.h>
 #   include	<docFields.h>
-#   include	<docBuf.h>
 
 #   include	<appDebugon.h>
 
@@ -244,7 +243,7 @@ static int docRtfReadPushInstructionsField(
 
     DocumentField *	df;
 
-    df= docClaimField( &(bd->bdFieldList) );
+    df= docClaimField( bd );
     if  ( ! df )
 	{ XDEB(df); rval= -1; goto ready;	}
     df->dfKind= DOCfkUNKNOWN;
@@ -459,6 +458,7 @@ int docRtfReadField(	const RtfControlWord *	rcw,
 
 	default:
 	    LDEB(savedPiece);
+	    /*FALLTHROUGH*/
 	case FSpieceFLDRSLT:
 	    /*  docRtfReadPushResultField() adjusts level */
 	    if  ( docRtfReadPushResultField( &df, rr,
@@ -698,8 +698,7 @@ int docRtfBkmkEnd(	const RtfControlWord *	rcw,
     if  ( res )
 	{ SLDEB(rcw->rcwWord,res); return res;	}
 
-    fieldNumber= docFindBookmarkField( &df, &(bd->bdFieldList),
-							&(rr->rrcBookmark) );
+    fieldNumber= docFindBookmarkField( &df, bd, &(rr->rrcBookmark) );
     if  ( fieldNumber < 0 )
 	{ /*SDEB((char *)rr->rrcBookmarkName);*/ return 0;	}
 

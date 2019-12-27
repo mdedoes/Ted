@@ -12,7 +12,7 @@
 #   include	<docExpandedTextAttribute.h>
 #   include	<utilMemoryBuffer.h>
 #   include	<drawDrawingSurface.h>
-#   include	<fontDocFontList.h>
+#   include	<fontDocFontListImpl.h>
 
 struct EditApplication;
 struct AppInspector;

@@ -34,10 +34,12 @@ struct DocumentRectangle;
 extern void tedSetScreenLayoutContext(	struct LayoutContext *	lc,
 					struct EditDocument *	ed );
 
-extern void tedSetDocumentLayoutContext( struct LayoutContext *	lc,
-				DrawingSurface			ds,
-				const struct PostScriptFontList * psfl,
-				struct TedDocument *		td );
+extern void tedSetDocumentLayoutContext(
+		struct LayoutContext *			lc,
+		DrawingSurface				ds,
+		const struct PostScriptFontList * 	psfl,
+		int					specialSectBreaks,
+		struct TedDocument *			td );
 
 extern int tedFindPosition(	struct DocumentPosition *	dp,
 				struct BufferItem *		selRootNode,

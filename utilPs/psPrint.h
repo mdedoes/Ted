@@ -47,11 +47,9 @@ typedef struct PrintingState
     int				psLinkParticulesDone;
     int				psLinkRectLeft;
 
-    MemoryBuffer		psNoteRef;
-    MemoryBuffer		psNoteDef;
-
     MemoryBuffer		psLinkFile;
     MemoryBuffer		psLinkMark;
+    MemoryBuffer		psLinkTitle;
 
     unsigned char		psUsePostScriptFilters;
     unsigned char		psUsePostScriptIndexedImages;
@@ -135,11 +133,11 @@ extern void psSelectFontProcedures(
 extern int psIncludeFonts(	struct SimpleOutputStream *		sos,
 				const struct PostScriptTypeList *	psfl );
 
-extern void psStartEpsFile(		struct SimpleOutputStream *	sos,
-					const char *		creator,
-					const char *		title,
-					int			pointsWide,
-					int			pointsHigh );
+extern void psStartEpsFile(	struct SimpleOutputStream *	sos,
+				const char *			creator,
+				const char *			title,
+				int				pointsWide,
+				int				pointsHigh );
 
 extern void psFinishEpsFile(	struct SimpleOutputStream *	sos );
 
@@ -154,8 +152,8 @@ extern void psSetPatternImplementation(	struct SimpleOutputStream *	sos,
 					double			shadingMesh );
 
 extern void psDefineProcedure(	struct SimpleOutputStream *	sos,
-					const char **		lines,
-					int			count );
+				const char **			lines,
+				int				count );
 
 extern void psDefineEpsProcs(	struct SimpleOutputStream *	sos );
 
@@ -164,16 +162,16 @@ extern void psBeginEpsObject(	struct SimpleOutputStream *	sos,
 				const struct DocumentRectangle * drBBox,
 				const struct MemoryBuffer *	fileName );
 
-extern void psEndEpsObject(		struct SimpleOutputStream *	sos );
+extern void psEndEpsObject(	struct SimpleOutputStream *	sos );
 
-extern int psDestPdfmark(		PrintingState *		ps,
-					int			lineTop,
-					const struct MemoryBuffer *	mbRef );
+extern int psDestPdfmark(	PrintingState *			ps,
+				int				lineTop,
+				const struct MemoryBuffer *	mbRef );
 
-extern int psEmitDestPdfmark(	struct SimpleOutputStream *		sos,
+extern int psEmitDestPdfmark(	struct SimpleOutputStream *	sos,
 				const AffineTransform2D *	at,
 				int				lineTop,
-				const struct MemoryBuffer *		mbRef );
+				const struct MemoryBuffer *	mbRef );
 
 extern void psTransformMatrix(		struct SimpleOutputStream *		sos,
 					const AffineTransform2D *	at );
@@ -195,20 +193,26 @@ extern void psFlushLink(		PrintingState *		ps,
 					int			lineTop,
 					int			lineHeight );
 
-extern void psSourcePdfmark(	struct SimpleOutputStream *		sos,
+extern void psSourcePdfmark(	struct SimpleOutputStream *	sos,
 				const DocumentRectangle *	drLink,
-				const struct MemoryBuffer *		fileName,
-				const struct MemoryBuffer *		markName );
+				const struct MemoryBuffer *	fileName,
+				const struct MemoryBuffer *	markName );
 
-extern int psPageModePdfmark(		struct SimpleOutputStream *	sos,
-					const char *		pageMode );
+extern void psGotoPdfmark(	struct SimpleOutputStream *	sos,
+				const DocumentRectangle *	drLink,
+				const struct MemoryBuffer *	fileName,
+				const struct MemoryBuffer *	markName,
+				const struct MemoryBuffer *	title );
 
-extern int psSaveEpsFile(		struct SimpleOutputStream *	sos,
-					DocumentRectangle *	drBBox,
-					const struct MemoryBuffer *	filename );
+extern int psPageModePdfmark(	struct SimpleOutputStream *	sos,
+				const char *		pageMode );
+
+extern int psSaveEpsFile(	struct SimpleOutputStream *	sos,
+				DocumentRectangle *		drBBox,
+				const struct MemoryBuffer *	filename );
 
 extern int psIncludeEpsFile(	struct SimpleOutputStream *	sos,
-					struct SimpleInputStream *	sis );
+				struct SimpleInputStream *	sis );
 
 
 extern void psDscListFontNames(	struct SimpleOutputStream *		sos,
@@ -218,10 +222,10 @@ extern void psDscListFontNames(	struct SimpleOutputStream *		sos,
 extern void psSetFontName(	char *				fontName,
 				const struct AfmFontInfo *	afi );
 
-extern int psSetToPdfCommand(	struct MemoryBuffer *			command,
+extern int psSetToPdfCommand(	struct MemoryBuffer *		command,
 				int				pageTwipsWide,
 				int				pageTwipsHigh,
-				const struct MemoryBuffer *		filename );
+				const struct MemoryBuffer *	filename );
 
 extern int psSetTestToPdfCommand( struct MemoryBuffer *		command );
 
@@ -230,5 +234,9 @@ extern int psOutlinePdfmark(	PrintingState *		ps,
 				int			closed,
 				const struct MemoryBuffer *	title,
 				const struct MemoryBuffer *	markName );
+
+extern int psSetPageProperty(	PrintingState *			ps,
+				const char *			key,
+				const char *			value );
 
 #   endif	/*  UTIL_PS_H  */

@@ -18,11 +18,11 @@ DIR=`pwd`/pkgscratch
 rm -rf $DESTDIR $DIR
 mkdir -p $DESTDIR $DIR
 
-PKGFILE=Ted_2.23h_${ARCH}.freebsdpkg
+PKGFILE=Ted_2.23nx_${ARCH}.freebsdpkg
 
 trap "rm -rf $DESTDIR $DIR" 0 2
 
-cat ted-2.23h-${PLATFORM}.tar.gz | ( cd ${DESTDIR} && umask 0 && tar xfz - )
+cat ted-2.23nx-${PLATFORM}.tar.gz | ( cd ${DESTDIR} && umask 0 && tar xfz - )
 
 PCRE_VERSION=`pkg_info -E -x '^pcre-[0-9.,_]*$' || echo pcre`
 X11_VERSION=`pkg_info -E -x '^libX11-[0-9.,_]*$' || echo libX11`
@@ -44,7 +44,7 @@ sed -e "s/@PCRE_VERSION@/${PCRE_VERSION}/"	\
 sed -e 's/^Description:/ /'		\
     -e '/^[A-Z]/d'			\
     -e 's/^[ 	]*//'			\
-	${DESTDIR}${DATADIR}/Ted/varia/ted-2.23h.lsm > freebsd-pkgdescr
+	${DESTDIR}${DATADIR}/Ted/varia/ted-2.23nx.lsm > freebsd-pkgdescr
 
 pkg_create	-d freebsd-pkgdescr			\
 		-c '-Ted, an easy Rich Text Processor'	\

@@ -34,7 +34,7 @@ typedef enum ItemLevel
     DOClevANY,
     DOClevOUT,
 			/************************************************/
-			/*  Different kinds of BufferItems.		*/
+			/*  Different kinds of Document Node.		*/
 			/************************************************/
     DOClevBODY,
     DOClevSECT,

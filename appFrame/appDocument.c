@@ -374,7 +374,7 @@ int appSetupDocument(	EditApplication *	ea,
     if  ( ! ed->edDrawingSurface )
 	{ PDEB(ed->edDrawingSurface); appFreeDocument( ea, ed ); return -1; }
 
-    if  ( (*ea->eaLayoutDocument)( &(ed->edFullRect),
+    if  ( (*ea->eaLayoutDocument)( ea, &(ed->edFullRect),
 					&(ed->edVisibleRect),
 					ed->edPrivateData, ed->edFormat,
 					ed->edDrawingSurface,

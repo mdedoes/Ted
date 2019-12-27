@@ -20,7 +20,7 @@
 
 /************************************************************************/
 
-# define SHOW_MISSING 1
+# define SHOW_MISSING 0
 # if SHOW_MISSING
 
 static int utilMatchFontShowMissing( int n, void * vafi )

@@ -20,6 +20,8 @@
 #   include	<docFields.h>
 #   include	<docParaParticuleAdmin.h>
 #   include	<docParaBuilder.h>
+#   include	<docFields.h>
+#   include	<docAttributes.h>
 
 #   include	<appDebugon.h>
 
@@ -245,7 +247,7 @@ int docEditSurroundTextSelectionByField(
 			&(dsBalanced.dsHead), &(dsBalanced.dsTail), dt, bd ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    df= docClaimField( &(bd->bdFieldList) );
+    df= docClaimField( bd );
     if  ( ! df )
 	{ XDEB(df); rval= -1; goto ready;	}
 
@@ -372,61 +374,51 @@ static int docDeleteFieldParticule(	EditOperation *		eo,
 /*  Delete the begin and start particules of a field and the field	*/
 /*  itself.								*/
 /*									*/
-/*  *pPartHead and *pPartTail are set to values that are appropriate to	*/
-/*  delete the contents of the field afterward.				*/
+/*  *dsExInside is set to a value that is appropriate to delete the	*/
+/*  contents of the field afterward.					*/
 /*									*/
 /************************************************************************/
 
 int docDeleteField(		DocumentSelection *		dsExInside,
 				EditOperation *			eo,
-				struct BufferItem *		paraNodeHead,
-				struct BufferItem *		paraNodeTail,
-				int				partHead,
-				int				partTail,
 				DocumentField *			df )
     {
     int			rval= 0;
 
     const int		direction= 1;
 
-    DocumentPosition	dpHead;
-    DocumentPosition	dpTail;
+    DocumentSelection	dsInside;
+    DocumentSelection	dsAround;
 
-    if  ( partTail < 0						||
-	  partTail >= paraNodeTail->biParaParticuleCount	||
-	  partHead < 0						||
-	  partHead >= paraNodeHead->biParaParticuleCount	)
-	{
-	LLDEB(partTail,paraNodeTail->biParaParticuleCount);
-	LLDEB(partHead,paraNodeHead->biParaParticuleCount);
-	return -1;
-	}
+    int			partHead;
+    int			partTail;
 
-    dpTail.dpNode= paraNodeTail;
-    dpTail.dpStroff= paraNodeTail->biParaParticules[partTail].tpStroff;
-
-    dpHead.dpNode= paraNodeHead;
-    dpHead.dpStroff= paraNodeHead->biParaParticules[partHead].tpStroff;
+    if  ( docDelimitFieldInDoc( &dsInside, &dsAround, &partHead, &partTail,
+							eo->eoDocument, df ) )
+	{ LDEB(1); return -1;	}
 
     if  ( docDeleteFieldParticule( eo,
-		paraNodeTail, df->dfTailPosition.epParaNr, partTail )	)
-	{ LLDEB(partTail,paraNodeTail->biParaParticuleCount); return -1; }
+		dsAround.dsTail.dpNode, df->dfTailPosition.epParaNr,
+		partTail ) )
+	{ LDEB(partTail); return -1; }
 
     if  ( docDeleteFieldParticule( eo,
-		paraNodeHead, df->dfHeadPosition.epParaNr, partHead )	)
-	{ LLDEB(partHead,paraNodeHead->biParaParticuleCount); return -1; }
+		dsAround.dsHead.dpNode, df->dfHeadPosition.epParaNr,
+		partHead ) )
+	{ LDEB(partHead); return -1; }
 
     if  ( docDeleteFieldFromParent( eo->eoTree, df ) )
 	{ LDEB(1); rval= -1;	}
 
     docDeleteFieldFromDocument( eo->eoDocument, df );
 
-    if  ( paraNodeTail == paraNodeHead )
-	{ dpTail.dpStroff--;	}
+    if  ( docSelectionSingleParagraph( &dsInside ) )
+	{ dsInside.dsTail.dpStroff--;	}
 
     if  ( dsExInside )
 	{
-	docSetRangeSelection( dsExInside, &dpHead, &dpTail, direction );
+	docSetRangeSelection( dsExInside,
+			&(dsInside.dsHead), &(dsInside.dsTail), direction );
 	}
 
     return rval;

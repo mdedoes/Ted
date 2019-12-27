@@ -52,12 +52,6 @@ int docEditUpdParaProperties(	EditOperation *			eo,
 
     PropertyMask		ppDoneMask;
 
-    struct DocumentField *	dfBullet= (struct DocumentField *)0;
-    DocumentSelection		dsInsideBullet;
-    DocumentSelection		dsAroundBullet;
-    int				partBulletHead= -1;
-    int				partBulletTail= -1;
-
     int				paraNr= -1;
     int				listOverride;
     int				outlineLevel;
@@ -71,11 +65,6 @@ int docEditUpdParaProperties(	EditOperation *			eo,
 	wasInList= 1;
 	ls= listOverride;
 	ilvl= paraNode->biParaProperties->ppListLevel;
-
-	if  ( docDelimitParaHeadField( &dfBullet,
-			    &dsInsideBullet, &dsAroundBullet,
-			    &partBulletHead, &partBulletTail, paraNode, bd ) )
-	    { /* LDEB(paraNode->biParaListOverride); */	}
 	}
 
     olevel= paraNode->biParaProperties->ppOutlineLevel;
@@ -95,7 +84,18 @@ int docEditUpdParaProperties(	EditOperation *			eo,
 
     if  ( wasInList && ! isInList )
 	{
+	struct DocumentField *	dfBullet= (struct DocumentField *)0;
+	DocumentSelection	dsInsideBullet;
+	DocumentSelection	dsAroundBullet;
+	int			partBulletHead= -1;
+	int			partBulletTail= -1;
+
 	DocumentPosition	dpTail;
+
+	if  ( docDelimitParaHeadField( &dfBullet,
+			    &dsInsideBullet, &dsAroundBullet,
+			    &partBulletHead, &partBulletTail, paraNode, bd ) )
+	    { /* LDEB(paraNode->biParaListOverride); */	}
 
 	if  ( docListNumberTreesDeleteParagraph(
 				&(eo->eoTree->dtListNumberTrees), ls, paraNr ) )
@@ -106,12 +106,11 @@ int docEditUpdParaProperties(	EditOperation *			eo,
 	    const int	stroffHead= 0;
 
 	    if  ( docParaBuilderStartExistingParagraph(
-				    eo->eoParagraphBuilder, paraNode, stroffHead ) )
+				eo->eoParagraphBuilder, paraNode, stroffHead ) )
 		{ LDEB(stroffHead); return -1;	}
 
-	    if  ( docDeleteField( &dsInsideBullet, eo, paraNode, paraNode,
-			    partBulletHead, partBulletTail, dfBullet ) )
-		{ LLDEB(partBulletHead,partBulletTail);	}
+	    if  ( docDeleteField( &dsInsideBullet, eo, dfBullet ) )
+		{ LDEB(1);	}
 
 	    if  ( docParaDeleteText( eo, paraNr, &dpTail,
 					    &(dsInsideBullet.dsHead),
@@ -124,7 +123,13 @@ int docEditUpdParaProperties(	EditOperation *			eo,
 
     if  ( ! wasInList && isInList )
 	{
-	const int	stroffHead= 0;
+	const int		stroffHead= 0;
+
+	struct DocumentField *	dfBullet= (struct DocumentField *)0;
+	DocumentSelection	dsInsideBullet;
+	DocumentSelection	dsAroundBullet;
+	int			partBulletHead= -1;
+	int			partBulletTail= -1;
 
 	if  ( docParaBuilderStartExistingParagraph(
 				eo->eoParagraphBuilder, paraNode, stroffHead ) )
@@ -197,6 +202,27 @@ int docEditUpdParaProperties(	EditOperation *			eo,
 
     if  ( pPpDoneMask )
 	{ *pPpDoneMask= ppDoneMask;	}
+
+    return 0;
+    }
+
+int docEditTransferParaProperties(
+		EditOperation *				eo,
+		struct BufferItem *			paraNodeTo,
+		const struct BufferItem *		paraNodeFrom,
+		int					alsoTableNesting,
+		const struct DocumentAttributeMap *     dam )
+    {
+    PropertyMask	ppSetMask;
+
+    utilPropMaskClear( &ppSetMask );
+    utilPropMaskFill( &ppSetMask, PPprop_COUNT );
+    if  ( ! alsoTableNesting )
+	{ PROPmaskUNSET( &ppSetMask, PPpropTABLE_NESTING );	}
+
+    if  ( docEditUpdParaProperties( eo, (PropertyMask *)0, paraNodeTo,
+			&ppSetMask, paraNodeFrom->biParaProperties, dam ) )
+	{ LDEB(1); return -1; }
 
     return 0;
     }

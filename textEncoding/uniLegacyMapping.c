@@ -14,7 +14,12 @@
 
 IndexMapping UNI_SymbolToGlyphMapping;
 IndexMapping UNI_DingbatsToGlyphMapping;
+
+IndexMapping UNI_CP1250ToGlyphMapping;
+IndexMapping UNI_CP1251ToGlyphMapping;
 IndexMapping UNI_CP1252ToGlyphMapping;
+IndexMapping UNI_CP1253ToGlyphMapping;
+IndexMapping UNI_CP1254ToGlyphMapping;
 
 IndexSet UNI_SymbolCodeSet;
 IndexSet UNI_DingbatsCodeSet;

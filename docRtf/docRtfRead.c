@@ -20,6 +20,7 @@
 #   include	<docFieldKind.h>
 #   include	<docListAdmin.h>
 #   include	<docBuf.h>
+#   include	<docDocument.h>
 
 #   include	<appDebugon.h>
 
@@ -65,6 +66,7 @@ static int docRtfReadDoc(	const RtfControlWord *	rcw,
 
     ss.ssTreeType= DOCinBODY;
 
+    /* popped in docRtfFinishCurrentTree() */
     docRtfPushTreeStack( rr, &internRts, &ss, &(rr->rrDocument->bdBody) );
 
     rval= docRtfReadGroup( rcw, 0, 0, rr,
@@ -73,11 +75,6 @@ static int docRtfReadDoc(	const RtfControlWord *	rcw,
 				docRtfFinishCurrentTree );
     if  ( rval )
 	{ SLDEB(rcw->rcwWord,rval); rval= -1; goto ready;	}
-
-    if  ( docRtfPopTreeFromFieldStack( rr, &internRts ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-
-    docRenumberSeqFields( (int *)0, &(rr->rrDocument->bdBody), rr->rrDocument );
 
   ready:
 

@@ -182,3 +182,88 @@ void docObjectSetPixelSize(	InsertedObject *		io,
     return;
     }
 
+int docSetObjectProperty(	InsertedObject *	io,
+				int			prop,
+				int			value )
+    {
+    switch( prop )
+	{
+	case IOpropRESULT_KIND:
+	    io->ioRtfResultKind= value;
+	    break;
+
+	case IOpropEMBED_KIND:
+	    io->ioRtfEmbedKind= value;
+	    break;
+
+	case IOpropOBJTWIPS_WIDE:
+	    io->ioTwipsWide= value;
+	    break;
+	case IOpropOBJTWIPS_HIGH:
+	    io->ioTwipsHigh= value;
+	    break;
+
+	case IOpropOBJSCALE_X:
+	    io->ioScaleXSet= value;
+	    break;
+	case IOpropOBJSCALE_Y:
+	    io->ioScaleYSet= value;
+	    break;
+
+	case IOpropOBJCROP_TOP:
+	    io->ioTopCropTwips= value;
+	    break;
+	case IOpropOBJCROP_BOTTOM:
+	    io->ioBottomCropTwips= value;
+	    break;
+	case IOpropOBJCROP_LEFT:
+	    io->ioLeftCropTwips= value;
+	    break;
+	case IOpropOBJCROP_RIGHT:
+	    io->ioRightCropTwips= value;
+	    break;
+
+	default:
+	    LLDEB(prop,value);
+	    return -1;
+	}
+
+    return 0;
+    }
+
+int docGetObjectProperty(	const InsertedObject *	io,
+				int			prop )
+    {
+    switch( prop )
+	{
+	case IOpropRESULT_KIND:
+	    return io->ioRtfResultKind;
+
+	case IOpropEMBED_KIND:
+	    return io->ioRtfEmbedKind;
+
+	case IOpropOBJTWIPS_WIDE:
+	    return io->ioTwipsWide;
+	case IOpropOBJTWIPS_HIGH:
+	    return io->ioTwipsHigh;
+
+	case IOpropOBJSCALE_X:
+	    return io->ioScaleXSet;
+	case IOpropOBJSCALE_Y:
+	    return io->ioScaleYSet;
+
+	case IOpropOBJCROP_TOP:
+	    return io->ioTopCropTwips;
+	case IOpropOBJCROP_BOTTOM:
+	    return io->ioBottomCropTwips;
+	case IOpropOBJCROP_LEFT:
+	    return io->ioLeftCropTwips;
+	case IOpropOBJCROP_RIGHT:
+	    return io->ioRightCropTwips;
+
+	default:
+	    LDEB(prop);
+	    return -1;
+	}
+    }
+

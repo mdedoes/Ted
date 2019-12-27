@@ -12,6 +12,7 @@
 #   include	"docLayoutStopCode.h"
 #   include	"docParticuleData.h"
 #   include	"docLayoutLine.h"
+#   include	"layoutContext.h"
 
 #   include	<docParaParticules.h>
 #   include	<docTreeNode.h>
@@ -103,6 +104,9 @@ static int docBelowLine(	int *				pStopCode,
 
     int				footnoteHeight;
 
+    int				contentHigh= bf->bfContentRect.drY1- bf->bfContentRect.drY0;
+    int				paraContentHigh= pf->pfParaContentRect.drY1- pf->pfParaContentRect.drY0;
+
     /*  1  */
     if  ( partUpto == paraNode->biParaParticuleCount		&&
 	  paraNode->biParaProperties->ppTableNesting > 0	&&
@@ -117,17 +121,17 @@ static int docBelowLine(	int *				pStopCode,
 					/********************************/
 
     lineBottom= lpBelowLine.lpPageYTwips+ spaceBelowLineTwips;
-    lineHeight= lineBottom- lineBottom- lpLineTop->lpPageYTwips;
+    lineHeight= lineBottom- lpLineTop->lpPageYTwips;
 
     footnoteHeight= nrLine->nrFtnsepHeight+ nrLine->nrFootnoteHeight;
     flowY1WithNotes= bf->bfFlowRect.drY1- footnoteHeight;
 
     if  ( lineBottom > flowY1WithNotes					&&
-	  lineHeight < bf->bfContentRect.drY1- bf->bfContentRect.drY0	)
+	  ( lineHeight < contentHigh || ! lp->lpAtTopOfColumn	)	)
 	{ *pStopCode= FORMATstopBLOCK_FULL; return 1;	}
 
-    if  ( lineBottom > pf->pfParaContentRect.drY1			&&
-	  lineHeight < pf->pfParaContentRect.drY1- pf->pfParaContentRect.drY0 )
+    if  ( lineBottom > pf->pfParaContentRect.drY1	&&
+	  lineHeight < paraContentHigh 			)
 	{ *pStopCode= FORMATstopFRAME_FULL; return 1;	}
 
     *lp= lpBelowLine;
@@ -166,7 +170,7 @@ static int docLayout_Line(	int *				pStopCode,
 				const LayoutPosition *		lpTop,
 				LayoutPosition *		lpBottom )
     {
-    const LayoutContext *	lc= &(lj->ljContext);
+    const LayoutContext *	lc= lj->ljContext;
     struct BufferDocument *	bd= lc->lcDocument;
 
     int				res;
@@ -283,7 +287,7 @@ static void docLayoutAddLineToExpose(
 				const TextLine *		boxLine,
 				const TextLine *		tlLine )
     {
-    const LayoutContext *	lc= &(lj->ljContext);
+    const LayoutContext *	lc= lj->ljContext;
     DocumentRectangle		drLineFramePixels;
 
     LayoutPosition		lpTop;

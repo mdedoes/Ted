@@ -55,9 +55,15 @@
 /*									*/
 /************************************************************************/
 
+typedef struct TextLevelFieldScan
+    {
+    RecalculateFields *	tlfsRecalculateFields;
+    EditRange *		tlfsRange;
+    } TextLevelFieldScan;
+
 typedef struct RecalculateParaTextFields
     {
-    RecalculateFields *		rptfRecalculateFields;
+    TextLevelFieldScan *	rptfFieldScan;
     BufferItem *		rptfParaNode;
     int				rptfParaNr;
     int				rptfFieldsUpdated;
@@ -80,11 +86,12 @@ static int docRecalculateParaTextField(
 			    DocumentField *			df,
 			    const FieldKindInformation *	fki )
     {
-    RecalculateFields *	rf= rptf->rptfRecalculateFields;
+    TextLevelFieldScan *	tlfs= rptf->rptfFieldScan;
+    RecalculateFields *		rf= tlfs->tlfsRecalculateFields;
 
-    int			partTail;
-    int			stroffShift= 0;
-    int			calculated= 0;
+    int				partTail;
+    int				stroffShift= 0;
+    int				calculated= 0;
 
     if  ( ! rptf->rptfParagraphBuilder )
 	{
@@ -104,7 +111,7 @@ static int docRecalculateParaTextField(
 				rptf->rptfParagraphBuilder, df, rf,
 				partHead, partCount );
     if  ( partTail <= partHead )
-	{ LLDEB(partHead,partTail); return -1;	}
+	{ SLLDEB(fki->fkiLabel,partHead,partTail); return -1;	}
 
     if  ( calculated )
 	{
@@ -114,6 +121,13 @@ static int docRecalculateParaTextField(
 			rptf->rptfParaNr, stroffTail, stroffShift );
 	    docAdjustEditPositionOffsetE( &(rf->rfSelTail),
 			rptf->rptfParaNr, stroffTail, stroffShift );
+
+	    if  ( tlfs->tlfsRange					&&
+		  tlfs->tlfsRange->erTail.epParaNr == rptf->rptfParaNr	)
+		{
+		docAdjustEditPositionOffsetE( &(tlfs->tlfsRange->erTail),
+				rptf->rptfParaNr, stroffTail, stroffShift );
+		}
 	    }
 
 	if  ( stroffShift != 0 )
@@ -136,7 +150,8 @@ static int docParaEnterTextField(
 			void *				vptf )
     {
     RecalculateParaTextFields *		rptf= (RecalculateParaTextFields *)vptf;
-    const RecalculateFields *		rf= rptf->rptfRecalculateFields;
+    TextLevelFieldScan * 		tlfs= rptf->rptfFieldScan;
+    const RecalculateFields *		rf= tlfs->tlfsRecalculateFields;
     const FieldKindInformation *	fki;
 
     DocumentPosition			dpHead;
@@ -150,6 +165,11 @@ static int docParaEnterTextField(
 
     if  ( df->dfKind >= DOC_FieldKindCount )
 	{ LLDEB(df->dfKind,DOC_FieldKindCount); return SCANadviceOK;	}
+
+    if  ( tlfs->tlfsRange					&&
+	  tlfs->tlfsRange->erTail.epParaNr == rptf->rptfParaNr	&&
+	  df->dfHeadPosition.epStroff > tlfs->tlfsRange->erTail.epStroff )
+	{ return SCANadviceOK;	}
 
     fki= DOC_FieldKinds+ df->dfKind;
 
@@ -174,35 +194,51 @@ static int docParaEnterTextField(
 
     {
     int		partCount= partTail- partHead- 1;
+    int		res;
 
-    if  ( docRecalculateParaTextField( rptf, partHead, partCount,
-				dpHead.dpStroff, dpTail.dpStroff, df, fki ) )
-	{ LDEB(partHead); return SCANadviceERROR;	}
+    res= docRecalculateParaTextField( rptf, partHead, partCount,
+				dpHead.dpStroff, dpTail.dpStroff, df, fki );
+    if  ( res < 0 )
+	{ LLDEB(res,partHead); return SCANadviceERROR;	}
     }
 
     return SCANadviceOK;
     }
 
 static int docRecalculateParaNodeTextFields(
-					RecalculateFields *	rf,
+					TextLevelFieldScan *	tlfs,
 					struct BufferItem *	paraNode )
     {
     int				rval= 0;
+
+    RecalculateFields *		rf= tlfs->tlfsRecalculateFields;
     RecalculateParaTextFields	rptf;
 
     EditRange			er;
 
-    rptf.rptfRecalculateFields= rf;
+    rptf.rptfFieldScan= tlfs;
     rptf.rptfParaNode= paraNode;
     rptf.rptfParaNr= docNumberOfParagraph( paraNode );
     rptf.rptfFieldsUpdated= 0;
     rptf.rptfParagraphBuilder= (struct ParagraphBuilder *)0;
 
+    if  ( ! rf )
+	{ XDEB(rf); rval= -1; goto ready;	}
+    if  ( ! rf->rfTree )
+	{ XDEB(rf->rfTree); rval= -1; goto ready;	}
+
     docInitEditRange( &er );
     er.erHead.epParaNr= rptf.rptfParaNr;
-    er.erHead.epStroff= 0;
+
+    if  ( tlfs->tlfsRange					&&
+	  tlfs->tlfsRange->erHead.epParaNr == rptf.rptfParaNr	)
+	{ er.erHead.epStroff= tlfs->tlfsRange->erHead.epStroff;	}
+    else{ er.erHead.epStroff= 0;				}
+
+    /*  Make sure to reach the end, even though it is shifted.	*/
+    /*  Fields outside the range are skipped manually.		*/
     er.erTail.epParaNr= rptf.rptfParaNr;
-    er.erTail.epStroff= INT_MAX; /* make sure to reach the shifting end */
+    er.erTail.epStroff= INT_MAX;
 
     if  ( docScanFieldsInRange( &(rf->rfTree->dtRootFields), &er,
 		    docParaEnterTextField,
@@ -233,25 +269,35 @@ static int docRecalculateParaNodeTextFields(
 /*									*/
 /************************************************************************/
 
+static void docRecalculateSetContext(
+				RecalculateFields *		to,
+				const RecalculateFields *	from,
+				int				fieldsUpdated )
+    {
+    to->rfFieldsUpdated= from->rfFieldsUpdated+ fieldsUpdated;
+    to->rfTree= from->rfTree;
+    to->rfSelectionScope= from->rfSelectionScope;
+    to->rfBodySectNode= from->rfBodySectNode;
+    to->rfBodySectPage= from->rfBodySectPage;
+    }
+
 int docRecalculateTextLevelFieldsInDocumentTree(
 				RecalculateFields *		rf,
-				struct DocumentTree *		dt,
+				struct DocumentTree *		tree,
 				const struct BufferItem *	bodySectNode,
 				int				page )
     {
     int			rval= 0;
     int			ret;
 
-    int			saveFieldsUpdated= rf->rfFieldsUpdated;
-    DocumentTree *	saveTree= rf->rfTree;
-    const SelectionScope * saveSelectionScope= rf->rfSelectionScope;
-    const struct BufferItem *	saveBodySectNode= rf->rfBodySectNode;
-    int			saveBodySectPage= rf->rfBodySectPage;
+    RecalculateFields	saveRf;
 
-    if  ( ! dt->dtRoot )
+    docRecalculateSetContext( &saveRf, rf, 0 );
+
+    if  ( ! tree->dtRoot )
 	{ return 0;	}
 
-    if  ( dt->dtRoot->biTreeType != DOCinBODY			&&
+    if  ( tree->dtRoot->biTreeType != DOCinBODY			&&
           ( ! bodySectNode				||
             bodySectNode->biTreeType != DOCinBODY	)	)
 	{ XDEB(rf->rfBodySectNode); return -1;	}
@@ -260,22 +306,17 @@ int docRecalculateTextLevelFieldsInDocumentTree(
     rf->rfBodySectPage= page;
 
     rf->rfFieldsUpdated= 0;
-    rf->rfTree= dt;
-    rf->rfSelectionScope= &(dt->dtRoot->biSectSelectionScope);
+    rf->rfTree= tree;
+    rf->rfSelectionScope= &(tree->dtRoot->biSectSelectionScope);
 
-    ret= docRecalculateTextLevelFields( rf, dt->dtRoot );
+    ret= docRecalculateTextLevelFieldsInNode( rf, tree->dtRoot );
     if  ( ret )
 	{ LDEB(ret); rval= -1;	}
 
     if  ( rf->rfFieldsUpdated > 0 )
-	{ docInvalidateTreeLayout( dt );	}
+	{ docInvalidateTreeLayout( tree );	}
 
-    rf->rfFieldsUpdated += saveFieldsUpdated;
-
-    rf->rfTree= saveTree;
-    rf->rfSelectionScope= saveSelectionScope;
-    rf->rfBodySectNode= saveBodySectNode;
-    rf->rfBodySectPage= saveBodySectPage;
+    docRecalculateSetContext( rf, &saveRf, rf->rfFieldsUpdated );
 
     return rval;
     }
@@ -374,13 +415,13 @@ static int docRecalculateTextLevelFieldsInSectNotes(
 				bodySectNode->biNumberInParent, treeType );
     while( dfNote )
 	{
-	struct DocumentTree *	dt= &(dn->dnDocumentTree);
+	struct DocumentTree *	tree= &(dn->dnDocumentTree);
 
-	if  ( ! dt->dtRoot )
+	if  ( ! tree->dtRoot )
 	    { continue;	}
 
 	if  ( docRecalculateTextLevelFieldsInDocumentTree( rf,
-						dt, bodySectNode, page ) )
+						tree, bodySectNode, page ) )
 	    { LDEB(1); return -1;	}
 
 	dfNote= docGetNextNoteInSection( &dn, bd,
@@ -399,10 +440,11 @@ static int docRecalculateTextLevelFieldsLeaveNode(
 			    struct BufferItem *			node,
 			    const struct DocumentSelection *	ds,
 			    const struct BufferItem *		bodySectNode,
-			    void *				voidrf )
+			    void *				vtlfs )
     {
-    RecalculateFields *	rf= (RecalculateFields *)voidrf;
-    int			rval= 0;
+    TextLevelFieldScan *	tlfs= (TextLevelFieldScan *)vtlfs;
+    RecalculateFields *		rf= tlfs->tlfsRecalculateFields;
+    int				rval= 0;
 
     const struct BufferItem *	saveBodySectNode= rf->rfBodySectNode;
 
@@ -436,7 +478,7 @@ static int docRecalculateTextLevelFieldsLeaveNode(
 
 	case DOClevPARA:
 
-	    if  ( docRecalculateParaNodeTextFields( rf, node ) )
+	    if  ( docRecalculateParaNodeTextFields( tlfs, node ) )
 		{ LDEB(1); rval= -1; goto ready;	}
 	    break;
 
@@ -455,17 +497,54 @@ static int docRecalculateTextLevelFieldsLeaveNode(
 # pragma GCC diagnostic pop
 # endif
 
-int docRecalculateTextLevelFields(	RecalculateFields *	rf,
+int docRecalculateTextLevelFieldsInNode( RecalculateFields *	rf,
 					struct BufferItem *	node )
     {
     const int		flags= 0;
+    TextLevelFieldScan	tlfs;
+
+    if  ( ! rf->rfTree )
+	{ XDEB(rf->rfTree); return -1;	}
+
+    tlfs.tlfsRecalculateFields= rf;
+    tlfs.tlfsRange= (EditRange *)0;
 
     if  ( docScanTreeNode( rf->rfDocument, node,
 		    (NodeVisitor)0, docRecalculateTextLevelFieldsLeaveNode,
 		    (TreeVisitor)0, (TreeVisitor)0, 
-		    flags, (void *)rf ) )
+		    flags, (void *)&tlfs ) )
 	{ LDEB(1); return -1;	}
 
     return 0;
     }
 
+int docRecalculateTextLevelFieldsInEditRange(
+					RecalculateFields *	rf,
+					const EditRange *	er )
+    {
+    const int		flags= 0;
+    TextLevelFieldScan	tlfs;
+    DocumentSelection	ds;
+
+    EditRange		erRecalc= *er;
+
+    docInitDocumentSelection( &ds );
+
+    if  ( ! rf->rfTree )
+	{ XDEB(rf->rfTree); return -1;	}
+
+    tlfs.tlfsRecalculateFields= rf;
+    tlfs.tlfsRange= &erRecalc;
+
+    if  ( docSelectionForEditPositionsInTree( &ds, rf->rfTree,
+					&(er->erHead), &(er->erTail) ) )
+	{ LDEB(1); return -1;	}
+
+    if  ( docScanSelection( rf->rfDocument, &ds,
+		    (NodeVisitor)0, docRecalculateTextLevelFieldsLeaveNode,
+		    (TreeVisitor)0, (TreeVisitor)0, 
+		    flags, (void *)&tlfs ) )
+	{ LDEB(1); return -1;	}
+
+    return 0;
+    }

@@ -21,6 +21,7 @@
 #   include	<docDocumentTree.h>
 #   include	<docBuf.h>
 #   include	<docPositionFindJob.h>
+#   include	<layoutContext.h>
 
 #   include	<appDebugon.h>
 
@@ -72,6 +73,7 @@ int tedFindPositionForCoordinates(	DocumentPosition *	dpFound,
     LayoutContext		lc;
     PositionFindJob		pfj;
 
+    layoutInitContext( &lc );
     tedSetScreenLayoutContext( &lc, ed );
 
     docSetFindPositionJob( &pfj, &lc, docXPixels, docYPixels );

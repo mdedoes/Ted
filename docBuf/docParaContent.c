@@ -246,7 +246,12 @@ int docParaDelimitDirectionalRun(
 	if  ( res < 0 )
 	    { LDEB(res); return -1;	}
 	if  ( res > 0 )
-	    { return res;	}
+	    {
+	    LLDEB(stroffFrom,paraStrlen);
+	    /*
+	    return res;
+	    */
+	    }
 
 	if  ( dpUpto.dpStroff > paraStrlen )
 	    {

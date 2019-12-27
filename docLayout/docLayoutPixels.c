@@ -7,6 +7,7 @@
 #   include	"docLayoutConfig.h"
 
 #   include	"docLayout.h"
+#   include	"layoutContext.h"
 #   include	<geoGrid.h>
 #   include	<docTreeNode.h>
 #   include	<docTreeType.h>

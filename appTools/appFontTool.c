@@ -29,6 +29,7 @@
 #   include	<appGuiResource.h>
 #   include	<psFontInfo.h>
 #   include	<guiWidgets.h>
+#   include	<fontDocFontList.h>
 
 #   include	<appDebugon.h>
 

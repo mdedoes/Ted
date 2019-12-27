@@ -184,11 +184,16 @@ int docRtfApplyControlWord(	const RtfControlWord *	rcw,
 	{
 	if  ( gotArg )
 	    {
-	    SLLLDEB(rcw->rcwWord,arg,rcw->rcwType,gotArg);
-	    return 0;
+	    /* Hack to support older Ted versions: /ul0 -> /ulnone */
+	    if  ( strcmp( rcw->rcwWord, "ul" ) || arg != 0 )
+		{
+		SLLLDEB(rcw->rcwWord,arg,rcw->rcwType,gotArg);
+		return 0;
+		}
 	    }
-
-	arg= rcw->rcwEnumValue;
+	else{
+	    arg= rcw->rcwEnumValue;
+	    }
 	}
 
     if  ( rcw->rcwType != RTCtypeENUM	&&

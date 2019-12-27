@@ -9,6 +9,7 @@
 #   include	<stddef.h>
 
 #   include	"tedEdit.h"
+#   include	"tedEditOperation.h"
 #   include	<tedDocFront.h>
 #   include	"tedDocument.h"
 #   include	"tedSelect.h"
@@ -21,6 +22,7 @@
 #   include	<docFieldInstructions.h>
 #   include	<docDocumentFieldList.h>
 #   include	<docBuf.h>
+#   include	<docFields.h>
 
 #   include	<appDebugon.h>
 
@@ -89,7 +91,7 @@ int tedDocRemoveHyperlink(	EditDocument *		ed,
 				int			traced )
     {
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    struct BufferDocument *		bd= td->tdDocument;
+    struct BufferDocument *	bd= td->tdDocument;
 
     PropertyMask		taSetMask;
     TextAttribute		taSet;
@@ -106,9 +108,9 @@ int tedDocFindBookmarkField(	struct DocumentField **		pDf,
 				const MemoryBuffer *		markName )
     {
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    struct BufferDocument *		bd= td->tdDocument;
+    struct BufferDocument *	bd= td->tdDocument;
 
-    return docFindBookmarkField( pDf, &(bd->bdFieldList), markName );
+    return docFindBookmarkField( pDf, bd, markName );
     }
 
 int tedDocSetBookmark(	EditDocument *		ed,
@@ -117,7 +119,7 @@ int tedDocSetBookmark(	EditDocument *		ed,
     {
     int				rval= 0;
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    struct BufferDocument *		bd= td->tdDocument;
+    struct BufferDocument *	bd= td->tdDocument;
 
     struct DocumentField *	dfBookmark;
 
@@ -142,7 +144,7 @@ int tedDocSetBookmark(	EditDocument *		ed,
     if  ( docSetBookmarkField( &fi, markName ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( docFindBookmarkField( &dfFound, &(bd->bdFieldList), markName ) >= 0 )
+    if  ( docFindBookmarkField( &dfFound, bd, markName ) >= 0 )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     dfBookmark= docFindTypedFieldForPosition( bd, &(ds.dsHead),
@@ -192,8 +194,6 @@ int tedDocGoToBookmark(	EditDocument *		ed,
 			const MemoryBuffer *	markName )
     {
     DocumentSelection		dsInside;
-    int				partHead;
-    int				partTail;
 
     TedDocument *		td;
 
@@ -206,8 +206,7 @@ int tedDocGoToBookmark(	EditDocument *		ed,
 
     docInitDocumentSelection( &dsInside );
 
-    if  ( docFindBookmarkInDocument( &dsInside, &partHead, &partTail,
-						td->tdDocument, markName ) )
+    if  ( docFindBookmarkInDocument( &dsInside, td->tdDocument, markName ) )
 	{ LDEB(1); return -1;	}
 
     tedSetSelection( ed, &dsInside, lastLine, (int *)0, (int *)0 );

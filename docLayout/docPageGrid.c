@@ -24,6 +24,7 @@
 #   include	<docSectProperties.h>
 #   include	<docParaProperties.h>
 #   include	<docCellProperties.h>
+#   include	<docHeaderFooterScopes.h>
 
 #   include	<docDebug.h>
 #   include	<appDebugon.h>
@@ -124,7 +125,6 @@ void docSectionBlockFrameTwips(	BlockFrame *			bf,
 				int				page,
 				int				column )
     {
-    struct DocumentTree *	dt;
     int				useColumns= 0;
 
     int				newFrame;
@@ -197,29 +197,40 @@ void docSectionBlockFrameTwips(	BlockFrame *			bf,
 	case DOCinAFTNSEPC:
 	case DOCinAFTNCN:
 
-	    dt= (struct DocumentTree *)0;
-	    docLayoutWhatPageHeader( &dt, &isEmpty, sectNode, page, bd );
+	    {
+	    DocumentTree *	headerTree= (DocumentTree *)0;
+
+	    docLayoutWhatPageHeader( &headerTree, &isEmpty,
+							sectNode, page, bd );
 
 	    /*  1 Reserved!!  */
-	    if  ( dt && dt->dtRoot )
-		{ bf->bfContentRect.drY0= dt->dtY1ReservedTwips;	}
-	    else{
-		bf->bfContentRect.drY0= bf->bfPageGeometry.dgMargins.roTopOffset;	
+	    if  ( headerTree && headerTree->dtRoot )
+		{
+		bf->bfContentRect.drY0= headerTree->dtY1ReservedTwips;
 		}
+	    else{
+		bf->bfContentRect.drY0=
+				bf->bfPageGeometry.dgMargins.roTopOffset;	
+		}
+	    }
 
-	    dt= (struct DocumentTree *)0;
-	    docLayoutWhatPageFooter( &dt, &isEmpty, sectNode, page, bd );
+	    {
+	    DocumentTree *	footerTree= (DocumentTree *)0;
+
+	    docLayoutWhatPageFooter( &footerTree, &isEmpty,
+							sectNode, page, bd );
 
 	    /*  2 Reserved!!  */
-	    if  ( dt && dt->dtRoot )
+	    if  ( footerTree && footerTree->dtRoot )
 		{
-		bf->bfContentRect.drY1= dt->dtY0ReservedTwips;
+		bf->bfContentRect.drY1= footerTree->dtY0ReservedTwips;
 		}
 	    else{
 		bf->bfContentRect.drY1=
-			    bf->bfPageGeometry.dgPageHighTwips-
-			    bf->bfPageGeometry.dgMargins.roBottomOffset;
+				bf->bfPageGeometry.dgPageHighTwips-
+				bf->bfPageGeometry.dgMargins.roBottomOffset;
 		}
+	    }
 
 	    /*
 	    appDebug( "PAGE %3d BLOCK Y: %5d..%5d %s\n",
@@ -234,6 +245,9 @@ void docSectionBlockFrameTwips(	BlockFrame *			bf,
 	case DOCinRIGHT_HEADER:	case DOCinRIGHT_FOOTER:
 	case DOCinLAST_HEADER:	case DOCinLAST_FOOTER:
 
+	    {
+	    DocumentTree *	tree;
+
 	    if  ( column != 0 )
 		{
 		SLLDEB(docTreeTypeStr(sectNode->biTreeType),page,column);
@@ -242,13 +256,14 @@ void docSectionBlockFrameTwips(	BlockFrame *			bf,
 		*/
 		}
 
-	    dt= docSectionHeaderFooter( bodySectNode, (unsigned char *)0,
+	    tree= docSectionHeaderFooter( bodySectNode, (unsigned char *)0,
 				bd->bdProperties, sectNode->biTreeType );
-	    if  ( ! dt )
-		{ XDEB(dt); return;	}
+	    if  ( ! tree )
+		{ XDEB(tree); return;	}
 
-	    bf->bfContentRect.drY0= dt->dtY0ReservedTwips;
-	    bf->bfContentRect.drY1= dt->dtY1ReservedTwips;
+	    bf->bfContentRect.drY0= tree->dtY0ReservedTwips;
+	    bf->bfContentRect.drY1= tree->dtY1ReservedTwips;
+	    }
 	    break;
 
 	case DOCinSHPTXT:
@@ -308,8 +323,7 @@ void docParaBlockFrameTwips(	BlockFrame *			bf,
 				struct BufferItem *		paraNode,
 				const struct BufferItem *	bodySectNode,
 				struct BufferDocument *		bd,
-				int				page,
-				int				column )
+				const LayoutPosition *		lpHere )
     {
     if  ( paraNode->biLevel != DOClevPARA )
 	{ LDEB(paraNode->biLevel);	}
@@ -332,7 +346,8 @@ void docParaBlockFrameTwips(	BlockFrame *			bf,
 	    docLayoutInitBlockFrame( bf );
 	    docLayoutInitBlockFrame( &bfPage );
 
-	    docBlockFrameTwips( &bfPage, paraNode, bd, page, column );
+	    docBlockFrameTwips( &bfPage, paraNode, bd,
+					    lpHere->lpPage, lpHere->lpColumn );
 	    docLayoutSetTextFrame( bf, &lpScratch, &bfPage, fp, frameHigh );
 
 	    docLayoutCleanBlockFrame( &bfPage );
@@ -341,7 +356,8 @@ void docParaBlockFrameTwips(	BlockFrame *			bf,
 	    }
 	}
 
-    docSectionBlockFrameTwips( bf, paraNode, bodySectNode, bd, page, column );
+    docSectionBlockFrameTwips( bf, paraNode, bodySectNode, bd,
+					    lpHere->lpPage, lpHere->lpColumn );
     }
 
 /************************************************************************/
@@ -507,8 +523,8 @@ void docCellFrameTwips(		ParagraphFrame *		pf,
 
     DocumentRectangle		drRowParent;
 
-    pf->pfCellRect.drY0= INT_MIN;
-    pf->pfCellRect.drY1= INT_MAX;
+    pf->pfCellRect.drY0= INT_MIN/ 3; /* /3 for predictable arithmetic */
+    pf->pfCellRect.drY1= INT_MAX/ 3; /* /3 for predictable arithmetic */
     pf->pfCellRect.drX0= bf->bfContentRect.drX0;
     pf->pfCellRect.drX1= bf->bfContentRect.drX1;
 
@@ -549,8 +565,8 @@ void docParagraphFrameTwips(	ParagraphFrame *		pf,
     if  ( paraNode->biParaProperties->ppTableNesting > 0 )
 	{ docCellFrameTwips( pf, bf, paraNode->biParent );	}
     else{
-	pf->pfCellRect.drY0= INT_MIN;
-	pf->pfCellRect.drY1= INT_MAX;
+	pf->pfCellRect.drY0= INT_MIN/ 3; /* /3 for predictable arithmetic */
+	pf->pfCellRect.drY1= INT_MAX/ 3; /* /3 for predictable arithmetic */
 	pf->pfCellRect.drX0= bf->bfContentRect.drX0;
 	pf->pfCellRect.drX1= bf->bfContentRect.drX1;
 

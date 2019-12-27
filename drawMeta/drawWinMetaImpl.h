@@ -13,7 +13,7 @@
 #   include	<utilMemoryBuffer.h>
 #   include	<geo2DInteger.h>
 #   include	<geoAffineTransform.h>
-#   include	<fontDocFontList.h>
+#   include	<fontDocFontListImpl.h>
 #   include	<textAttribute.h>
 #   include	"drawMetafile.h"
 

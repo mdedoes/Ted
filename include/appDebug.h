@@ -1119,6 +1119,17 @@ extern void appDebugStackTrace(	const char *	file,
 			    #l2, DEBL(l2),			\
 			    #s3, DEBS(s3)			))
 
+# define XLSSDEB(l1,l2,s3,s4) APP_DEB(appDebug( "%s(%3d)"	\
+			    DFMX				\
+			    DFML				\
+			    DFMS				\
+			    DFMS				\
+			    "\n", __FILE__, __LINE__,		\
+			    #l1, DEBX(l1),			\
+			    #l2, DEBL(l2),			\
+			    #s3, DEBS(s3),			\
+			    #s4, DEBS(s4)			))
+
 # define LXSDEB(l1,l2,s3) APP_DEB(appDebug( "%s(%3d)"		\
 			    DFML				\
 			    DFMX				\

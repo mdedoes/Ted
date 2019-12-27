@@ -28,6 +28,7 @@
 #   include	<docField.h>
 #   include	<docParaParticuleAdmin.h>
 #   include	<docParaBuilder.h>
+#   include	<docNodeTree.h>
 
 #   include	<docDebug.h>
 #   include	<appDebugon.h>

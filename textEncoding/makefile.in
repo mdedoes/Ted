@@ -1,10 +1,12 @@
 CC=@CC@
 LIBICONV_CFLAGS=@LIBICONV_CFLAGS@
-PCRE_CFLAGS=@PCRE_CFLAGS@
+LIBJANSSON=@LIBJANSSON_CFLAGS@
+LIBPCRE2_CFLAGS=@LIBPCRE2_CFLAGS@
 
 INCLUDES=			\
 	$(LIBICONV_CFLAGS)	\
-	$(PCRE_CFLAGS)		\
+	$(LIBJANSSON_CFLAGS)	\
+	$(LIBPCRE2_CFLAGS)	\
 	-I../appUtil		\
 	-I../include
 
@@ -34,7 +36,7 @@ WFLAGS=	-Wall			\
 
 #CFLAGS= $(WFLAGS) -g -O2 $(INCLUDES)
 
-# 68!!obs
+# 78!!obs
 OBS	=	\
 		uniWinCp874GlyphUnicodes.o\
 		uniWinCp1258GlyphUnicodes.o\
@@ -92,6 +94,16 @@ OBS	=	\
 		numbersHebrew.o\
 		numbersBase26.o\
 		numbersAdditive.o\
+		jsonPathRegex.o\
+		jsonPathImpl.o\
+		jsonPathFind.o\
+		jsonPathFilter.o\
+		jsonPathDeepScan.o\
+		jsonPathCollect.o\
+		jsonPathBySubscript.o\
+		jsonPathByKey.o\
+		jsonParsePath.o\
+		jsonLoad.o\
 		bidiTree.o\
 		bidiTreeBuilder.o\
 		bidiTraverseTree.o\
@@ -122,7 +134,8 @@ includes:
 #  is used in this directory:
 #
 ACLOCAL=				\
-	../configure/pcre.m4		\
+	../configure/pcre2.m4		\
+	../configure/jansson.m4		\
 	../configure/iconv.m4
 
 aclocal.m4:	$(ACLOCAL)
@@ -224,6 +237,84 @@ bidiTreeBuilder.o: \
     textEncodingConfig.h \
     ucdBidiClass.h \
     bidiTreeBuilder.c
+
+jsonLoad.o: \
+    ../appUtil/sioGeneral.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    jsonPath.h \
+    textEncodingConfig.h \
+    jsonLoad.c
+
+jsonParsePath.o: \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    jsonPath.h \
+    jsonPathImpl.h \
+    textEncodingConfig.h \
+    uniUtf8.h \
+    jsonParsePath.c
+
+jsonPathByKey.o: \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    jsonPathImpl.h \
+    textEncodingConfig.h \
+    jsonPathByKey.c
+
+jsonPathBySubscript.o: \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    jsonPathImpl.h \
+    textEncodingConfig.h \
+    jsonPathBySubscript.c
+
+jsonPathCollect.o: \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    jsonPathImpl.h \
+    textEncodingConfig.h \
+    jsonPathCollect.c
+
+jsonPathDeepScan.o: \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    jsonPathImpl.h \
+    textEncodingConfig.h \
+    jsonPathDeepScan.c
+
+jsonPathFilter.o: \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    jsonPath.h \
+    jsonPathImpl.h \
+    textEncodingConfig.h \
+    jsonPathFilter.c
+
+jsonPathFind.o: \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    jsonPath.h \
+    jsonPathImpl.h \
+    textEncodingConfig.h \
+    jsonPathFind.c
+
+jsonPathImpl.o: \
+    ../appUtil/sioFileio.h \
+    ../appUtil/sioGeneral.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    jsonPath.h \
+    jsonPathImpl.h \
+    textEncodingConfig.h \
+    jsonPathImpl.c
+
+jsonPathRegex.o: \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    jsonPathImpl.h \
+    textEncodingConfig.h \
+    jsonPathRegex.c
 
 numbersAdditive.o: \
     ../include/appDebug.h \

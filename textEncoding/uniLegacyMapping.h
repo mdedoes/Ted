@@ -18,7 +18,12 @@
 
 extern IndexMapping UNI_SymbolToGlyphMapping;
 extern IndexMapping UNI_DingbatsToGlyphMapping;
+
+extern IndexMapping UNI_CP1250ToGlyphMapping;
+extern IndexMapping UNI_CP1251ToGlyphMapping;
 extern IndexMapping UNI_CP1252ToGlyphMapping;
+extern IndexMapping UNI_CP1253ToGlyphMapping;
+extern IndexMapping UNI_CP1254ToGlyphMapping;
 
 extern IndexSet UNI_SymbolCodeSet;
 extern IndexSet UNI_DingbatsCodeSet;

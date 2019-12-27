@@ -8,12 +8,11 @@
 
 #   include	<stdio.h>
 
-#   include	<sioMemory.h>
 #   include	<sioFileio.h>
-#   include	<sioHex.h>
+#   include	<sioHexedMemory.h>
 #   include	<sioEndian.h>
 #   include	<bmWmfIo.h>
-#   include	<bmObjectReader.h>
+#   include	<sioHexedMemory.h>
 
 #   include	"docObject.h"
 #   include	"docObjectIo.h"
@@ -98,8 +97,7 @@ int docReadWmfObject(		InsertedObject *	io,
     MemoryBuffer		mb;
 
     SimpleInputStream *		sisIn= (SimpleInputStream *)0;
-    SimpleOutputStream *	sosMem= (SimpleOutputStream *)0;
-    SimpleOutputStream *	sosMeta= (SimpleOutputStream *)0;
+    SimpleOutputStream *	sosData= (SimpleOutputStream *)0;
 
     PictureProperties *		pip= &(io->ioPictureProperties);
 
@@ -109,13 +107,9 @@ int docReadWmfObject(		InsertedObject *	io,
     if  ( ! sisIn )
 	{ XDEB(sisIn); rval= -1; goto ready;	}
 
-    sosMem= sioOutMemoryOpen( &mb );
-    if  ( ! sosMem )
-	{ XDEB(sosMem); rval= -1; goto ready;	}
-
-    sosMeta= sioOutHexOpen( sosMem );
-    if  ( ! sosMeta )
-	{ XDEB(sosMeta); rval= -1; goto ready;	}
+    sosData= sioOutHexedMemoryOpen( &mb );
+    if  ( ! sosData )
+	{ XDEB(sosData); rval= -1; goto ready;	}
 
     ret= bmMetaReadWmfFileHeader( &key, &wfh, sisIn );
     if  ( ret < 0 )
@@ -125,13 +119,12 @@ int docReadWmfObject(		InsertedObject *	io,
 	{ XDEB(key); rval= -1; goto ready;	}
 
     if  ( ret > 0 &&  key == 0x90001 )
-	{ sioEndianPutLeUint32( key, sosMeta );	}
+	{ sioEndianPutLeUint32( key, sosData );	}
 
-    if  ( sioCopyStream( sosMeta, sisIn ) )
+    if  ( sioCopyStream( sosData, sisIn ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-     sioOutClose( sosMeta ); sosMeta= (SimpleOutputStream *)0; /*flush,steal*/
-     sioOutClose( sosMem ); sosMem= (SimpleOutputStream *)0; /*flush,steal*/
+    sioOutClose( sosData ); sosData= (SimpleOutputStream *)0; /*flush,steal*/
 
     io->ioObjectData= mb; utilInitMemoryBuffer( &mb ); /* steal */
     io->ioKind= DOCokPICTWMETAFILE;
@@ -142,10 +135,8 @@ int docReadWmfObject(		InsertedObject *	io,
 
     utilCleanMemoryBuffer( &mb );
 
-    if  ( sosMeta )
-	{ sioOutClose( sosMeta );	}
-    if  ( sosMem )
-	{ sioOutClose( sosMem );	}
+    if  ( sosData )
+	{ sioOutClose( sosData );	}
     if  ( sisIn )
 	{ sioInClose( sisIn );	}
 
@@ -161,14 +152,13 @@ int docReadWmfSize(		InsertedObject *	io,
     WmfFileHeader	wfh;
     unsigned long	key;
 
-    ObjectReader	or;
+    SimpleInputStream *	sisData= (SimpleInputStream *)0;
 
-    bmInitObjectReader( &or );
+    sisData= sioInHexedMemoryOpen( mb );
+    if  ( ! sisData )
+	{ XDEB(sisData); rval= -1; goto ready;	}
 
-    if  ( bmOpenObjectReader( &or, mb ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-
-    ret= bmMetaReadWmfFileHeader( &key, &wfh, or.orSisHex );
+    ret= bmMetaReadWmfFileHeader( &key, &wfh, sisData );
     if  ( ret < 0 )
 	{ LDEB(ret); rval= -1; goto ready;	}
 
@@ -177,7 +167,8 @@ int docReadWmfSize(		InsertedObject *	io,
 
   ready:
 
-    bmCleanObjectReader( &or );
+    if  ( sisData )
+	{ sioInClose( sisData );	}
 
     return rval;
     }

@@ -6,7 +6,6 @@
 #   include	<docSelectionGeometry.h>
 #   include	<utilIndexMapping.h>
 #   include	<docEditTrace.h>
-#   include	<docRecalculateFields.h>
 #   include	<utilColor.h>
 #   include	<guiWidgets.h>
 #   include	<docResizeHandles.h>
@@ -16,6 +15,8 @@ struct EditDocument;
 struct SimpleLocale;
 struct BufferDocument;
 struct RasterImage;
+struct RecalculateFields;
+struct EditApplication;
 
 /************************************************************************/
 /*									*/
@@ -219,8 +220,8 @@ extern const char TedTraceExtension[];
 /*									*/
 /************************************************************************/
 
-extern int tedFirstRecalculateFields(	RecalculateFields *	rf,
-					struct BufferDocument *	bd );
+extern int tedFirstRecalculateFields(	struct RecalculateFields *	rf,
+					struct BufferDocument *		bd );
 
 extern int tedObjectDrag(	APP_WIDGET			w,
 				struct EditDocument *		ed,
@@ -238,5 +239,10 @@ extern void tedRedoDocumentLayout(	struct EditDocument *		ed );
 extern void tedUndrawIBar(		const struct EditDocument *	ed );
 
 extern void tedMoveObjectWindows(	struct EditDocument *		ed );
+
+extern void tedSetupDocumentColors(	struct EditDocument *	ed,
+					struct TedDocument *	td );
+
+extern void * tedMakePrivateData( const struct EditApplication *	ea  );
 
 #   endif	/*  TED_DOCUMENT_H	*/

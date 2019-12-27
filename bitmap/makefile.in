@@ -139,7 +139,7 @@ duplicates:
 includes:
 	includes.sh bitmapConfig.h $(INCLUDES)
 
-# deps -I. -I../include -I../utilGeo -I../appUtil -I../utilPs -I/home/gaai/mark/LinuxProgrammas/zlib -I/home/gaai/mark/LinuxProgrammas/jpeg -I/usr/local/include -I/home/gaai/mark/LinuxProgrammas/libpng
+# deps -I../include -I../utilGeo -I../appUtil -I../utilPs -I/usr/local/include
 ######################################## !! sh
 
 bmBitmapImage.o: \
@@ -301,8 +301,7 @@ bmMakeImage.o: \
 
 bmObjectReader.o: \
     ../appUtil/sioGeneral.h \
-    ../appUtil/sioHex.h \
-    ../appUtil/sioMemory.h \
+    ../appUtil/sioHexedMemory.h \
     ../appUtil/sioUtil.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilPalette.h \
@@ -698,6 +697,7 @@ bmpng.o: \
 bmps.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilColor.h \
+    ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPalette.h \
     bitmapConfig.h \
     bitmap.h \
@@ -705,7 +705,11 @@ bmps.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
     ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/psNup.h \
+    ../utilPs/psPrint.h \
     bmps.c
 
 bmputrow.o: \

@@ -9,10 +9,9 @@
 #   include	<stddef.h>
 #   include	<ctype.h>
 
-#   include	"tedEdit.h"
+#   include	"tedEditOperation.h"
 #   include	<tedDocFront.h>
 #   include	<docRtfTrace.h>
-#   include	<docParaParticules.h>
 #   include	<docTreeType.h>
 #   include	<docNodeTree.h>
 #   include	<docEditCommand.h>
@@ -231,11 +230,6 @@ int tedDocInsertSection(	struct EditDocument *	ed,
 /*  Insert a row close to the current row in a table.			*/
 /*									*/
 /*  1)  Start edit operation.						*/
-/*  2)  Find the position of the beginning/end of the selection in the	*/
-/*	table.								*/
-/*  3)  Get the row that serves as a template.				*/
-/*  4)  Paragraph number of the paragraph that comes directly		*/
-/*	below/above the fresh rows.					*/
 /*  5)  Finish..							*/
 /*									*/
 /************************************************************************/
@@ -245,29 +239,11 @@ int tedDocAddRowToTable(	struct EditDocument *	ed,
 				int			traced )
     {
     int				rval= 0;
-    struct BufferItem *		paraNode;
-    struct BufferItem *		parentNode;
-    struct BufferItem *		refRowNode;
-    const struct RowProperties * refRp;
-
-    int				col;
-    int				row;
-    int				row0;
-    int				row1;
-
-    const int			rows= 1;
 
     TedEditOperation		teo;
     EditOperation *		eo= &(teo.teoEo);
     SelectionGeometry		sg;
     SelectionDescription	sd;
-
-    DocumentPosition		dpRef;
-    int				part;
-    int				paraNr;
-    int				textAttributeNr;
-
-    DocumentSelection		dsRows;
 
     int				command;
 
@@ -285,45 +261,9 @@ int tedDocAddRowToTable(	struct EditDocument *	ed,
     if  ( tedEditStartStep( &teo, command ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( after )
-	{ paraNode= eo->eoTailDp.dpNode;	}
-    else{ paraNode= eo->eoHeadDp.dpNode;	}
+    if  ( docEditAddRowToTable( eo, after ) )
+	{ LDEB(after); rval= -1; goto ready;	}
 
-    /*  2  */
-    if  ( docDelimitTable( paraNode, &parentNode, &col, &row0, &row, &row1 ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-
-    /*  3  */
-    refRowNode= parentNode->biChildren[row];
-    refRp= refRowNode->biRowProperties;
-    if  ( after )
-	{
-	if  ( docTailPosition( &dpRef, refRowNode ) )
-	    { LDEB(row); rval= -1; goto ready;	}
-	if  ( docFindParticuleOfPosition( &part, (int *)0,
-						    &dpRef, PARAfindFIRST ) )
-	    { LDEB(dpRef.dpStroff); rval= -1; goto ready;	}
-	}
-    else{
-	if  ( docHeadPosition( &dpRef, refRowNode ) )
-	    { LDEB(row); rval= -1; goto ready;	}
-	if  ( docFindParticuleOfPosition( &part, (int *)0,
-						    &dpRef, PARAfindLAST ) )
-	    { LDEB(dpRef.dpStroff); rval= -1; goto ready;	}
-	}
-
-    /*  4  */
-    paraNr= docNumberOfParagraph( dpRef.dpNode )+ after;
-    textAttributeNr= dpRef.dpNode->biParaParticules[part].tpTextAttrNr;
-
-    /*  5  */
-    if  ( docInsertTableRows( &dsRows, eo, parentNode, refRowNode, refRp,
-			    textAttributeNr, row+ after, paraNr, rows ) )
-	{ LDEB(row+after); rval= -1; goto ready;	}
-    
-    /*  5  */
-    docSetIBarRange( &(eo->eoAffectedRange), &(dsRows.dsHead) );
-    docSetIBarRange( &(eo->eoSelectedRange), &(dsRows.dsHead) );
     tedEditFinishSelectionTail( &teo );
 
     if  ( teo.teoEditTrace )

@@ -173,7 +173,7 @@ int docParaBuilderStartExistingParagraph(
 
     if  ( paraNode->biParaBidiRoot )
 	{
-LDEB(0);if(0)
+/*LDEB(0);*/if(0)
 	if  ( ! pb->pbBidiTreeBuilder )
 	    {
 	    pb->pbBidiTreeBuilder= bidiOpenTreeBuilder();
@@ -294,10 +294,9 @@ int docParaBuilderCheckParagraph(
 
 	if  ( tp->tpKind == TPkindFIELDTAIL )
 	    {
-	    const DocumentFieldList *	dfl= &(bd->bdFieldList);
 	    const DocumentField *	df;
 
-	    df= docGetFieldByNumber( dfl, tp->tpObjectNumber );
+	    df= docGetFieldByNumber( bd, tp->tpObjectNumber );
 	    if  ( df->dfKind == DOCfkCHFTN )
 		{ addEmptyParticule= 1;	}
 	    }

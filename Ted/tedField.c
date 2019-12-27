@@ -9,6 +9,7 @@
 #   include	<stddef.h>
 
 #   include	"tedEdit.h"
+#   include	"tedEditOperation.h"
 #   include	"tedSelect.h"
 #   include	<docRtfTrace.h>
 #   include	"tedDocument.h"
@@ -22,6 +23,7 @@
 #   include	<docTreeNode.h>
 #   include	<docFields.h>
 #   include	<docBuf.h>
+#   include	<docAttributes.h>
 
 #   include	<appDebugon.h>
 
@@ -61,23 +63,25 @@ int tedLayoutNodeOfField(	TedEditOperation *		teo,
 				const DocumentSelection *	dsAround,
 				unsigned int			whenMask )
     {
+    int				rval= -1;
+
     const LayoutContext *	lc= &(teo->teoLayoutContext);
     struct BufferDocument *	bd= lc->lcDocument;
 
     struct BufferItem *		node;
+
+    RecalculateFields		rf;
+
+    docInitRecalculateFields( &rf );
 
     if  ( whenMask )
 	{
 	struct DocumentTree *	tree;
 	struct BufferItem *	bodySectNode;
 
-	RecalculateFields	rf;
-
-	docInitRecalculateFields( &rf );
-
 	node= docGetSelectionRoot( &tree, &bodySectNode, bd, dsAround );
 	if  ( ! node )
-	    { XDEB(node); return -1;	}
+	    { XDEB(node); rval= -1; goto ready;	}
 
 	rf.rfDocument= bd;
 	rf.rfTree= tree;
@@ -88,19 +92,23 @@ int tedLayoutNodeOfField(	TedEditOperation *		teo,
 	rf.rfFieldsUpdated= 0;
 	rf.rfLocale= lc->lcLocale;
 
-	if  ( docRecalculateTextLevelFields( &rf, node ) )
+	if  ( docRecalculateTextLevelFieldsInNode( &rf, node ) )
 	    { XDEB(whenMask);	}
 	}
     else{
 	node= docGetSelectionRoot( (struct DocumentTree **)0,
 				    (struct BufferItem **)0, bd, dsAround );
 	if  ( ! node )
-	    { XDEB(node); return -1;	}
+	    { XDEB(node); rval= -1; goto ready;	}
 	}
 
     docEditIncludeNodeInReformatRange( &(teo->teoEo), node );
 
-    return 0;
+  ready:
+
+    docCleanRecalculateFields( &rf );
+
+    return rval;
     }
 
 /************************************************************************/
@@ -118,10 +126,7 @@ int tedFlattenFieldImpl(	TedEditOperation *		teo,
     tedIncludeFieldInRedraw( teo, dsAroundField, headPart, tailPart );
 
     /*  0,2  */
-    docDeleteField( dsExInside, eo,
-		    dsAroundField->dsHead.dpNode,
-		    dsAroundField->dsTail.dpNode,
-		    headPart, tailPart, df );
+    docDeleteField( dsExInside, eo, df );
 
     docEditIncludeNodeInReformatRange( eo, dsAroundField->dsHead.dpNode );
     docEditIncludeNodeInReformatRange( eo, dsAroundField->dsTail.dpNode );

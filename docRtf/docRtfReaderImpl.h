@@ -235,9 +235,6 @@ struct RtfReader
     ListOverride		rrcListOverride;
     ListOverrideLevel		rrcListOverrideLevel;
 
-				/****************************************/
-				/*  Document properties.		*/
-				/****************************************/
 				/**
 				 *  For reading the font table.
 				 */
@@ -245,6 +242,9 @@ struct RtfReader
     EncodedFont			rrCurrentEncodedFont;
     PagedList			rrEncodedFontList;
 
+				/**
+				 *  Default fonts of the document.
+				 */
     int				rrDefaultFont;
     int				rrDefaultFontDbch;
     int				rrDefaultFontLoch;

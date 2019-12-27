@@ -170,19 +170,21 @@ int docRtfMemoryBufferSetText(	MemoryBuffer *		mb,
 				RtfReader *		rr,
 				int			removeSemicolon )
     {
+    int		rval= 0;
     char *	text= (char *)0;
-    int		size;
+    int		size= 0;
 
     if  ( docRtfStoreSavedText( &text, &size, rr, removeSemicolon ) )
-	{ LDEB(1); return -1;	}
+	{ LDEB(1); rval= -1; goto ready;	}
 
     if  ( utilMemoryBufferSetBytes( mb, (const unsigned char *)text, size ) )
-	{ LDEB(1); return -1;	}
+	{ LDEB(size); rval= -1; goto ready;	}
 
+  ready:
     if  ( text )
 	{ free( text );		}
 
-    return 0;
+    return rval;
     }
 
 /************************************************************************/
@@ -194,20 +196,22 @@ int docRtfMemoryBufferSetText(	MemoryBuffer *		mb,
 int docRtfMemoryBufferAppendText(	MemoryBuffer *		mb,
 					RtfReader *		rr )
     {
+    int		rval= 0;
     const int	removeSemicolon= 0;
     char *	text= (char *)0;
-    int		size;
+    int		size= 0;
 
     if  ( docRtfStoreSavedText( &text, &size, rr, removeSemicolon ) )
-	{ LDEB(1); return -1;	}
+	{ LDEB(1); rval= -1; goto ready;	}
 
     if  ( utilMemoryBufferAppendBytes( mb, (const unsigned char *)text, size ) )
-	{ LDEB(1); return -1;	}
+	{ LDEB(1); rval= -1; goto ready;	}
 
+  ready:
     if  ( text )
 	{ free( text );		}
 
-    return 0;
+    return rval;
     }
 
 /************************************************************************/
@@ -267,7 +271,7 @@ int docRtfGotText(	RtfReader *		rr,
 	    { LDEB(1); return -1;	}
 	/*
 	 * No need to update rrParaHeadFieldTailOffset, as we append text after
-	   the head field anyway
+	 * the head field anyway
 	 */
 	}
 

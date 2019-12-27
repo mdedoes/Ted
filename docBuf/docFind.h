@@ -64,4 +64,10 @@ extern int docFindFindNextInCurrentTree(
 				PARA_FIND_STRING		findNext,
 				void *				through );
 
+extern int docFindSetPattern(	void **				pProg,
+				const char *			pattern,
+				int				useRegex,
+				int				asWord,
+				int				caseSensitive );
+
 #   endif

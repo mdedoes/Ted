@@ -9,6 +9,7 @@
 
 #   include	"docLayout.h"
 #   include	"docLayoutLine.h"
+#   include	"layoutContext.h"
 #   include	<docListLevel.h>
 #   include	<docBorderProperties.h>
 #   include	<docTextParticule.h>
@@ -156,15 +157,21 @@ int docLayoutWord(	LineLayoutJob *			llj,
 
 	if  ( part+ 1 < particuleUpto )
 	    {
-	    int			spanection;
+	    int			direction;
 	    int			spanStroffUpto;
+	    int			res;
 
-	    if  ( docParaDelimitDirectionalRun( &spanection, &spanStroffUpto,
-				    &spanPartUpto, paraNode, tp->tpStroff ) )
+	    res= docParaDelimitDirectionalRun( &direction, &spanStroffUpto,
+				    &spanPartUpto, paraNode, tp->tpStroff );
+	    if  ( res )
 		{
-		LLLDEB(part,particuleUpto,tp->tpStroff);
+		LLLLDEB(part,particuleUpto,tp->tpStroff,res);
 		docListNode(0,paraNode,0);
-		return -1;
+		if  ( res < 0 )
+		    { return -1;	}
+		direction = 0;
+		spanStroffUpto= tp->tpStroff;
+		spanPartUpto= particuleUpto;
 		}
 
 	    if  ( spanPartUpto > particuleUpto )

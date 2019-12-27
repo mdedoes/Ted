@@ -7,6 +7,7 @@
 #   include	<docObjectProperties.h>
 #   include	<docTextParticule.h>
 #   include	<docObject.h>
+#   include	<docTreeType.h>
 #   include	"docSelect.h"
 #   include	"docObjects.h"
 

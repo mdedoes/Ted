@@ -115,6 +115,7 @@ fontDocFontList.o: \
     docFontConfig.h \
     fontDocFont.h \
     fontDocFontList.h \
+    fontDocFontListImpl.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../textEncoding/textOfficeCharset.h \
@@ -130,6 +131,7 @@ fontEncodedFont.o: \
     docFontConfig.h \
     fontDocFont.h \
     fontDocFontList.h \
+    fontDocFontListImpl.h \
     fontEncodedFont.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \

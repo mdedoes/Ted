@@ -3,7 +3,6 @@
 
 #   include	<textAttribute.h>
 #   include	<utilColor.h>
-#   include	"layoutContext.h"
 #   include	"docLayoutDocumentTree.h"
 
 struct DrawingContext;
@@ -22,6 +21,7 @@ struct AffineTransform2D;
 struct DocumentGeometry;
 struct TextRun;
 struct TextLine;
+struct LayoutContext;
 
 /************************************************************************/
 /*									*/
@@ -46,6 +46,7 @@ typedef int (*FINISH_PAGE)(	void *				through,
 typedef int (*START_PAGE)(	void *				through,
 				const struct DocumentGeometry *	dg,
 				struct DrawingContext *		dc,
+				const char *			why,
 				int				page );
 
 typedef int (*SET_COLOR_RGB)(	struct DrawingContext *		dc,
@@ -153,7 +154,7 @@ typedef struct DrawingContext
     int				dcCurrentColorSet;
     RGB8Color			dcCurrentColor;
 
-    LayoutContext		dcLayoutContext;
+    const struct LayoutContext * dcLayoutContext;
 
 				/**
 				 *  The section in the document to which 
@@ -404,7 +405,8 @@ extern int docDrawToNextColumn(	struct BufferItem *		thisBodyNode,
 				void *				through,
 				struct LayoutPosition *		lpHere,
 				struct BlockFrame *		bf,
-				DrawingContext *		dc );
+				DrawingContext *		dc,
+				const char *			why );
 
 extern int docDrawParaNode(	struct LayoutPosition *		lpBelow,
 				struct BufferItem *		paraNode,
@@ -419,5 +421,13 @@ extern int docDrawShapeText(	const struct DocumentRectangle * drHere,
 				struct DrawingShape *		ds,
 				DrawingContext *		dc,
 				void *				through );
+
+extern struct BufferItem * docFindFirstSectionOnPage(
+				struct BufferItem *		bodyNode,
+				int				page );
+
+extern struct BufferItem * docFindLastSectionOnPage(
+				struct BufferItem *		bodyNode,
+				int				page );
 
 #   endif

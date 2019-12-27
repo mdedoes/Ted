@@ -29,6 +29,7 @@ struct SelectionDescription;
 struct SelectionGeometry;
 struct DocumentTree;
 struct AppInspector;
+struct DocumentPosition;
 
 /************************************************************************/
 /*									*/
@@ -161,6 +162,10 @@ extern int tedDocInsertNote(		struct EditDocument *		ed,
 
 extern void tedDocGotoNoteDef(		struct EditDocument *		ed );
 extern void tedDocGotoNoteRef(		struct EditDocument *		ed );
+
+extern void tedGotoNoteOther(	struct EditDocument *		ed,
+				const struct DocumentField *	dfChftn,
+				const struct DocumentPosition *	dpClick );
 
 extern void tedDocNextNote(		struct EditDocument *		ed );
 extern void tedDocPrevNote(		struct EditDocument *		ed );

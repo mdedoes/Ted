@@ -64,19 +64,16 @@ duplicates:
 includes:
 	includes.sh drawMetaConfig.h $(INCLUDES)
 
-# deps -I. -I../include -I../bitmap -I../textEncoding -I../utilGeo -I../appUtil -I../docFont -I../utilPs
+# deps -I../include -I../bitmap -I../textEncoding -I../utilGeo -I../appUtil -I../docFont -I../utilPs
 ######################################## !! sh
 
 drawImageSvg.o: \
-    ../appUtil/sioBase64.h \
     ../appUtil/sioGeneral.h \
-    ../appUtil/sioUtil.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilPalette.h \
     ../appUtil/xmlWriter.h \
     ../bitmap/bitmap.h \
     ../bitmap/bmio.h \
-    ../bitmap/bmObjectReader.h \
     drawImageSvg.h \
     drawMetaConfig.h \
     ../include/appDebug.h \
@@ -92,7 +89,7 @@ drawMetafileImpl.o: \
     ../bitmap/bitmap.h \
     ../bitmap/bmcolor.h \
     ../bitmap/bmWmf.h \
-    ../docFont/fontDocFontList.h \
+    ../docFont/fontDocFontListImpl.h \
     ../docFont/fontMatchFont.h \
     drawMetaConfig.h \
     drawMetafile.h \
@@ -118,7 +115,7 @@ drawMetafilePs.o: \
     ../bitmap/bmEmfIo.h \
     ../bitmap/bmWmf.h \
     ../bitmap/bmWmfIo.h \
-    ../docFont/fontDocFontList.h \
+    ../docFont/fontDocFontListImpl.h \
     ../docFont/fontMatchFont.h \
     drawMacPictImpl.h \
     drawMetaConfig.h \
@@ -153,7 +150,7 @@ drawMetafileSvg.o: \
     ../bitmap/bmEmfIo.h \
     ../bitmap/bmWmf.h \
     ../bitmap/bmWmfIo.h \
-    ../docFont/fontDocFontList.h \
+    ../docFont/fontDocFontListImpl.h \
     ../docFont/fontMatchFont.h \
     drawImageSvg.h \
     drawMacPictImpl.h \
@@ -185,6 +182,7 @@ drawPlayEmf.o: \
     ../bitmap/bmEmfIo.h \
     ../bitmap/bmWmf.h \
     ../docFont/fontDocFontList.h \
+    ../docFont/fontDocFontListImpl.h \
     ../docFont/fontMatchFont.h \
     drawMetaConfig.h \
     drawMetafile.h \
@@ -212,6 +210,7 @@ drawPlayMacPict.o: \
     ../bitmap/bmWmf.h \
     ../docFont/fontDocFont.h \
     ../docFont/fontDocFontList.h \
+    ../docFont/fontDocFontListImpl.h \
     ../docFont/fontMatchFont.h \
     drawMacPict.h \
     drawMacPictImpl.h \
@@ -241,7 +240,7 @@ drawPlayWmf.o: \
     ../bitmap/bmio.h \
     ../bitmap/bmWmf.h \
     ../bitmap/bmWmfIo.h \
-    ../docFont/fontDocFontList.h \
+    ../docFont/fontDocFontListImpl.h \
     ../docFont/fontMatchFont.h \
     drawMetaConfig.h \
     drawMetafile.h \
@@ -270,6 +269,7 @@ drawWinMeta.o: \
     ../bitmap/bmWmfIo.h \
     ../docFont/fontDocFont.h \
     ../docFont/fontDocFontList.h \
+    ../docFont/fontDocFontListImpl.h \
     ../docFont/fontMatchFont.h \
     drawMetaConfig.h \
     drawMetafile.h \
@@ -295,7 +295,7 @@ drawWinMetaImg.o: \
     ../bitmap/bitmap.h \
     ../bitmap/bmcolor.h \
     ../bitmap/bmWmf.h \
-    ../docFont/fontDocFontList.h \
+    ../docFont/fontDocFontListImpl.h \
     ../docFont/fontMatchFont.h \
     drawMetaConfig.h \
     drawMetafile.h \
@@ -321,7 +321,7 @@ drawWinMetaPsFonts.o: \
     ../bitmap/bmEmfIo.h \
     ../bitmap/bmWmf.h \
     ../bitmap/bmWmfIo.h \
-    ../docFont/fontDocFontList.h \
+    ../docFont/fontDocFontListImpl.h \
     ../docFont/fontMatchFont.h \
     drawMacPictImpl.h \
     drawMetaConfig.h \
@@ -349,7 +349,7 @@ drawWinMetaText.o: \
     ../bitmap/bitmap.h \
     ../bitmap/bmcolor.h \
     ../bitmap/bmWmf.h \
-    ../docFont/fontDocFontList.h \
+    ../docFont/fontDocFontListImpl.h \
     ../docFont/fontMatchFont.h \
     drawMetaConfig.h \
     drawMetafile.h \

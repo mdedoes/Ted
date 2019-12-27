@@ -9,6 +9,7 @@
 #   include	"docDraw.h"
 #   include	"docDrawLine.h"
 #   include	"docScreenDraw.h"
+#   include	"layoutContext.h"
 #   include	<docObjectProperties.h>
 #   include	<docObject.h>
 
@@ -84,7 +85,7 @@ int docScreenDrawInlineObject(
     {
     DrawingContext *		dc= dtl->dtlDrawingContext;
     const DocumentRectangle *	drClip= dc->dcClipRect;
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
     int				x0;
     int				y0;
 

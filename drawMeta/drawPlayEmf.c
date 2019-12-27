@@ -9,6 +9,7 @@
 #   include	<sioEndian.h>
 #   include	<uniUtf8.h>
 #   include	<sioGeneral.h>
+#   include	<fontDocFontList.h>
 
 #   include	<appDebugon.h>
 

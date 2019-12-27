@@ -262,8 +262,10 @@ int docBalanceFieldSelection(	DocumentField **	pLeftField,
 	    { *dpTail= dsAroundB.dsTail;	}
 	}
 
-    *pLeftField= dfLeft;
-    *pRightField= dfRight;
+    if  ( pLeftField )
+	{ *pLeftField= dfLeft;	}
+    if  ( pRightField )
+	{ *pRightField= dfRight;	}
     *pHeadMoved= headMoved;
     *pTailMoved= tailMoved;
 
@@ -407,12 +409,13 @@ static int docFindFieldParticules(
     {
     int				part0;
     int				part1;
+    int				flags;
 
     TextParticule *		tp;
 
     /*  2  */
     if  ( docFindParticuleOfPosition( &part0, (int *)0,
-					&(dsField->dsHead), PARAfindFIRST ) )
+					&(dsField->dsHead), PARAfindLAST ) )
 	{ LDEB(1); return -1;	}
 
     if  ( dsInside )
@@ -421,22 +424,16 @@ static int docFindFieldParticules(
 	{ *dsAround= *dsField;	}
 
     tp= dsField->dsHead.dpNode->biParaParticules+ part0;
-    while( part0 < dsField->dsHead.dpNode->biParaParticuleCount	&&
-	   tp->tpStroff < dsField->dsHead.dpStroff		)
-	{ part0++; tp++;	}
-    while( part0 < dsField->dsHead.dpNode->biParaParticuleCount	&&
-	   tp->tpStroff == dsField->dsHead.dpStroff		)
-	{
-	if  ( tp->tpKind == TPkindFIELDHEAD		&&
-	      tp->tpObjectNumber == df->dfFieldNumber	)
-	    { break;	}
 
-	part0++; tp++;
-	}
     if  ( part0 >= dsField->dsHead.dpNode->biParaParticuleCount	||
-	  tp->tpStroff != dsField->dsHead.dpStroff		)
+	  tp->tpStroff != dsField->dsHead.dpStroff		||
+	  tp->tpKind != TPkindFIELDHEAD				||
+	  tp->tpObjectNumber != df->dfFieldNumber		)
 	{
 	LLDEB(part0,dsField->dsHead.dpNode->biParaParticuleCount);
+	LSLDEB(tp->tpKind,docFieldKindStr(df->dfKind),TPkindFIELDHEAD);
+	LLDEB(tp->tpObjectNumber,df->dfFieldNumber);
+	docListNode(0,dsField->dsHead.dpNode,0);
 	return -1;
 	}
 
@@ -446,24 +443,30 @@ static int docFindFieldParticules(
 	{ dsInside->dsHead.dpStroff= tp->tpStroff+ tp->tpStrlen;	}
 
     /*  3  */
-    if  ( docFindParticuleOfPosition( &part1, (int *)0,
+    flags= 0;
+    if  ( docFindParticuleOfPosition( &part1, &flags,
 					&(dsField->dsTail), PARAfindLAST ) )
 	{ LDEB(1); return -1;	}
-    tp= dsField->dsTail.dpNode->biParaParticules+ part1;
-    while( part1 >= 0					&&
-	   tp->tpStroff == dsField->dsTail.dpStroff	)
-	{
-	if  ( tp->tpKind == TPkindFIELDTAIL		&&
-	      tp->tpObjectNumber == df->dfFieldNumber	)
-	    { break;	}
 
-	part1--; tp--;
+    tp= dsField->dsTail.dpNode->biParaParticules+ part1;
+
+    if  ( part1 < 0						||
+	  part1 >= dsField->dsTail.dpNode->biParaParticuleCount	||
+	  tp->tpKind != TPkindFIELDTAIL				||
+	  tp->tpObjectNumber != df->dfFieldNumber		)
+	{
+	LLDEB(part1,dsField->dsTail.dpNode->biParaParticuleCount);
+	LLDEB(tp->tpKind,TPkindFIELDTAIL);
+	LLDEB(tp->tpObjectNumber,df->dfFieldNumber);
+	LLDEB(df->dfTailPosition.epParaNr,df->dfTailPosition.epStroff);
+	return -1;
 	}
-    if  ( part1 < 0					||
-	  tp->tpStroff != dsField->dsTail.dpStroff	)
+
+    if  ( tp->tpStroff != dsField->dsTail.dpStroff )
 	{
 	LLLDEB(part1,tp->tpStroff,dsField->dsTail.dpStroff);
-	LDEB(df->dfFieldNumber);
+	LLLDEB(df->dfFieldNumber,df->dfTailPosition.epParaNr,
+						df->dfTailPosition.epStroff);
 	docListNode(0,dsField->dsTail.dpNode,0);
 	return -1;
 	}
@@ -491,12 +494,12 @@ static int docFindFieldParticules(
 /*									*/
 /************************************************************************/
 
-int docDelimitFieldInDoc(	DocumentSelection *	dsInside,
-				DocumentSelection *	dsAround,
-				int *			pPart0,
-				int *			pPart1,
+int docDelimitFieldInDoc(	DocumentSelection *		dsInside,
+				DocumentSelection *		dsAround,
+				int *				pPart0,
+				int *				pPart1,
 				const struct BufferDocument *	bd,
-				const DocumentField *	df )
+				const DocumentField *		df )
     {
     DocumentSelection	dsField;
 
@@ -507,6 +510,18 @@ int docDelimitFieldInDoc(	DocumentSelection *	dsInside,
 						&(df->dfTailPosition) ) )
 	{ LDEB(1); return -1;	}
 
+    if  ( dsField.dsHead.dpStroff != df->dfHeadPosition.epStroff )
+	{
+	LLDEB(dsField.dsHead.dpStroff,df->dfHeadPosition.epStroff);
+	return -1;
+	}
+
+    if  ( dsField.dsTail.dpStroff != df->dfTailPosition.epStroff )
+	{
+	LLDEB(dsField.dsTail.dpStroff,df->dfTailPosition.epStroff);
+	return -1;
+	}
+
     /*  2  */
     if  ( ! pPart0 && ! pPart1 && ! dsInside && ! dsAround )
 	{ return 0;	}
@@ -515,17 +530,17 @@ int docDelimitFieldInDoc(	DocumentSelection *	dsInside,
 					    dsInside, dsAround, &dsField, df );
     }
 
-int docDelimitFieldInTree(	DocumentSelection *	dsInside,
-				DocumentSelection *	dsAround,
-				int *			pPart0,
-				int *			pPart1,
-				const struct DocumentTree *	dt,
-				const DocumentField *	df )
+int docDelimitFieldInTree(	DocumentSelection *		dsInside,
+				DocumentSelection *		dsAround,
+				int *				pPart0,
+				int *				pPart1,
+				const struct DocumentTree *	tree,
+				const DocumentField *		df )
     {
     DocumentSelection	dsField;
 
     /*  1  */
-    if  ( docSelectionForEditPositionsInTree( &dsField, dt,
+    if  ( docSelectionForEditPositionsInTree( &dsField, tree,
 			    &(df->dfHeadPosition), &(df->dfTailPosition) ) )
 	{ LDEB(1); return -1;	}
 
@@ -542,11 +557,11 @@ int docDelimitFieldInTree(	DocumentSelection *	dsInside,
 /*									*/
 /************************************************************************/
 
-int docDelimitParaHeadField(	DocumentField **	pDfHead,
-				DocumentSelection *	dsInsideHead,
-				DocumentSelection *	dsAroundHead,
-				int *			pHeadPart,
-				int *			pTailPart,
+int docDelimitParaHeadField(	DocumentField **		pDfHead,
+				DocumentSelection *		dsInsideHead,
+				DocumentSelection *		dsAroundHead,
+				int *				pHeadPart,
+				int *				pTailPart,
 				const struct BufferItem *	paraNode,
 				const struct BufferDocument *	bd )
     {
@@ -565,15 +580,18 @@ int docDelimitParaHeadField(	DocumentField **	pDfHead,
 
 	if  ( tp->tpKind == TPkindFIELDHEAD )
 	    {
-	    df= docGetFieldByNumber( &(bd->bdFieldList), tp->tpObjectNumber );
+	    df= docGetFieldByNumber( bd, tp->tpObjectNumber );
 	    if  ( ! df )
 		{ LXDEB(tp->tpObjectNumber,df); continue;	}
 
 	    if  ( df->dfKind == fieldKind )
 		{
-		if  ( docDelimitFieldInDoc( dsInsideHead, dsAroundHead,
+		if  ( dsInsideHead || dsAroundHead || pHeadPart || pTailPart )
+		    {
+		    if  ( docDelimitFieldInDoc( dsInsideHead, dsAroundHead,
 					    pHeadPart, pTailPart, bd, df ) )
-		    { LDEB(1); return -1; }
+			{ LDEB(1); return -1; }
+		    }
 
 		if  ( pDfHead )
 		    { *pDfHead= df;	}

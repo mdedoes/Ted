@@ -10,7 +10,6 @@
 
 #   include	<bmio.h>
 
-#   include	<docDraw.h>
 #   include	"docScreenObjects.h"
 #   include	<drawMetafile.h>
 #   include	<appWinMetaX11.h>
@@ -19,13 +18,15 @@
 #   include	<docTreeNode.h>
 #   include	<docTextParticule.h>
 #   include	<docShape.h>
+#   include	<sioGeneral.h>
+#   include	<sioHexedMemory.h>
 #   include	<bmObjectReader.h>
 #   include	<docTreeScanner.h>
 #   include	<docObject.h>
 #   include	<docObjects.h>
 #   include	<geoGrid.h>
-#   include	<docBuf.h>
 #   include	<docParaParticules.h>
+#   include	<layoutContext.h>
 
 #   include	<docDebug.h>
 #   include	<appDebugon.h>
@@ -49,17 +50,16 @@ static int docOpenMetafileObject(
     int			rval= 0;
     MetafilePlayer	mp;
 
-    ObjectReader	or;
+    SimpleInputStream *		sisData= (SimpleInputStream *)0;
 
     void *		ownData= (void *)0;
     DrawingSurface	ds= (DrawingSurface)0;
 
-    bmInitObjectReader( &or );
+    sisData= sioInHexedMemoryOpen( mb );
+    if  ( ! sisData )
+	{ XDEB(sisData); rval= -1; goto ready;	}
 
-    if  ( bmOpenObjectReader( &or, mb ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-
-    docSetMetafilePlayer( &mp, or.orSisHex, lc, pip, pixelsWide, pixelsHigh );
+    docSetMetafilePlayer( &mp, sisData, lc, pip, pixelsWide, pixelsHigh );
 
     ds= drawMakeDrawingSurfaceForParent( lc->lcDrawingSurface,
 						    pixelsWide, pixelsHigh );
@@ -77,7 +77,8 @@ XDEB(ownData); SDEB("IS PLAATJE");
 
   ready:
 
-    bmCleanObjectReader( &or );
+    if  ( sisData )
+	{ sioInClose( sisData );	}
 
     return rval;
     }
@@ -211,19 +212,14 @@ static int docOpenEpsfObject(		const LayoutContext *	lc,
 	    add->addDrawable, io->ioDrawingSurface );
     sosGs= sioOutPipeOpen( command );
 
-    sisMem= sioInMemoryOpen( mb );
-    if  ( ! sisMem )
-	{ XDEB(sisMem); return -1;	}
+    sisData= sioInHexedMemoryOpen( mb );
+    if  ( ! sisData )
+	{ XDEB(sisData); return -1;	}
 
-    sisEps= sioInHexOpen( sisMem );
-    if  ( ! sisEps )
-	{ XDEB(sisEps); return -1;	}
-
-    if  ( sioCopyStream( sosGs, sisEps ) )
+    if  ( sioCopyStream( sosGs, sisData ) )
 	{ LDEB(1); return -1;	}
 
-    sioInClose( sisEps );
-    sioInClose( sisMem );
+    sioInClose( sisData );
 
     sioOutPrintf( sosGs, " showpage\n" );
     sioOutClose( sosGs );

@@ -377,9 +377,9 @@ int docRowNodeFixColumnCount(		struct BufferItem *		rowNode,
     return rval;
     }
 
-int docInsertColumnInRowNode(	struct BufferItem *		rowNode,
-				int				col,
-				const CellProperties *		cp,
+int docInsertColumnInRowNode(	struct BufferItem *			rowNode,
+				int					col,
+				const CellProperties *			cp,
 				const struct BufferDocument *		bd,
 				const struct DocumentAttributeMap *	dam )
     {
@@ -394,7 +394,7 @@ int docInsertColumnInRowNode(	struct BufferItem *		rowNode,
 	{
 	if  ( docCopyRowProperties( &rp, rpNode,
 				    (const struct DocumentAttributeMap *)0 ) )
-	    { LDEB(1); rval= -1; goto ready;	}
+	    { LDEB(rpNode->rpCellCount); rval= -1; goto ready;	}
 	}
 
     if  ( col > rp.rpCellCount )

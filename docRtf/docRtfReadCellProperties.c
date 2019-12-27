@@ -120,6 +120,8 @@ int docRtfRememberCellProperty(		const RtfControlWord *	rcw,
 	case CLpropBOTTOM_BORDER:
 	case CLpropLEFT_BORDER:
 	case CLpropRIGHT_BORDER:
+	case CLpropLEFT_RIGHT_DIAGONAL:
+	case CLpropRIGHT_LEFT_DIAGONAL:
 	    arg= docRtfReadGetBorderNumber( rr );
 	    if  ( arg < 0 )
 		{ SLDEB(rcw->rcwWord,arg); return -1;	}

@@ -22,7 +22,6 @@
 #   include	"docSelectionDescription.h"
 #   include	"docEditCommand.h"
 #   include	<docHeaderFooterScopes.h>
-#   include	<docPageGrid.h>
 #   include	<docParaParticules.h>
 #   include	<docRowProperties.h>
 #   include	<docParaNodeProperties.h>
@@ -31,6 +30,7 @@
 #   include	<docSectProperties.h>
 #   include	<docSelect.h>
 #   include	<docFields.h>
+#   include	<docAttributes.h>
 
 #   include	<appDebugon.h>
 
@@ -447,7 +447,9 @@ void docEnableEditCommands(	unsigned char *			cmdEnabled,
 				      ! sd->sdIsIBarSelection	);
 
 	cmdEnabled[EDITcmdSET_BOOKMARK]=
+				    /*
 				    sd->sdIsSingleParagraph		&&
+				    */
 				    ( sd->sdHeadInBookmark	||
 				      ! sd->sdHeadInField	);
 

@@ -38,7 +38,7 @@
 static int docRtfSetAnsicpg(	struct TextConverter *	tc,
 				int			ansicpg )
     {
-    char			scratch[20];
+    char	scratch[20];
 
     switch( ansicpg )
 	{

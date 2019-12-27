@@ -17,7 +17,6 @@
 #   include	<docTabStopList.h>
 #   include	<docRowProperties.h>
 #   include	<docParaProperties.h>
-#   include	"docLayout.h"
 #   include	<docBlockFrame.h>
 #   include	<docStripFrame.h>
 #   include	<docRulerColumnSeparator.h>
@@ -25,6 +24,7 @@
 #   include	"docScreenRuler.h"
 #   include	<docTabStop.h>
 #   include	<docCellProperties.h>
+#   include	"layoutContext.h"
 
 #   include	<appDebugon.h>
 

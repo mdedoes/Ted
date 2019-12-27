@@ -246,14 +246,22 @@ static int bmTiffExtractDescription(	int *			pFileFormat,
 	{
 	if  ( TIFFGetField( tr->trTiff, TIFFTAG_PLANARCONFIG, &tr->trPlanarConfig ) != 1 )
 	    { LDEB(TIFFTAG_PLANARCONFIG); return -1;	}
-	if  ( tr->trPlanarConfig != 1 )
+	if  ( tr->trPlanarConfig != PLANARCONFIG_CONTIG )
 	    {
 	    LLDEB(bd->bdSamplesPerPixel,tr->trPlanarConfig);
 	    LLDEB(bd->bdBitsPerSample,bd->bdBitsPerPixel);
 	    }
+
+	/* TOP Raster GeoTiffs from pdok.nl */
+	if  ( tr->trPhotometric == PHOTOMETRIC_PALETTE	&&
+	      tr->trPlanarConfig != PLANARCONFIG_CONTIG )
+	    {
+	    LLDEB(tr->trPhotometric,tr->trPlanarConfig);
+	    tr->trPlanarConfig= PLANARCONFIG_CONTIG;
+	    }
 	}
     else{
-	tr->trPlanarConfig= 1;
+	tr->trPlanarConfig= PLANARCONFIG_CONTIG;
 	}
 
     if  ( TIFFGetField( tr->trTiff, TIFFTAG_RESOLUTIONUNIT, &u16 ) != 1 )
@@ -491,7 +499,7 @@ int bmReadTiffFile(	const MemoryBuffer *	filename,
 	    }
 	}
 
-    if  ( tr.trPlanarConfig != 1 )
+    if  ( tr.trPlanarConfig != PLANARCONFIG_CONTIG )
 	{
 	unsigned char *		scratch;
 

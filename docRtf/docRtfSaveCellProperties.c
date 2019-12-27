@@ -10,10 +10,9 @@
 
 #   include	"docRtfWriterImpl.h"
 #   include	"docRtfTags.h"
-#   include	<docPropVal.h>
-#   include	<docTextFlow.h>
 #   include	<docCellProperties.h>
 #   include	<utilPropMask.h>
+#   include	"docRtfControlWord.h"
 
 #   include	<appDebugon.h>
 
@@ -23,54 +22,33 @@
 /*									*/
 /************************************************************************/
 
-void docRtfSaveCellProperties(	RtfWriter *			rw,
+static const int CellRegularProperties[]=
+{
+    CLpropVALIGN,
+    CLpropHOR_MERGE,
+    CLpropVERT_MERGE,
+    CLpropTOP_BORDER,
+    CLpropLEFT_BORDER,
+    CLpropRIGHT_BORDER,
+    CLpropBOTTOM_BORDER,
+    CLpropLEFT_RIGHT_DIAGONAL,
+    CLpropRIGHT_LEFT_DIAGONAL,
+};
+
+static const int CellRegularPropertyCount=
+			sizeof(CellRegularProperties)/sizeof(int);
+
+int docRtfSaveCellProperties(	RtfWriter *			rw,
 				const struct PropertyMask *	cpSetMask,
 				const CellProperties *		cpSet,
 				int				leftOffset )
     {
-    const int			anyway= 0;
+    const int			scope= RTCscopeCELL;
 
-    if  ( PROPmaskISSET( cpSetMask, CLpropVALIGN ) )
-	{
-	docRtfWriteEnumTag( rw, DOCrtf_CellValignTags,
-			    cpSet->cpValign,
-			    DOCrtf_CellValignTagCount, DOCtva_COUNT );
-	}
-
-    if  ( PROPmaskISSET( cpSetMask, CLpropHOR_MERGE ) )
-	{
-	docRtfWriteEnumTag( rw, DOCrtf_CellHorMergeTags,
-			    cpSet->cpHorizontalMerge,
-			    DOCrtf_CellHorMergeTagCount, CELLmerge_COUNT );
-	}
-
-    if  ( PROPmaskISSET( cpSetMask, CLpropVERT_MERGE ) )
-	{
-	docRtfWriteEnumTag( rw, DOCrtf_CellVerMergeTags,
-			    cpSet->cpVerticalMerge,
-			    DOCrtf_CellVerMergeTagCount, CELLmerge_COUNT );
-	}
-
-    if  ( PROPmaskISSET( cpSetMask, CLpropTOP_BORDER ) )
-	{
-	docRtfSaveBorderByNumber( rw, "clbrdrt",
-					cpSet->cpTopBorderNumber, anyway );
-	}
-    if  ( PROPmaskISSET( cpSetMask, CLpropLEFT_BORDER ) )
-	{
-	docRtfSaveBorderByNumber( rw, "clbrdrl",
-					cpSet->cpLeftBorderNumber, anyway );
-	}
-    if  ( PROPmaskISSET( cpSetMask, CLpropRIGHT_BORDER ) )
-	{
-	docRtfSaveBorderByNumber( rw, "clbrdrr",
-					cpSet->cpRightBorderNumber, anyway );
-	}
-    if  ( PROPmaskISSET( cpSetMask, CLpropBOTTOM_BORDER ) )
-	{
-	docRtfSaveBorderByNumber( rw, "clbrdrb",
-					cpSet->cpBottomBorderNumber, anyway );
-	}
+    if  ( docRtfWriteItemProperties( rw, scope, cpSet,
+			(RtfGetIntProperty)docGetCellProperty, cpSetMask,
+			CellRegularProperties, CellRegularPropertyCount ) )
+	{ LLDEB(scope,CellRegularPropertyCount); return -1;	}
 
     if  ( PROPmaskISSET( cpSetMask, CLpropLEFT_PADDING_UNIT )	||
 	  PROPmaskISSET( cpSetMask, CLpropLEFT_PADDING )	)
@@ -112,17 +90,16 @@ void docRtfSaveCellProperties(	RtfWriter *			rw,
 
     if  ( PROPmaskISSET( cpSetMask, CLpropSHADING ) )
 	{
-	docRtfSaveShadingByNumber( rw, cpSet->cpShadingNumber,
-		    DOCrtf_CellShadingTags, DOCrtf_CellShadingTagCount,
-		    "clcfpat", "clcbpat", "clshdng" );
+	docRtfSaveShadingByNumber( rw, RTCscopeCELL_SHADING,
+						    cpSet->cpShadingNumber );
 	}
 
     /**/
     if  ( PROPmaskISSET( cpSetMask, CLpropTEXT_FLOW ) )
 	{
-	docRtfWriteEnumTag( rw, DOCrtf_CellTextFlowTags,
-			    cpSet->cpTextFlow,
-			    DOCrtf_CellTextFlowTagCount, TXflow_COUNT );
+	if  ( docRtfWriteProperty( rw, scope,
+					CLpropTEXT_FLOW, cpSet->cpTextFlow ) )
+	    { LLLDEB(scope,CLpropTEXT_FLOW,cpSet->cpTextFlow); return -1; }
 	}
 
     /*  LAST! and always. value > 0 triggers the mask in the reader */
@@ -131,5 +108,7 @@ void docRtfSaveCellProperties(	RtfWriter *			rw,
     else{ docRtfWriteArgTag( rw, RTFtag_cellx, 0 );			}
 
     docRtfWriteNextLine( rw );
+
+    return 0;
     }
 

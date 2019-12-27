@@ -605,8 +605,7 @@ static int psSaveAfmFile(	AfmFontInfo *		afi,
 
     if  ( utilMemoryBufferSetString( &relative, afi->afiFontName ) )
 	{ LDEB(1); rval= -1; goto ready;	}
-    if  ( utilMemoryBufferAppendBytes( &relative,
-				    (const unsigned char *)".afm", 4 ) )
+    if  ( utilMemoryBufferAppendString( &relative, ".afm" ) )
 	{ LDEB(4); rval= -1; goto ready;	}
 
     s= relative.mbBytes;

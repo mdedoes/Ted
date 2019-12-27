@@ -693,6 +693,7 @@ int bmbmpDescriptionToHeader(	BmpImageHeader *		bih,
 		    LDEB(bd->bdPalette.cpColorCount);
 		    for ( i= 0; i < bd->bdPalette.cpColorCount; i++ )
 			{ RGB8DEB(bd->bdPalette.cpColors+i);	}
+		    /*FALLTHROUGH*/
 		default:
 		    LDEB(hasAlpha);
 		    LLDEB(bd->bdColorEncoding,bd->bdBitsPerPixel);

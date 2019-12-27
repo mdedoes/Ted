@@ -94,8 +94,18 @@ void docRtfWriteListLevel(	RtfWriter *		rwc,
     if  ( ll->llPictureNumber >= 0 )
 	{ docRtfWriteArgTag( rwc, "levelpicture", ll->llPictureNumber ); }
 
-    docRtfSaveTextAttribute( rwc, &(ll->llTextAttributeMask),
-						    &(ll->llTextAttribute) );
+    {
+    PropertyMask	stripped= ll->llTextAttributeMask;
+
+    if  ( ! ll->llTextAttribute.taFontIsBold )
+	{ PROPmaskUNSET( &stripped, TApropFONTBOLD );	}
+    if  ( ! ll->llTextAttribute.taFontIsSlanted )
+	{ PROPmaskUNSET( &stripped, TApropFONTSLANTED );	}
+    if  ( ! ll->llTextAttribute.taTextIsUnderlined )
+	{ PROPmaskUNSET( &stripped, TApropTEXTUNDERLINED );	}
+
+    docRtfSaveTextAttribute( rwc, &stripped, &(ll->llTextAttribute) );
+    }
 
     if  ( ! utilPropMaskIsEmpty( &(ll->llParaPropertyMask) ) )
 	{

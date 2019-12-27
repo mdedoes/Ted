@@ -8,11 +8,10 @@
 
 #   include	<stddef.h>
 
-#   include	"docLayout.h"
 #   include	"docScreenLayout.h"
+#   include	"layoutContext.h"
 #   include	<textAttributeUtil.h>
 #   include	<drawDrawingSurface.h>
-#   include	<fontDocFontList.h>
 #   include	<docDocumentProperties.h>
 #   include	<utilIndexMapping.h>
 #   include	<textAttribute.h>
@@ -37,7 +36,7 @@ int docOpenScreenFont(	const LayoutContext *	lc,
     if  ( screenFont < 0 )
 	{
 	struct BufferDocument *		bd= lc->lcDocument;
-	DocumentFontList *		dfl= bd->bdProperties->dpFontList;
+	struct DocumentFontList *	dfl= bd->bdProperties->dpFontList;
 	const struct AfmFontInfo *	afi;
 	const IndexSet *		unicodesWanted;
 	const TextAttribute *		ta;

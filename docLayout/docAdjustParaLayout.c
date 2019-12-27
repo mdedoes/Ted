@@ -7,6 +7,7 @@
 #   include	"docLayoutConfig.h"
 
 #   include	"docLayout.h"
+#   include	"layoutContext.h"
 #   include	"docParagraphLayout.h"
 #   include	"docStripLayoutJob.h"
 #   include	<docPageGrid.h>
@@ -57,16 +58,16 @@
 /*									*/
 /************************************************************************/
 
-int docAdjustParaLayout(	struct BufferItem * const	paraNode,
+int docAdjustParaLayout(	BufferItem * 		paraNode,
 				int			afterReplace,
 				int			stroffFrom,
 				int			stroffShift,
 				int			stroffUpto,
 				LayoutJob *		lj )
     {
-    const LayoutContext *	lc= &(lj->ljContext);
+    const LayoutContext *	lc= lj->ljContext;
     int				rval= 0;
-    struct BufferDocument *		bd= lc->lcDocument;
+    struct BufferDocument *	bd= lc->lcDocument;
     int				fontSize;
 
     BlockFrame			bf;
@@ -116,7 +117,9 @@ int docAdjustParaLayout(	struct BufferItem * const	paraNode,
     tlShift= paraNode->biParaLines+ fromLine;
     docInvalidateTextLine( tlShift );
     tlShift++;
-    for ( line= fromLine+ 1; line < paraNode->biParaLineCount; tlShift++, line++ )
+    for ( line= fromLine+ 1;
+          line < paraNode->biParaLineCount;
+	  tlShift++, line++ )
 	{
 	tlShift->tlStroff += stroffShift;
 
@@ -215,7 +218,7 @@ int docAdjustParaLayout(	struct BufferItem * const	paraNode,
 			fromParaNode->biNumberInParent, fromLine, fromPart,
 			paraUpto, &lpHere );
 
-    docFindStripLayoutOrigin( &plj, lpHere.lpPage, lpHere.lpColumn, cellNode );
+    docFindStripLayoutOrigin( &plj, &lpHere, cellNode );
 
     if  ( docLayoutStackedStrip( cellNode, &bf, &plj ) )
 	{ LDEB(1); rval= -1; goto ready;	}

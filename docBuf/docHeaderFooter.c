@@ -11,12 +11,12 @@
 #   include	<docTreeType.h>
 #   include	"docSectHeadersFooters.h"
 #   include	"docHeaderFooterScopes.h"
-#   include	"docPageGrid.h"
 #   include	<docParaProperties.h>
 #   include	"docSelect.h"
 #   include	<docDocumentProperties.h>
 #   include	<docSectProperties.h>
 #   include	"docAttributes.h"
+#   include	"docNodeTree.h"
 
 #   include	"docDebug.h"
 #   include	<appDebugon.h>
@@ -216,9 +216,9 @@ static int docWhatPageFooter(	struct DocumentTree **		pTree,
     }
 
 int docLayoutWhatPageHeader(	struct DocumentTree **		pTree,
-				int *			pIsEmpty,
+				int *				pIsEmpty,
 				const struct BufferItem *	bodySectNode,
-				int			page,
+				int				page,
 				const struct BufferDocument *	bd )
     {
     const int	mindEndpg= 0;
@@ -228,9 +228,9 @@ int docLayoutWhatPageHeader(	struct DocumentTree **		pTree,
     }
 
 int docDrawWhatPageHeader(	struct DocumentTree **		pTree,
-				int *			pIsEmpty,
+				int *				pIsEmpty,
 				const struct BufferItem *	bodySectNode,
-				int			page,
+				int				page,
 				const struct BufferDocument *	bd )
     {
     const int	mindEndpg= 1;
@@ -240,9 +240,9 @@ int docDrawWhatPageHeader(	struct DocumentTree **		pTree,
     }
 
 int docLayoutWhatPageFooter(	struct DocumentTree **		pTree,
-				int *			pIsEmpty,
+				int *				pIsEmpty,
 				const struct BufferItem *	bodySectNode,
-				int			page,
+				int				page,
 				const struct BufferDocument *	bd )
     {
     const int	mindEndpg= 0;
@@ -252,9 +252,9 @@ int docLayoutWhatPageFooter(	struct DocumentTree **		pTree,
     }
 
 int docDrawWhatPageFooter(	struct DocumentTree **		pTree,
-				int *			pIsEmpty,
+				int *				pIsEmpty,
 				const struct BufferItem *	bodySectNode,
-				int			page,
+				int				page,
 				const struct BufferDocument *	bd )
     {
     const int	mindEndpg= 1;
@@ -395,7 +395,7 @@ int docSectionHeaderFooterFirstPage(
 				int *				pUsedByDocument,
 				const struct BufferItem *	bodySectNode,
 				int				treeType,
-				const DocumentProperties *	dp )
+				const BufferDocument *		bd )
     {
     const SectionProperties *	sp= bodySectNode->biSectProperties;
     int				topPage= bodySectNode->biTopPosition.lpPage;
@@ -430,7 +430,7 @@ int docSectionHeaderFooterFirstPage(
 
 	case DOCinLEFT_HEADER:
 	case DOCinLEFT_FOOTER:
-	    if  ( ! dp->dpHasFacingPages )
+	    if  ( ! bd->bdProperties->dpHasFacingPages )
 		{ *pUsedByDocument= 0; return -1;	}
 	    if  ( topPage % 2 )
 		{
@@ -443,7 +443,7 @@ int docSectionHeaderFooterFirstPage(
 
 	case DOCinRIGHT_HEADER:
 	case DOCinRIGHT_FOOTER:
-	    if  ( dp->dpHasFacingPages )
+	    if  ( bd->bdProperties->dpHasFacingPages )
 		{
 		if  ( topPage % 2 == 0 )
 		    {

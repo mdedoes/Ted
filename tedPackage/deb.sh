@@ -14,7 +14,7 @@ PKG_GROUP=${9}
 
 umask 022
 
-DEBARCHIVE=ted-2.23h-${ARCH}.deb
+DEBARCHIVE=ted-2.23nx-${ARCH}.deb
 
 HERE=`pwd`
 DESTDIR=${HERE}/pkgscratch
@@ -26,7 +26,7 @@ then
 fi
 mkdir -p ${DESTDIR}${PREFIX}
 
-cat ted-2.23h-linux-*.tar.gz | ( cd ${DESTDIR} && umask 0 && tar xfz - )
+cat ted-2.23nx-linux-*.tar.gz | ( cd ${DESTDIR} && umask 0 && tar xfz - )
 
 chown -R root:root ${DESTDIR}${PREFIX}/*
 INSTSIZE=`du -sk ${DESTDIR}${PREFIX} | ( read instsize name; echo $instsize )`
@@ -40,7 +40,6 @@ sed -e "s/@INSTSIZE@/${INSTSIZE}/g" debian-control.in | \
 sed -e "s/@INSTSIZE@/${INSTSIZE}/g" debian-copyright.in | \
     sh ./customize.sh "$@" > ${DESTDIR}/usr/share/doc/ted/copyright
 
-#gzip -9 -n < debian-changelog > ${DESTDIR}/usr/share/doc/ted/changelog.Debian.gz
 gzip -9 -n < debian-changelog > ${DESTDIR}/usr/share/doc/ted/changelog.gz
 
 dpkg-deb --build ${DESTDIR} ${DEBARCHIVE}

@@ -42,8 +42,7 @@ int appWinMetaReadUtf16Text(	DeviceContext *		dc,
 	if  ( step < 1 || step > 3 )
 	    { XLDEB(c,step); break;	}
 
-	if  ( utilMemoryBufferAppendBytes( &(dc->dcCollectedText),
-				    (const unsigned char *)scratch, step ) )
+	if  ( utilMemoryBufferAppendString( &(dc->dcCollectedText), scratch ) )
 	    { LDEB(step); return -1;	}
 
 	nbytes += step;

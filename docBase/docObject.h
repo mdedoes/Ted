@@ -155,4 +155,11 @@ extern void docObjectSetPixelSize(
 				InsertedObject *		io,
 				double				pixelsPerTwip );
 
+extern int docSetObjectProperty(	InsertedObject *	io,
+					int			prop,
+					int			value );
+
+extern int docGetObjectProperty(	const InsertedObject *	io,
+					int			prop );
+
 #   endif	/*  DOC_OBJECT_H	*/

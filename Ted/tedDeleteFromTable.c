@@ -9,7 +9,7 @@
 #   include	<stddef.h>
 #   include	<ctype.h>
 
-#   include	"tedEdit.h"
+#   include	"tedEditOperation.h"
 #   include	"tedSelect.h"
 #   include	<tedDocFront.h>
 #   include	<docRtfTrace.h>
@@ -18,8 +18,9 @@
 #   include	<docEditCommand.h>
 #   include	<docSelectionDescription.h>
 #   include	<docSelectionGeometry.h>
-#   include	<docBuf.h>
+#   include	<docSelect.h>
 #   include	<docRtfFlags.h>
+#   include	<docNodeTree.h>
 
 #   include	<appDebugon.h>
 

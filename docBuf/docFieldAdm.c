@@ -167,13 +167,12 @@ int docSuggestNewBookmarkName(	MemoryBuffer *			markName,
 int docMakeBookmarkUnique(	const struct BufferDocument *	bd,
 				MemoryBuffer *			markName )
     {
-    DocumentField *	df;
-    const DocumentFieldList *	dfl= &(bd->bdFieldList);
+    DocumentField *		df;
 
-    if  ( docFindBookmarkField( &df, dfl, markName ) >= 0 )
+    if  ( docFindBookmarkField( &df, bd, markName ) >= 0 )
 	{
 	int		i;
-	char		scratch[6+1];
+	char		scratch[6+2]; /* 2: Make fortify happy */
 	int		offset= docBookmarkSuffixIndex( markName, 6 );
 
 	for ( i= 0; i < 1000000; i++ )
@@ -183,7 +182,7 @@ int docMakeBookmarkUnique(	const struct BufferDocument *	bd,
 						offset, markName->mbSize,
 						(unsigned char *)scratch, 6 );
 
-	    if  ( docFindBookmarkField( &df, dfl, markName ) < 0 )
+	    if  ( docFindBookmarkField( &df, bd, markName ) < 0 )
 		{ return 0;	}
 	    }
 
@@ -191,6 +190,19 @@ int docMakeBookmarkUnique(	const struct BufferDocument *	bd,
 	}
 
     return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Find a bookmark field by name					*/
+/*									*/
+/************************************************************************/
+
+int docFindBookmarkField(	struct DocumentField **		pDf,
+				const struct BufferDocument *	bd,
+				const MemoryBuffer *		markName )
+    {
+    return docFieldListFindBookmark( pDf, &(bd->bdFieldList), markName );
     }
 
 /************************************************************************/
@@ -537,7 +549,7 @@ DocumentField * docMakeTextLevelField(
     DocumentField *		rval= (DocumentField *)0;
     DocumentField *		df;
 
-    df= docClaimField( &(bd->bdFieldList) );
+    df= docClaimField( bd );
     if  ( ! df )
 	{ XDEB(df); goto ready;	}
     df->dfKind= DOCfkUNKNOWN;
@@ -604,3 +616,49 @@ int docParaHeadFieldKind(	const struct BufferItem *	paraNode )
     return fieldKind;
     }
 
+/************************************************************************/
+/*									*/
+/*  Retrieve a field by field number.					*/
+/*									*/
+/************************************************************************/
+
+struct DocumentField * docGetFieldByNumber(
+					const struct BufferDocument *	bd,
+					int				n )
+    {
+    return docFieldListGetByNumber( &(bd->bdFieldList), n );
+    }
+
+int docFindBookmarkInDocument(	struct DocumentSelection *	dsInside,
+				const struct BufferDocument *	bd,
+				const struct MemoryBuffer *	markName )
+    {
+    int				i;
+    struct DocumentField *	df;
+
+    i= docFindBookmarkField( &df, bd, markName );
+    if  ( i >= 0 )
+	{
+	DocumentSelection	dsAround;
+
+	if  ( docDelimitFieldInDoc( dsInside, &dsAround,
+					    (int *)0, (int *)0, bd, df ) )
+	    { LDEB(i); return -1;	}
+
+	return 0;
+	}
+
+    return 1;
+    }
+
+struct DocumentField * docClaimField(	struct BufferDocument *	bd )
+    {
+    return docFieldListClaimField( &(bd->bdFieldList) );
+    }
+
+int docForAllFields(	const BufferDocument *		bd,
+			DocFieldListForAllFun		fun,
+			void *				through )
+    {
+    return docFieldListForAll( &(bd->bdFieldList), fun, through );
+    }

@@ -716,6 +716,7 @@ static void initalen(	ub4      *alen,
     case 0:
       *alen = 1;
       *blen = 1;
+      /*FALLTHROUGH*/
     case 1: case 2: case 3: case 4: case 5: case 6: case 7: case 8:
       *alen = (form->perfect == NORMAL_HP) ? *smax : *smax/2;
       *blen = *smax/2;

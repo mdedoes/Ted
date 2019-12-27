@@ -17,11 +17,10 @@ struct BufferDocument;
 struct BufferItem;
 struct DocumentTree;
 struct TextParticule;
+struct RasterImage;
 
 /************************************************************************/
 
-# define docGetObject( bd, n ) \
-		docGetObjectByNumber( &((bd)->bdObjectList), (n) )
 # define docClaimObject( p, bd ) \
 		docClaimInsertedObject( (p), &((bd)->bdObjectList) )
 
@@ -57,4 +56,12 @@ extern void docResetParticuleObjects(
 				struct TextParticule *		tp,
 				int				count );
 
+extern struct InsertedObject * docGetObject(
+				const struct BufferDocument *	bd,
+				int				n );
+
+extern struct InsertedObject * docMakeRasterObject(
+				int *			pObjectNumber,
+				struct BufferDocument *	bd,
+				struct RasterImage *	ri );
 #   endif

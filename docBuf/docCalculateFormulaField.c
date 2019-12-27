@@ -16,6 +16,7 @@
 #   include	"docNodeTree.h"
 #   include	"docTreeNode.h"
 #   include	"docField.h"
+#   include	"docFields.h"
 #   include	<docDocumentField.h>
 #   include	<docFormulaField.h>
 #   include	<numbersBase26.h>
@@ -174,7 +175,7 @@ static int docTryRectangleArgument(
 	int			i;
 	DocumentField *		df;
 	struct BufferDocument *	bd= cf->cfRecalculateFields->rfDocument;
-	struct DocumentTree *		tree;
+	struct DocumentTree *	tree;
 
 	if  ( utilMemoryBufferSetBytes( &markName,
 				(unsigned char *)head, tail- head ) )
@@ -185,7 +186,7 @@ static int docTryRectangleArgument(
 	*/
 	done += here- head;
 
-	i= docFindBookmarkField( &df, &(bd->bdFieldList), &markName );
+	i= docFindBookmarkField( &df, bd, &markName );
 	if  ( i < 0 )
 	    { done= 0; goto ready;	}
 

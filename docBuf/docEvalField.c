@@ -7,8 +7,10 @@
 #   include	"docBufConfig.h"
 
 #   include	<string.h>
+#   include	<stdlib.h>
 
 #   include	"docField.h"
+#   include	"docDocument.h"
 #   include	"docParaString.h"
 #   include	"docEvalField.h"
 #   include	<docDocumentField.h>
@@ -19,6 +21,7 @@
 #   include	"docParaBuilderImpl.h"
 #   include	"docParaBuilder.h"
 #   include	"docParaParticuleAdmin.h"
+#   include	<utilTree.h>
 
 #   include	"docDebug.h"
 #   include	<appDebugon.h>
@@ -35,7 +38,6 @@ void docInitRecalculateFields(   RecalculateFields *     rf )
     rf->rfTree= (struct DocumentTree *)0;
     rf->rfSelectionScope= (const struct SelectionScope *)0;
     rf->rfSelectedTree= (struct DocumentTree *)0;
-    rf->rfMergeValueTree= (void *)0;
     rf->rfFieldsUpdated= 0;
     rf->rfUpdateFlags= 0;
 
@@ -46,10 +48,74 @@ void docInitRecalculateFields(   RecalculateFields *     rf )
     docInitEditPosition( &(rf->rfSelTail) );
 
     rf->rfFieldDataProvider= (FieldDataProvider)0;
-    rf->rfInstanceStreamProvider= (InstanceStreamProvider)0;
+    rf->rfOpenInstanceStream= 0;
     rf->rfMergeThrough= (void *)0;
 
     rf->rfLocale= (const struct SimpleLocale *)0;
+    rf->rfIncludeDocumentCache= (void *)0;
+
+    return;
+    }
+
+static int docRecalculateFieldsFreeCachedDocument(
+					const char *		key,
+					void *			vbdSource,
+					void *			through )
+    {
+    docFreeDocument( (struct BufferDocument *)vbdSource );
+    return 0;
+    }
+
+void docCleanRecalculateFields(	RecalculateFields *	rf )
+    {
+    if  ( rf->rfIncludeDocumentCache )
+	{
+	utilTreeFreeTree( rf->rfIncludeDocumentCache,
+			docRecalculateFieldsFreeCachedDocument, (void *)0 );
+	}
+    }
+
+InstanceStream * docRecalculateFieldsOpenInstanceStream(
+				struct RecalculateFields *	rf,
+				const char *			name,
+				const char *			query )
+    {
+    InstanceStream *			rval= (InstanceStream *)0;
+    InstanceStream *			is= (InstanceStream *)0;
+
+    if  ( ! rf->rfOpenInstanceStream )
+	{ XDEB(rf->rfOpenInstanceStream); goto ready;	}
+
+    is= malloc( sizeof(InstanceStream) );
+    if  ( ! is )
+	{ XDEB(is); goto ready;	}
+    is->isName= name;
+    is->isQuery= query;
+    is->isRecalculateFields= rf;
+
+    is->isToNext= 0;
+    is->isClosePrivate= 0;
+    is->isPrivate= (struct InstanceStreamPrivate *)0;
+
+    if  ( (*rf->rfOpenInstanceStream)( is, rf, name, query ) )
+	{ SSDEB(name,query); goto ready;	}
+
+    rval= is; is= (InstanceStream *)0; /* steal */
+
+  ready:
+
+    if  ( is )
+	{ docRecalculateFieldsCloseInstanceStream( is );	}
+
+    return rval;
+    }
+
+void docRecalculateFieldsCloseInstanceStream(	InstanceStream *	is )
+    {
+    if  ( is->isClosePrivate )
+	{ (*is->isClosePrivate)( is );	}
+
+    free( is );
 
     return;
     }

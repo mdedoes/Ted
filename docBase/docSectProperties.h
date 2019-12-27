@@ -267,7 +267,9 @@ extern int docSectSetColumnWidth(	SectionProperties *	sp,
 					int			col,
 					int			value );
 
-extern int docSectGetBreakKind( const SectionProperties *		sp,
-				const struct DocumentProperties *	dp );
+extern int docSectGetBreakKind(
+		const struct SectionProperties *	sp,
+		const struct DocumentProperties *	dp,
+		int					honourSpecialBreaks );
 
 #   endif	/*  DOC_SECT_PROP_H  */

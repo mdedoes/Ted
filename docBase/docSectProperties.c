@@ -65,7 +65,7 @@ static const int DocSectIntProps[]=
     SPpropNUMBER_HYPHEN,
     SPpropPAGE_RESTART,
     SPpropRTOL,
-    SPpropSTART_PAGE,
+    SPpropSTART_PAGE, /* Counts from 1! */
     SPpropCOLUMN_COUNT,
     SPpropCOLUMN_SPACING,
     SPpropLINEBETCOL,
@@ -623,7 +623,10 @@ int docSetSectionProperty(	SectionProperties *	sp,
 	    break;
 
 	case SPpropSTART_PAGE:
-	    sp->spStartPageNumber= arg;
+	    /*  Count from 1! */
+	    if  ( arg > 0 )
+		{ sp->spStartPageNumber= arg -1;	}
+	    else{ sp->spStartPageNumber= 0;		}
 	    break;
 
 	case SPpropCOLUMN_COUNT:
@@ -757,7 +760,8 @@ int docGetSectionProperty(	const SectionProperties *	sp,
 	    return sp->spRToL;
 
 	case SPpropSTART_PAGE:
-	    return sp->spStartPageNumber;
+	    /* Count from 1 */
+	    return sp->spStartPageNumber+ 1;
 
 	case SPpropCOLUMN_COUNT:
 	    return sp->spColumnCount;
@@ -1082,7 +1086,7 @@ int docSectSetColumnWidth(	SectionProperties *	sp,
 	{
 	const DocumentGeometry *	dg= &(sp->spDocumentGeometry);
 	int				pageWide;
-	int				gapWide;
+	int				gapWide= MIN_GAP_WIDE;
 
 	docSectGetEqualWidths( (int *)0, &gapWide, &maxValue, (int *)0, sp );
 
@@ -1091,8 +1095,12 @@ int docSectSetColumnWidth(	SectionProperties *	sp,
 
 	pageWide= geoContentWide( dg );
 
-	gapWide= ( pageWide- ( sp->spColumnCount* newValue ) )/ 
+	/* Always true, but static checkers cannot know */
+	if  ( sp->spColumnCount > 1 )
+	    {
+	    gapWide= ( pageWide- ( sp->spColumnCount* newValue ) )/ 
 						    ( sp->spColumnCount- 1 );
+	    }
 	if  ( gapWide < MIN_GAP_WIDE )
 	    { LLDEB(gapWide,MIN_GAP_WIDE); gapWide= MIN_GAP_WIDE;	}
 
@@ -1127,11 +1135,13 @@ int docSectSetColumnWidth(	SectionProperties *	sp,
 /*									*/
 /************************************************************************/
 
-int docSectGetBreakKind(	const SectionProperties *	sp,
-				const DocumentProperties *	dp )
+int docSectGetBreakKind( const SectionProperties *	sp,
+			const DocumentProperties *	dp,
+			int				honourSpecialBreaks )
     {
     if  ( ( sp->spBreakKind == DOCibkEVEN	||
 	    sp->spBreakKind == DOCibkODD	)	&&
+	    ! honourSpecialBreaks			&&
 	    ! dp->dpHasFacingPages			)
 	{ return DOCibkPAGE;	}
 

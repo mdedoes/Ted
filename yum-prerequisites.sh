@@ -11,4 +11,5 @@ yum install \
     gtk2-devel \
     libpaper-devel \
     libenchant-devel \
+    libasan \
     rpm-build

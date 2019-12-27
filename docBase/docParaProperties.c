@@ -379,6 +379,7 @@ int docSetParaProperty(		ParagraphProperties *	pp,
 
 	case PPpropTAB_STOPS:
 	    pp->ppTabStopListNumber= arg;
+	    break;
 
 	case PPpropBREAK_KIND:
 	    pp->ppBreakKind= arg;

@@ -973,10 +973,11 @@ static int appMetaStartX11DeviceContext(
 				const DocumentRectangle *	drLogical,
 				int				mapMode )
     {
-    appMetaInitDeviceContextX11( dcx, dc, ds, player,
+    if  ( appMetaInitDeviceContextX11( dcx, dc, ds, player,
 			    objectCount, drLogical, mapMode,
 			    player->mpTwipsWide, player->mpTwipsHigh,
-			    player->mpPixelsWide, player->mpPixelsHigh );
+			    player->mpPixelsWide, player->mpPixelsHigh ) )
+	{ LDEB(1); return -1;	}
 
     if  ( appMetaSetDeviceDefaultsX11( dcx, dc ) )
 	{ LDEB(1); return -1;	}

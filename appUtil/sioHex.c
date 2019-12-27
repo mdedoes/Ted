@@ -141,7 +141,6 @@ static int sioOutHexClose( void *	voidhos )
 	{
 	if  ( sioOutPutByte( '\n', sos ) < 0 )
 	    { rval= -1;	}
-	hos->hosColumn= 0;
 	}
 
     free( hos );
@@ -197,7 +196,6 @@ SimpleOutputStream * sioOutHexOpenFolded(
     hos->hosColumn= 0;
 
     sos= sioOutOpen( (void *)hos, sioOutHexWriteBytes, sioOutHexClose );
-
     if  ( ! sos )
 	{ XDEB(sos); free( hos ); return (SimpleOutputStream *)0; }
 

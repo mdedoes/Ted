@@ -181,8 +181,11 @@ static void tedFormatToolRefreshColumnPage(	ColumnTool *	ct )
 
     guiLengthToText( ct->ctWidthText, cp->cpWide, UNITtyPOINTS );
 
+    /*
     guiEnableText( ct->ctWidthText,
 			    ct->ctCanChange && tr->trCol0 == tr->trCol1 );
+    */
+    guiEnableText( ct->ctWidthText, ct->ctCanChange );
 
     guiEnableWidget( ct->ctBordersFrame, ct->ctCanChange );
     tedEnableBorderTool( &(ct->ctLeftBorderTool), ct->ctCanChange );

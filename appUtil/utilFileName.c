@@ -78,7 +78,7 @@ static int appFileSetExtensionX(	MemoryBuffer *		filename,
 	{
 	if  ( extension && extension[0] )
 	    {
-	    if  ( utilMemoryBufferAppendBytes( filename, (unsigned char *)".", 1 ) )
+	    if  ( utilMemoryBufferAppendString( filename, "." ) )
 		{ LDEB(1); return -1;	}
 
 	    extlen= strlen( extension );

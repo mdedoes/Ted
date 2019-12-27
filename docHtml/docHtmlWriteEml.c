@@ -72,36 +72,41 @@ const int  DocEmlDirectoryCssNameLength= sizeof(DocEmlDirectoryCssName)- 1;
 /*									*/
 /************************************************************************/
 
-int docEmlSaveDocument(		SimpleOutputStream *	sos,
-				struct BufferDocument *	bd,
-				const char *		mimeBoundary,
+int docEmlSaveDocument(		SimpleOutputStream *		sos,
+				struct BufferDocument *		bd,
 				const struct LayoutContext *	lc )
     {
+    const char *		mimeBoundary= "-----------MimeBoundary";
+
     int				rval= 0;
     HtmlWritingContext		hwc;
+    HtmlWritingSettings		hws;
     EmlWriter			ew;
 
     const DocumentProperties *	dp= bd->bdProperties;
     SimpleOutputStream *	sosCss= (SimpleOutputStream *)0;
 
+    docInitHtmlWritingSettings( &hws );
     docInitHtmlWritingContext( &hwc );
     docInitEmlWriter( &ew );
 
-    hwc.hwcSupportsBullets= 0;
-    hwc.hwcEmitBackground= 1;
+    hws.hwsInlineCss= 1;
+    hws.hwsGetCssName= docEmlGetCssName;
+    hws.hwsOpenImageStream= docEmlOpenImageStream;
+    hws.hwsInlineImages= 0;
+    hws.hwsGetImageSrc= docEmlGetImageSrc;
+    hws.hwsInlineNotes= 0;
 
-    hwc.hwcXmlWriter.xwSos= sos;
+    hws.hwsEmitBackground= 1;
+
+    hws.hwsLayoutContext= lc;
+    hws.hwsDocument= bd;
+
+    docStartHtmlWritingContext( &hwc, &hws, sos );
+
     hwc.hwcXmlWriter.xwCrlf= 1;
 
-    hwc.hwcLayoutContext= lc;
-    hwc.hwcOpenImageStream= docEmlOpenImageStream;
-    hwc.hwcGetImageSrc= docEmlGetImageSrc;
-    hwc.hwcGetCssName= docEmlGetCssName;
     hwc.hwcPrivate= (void *)&ew;
-    hwc.hwcDocument= bd;
-    hwc.hwcInlineCss= 1;
-    hwc.hwcInlineNotes= 0;
-    hwc.hwcInlineImages= 0;
 
     ew.ewMimeBoundary= mimeBoundary;
     ew.ewContentIdTail[0]= '.';
@@ -147,17 +152,10 @@ int docEmlSaveDocument(		SimpleOutputStream *	sos,
 				    (const struct DocumentSelection *)0 ) )
 	{ LDEB(1); rval= -1; goto ready; }
 
-    if  ( ! hwc.hwcInlineNotes )
-	{
-	if  ( hwc.hwcNoteRefCount > 0	&&
-	      docHtmlSaveNotes( &hwc )	)
-	    { LDEB(hwc.hwcNoteRefCount); rval= -1; goto ready;	}
-	}
-
-    if  ( docHtmlFinishDocument( &hwc ) )
+    if  ( docHtmlFinishDocumentBody( &hwc ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( ! hwc.hwcInlineCss )
+    if  ( ! hws.hwsInlineCss )
 	{
 	sosCss= docEmlOpenCssStream( &hwc );
 	if  ( ! sosCss )

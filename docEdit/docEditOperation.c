@@ -443,7 +443,7 @@ int docStartEditOperation(
 #   if 0
     LDEB(0); docListNode(0,eo->eoHeadDp.dpNode,0);
     if  ( eo->eoTailDp.dpNode != eo->eoHeadDp.dpNode )
-	{ docListNode(0,eo->eoTailDp.dpNode,0); }
+	{ LDEB(1); docListNode(0,eo->eoTailDp.dpNode,0); }
 #   endif
 
     return 0;

@@ -20,12 +20,13 @@
 #   include	<docRowProperties.h>
 #   include	<docParaNodeProperties.h>
 #   include	<docParaProperties.h>
-#   include	<docBuf.h>
 #   include	<utilPropMask.h>
 #   include	"docEditOperation.h"
 #   include	<docCellProperties.h>
 #   include	<docBorderProperties.h>
 #   include	<docAttributes.h>
+#   include	<docTableRectangle.h>
+#   include	<docParaParticules.h>
 
 #   include	<appDebugon.h>
 
@@ -39,9 +40,10 @@
 /*									*/
 /************************************************************************/
 
-static int docCopyRowColumnAttributes(	struct BufferItem *		rowNode,
-					const struct BufferItem *	refRowNode,
-					const struct BufferDocument *	bd )
+static int docCopyRowColumnAttributes(
+				struct BufferItem *		rowNode,
+				const struct BufferItem *	refRowNode,
+				const struct BufferDocument *	bd )
     {
     int		colCount;
     int		col;
@@ -91,15 +93,15 @@ static int docCopyRowColumnAttributes(	struct BufferItem *		rowNode,
 /*									*/
 /************************************************************************/
 
-int docInsertTableRows(		DocumentSelection *	dsRows,
-				EditOperation *		eo,
+static int docInsertTableRows(	DocumentSelection *		dsRows,
+				EditOperation *			eo,
 				struct BufferItem *		parentNode,
 				const struct BufferItem *	refRowNode,
-				const RowProperties *	rp,
-				int			textAttributeNr,
-				int			n,
-				int			paraNr,
-				int			rows )
+				const RowProperties *		rp,
+				int				textAttributeNr,
+				int				n,
+				int				paraNr,
+				int				rows )
     {
     int			row;
     int			row0= n;
@@ -159,6 +161,87 @@ int docInsertTableRows(		DocumentSelection *	dsRows,
     docUnionEditRanges( &(eo->eoAffectedRange),
 					&(eo->eoAffectedRange), &erRows );
     }
+
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Insert a row close to the current row in a table.			*/
+/*									*/
+/*  1)  The EditOperation has been started by the caller.		*/
+/*  2)  Find the position of the beginning/end of the selection in the	*/
+/*	table.								*/
+/*  3)  Get the row that serves as a template.				*/
+/*  4)  Paragraph number of the paragraph that comes directly		*/
+/*	below/above the fresh rows.					*/
+/*  5)  Finish..							*/
+/*									*/
+/************************************************************************/
+
+int docEditAddRowToTable(	EditOperation *		eo,
+				int			after )
+    {
+    const int			rows= 1;
+
+    struct BufferItem *		paraNode;
+    struct BufferItem *		parentNode;
+    struct BufferItem *		refRowNode;
+    const struct RowProperties * refRp;
+
+    int				col;
+    int				row;
+    int				row0;
+    int				row1;
+
+    DocumentPosition		dpRef;
+    int				part;
+    int				paraNr;
+    int				textAttributeNr;
+
+    DocumentSelection		dsRows;
+
+    /*  1  */
+
+    if  ( after )
+	{ paraNode= eo->eoTailDp.dpNode;	}
+    else{ paraNode= eo->eoHeadDp.dpNode;	}
+
+    /*  2  */
+    if  ( docDelimitTable( paraNode, &parentNode, &col, &row0, &row, &row1 ) )
+	{ LDEB(1); return -1;	}
+
+    /*  3  */
+    refRowNode= parentNode->biChildren[row];
+    refRp= refRowNode->biRowProperties;
+    if  ( after )
+	{
+	if  ( docTailPosition( &dpRef, refRowNode ) )
+	    { LDEB(row); return -1;	}
+	if  ( docFindParticuleOfPosition( &part, (int *)0,
+						    &dpRef, PARAfindFIRST ) )
+	    { LDEB(dpRef.dpStroff); return -1;	}
+	}
+    else{
+	if  ( docHeadPosition( &dpRef, refRowNode ) )
+	    { LDEB(row); return -1;	}
+	if  ( docFindParticuleOfPosition( &part, (int *)0,
+						    &dpRef, PARAfindLAST ) )
+	    { LDEB(dpRef.dpStroff); return -1;	}
+	}
+
+    /*  4  */
+    paraNr= docNumberOfParagraph( dpRef.dpNode )+ after;
+    textAttributeNr= dpRef.dpNode->biParaParticules[part].tpTextAttrNr;
+
+    /*  5  */
+    if  ( docInsertTableRows( &dsRows, eo, parentNode, refRowNode, refRp,
+			    textAttributeNr, row+ after, paraNr, rows ) )
+	{ LDEB(row+after); return -1;	}
+    
+    /*  5  */
+    docSetIBarRange( &(eo->eoAffectedRange), &(dsRows.dsHead) );
+    docSetIBarRange( &(eo->eoSelectedRange), &(dsRows.dsHead) );
 
     return 0;
     }
@@ -319,12 +402,12 @@ int docSplitColumnInRows(	struct BufferItem **		pNewParaNode,
 /*									*/
 /************************************************************************/
 
-int docDeleteColumnsFromRows(	EditOperation *	eo,
-				struct BufferItem *	parentNode,
-				int		delRow0,
-				int		delRow1,
-				int		delCol0,
-				int		delCol1 )
+int docDeleteColumnsFromRows(	EditOperation *		eo,
+				BufferItem *		parentNode,
+				int			delRow0,
+				int			delRow1,
+				int			delCol0,
+				int			delCol1 )
     {
     int				rval= 0;
     int				count= delCol1- delCol0+ 1;
@@ -381,7 +464,7 @@ int docDeleteColumnsFromRows(	EditOperation *	eo,
 # endif
 
 static int docRefreshTableNesting(
-				struct BufferItem *			node,
+				struct BufferItem *		node,
 				const DocumentSelection *	ds,
 				const struct BufferItem *	bodySectNode,
 				void *				vbd )
@@ -398,7 +481,7 @@ static int docRefreshTableNesting(
 # pragma GCC diagnostic pop
 # endif
 
-void docFlattenRow(		struct BufferItem *		node,
+void docFlattenRow(		struct BufferItem *	node,
 				struct BufferDocument *	bd )
     {
     /* nearest row. NOT a real one! */
@@ -479,5 +562,85 @@ int docFillTableDocument(	struct BufferDocument *	bdTable,
     docCleanBorderProperties( &bp );
 
     return rval;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Roll rows in a table.						*/
+/*									*/
+/************************************************************************/
+
+int docDocRollRowsInTable(	EditOperation *		eo,
+				const TableRectangle *	tr,
+				struct BufferItem *	parentNode,
+				int			row0,
+				int			row1,
+				int			rowsdown )
+    {
+    int				rowsHigh= row1- row0+ 1;
+
+    int				selRow0= tr->trRow0;
+    int				selRow1= tr->trRow1;
+
+    DocumentPosition		dp;
+
+    EditRange			selectedRange= eo->eoSelectedRange;
+
+    int				paraNr;
+    int				paraOff0;
+    int				paraOff1;
+
+    if  ( rowsdown < 0 )
+	{ rowsdown= rowsHigh+ rowsdown;	}
+
+    if  ( row0 >= row1 )
+	{ LLDEB(row0,row1); return -1;	}
+    if  ( row0 < tr->trRow00 || row0 > tr->trRow11 )
+	{ LLLDEB(tr->trRow00,row0,tr->trRow11); return -1;	}
+    if  ( row1 < tr->trRow00 || row1 > tr->trRow11 )
+	{ LLLDEB(tr->trRow00,row1,tr->trRow11); return -1;	}
+    if  ( rowsdown < 1 || rowsdown >= rowsHigh )
+	{ LLDEB(rowsdown,rowsHigh); return -1;	}
+
+    docInitDocumentPosition( &dp );
+    if  ( docHeadPosition( &dp, parentNode->biChildren[selRow0] ) )
+	{ LDEB(selRow0); return -1;	}
+    paraNr= docNumberOfParagraph( dp.dpNode );
+    paraOff0= selectedRange.erHead.epParaNr- paraNr;
+    if  ( docHeadPosition( &dp, parentNode->biChildren[selRow1] ) )
+	{ LDEB(selRow1); return -1;	}
+    paraNr= docNumberOfParagraph( dp.dpNode );
+    paraOff1= selectedRange.erTail.epParaNr- paraNr;
+    if  ( paraOff0 < 0 || paraOff1 < 0 )
+	{ LLDEB(paraOff0,paraOff1); return -1;	}
+
+    if  ( docRollNodeChildren( eo, parentNode, row0, row1+ 1, rowsdown ) )
+	{ LLLDEB(row0,row1,rowsdown); return -1;	}
+
+    docEditIncludeNodeInReformatRange( eo, parentNode );
+
+    selRow0 += rowsdown;
+    if  ( selRow0 > row1 )
+	{ selRow0 -= rowsHigh;	}
+    selRow1 += rowsdown;
+    if  ( selRow1 > row1 )
+	{ selRow1 -= rowsHigh;	}
+
+    if  ( docHeadPosition( &dp, parentNode->biChildren[selRow0] ) )
+	{ LDEB(selRow0); return -1;	}
+    paraNr= docNumberOfParagraph( dp.dpNode );
+    selectedRange.erHead.epParaNr= paraNr+ paraOff0;
+    if  ( docHeadPosition( &dp, parentNode->biChildren[selRow1] ) )
+	{ LDEB(selRow1); return -1;	}
+    paraNr= docNumberOfParagraph( dp.dpNode );
+    selectedRange.erTail.epParaNr= paraNr+ paraOff1;
+    if  ( selectedRange.erHead.epParaNr < 0	||
+	  selectedRange.erTail.epParaNr < 0	)
+	{ LDEB(1); return -1;	}
+
+    eo->eoSelectedRange= selectedRange;
+    eo->eoAffectedRange= selectedRange;
+
+    return 0;
     }
 

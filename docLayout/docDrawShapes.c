@@ -1,6 +1,7 @@
 #   include	"docLayoutConfig.h"
 
 #   include	"docDraw.h"
+#   include	"layoutContext.h"
 
 #   include	<docObjectProperties.h>
 #   include	<docShape.h>
@@ -41,7 +42,7 @@ static int docDrawShapesVisitObject(	int		n,
     InsertedObject *		io= (InsertedObject *)vio;
     const DrawPageShapes *	dps= (const DrawPageShapes *)vdps;
     DrawingContext *		dc= dps->dpsDrawingContext;
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
 
     DrawingShape *		ds;
     const ShapeProperties *	sp;
@@ -90,8 +91,8 @@ int docDrawShapesForPage(		void *			through,
 					int			belowText,
 					int			page )
     {
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
-    struct BufferDocument *		bd= lc->lcDocument;
+    const LayoutContext *	lc= dc->dcLayoutContext;
+    struct BufferDocument *	bd= lc->lcDocument;
 
     DrawPageShapes		dps;
 

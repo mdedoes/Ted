@@ -57,8 +57,6 @@
 #   include	<docObjectProperties.h>
 #   include	<docObject.h>
 #   include	<docPropVal.h>
-#   include	<docDocumentProperties.h>
-#   include	<fontDocFontList.h>
 #   include	<utilIndexMapping.h>
 #   include	"docParaScanner.h"
 #   include	<docBuf.h>
@@ -68,6 +66,8 @@
 #   include	<textAttribute.h>
 #   include	<docParaProperties.h>
 #   include	<docScanner.h>
+#   include	<docNodeTree.h>
+#   include	"layoutContext.h"
 
 #   include	<docDebug.h>
 #   include	<appDebugon.h>
@@ -82,7 +82,7 @@
 
 static int docScreenLayoutOpenParaFonts(
 				const LayoutContext *	lc,
-				struct BufferItem *		paraNode )
+				struct BufferItem *	paraNode )
     {
     int			part;
     int			textAttrNr0= -1;
@@ -185,7 +185,7 @@ int docScreenLayoutNode(	int *			pReachedBottom,
 	{ docSetScreenLayoutFunctions( &lj );	}
 
     lj.ljChangedRectanglePixels= drChanged;
-    lj.ljContext= *lc;
+    lj.ljContext= lc;
     lj.ljChangedNode= node;
 
     if  ( docLayoutNodeAndParents( node, &lj ) )
@@ -243,15 +243,15 @@ int docScreenLayoutDocumentBody( int *				pReachedBottom,
 				struct BufferDocument *		bd,
 				const LayoutContext *		lc )
     {
-    DocumentProperties *	dp= bd->bdProperties;
-
     DocumentRectangle		drChanged;
 
     geoInitRectangle( &drChanged );
 
-    /*  1  */
+    /*  Why?
+    DocumentProperties *	dp= bd->bdProperties;
     if  ( dp->dpFontList->dflFontCount == 0 )
 	{ LDEB(dp->dpFontList->dflFontCount); return -1;	}
+    */
 
     if  ( docScreenLayoutNode( pReachedBottom,
 					bd->bdBody.dtRoot, lc, &drChanged ) )
@@ -283,7 +283,7 @@ int docStartScreenLayoutForTree(
 				int				page,
 				int				column )
     {
-    const LayoutContext *	lc= &(lj->ljContext);
+    const LayoutContext *	lc= lj->ljContext;
 
     if  ( lc->lcDrawingSurface )
 	{ docSetScreenLayoutFunctions( lj );	}

@@ -16,7 +16,11 @@
 #   include	<docTextParticule.h>
 #   include	<docParaProperties.h>
 #   include	"docObjects.h"
+#   include	<bitmap.h>
+#   include	<docObject.h>
+#   include	<docObjectIo.h>
 
+#   include	"docDebug.h"
 #   include	<appDebugon.h>
 
 /************************************************************************/
@@ -233,29 +237,47 @@ int docCleanNodeObjects(	int *			pBulletsDeleted,
  */
 void docCleanDocumentObjects(	struct BufferDocument *	bd )
     {
-    int		bulletsDeleted= 0;
-    int		paragraphCount= 0;
+    if  ( bd->bdBody.dtRoot->biChildCount > 0 )
+	{
+	docCleanTreeObjects( (int *)0, (int *)0, &(bd->bdBody), bd );
+	}
 
-    docCleanTreeObjects( &bulletsDeleted, &paragraphCount,
-						    &(bd->bdBody), bd );
+    docCleanTreeObjects( (int *)0, (int *)0, &(bd->bdFtnsep), bd );
+    docCleanTreeObjects( (int *)0, (int *)0, &(bd->bdFtnsepc), bd );
+    docCleanTreeObjects( (int *)0, (int *)0, &(bd->bdFtncn), bd );
 
-    docCleanTreeObjects( &bulletsDeleted, &paragraphCount,
-						    &(bd->bdFtnsep), bd );
-
-    docCleanTreeObjects( &bulletsDeleted, &paragraphCount,
-						    &(bd->bdFtnsepc), bd );
-
-    docCleanTreeObjects( &bulletsDeleted, &paragraphCount,
-						    &(bd->bdFtncn), bd );
-
-    docCleanTreeObjects( &bulletsDeleted, &paragraphCount,
-						    &(bd->bdAftnsep), bd );
-
-    docCleanTreeObjects( &bulletsDeleted, &paragraphCount,
-						    &(bd->bdAftnsepc), bd );
-
-    docCleanTreeObjects( &bulletsDeleted, &paragraphCount,
-						    &(bd->bdAftncn), bd );
+    docCleanTreeObjects( (int *)0, (int *)0, &(bd->bdAftnsep), bd );
+    docCleanTreeObjects( (int *)0, (int *)0, &(bd->bdAftnsepc), bd );
+    docCleanTreeObjects( (int *)0, (int *)0, &(bd->bdAftncn), bd );
 
     return;
     }
+
+InsertedObject * docMakeRasterObject(
+				int *			pObjectNumber,
+				struct BufferDocument *	bd,
+				RasterImage *		ri )
+    {
+    InsertedObject *		rval= (InsertedObject *)0;
+
+    InsertedObject *		io= (InsertedObject *)0;
+    int				objectNumber;
+
+    io= docClaimObject( &objectNumber, bd );
+    if  ( ! io )
+	{ XDEB(io); goto ready;	}
+
+    if  ( docSaveRasterBytesToObject( io, ri ) )
+	{ LDEB(1); goto ready;	}
+
+    rval= io; io= (InsertedObject *)0; /* steal */
+    *pObjectNumber= objectNumber;
+
+  ready:
+
+    if  ( io )
+	{ docDeleteObject( bd, objectNumber );	}
+
+    return rval;
+    }
+

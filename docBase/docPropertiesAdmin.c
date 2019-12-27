@@ -16,6 +16,7 @@
 #   include	"docRowPropertyAdmin.h"
 #   include	"docParaPropertyAdmin.h"
 
+#   include	<fontDocFontList.h>
 #   include	<textAttributeAdmin.h>
 
 #   include	<stdlib.h>

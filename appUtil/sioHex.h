@@ -9,12 +9,12 @@ struct SimpleOutputStream;
 struct SimpleInputStream;
 
 extern struct SimpleInputStream * sioInHexOpen(
-				    struct SimpleInputStream * sisHex );
+				struct SimpleInputStream * sisHex );
 
 extern struct SimpleOutputStream * sioOutHexOpenFolded(
-				    struct SimpleOutputStream *	sosHex,
-				    int				wide,
-				    int				lastNl );
+				struct SimpleOutputStream *	sosHex,
+				int				wide,
+				int				lastNl );
 
 extern struct SimpleOutputStream * sioOutHexOpen(
-				    struct SimpleOutputStream * sosHex );
+				struct SimpleOutputStream * 	sosHex );

@@ -43,12 +43,23 @@ struct DrawingShape;
 /*									*/
 /************************************************************************/
 
+typedef int (*RtfGetIntProperty)(	const void *		item,
+					int			prop );
+
 typedef struct PushedAttribute
     {
     struct PushedAttribute *	paNext;
     TextAttribute		paTextAttribute;
     int				paTextCharset;
     } PushedAttribute;
+
+/************************************************************************/
+/*									*/
+/*  The writer goes into several document trees. The document body is	*/
+/*  the most important one, but along the way it saves notes, headers,	*/
+/*  footers etc. This is the description of the current tree.		*/
+/*									*/
+/************************************************************************/
 
 typedef struct PushedTree
     {
@@ -78,6 +89,12 @@ typedef struct PushedTree
 				 */
     ParagraphProperties		ptParagraphProperties;
     } PushedTree;
+
+/************************************************************************/
+/*									*/
+/*  The writer.								*/
+/*									*/
+/************************************************************************/
 
 struct RtfWriter
     {
@@ -208,6 +225,22 @@ extern int docRtfWriteEnumTag(		RtfWriter *		rw,
 extern int docRtfWriteTag(		RtfWriter *		rw,
 					const char *		tag );
 
+extern int docRtfWriteAllItemProperties(
+				RtfWriter *			rw,
+				int				scope,
+				const void *			item,
+				RtfGetIntProperty		getIntProp,
+				const struct PropertyMask *	difMask,
+				int				count );
+
+int docRtfWriteItemProperties(	RtfWriter *			rw,
+				int				scope,
+				const void *			item,
+				RtfGetIntProperty		getIntProp,
+				const struct PropertyMask *	setMask,
+				const int *			properties,
+				int				propertyCount );
+
 extern int docRtfWriteProperty(		RtfWriter *		rw,
 					int			scope,
 					int			prop,
@@ -246,16 +279,11 @@ extern void docRtfWriteRawBytesDestination(
 
 extern void docRtfWriteNextLine(	RtfWriter *		rw );
 
-extern void docRtfSaveBorderByNumber(	RtfWriter *		rw,
-					const char *		tag,
-					int			num,
-					int			anyway );
-
 extern void docRtfSaveTextAttribute(	RtfWriter *		rw,
 					const struct PropertyMask *	updMask,
 					const struct TextAttribute *	ta );
 
-extern void docRtfSaveParagraphProperties(
+extern int docRtfSaveParagraphProperties(
 				RtfWriter *			rw,
 				const struct PropertyMask *	updMask,
 				const struct ParagraphProperties *	pp );
@@ -276,7 +304,7 @@ extern int docRtfSavePictureTags( RtfWriter *			rw,
 extern int docRtfWriteMemoryBuffer(	RtfWriter *			rw,
 					const struct MemoryBuffer *	mb );
 
-extern void docRtfSaveSectionProperties( RtfWriter *		rw,
+extern int docRtfSaveSectionProperties( RtfWriter *			rw,
 				const struct PropertyMask *		updMask,
 				const struct SectionProperties *	sp );
 
@@ -343,16 +371,18 @@ extern int docRtfSaveDocumentTree(	RtfWriter *		rw,
 extern int docRtfSaveDocNotesSeparators( RtfWriter *		rw,
 					struct BufferDocument *	bd );
 
-extern void docRtfSaveCellProperties(	RtfWriter *		rw,
-					const struct PropertyMask *	cpSetMask,
-					const struct CellProperties *	cpSet,
-					int			leftOffset );
+extern int docRtfSaveCellProperties(
+				RtfWriter *			rw,
+				const struct PropertyMask *	cpSetMask,
+				const struct CellProperties *	cpSet,
+				int				leftOffset );
 
-extern void docRtfSaveRowProperties(	RtfWriter *		rw,
-					const struct PropertyMask *	rpSetMask,
-					const struct RowProperties *	rpSet,
-					int			col0,
-					int			col1 );
+extern int docRtfSaveRowProperties(
+				RtfWriter *			rw,
+				const struct PropertyMask *	rpSetMask,
+				const struct RowProperties *	rpSet,
+				int				col0,
+				int				col1 );
 
 extern void docRtfSaveAutoSpace(	RtfWriter *		rw,
 					const char *		unitTag,
@@ -375,17 +405,13 @@ extern void docRtfWriteListLevel(
 				RtfWriter *			rw,
 				const struct ListLevel *	ll );
 
-extern void docRtfSaveTabStopList(
+extern int docRtfSaveTabStopList(
 				RtfWriter *			rw,
 				const struct TabStopList *	tsl );
 
 extern void docRtfSaveShadingByNumber(	RtfWriter *		rw,
-					int			num,
-					const char * const *	patTags,
-					int			patTagCount,
-					const char *		foreTag,
-					const char *		backTag,
-					const char *		levelTag );
+					int			scope,
+					int			num );
 
 extern void docRtfReserveColumns(	RtfWriter *		rw,
 					int			cols );

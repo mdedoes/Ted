@@ -52,56 +52,8 @@ extern const int		DOCrtf_SectFootNotesNumberStyleTagCount;
 extern const char * const	DOCrtf_SectEndNotesNumberStyleTags[];
 extern const int		DOCrtf_SectEndNotesNumberStyleTagCount;
 
-extern const char * const	DOCrtf_BorderStyleTags[];
-extern const int		DOCrtf_BorderStyleTagCount;
-
-extern const char * const	DOCrtf_ParaShadingTags[];
-extern const int		DOCrtf_ParaShadingTagCount;
-
-extern const char * const	DOCrtf_TextShadingTags[];
-extern const int		DOCrtf_TextShadingTagCount;
-
-extern const char * const	DOCrtf_RowShadingTags[];
-extern const int		DOCrtf_RowShadingTagCount;
-
-extern const char * const	DOCrtf_CellShadingTags[];
-extern const int		DOCrtf_CellShadingTagCount;
-
-extern const char * const	DOCrtf_SectBreakTags[];
-extern const int		DOCrtf_SectBreakTagCount;
-
 extern const char * const	DOCrtf_ParaBreakTags[];
 extern const int		DOCrtf_ParaBreakTagCount;
-
-extern const char * const	DOCrtf_PageNumberStyleTags[];
-extern const int		DOCrtf_PageNumberStyleTagCount;
-
-extern const char * const	DOCrtf_PageNumberHyphenTags[];
-extern const int		DOCrtf_PageNumberHyphenTagCount;
-
-extern const char * const	DOCrtf_CellValignTags[];
-extern const int		DOCrtf_CellValignTagCount;
-
-extern const char * const	DOCrtf_CellTextFlowTags[];
-extern const int		DOCrtf_CellTextFlowTagCount;
-
-extern const char * const	DOCrtf_CellHorMergeTags[];
-extern const int		DOCrtf_CellHorMergeTagCount;
-
-extern const char * const	DOCrtf_CellVerMergeTags[];
-extern const int		DOCrtf_CellVerMergeTagCount;
-
-extern const char * const	DOCrtf_ParaAlignTags[];
-extern const int		DOCrtf_ParaAlignTagCount;
-
-extern const char * const	DOCrtf_TabAlignTags[];
-extern const int		DOCrtf_TabAlignTagCount;
-
-extern const char * const	DOCrtf_TabLeaderTags[];
-extern const int		DOCrtf_TabLeaderTagCount;
-
-extern const char * const	DOCrtf_SupersubTags[];
-extern const int		DOCrtf_SupersubTagCount;
 
 extern const char RTFtag_pict[];
 extern const char RTFtag_result[];

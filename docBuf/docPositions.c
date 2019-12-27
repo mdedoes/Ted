@@ -8,7 +8,6 @@
 
 #   include	"docBuf.h"
 #   include	"docTreeNode.h"
-#   include	"docTableRectangle.h"
 #   include	"docSelect.h"
 #   include	<docEditPosition.h>
 #   include	<docEditRange.h>
@@ -216,14 +215,18 @@ int docSelectionForEditPositionsInDoc(	DocumentSelection *		dsNew,
     struct DocumentTree *	tree;
     struct BufferItem *		bodySectNode;
 
-    TableRectangle		tr;
-
     if  ( docGetRootOfSelectionScope( &tree, &bodySectNode, 
 					(struct BufferDocument *)bd, ss ) )
 	{ LDEB(1); return -1;	}
 
     if  ( docSelectionForEditPositionsInTree( dsNew, tree, epHead, epTail ) )
 	{ LDEB(1); return -1;	}
+
+#   if 0
+    TODO: Must be done while setting the selection.
+
+    {
+    TableRectangle		tr;
 
     if  ( ! docSelectionInsideCell( dsNew )	&&
 	  ! docGetTableRectangle( &tr, dsNew )	)
@@ -234,6 +237,8 @@ int docSelectionForEditPositionsInDoc(	DocumentSelection *		dsNew,
 					(struct BufferDocument *)bd, &tr ) )
 	    { LDEB(1);	}
 	}
+    }
+#   endif
 
     return 0;
     }

@@ -13,7 +13,7 @@
 #   include	"tedSelect.h"
 #   include	"tedAppResources.h"
 #   include	"tedLayout.h"
-#   include	"tedEdit.h"
+#   include	"tedEditOperation.h"
 #   include	<tedDocFront.h>
 #   include	"tedDocument.h"
 #   include	<docSelectLayout.h>

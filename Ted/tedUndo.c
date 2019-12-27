@@ -9,7 +9,7 @@
 #   include	<stddef.h>
 #   include	<ctype.h>
 
-#   include	"tedEdit.h"
+#   include	"tedEditOperation.h"
 #   include	"tedSelect.h"
 #   include	<tedDocFront.h>
 #   include	"tedLayout.h"
@@ -27,8 +27,6 @@
 #   include	<docRtfTraceImpl.h>
 #   include	<docDocumentField.h>
 #   include	<docFieldKind.h>
-#   include	<docRowNodeProperties.h>
-#   include	<docDocumentCopyJob.h>
 #   include	<docEditStep.h>
 #   include	<docDocumentProperties.h>
 #   include	<appEditDocument.h>
@@ -125,9 +123,9 @@ static int tedStartUndoOperation( UndoOperation *	uo,
 		 *  use an actual document as the source of document 
 		 *  content, the values are never used.
 		 */
-    teo->teoSavedTextAttribute=
+    eo->eoSavedTextAttribute=
 			td->tdSelectionDescription.sdTextAttribute;
-    teo->teoSavedTextAttributeNumber=
+    eo->eoSavedTextAttributeNumber=
 			td->tdSelectionDescription.sdTextAttributeNumber;
 
     eo->eoIBarSelectionOld= uo->uoSelectionDescription.sdIsIBarSelection;
@@ -191,32 +189,12 @@ static int tedUndoReplace(	UndoOperation *		uo,
 				int			posWhere,
 				int			copyTailParaProps )
     {
-    int				rval= 0;
-
     TedEditOperation *		teo= &(uo->uoEditOperation);
     EditOperation *		eo= &(teo->teoEo);
     const EditStep *		es= uo->uoEditStep;
 
-    DocumentPosition		dpFrom;
-
-    DocumentCopyJob		dcj;
-
-    docInitDocumentCopyJob( &dcj );
-
-    if  ( ! docHeadPosition( &dpFrom, es->esSourceDocument->bdBody.dtRoot ) )
-	{
-	if  ( docSetTraceDocumentCopyJob( &dcj, eo, es->esSourceDocument ) )
-	    { LDEB(1); rval= -1; goto ready;	}
-
-	dcj.dcjCopyTailParaProperties= copyTailParaProps;
-
-	if  ( tedIncludeDocument( teo, &dcj ) )
-	    { LDEB(1); rval= -1; goto ready;	}
-	}
-    else{
-	if  ( tedEditDeleteSelection( teo ) )
-	    { LDEB(1); rval= -1; goto ready;	}
-	}
+    if  ( docUndoReplace( eo, es, copyTailParaProps ) )
+	{ LDEB(1); return -1;	}
 
     switch( posWhere )
 	{
@@ -237,11 +215,7 @@ static int tedUndoReplace(	UndoOperation *		uo,
 	    break;
 	}
 
-  ready:
-
-    docCleanDocumentCopyJob( &dcj );
-
-    return rval;
+    return 0;
     }
 
 /************************************************************************/
@@ -252,34 +226,17 @@ static int tedUndoReplace(	UndoOperation *		uo,
 
 static int tedUndoDeletePara(	UndoOperation *		uo )
     {
-    int				rval= 0;
-
     TedEditOperation *		teo= &(uo->uoEditOperation);
     EditOperation *		eo= &(teo->teoEo);
     const EditStep *		es= uo->uoEditStep;
 
-    DocumentPosition		dpFrom;
-
-    struct BufferItem *		parentTo;
-    int				to;
-    struct BufferItem *		parentFrom;
-
-    if  ( docHeadPosition( &dpFrom, es->esSourceDocument->bdBody.dtRoot ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-
-    parentFrom= dpFrom.dpNode->biParent;
-    parentTo= eo->eoTailDp.dpNode->biParent;
-    to= eo->eoTailDp.dpNode->biNumberInParent;
-
-    if  ( docReinsertNodes( eo, parentTo, parentFrom, to, es ) )
-	{ LDEB(to); rval= -1; goto ready;	}
+    if  ( docUndoDeletePara( eo, es ) )
+	{ LDEB(1); return -1;	}
 
     tedEditFinishRange( teo,
 		    es->esOldCol0, es->esOldCol1, &(es->esOldEditRange) );
 
-  ready:
-
-    return rval;
+    return 0;
     }
 
 /************************************************************************/
@@ -296,39 +253,8 @@ static int tedUndoDeleteColumn(	UndoOperation *		uo )
     EditOperation *		eo= &(teo->teoEo);
     const EditStep *		es= uo->uoEditStep;
 
-    DocumentPosition		dpFrom;
-
-    int				colFrom;
-    int				rowFrom, row0From, row1From;
-    struct BufferItem *		parentFrom;
-
-    int				colTo;
-    int				rowTo, row0To, row1To;
-    struct BufferItem *		parentTo;
-
-    if  ( docHeadPosition( &dpFrom, es->esSourceDocument->bdBody.dtRoot ) )
+    if  ( docUndoDeleteColumn( eo, es ) )
 	{ LDEB(1); rval= -1; goto ready;	}
-
-    if  ( docDelimitTable( dpFrom.dpNode, &parentFrom,
-				&colFrom, &row0From, &rowFrom, &row1From ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-
-    if  ( docDelimitTable( eo->eoHeadDp.dpNode, &parentTo,
-				&colTo, &row0To, &rowTo, &row1To ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-
-    if  ( row0From != 0 || row1To- row0To != row1From- row0From )
-	{ LLLLDEB(row0To,row1To,row0From,row1From); rval= -1; goto ready; }
-
-    rowTo= row0To;
-    for ( rowFrom= row0From; rowFrom <= row1From; rowTo++, rowFrom++ )
-	{
-	struct BufferItem *	rowNodeTo= parentTo->biChildren[rowTo];
-	struct BufferItem *	rowNodeFrom= parentFrom->biChildren[rowFrom];
-
-	if  ( docReinsertNodes( eo, rowNodeTo, rowNodeFrom, colTo, es ) )
-	    { LDEB(colTo); rval= -1; goto ready;	}
-	}
 
     tedEditFinishRange( teo,
 		    es->esOldCol0, es->esOldCol1, &(es->esOldEditRange) );
@@ -346,60 +272,17 @@ static int tedUndoDeleteColumn(	UndoOperation *		uo )
 
 static int tedUndoDeleteRow(	UndoOperation *		uo )
     {
-    int				rval= 0;
-
     TedEditOperation *		teo= &(uo->uoEditOperation);
     EditOperation *		eo= &(teo->teoEo);
     const EditStep *		es= uo->uoEditStep;
 
-    DocumentPosition		dpFrom;
-
-    struct BufferItem *		parentTo;
-    int				to;
-    struct BufferItem *		parentFrom;
-
-    struct BufferItem *		rowNodeFrom;
-    struct BufferItem *		rowNodeTo;
-
-    DocumentCopyJob		dcj;
-
-    docInitDocumentCopyJob( &dcj );
-
-    if  ( docHeadPosition( &dpFrom, es->esSourceDocument->bdBody.dtRoot ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-
-    rowNodeFrom= docGetRowNode( dpFrom.dpNode );
-    if  ( ! rowNodeFrom )
-	{ XDEB(rowNodeFrom); rval= -1; goto ready;	}
-    parentFrom= rowNodeFrom->biParent;
-
-    rowNodeTo= docGetRowNode( eo->eoTailDp.dpNode );
-    if  ( rowNodeTo )
-	{
-	parentTo= rowNodeTo->biParent;
-	to= rowNodeTo->biNumberInParent;
-
-	if  ( docReinsertNodes( eo, parentTo, parentFrom, to, es ) )
-	    { LDEB(to); rval= -1; goto ready;	}
-	}
-    else{
-	if  ( docSetTraceDocumentCopyJob( &dcj, eo, es->esSourceDocument ) )
-	    { LDEB(1); rval= -1; goto ready;	}
-
-	/*  Do not copy paragraph properties */
-
-	if  ( tedIncludeDocument( teo, &dcj ) )
-	    { LDEB(1); rval= -1; goto ready;	}
-	}
+    if  ( docUndoDeleteRow( eo, es ) )
+	{ LDEB(1); return -1;	}
 
     tedEditFinishRange( teo,
 		    es->esOldCol0, es->esOldCol1, &(es->esOldEditRange) );
 
-  ready:
-
-    docCleanDocumentCopyJob( &dcj );
-
-    return rval;
+    return 0;
     }
 
 /************************************************************************/
@@ -410,48 +293,22 @@ static int tedUndoDeleteRow(	UndoOperation *		uo )
 
 static int tedUndoDeleteSect(	UndoOperation *		uo )
     {
-    int				rval= 0;
-
     TedEditOperation *		teo= &(uo->uoEditOperation);
     EditOperation *		eo= &(teo->teoEo);
     const EditStep *		es= uo->uoEditStep;
 
-    DocumentPosition		dpFrom;
-
-    struct BufferItem *		parentTo;
-    int				to;
-    struct BufferItem *		parentFrom;
-
-    struct BufferItem *		sectNodeFrom;
-    struct BufferItem *		sectNodeTo;
-
-    if  ( docHeadPosition( &dpFrom, es->esSourceDocument->bdBody.dtRoot ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-
-    sectNodeFrom= docGetSectNode( dpFrom.dpNode );
-    sectNodeTo= docGetSectNode( eo->eoTailDp.dpNode );
-    if  ( ! sectNodeFrom || ! sectNodeTo )
-	{ XXDEB(sectNodeFrom,sectNodeTo); rval= -1; goto ready;	}
-
-    parentFrom= sectNodeFrom->biParent;
-    parentTo= sectNodeTo->biParent;
-    to= sectNodeTo->biNumberInParent;
-
-    if  ( docReinsertNodes( eo, parentTo, parentFrom, to, es ) )
-	{ LDEB(to); rval= -1; goto ready;	}
+    if  ( docUndoDeleteSect( eo, es ) )
+	{ LDEB(1); return -1;	}
 
     tedEditFinishRange( teo,
 		    es->esOldCol0, es->esOldCol1, &(es->esOldEditRange) );
 
-  ready:
-
-
-    return rval;
+    return 0;
     }
 
 static int tedUndoInsertNode(	TedEditOperation *	teo,
 				const EditStep *	es,
-				struct BufferItem *		node )
+				struct BufferItem *	node )
     {
     EditOperation *		eo= &(teo->teoEo);
 
@@ -464,7 +321,7 @@ static int tedUndoInsertNode(	TedEditOperation *	teo,
     docEditIncludeNodeInReformatRange( eo, node->biParent );
 
     if  ( node->biLevel == DOClevSECT					&&
-	  node->biTreeType == DOCinBODY				&&
+	  node->biTreeType == DOCinBODY					&&
 	  node->biNumberInParent == node->biParent->biChildCount- 1	)
 	{
 	eo->eoSelectionScope.ssSectNr= node->biNumberInParent- 1;
@@ -482,18 +339,14 @@ static int tedUndoInsertNode(	TedEditOperation *	teo,
 
 static int tedUndoInsertPara(	UndoOperation *		uo )
     {
-    int				rval= 0;
-
     TedEditOperation *		teo= &(uo->uoEditOperation);
     EditOperation *		eo= &(teo->teoEo);
     const EditStep *		es= uo->uoEditStep;
 
     if  ( tedUndoInsertNode( teo, es, eo->eoHeadDp.dpNode ) )
-	{ LDEB(1); rval= -1; goto ready;	}
+	{ LDEB(1); return -1;	}
 
-  ready:
-
-    return rval;
+    return 0;
     }
 
 static int tedUndoInsertSect(	UndoOperation *		uo )
@@ -542,100 +395,17 @@ static int tedUndoInsertRow(	UndoOperation *		uo )
 
 static int tedUndoInsertColumn(	UndoOperation *		uo )
     {
-    int				rval= 0;
-
     TedEditOperation *		teo= &(uo->uoEditOperation);
     EditOperation *		eo= &(teo->teoEo);
     const EditStep *		es= uo->uoEditStep;
 
-    struct BufferItem *		parentNode;
-    int				col;
-    int				row;
-    int				row0;
-    int				row1;
-
-    RowProperties		rpSet;
-    PropertyMask		rpSetMask;
-    PropertyMask		cpSetMask;
-
-    const DocumentAttributeMap * const dam0= (const DocumentAttributeMap *)0;
-
-    docInitRowProperties( &rpSet );
-    utilPropMaskClear( &rpSetMask );
-    PROPmaskADD( &rpSetMask, RPprop_CELL_COUNT );
-    PROPmaskADD( &rpSetMask, RPprop_CELL_PROPS );
-
-    utilPropMaskClear( &cpSetMask );
-    PROPmaskADD( &cpSetMask, CLpropWIDTH );
-
-    if  ( docDelimitTable( eo->eoHeadDp.dpNode, &parentNode,
-						&col, &row0, &row, &row1 ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-
-    docEditIncludeNodeInReformatRange( eo, parentNode );
-
-    for ( row= row0; row <= row1; row++ )
-	{
-	struct BufferItem *	rowNode= parentNode->biChildren[row];
-	int			wide;
-
-	const int		count= 1;
-
-	int			sectionsDeleted= 0;
-	int			firstParaDeleted= -1;
-	int			paragraphsDeleted= 0;
-
-	{
-	const RowProperties *	rpOld;
-
-	/*
-	const struct BufferItem *	cellNode= rowNode->biChildren[col];
-	wide= cellNode->biCellRight- cellNode->biCellLeft;
-	*/
-
-	rpOld= rowNode->biRowProperties;
-	wide= rpOld->rpCells[col].cpWide;
-
-	if  ( docCopyRowProperties( &rpSet, rpOld, dam0 ) )
-	    { LDEB(1); rval= -1; goto ready;	}
-	}
-
-	docEditDeleteNodes( eo, &sectionsDeleted,
-			    &firstParaDeleted, &paragraphsDeleted,
-			    rowNode, col, count );
-
-	docDeleteColumnsFromRow( &rpSet, col, count );
-
-	switch( es->esSelectionPosition )
-	    {
-	    case SELposBEFORE:
-		docRowPropertiesMakeColWider( &rpSet, col, wide );
-		break;
-
-	    case SELposAFTER:
-		docRowPropertiesMakeColWider( &rpSet, col- 1, wide );
-		break;
-
-	    default:
-		LDEB(es->esSelectionPosition);
-		break;
-	    }
-
-	if  ( docChangeRowNodeProperties( (PropertyMask *)0, (PropertyMask *)0,
-				    rowNode, &rpSetMask, &cpSetMask, &rpSet,
-				    0, rpSet.rpCellCount,
-				    eo->eoDocument, dam0 ) )
-	    { LDEB(wide); rval= -1; goto ready;	}
-	}
+    if  ( docUndoInsertColumn( eo, es ) )
+	{ return -1;	}
 
     if  ( tedUndoFinishOld( teo, es ) )
-	{ LDEB(1); rval= -1; goto ready;	}
+	{ LDEB(1); return -1;	}
 
-  ready:
-
-    docCleanRowProperties( &rpSet );
-
-    return rval;
+    return 0;
     }
 
 /************************************************************************/
@@ -671,13 +441,7 @@ static int tedUndoInsertHeaderFooter(	UndoOperation *		uo )
 
 /************************************************************************/
 /*									*/
-/*  Undo the deletion of a header orv a footer.				*/
-/*									*/
-/*  1)  Determine wat kind of header or footer the source document	*/
-/*	contains.							*/
-/*  2)  Find the corresponding header or footer in the target documnent	*/
-/*  3)  Rebuild the hear or footer in the target.			*/
-/*  4)  And copy the source tree to it.					*/
+/*  Undo the deletion of a header or a footer.				*/
 /*									*/
 /************************************************************************/
 
@@ -689,72 +453,8 @@ static int tedUndoDeleteHeaderFooter(	UndoOperation *		uo )
     EditOperation *		eo= &(teo->teoEo);
     const EditStep *		es= uo->uoEditStep;
 
-    DocumentPosition		dpFrom;
-
-    int				i;
-    const struct DocumentTree *	dtFrom= (const struct DocumentTree *)0;
-    int				fromCount;
-
-    struct DocumentTree *		dtTo= (struct DocumentTree *)0;
-    const int			ownerNumber= -1;
-    const int			to= 0;
-
-    struct BufferItem *		sectNodeFrom;
-
-    /*  1  */
-    if  ( docHeadPosition( &dpFrom, es->esSourceDocument->bdBody.dtRoot ) )
+    if  ( docUndoDeleteHeaderFooter( eo, es ) )
 	{ LDEB(1); rval= -1; goto ready;	}
-
-    sectNodeFrom= docGetSectNode( dpFrom.dpNode );
-
-    fromCount= 0;
-    for ( i= 0; i < DOC_HeaderFooterTypeCount; i++ )
-	{
-	const struct DocumentTree *	dt;
-
-	dt= docSectionHeaderFooter( sectNodeFrom, (unsigned char *)0,
-					es->esSourceDocument->bdProperties,
-					DOC_HeaderFooterTypes[i] );
-
-	if  ( dt && dt->dtRoot )
-	    { dtFrom= dt; fromCount++;	}
-	}
-
-    if  ( fromCount != 1 || ! dtFrom )
-	{ LXDEB(fromCount,dtFrom); rval= -1; goto ready;	}
-
-    docMoveEditOperationToBodySect( eo, eo->eoBodySectNode );
-
-    /*  2  */
-    dtTo= docSectionHeaderFooter( eo->eoBodySectNode, (unsigned char *)0,
-					    eo->eoDocument->bdProperties,
-					    dtFrom->dtRoot->biTreeType );
-    if  ( ! dtTo || dtTo->dtRoot )
-	{ XDEB(dtTo); rval= -1; goto ready;	}
-
-    /*  3  */
-    dtTo->dtRoot= docMakeTreeRoot( eo->eoDocument, dtTo,
-					eo->eoBodySectNode, ownerNumber,
-					dtFrom->dtRoot->biTreeType );
-    if  ( ! dtTo->dtRoot )
-	{ XDEB(dtTo->dtRoot); rval= -1; goto ready;	}
-
-    /*  4  */
-    if  ( docReinsertNodes( eo, dtTo->dtRoot, dtFrom->dtRoot, to, es ) )
-	{ LDEB(to); rval= -1; goto ready;	}
-
-    docInvalidateTreeLayout( dtTo );
-    docEditIncludeNodeInReformatRange( eo, eo->eoBodySectNode );
-
-    if  ( docSelectionSameScope( &(es->esOldSelectionScope),
-			    &(dtTo->dtRoot->biSectSelectionScope) )	&&
-	  es->esOldPage >= 0						)
-	{
-	dtTo->dtPageSelectedUpon= es->esOldPage;
-
-	if  ( es->esOldColumn >= 0 )
-	    { dtTo->dtColumnSelectedIn= es->esOldColumn;	}
-	}
 
     if  ( tedUndoFinishOld( teo, es ) )
 	{ LDEB(1); rval= -1; goto ready;	}
@@ -890,148 +590,19 @@ static int tedUndoDelField(		UndoOperation *		uo )
 /*									*/
 /************************************************************************/
 
-static int tedUndoUpdPropsImpl(	TedEditOperation *	teo,
-				const EditStep *	es )
-    {
-    int				rval= 0;
-    EditOperation *		eo= &(teo->teoEo);
-
-    DocumentCopyJob		dcj;
-
-    int				haveTextUpdate;
-    int				haveNodeUpdate;
-    int				targetIsIbar;
-
-    DocumentSelection		dsTo;
-    DocumentSelection		dsFrom;
-    const int			direction= 1;
-
-    const PropertyMask *	taSetMask= (const PropertyMask *)0;
-    const TextAttribute *	taSet= (const TextAttribute *)0;
-    TextAttribute		ta;
-
-
-    docInitDocumentCopyJob( &dcj );
-    textInitTextAttribute( &ta );
-
-    if  ( docSetTraceDocumentCopyJob( &dcj, eo, es->esSourceDocument ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-
-    haveTextUpdate= ! utilPropMaskIsEmpty( &(es->esNewStyle.dsTextMask) );
-
-    haveNodeUpdate= ! utilPropMaskIsEmpty( &(es->esNewStyle.dsParaMask) )||
-		    ! utilPropMaskIsEmpty( &(es->esNewStyle.dsCellMask) )||
-		    ! utilPropMaskIsEmpty( &(es->esNewStyle.dsRowMask) )||
-		    ! utilPropMaskIsEmpty( &(es->esNewStyle.dsSectMask) )||
-		    ! utilPropMaskIsEmpty( &(es->esNewDocPropMask) );
-
-    if  ( ! haveTextUpdate && ! haveNodeUpdate )
-	{ goto ready;	}
-
-    docInitDocumentSelection( &dsTo );
-    docInitDocumentSelection( &dsFrom );
-
-    docSetRangeSelection( &dsTo, &(eo->eoHeadDp), &(eo->eoTailDp), direction );
-    docSelectWholeBody( &dsFrom, es->esSourceDocument );
-
-    /*  Do not base on source: a text-only change results in a 1 space doc */
-    targetIsIbar= docIsIBarSelection( &dsTo );
-    if  ( targetIsIbar )
-	{
-	if  ( ! docSelectionSingleParagraph( &dsFrom )			||
-	      dsFrom.dsTail.dpStroff > dsFrom.dsHead.dpStroff+ 1	)
-	    {
-	    LDEB(docSelectionSingleParagraph(&dsFrom));
-	    LLDEB(dsFrom.dsTail.dpStroff,dsFrom.dsHead.dpStroff);
-	    }
-	else{
-	    docSetIBarSelection( &dsFrom, &(dsFrom.dsHead) );
-
-	    docGetSelectionAttributes( &ta, (PropertyMask *)0,
-					    es->esSourceDocument, &dsFrom );
-
-	    taSet= &ta;
-	    taSetMask= &(es->esNewStyle.dsTextMask);
-	    }
-	}
-
-    if  ( haveTextUpdate )
-	{
-	if  ( haveNodeUpdate || targetIsIbar )
-	    {
-	    if  ( docCopySelectionProperties( &dcj, &dsTo, &dsFrom,
-		    taSet, taSetMask, /* ta */
-		    &(es->esNewStyle.dsParaMask), /* pp */
-		    &(es->esNewStyle.dsCellMask), /* cp */
-		    &(es->esNewStyle.dsRowMask), /* rp */
-		    &(es->esNewStyle.dsSectMask), /* sp */
-		    &(es->esNewDocPropMask) ) ) /* dp */
-		{ LDEB(1); rval= -1; goto ready;	}
-	    }
-
-	/*  Do not copy paragraph properties */
-
-	if  ( targetIsIbar )
-	    {
-	    TextAttribute	ta;
-
-	    ta= teo->teoSavedTextAttribute;
-	    textUpdateTextAttribute( (struct PropertyMask *)0, &ta,
-					&(es->esNewStyle.dsTextMask),
-					&(es->esNewStyle.dsTextAttribute) );
-	    }
-	else{
-	    if  ( tedIncludeDocument( teo, &dcj ) )
-		{ LDEB(1); rval= -1; goto ready;	}
-	    }
-	}
-    else{
-	if  ( haveNodeUpdate )
-	    {
-	    if  ( docCopySelectionProperties( &dcj, &dsTo, &dsFrom,
-		    (const TextAttribute *)0, (const PropertyMask *)0,
-		    &(es->esNewStyle.dsParaMask), /* pp */
-		    &(es->esNewStyle.dsCellMask), /* cp */
-		    &(es->esNewStyle.dsRowMask), /* rp */
-		    &(es->esNewStyle.dsSectMask), /* sp */
-		    &(es->esNewDocPropMask) ) ) /* dp */
-		{
-		LDEB(1);
-		docListNode(0,es->esSourceDocument->bdBody.dtRoot,0);
-		rval= -1; goto ready;
-		}
-	    }
-	}
-
-  ready:
-
-    docCleanDocumentCopyJob( &dcj );
-
-    return rval;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Undo a property update.						*/
-/*									*/
-/************************************************************************/
-
 static int tedUndoUpdProps(	UndoOperation *		uo )
     {
-    int				rval= 0;
-
     TedEditOperation *		teo= &(uo->uoEditOperation);
+    EditOperation *		eo= &(teo->teoEo);
     const EditStep *		es= uo->uoEditStep;
 
-    if  ( tedUndoUpdPropsImpl( teo, es ) )
-	{ LDEB(1); rval= -1; goto ready;	}
+    if  ( docUndoUpdProps( eo, es ) )
+	{ LDEB(1); return -1;	}
 
     tedEditFinishRange( teo,
 		    es->esOldCol0, es->esOldCol1, &(es->esOldEditRange) );
 
-  ready:
-
-    return rval;
+    return 0;
     }
 
 /************************************************************************/
@@ -1048,45 +619,13 @@ static int tedUndoShiftIndent(	UndoOperation *		uo )
     EditOperation *		eo= &(teo->teoEo);
     const EditStep *		es= uo->uoEditStep;
 
-    DocumentCopyJob		dcj;
-
-    PropertyMask		ppSetMask;
-
-    DocumentSelection		dsTo;
-    DocumentSelection		dsFrom;
-    const int			direction= 1;
-
-    utilPropMaskClear( &ppSetMask );
-    PROPmaskADD( &ppSetMask, PPpropLISTLEVEL );
-    PROPmaskADD( &ppSetMask, PPpropLEFT_INDENT );
-    PROPmaskADD( &ppSetMask, PPpropFIRST_INDENT );
-
-    docInitDocumentCopyJob( &dcj );
-
-    if  ( docSetTraceDocumentCopyJob( &dcj, eo, es->esSourceDocument ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-
-    docInitDocumentSelection( &dsTo );
-    docInitDocumentSelection( &dsFrom );
-
-    docSetRangeSelection( &dsTo, &(eo->eoHeadDp), &(eo->eoTailDp), direction );
-    docSelectWholeBody( &dsFrom, es->esSourceDocument );
-
-    if  ( docCopySelectionProperties( &dcj, &dsTo, &dsFrom,
-	    (const TextAttribute *)0, (const PropertyMask *)0,
-	    &ppSetMask, /* pp */
-	    (const PropertyMask *)0, /* cp */
-	    (const PropertyMask *)0, /* rp */
-	    (const PropertyMask *)0, /* sp */
-	    (const PropertyMask *)0 ) ) /* dp */
+    if  ( docUndoShiftIndent( eo, es ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     tedEditFinishRange( teo,
 		    es->esOldCol0, es->esOldCol1, &(es->esOldEditRange) );
 
   ready:
-
-    docCleanDocumentCopyJob( &dcj );
 
     return rval;
     }
@@ -1239,7 +778,7 @@ static int tedUndoSetNewList(	UndoOperation *		uo )
 				    sd->sdListOverride, eo->eoDocument ) )
 	{ LDEB(1); return -1;	}
 
-    if  ( tedUndoUpdPropsImpl( teo, es ) )
+    if  ( docUndoUpdProps( eo, es ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
     {
@@ -1305,7 +844,7 @@ static int tedUndoShiftRows(	UndoOperation *		uo )
 void tedDocUndo(	EditDocument *	ed )
     {
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    struct BufferDocument *		bd= td->tdDocument;
+    struct BufferDocument *	bd= td->tdDocument;
     EditTrace *			et= &(td->tdEditTrace);
 
     UndoOperation		uo;

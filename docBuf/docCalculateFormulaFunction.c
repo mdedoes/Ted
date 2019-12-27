@@ -251,8 +251,6 @@ static int doc_FC_Defined(	const FunctionCalculator *	fc,
 				int				argc )
     {
     DocumentSelection		ds;
-    int				headPart;
-    int				tailPart;
 
     switch( argv[0].fvType )
 	{
@@ -264,8 +262,7 @@ static int doc_FC_Defined(	const FunctionCalculator *	fc,
 
 	case FVtypeNAME:
 	    top->fvType= FVtypeNUMBER;
-	    top->fvDouble= ( docFindBookmarkInDocument(
-					&ds, &headPart, &tailPart,
+	    top->fvDouble= ( docFindBookmarkInDocument( &ds,
 					cf->cfRecalculateFields->rfDocument,
 					&(argv[0].fvBuffer) ) == 0 );
 	    return 0;

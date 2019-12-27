@@ -15,6 +15,7 @@
 #   include	"docRtfWriterImpl.h"
 #   include	"docRtfFlags.h"
 #   include	"docRtfTags.h"
+#   include	"docRtfControlWord.h"
 #   include	<textConverter.h>
 #   include	<docItemShading.h>
 #   include	<docBuf.h>
@@ -32,84 +33,83 @@
 /*									*/
 /************************************************************************/
 
-static void docRtfSaveTextAttributeImpl(	RtfWriter *		rw,
-						const PropertyMask *	updMask,
-						const TextAttribute *	ta )
+static const int TextRegularProperties1[]=
+{
+    TApropTEXT_STYLE,
+    TApropFONT_NUMBER,
+    TApropFONTSIZE,
+    TApropTEXT_COLOR,
+    TApropBORDER,
+};
+
+static const int TextRegularPropertyCount1=
+			sizeof(TextRegularProperties1)/sizeof(int);
+
+static const int TextRegularProperties2[]=
+{
+    TApropFONTBOLD,
+    TApropFONTSLANTED,
+    TApropTEXTUNDERLINED,
+    TApropSUPERSUB,
+    TApropSMALLCAPS,
+    TApropCAPITALS,
+    TApropSTRIKETHROUGH,
+    TApropLOCALE,
+    TApropNOPROOF,
+};
+
+static const int TextRegularPropertyCount2=
+			sizeof(TextRegularProperties2)/sizeof(int);
+
+static int docRtfSaveTextAttributeImpl(	RtfWriter *		rw,
+					const PropertyMask *	taSetMask,
+					const TextAttribute *	taSet )
     {
-    if  ( PROPmaskISSET( updMask, TApropTEXT_STYLE ) )
-	{ docRtfWriteArgTag( rw, "cs", ta->taTextStyleNumber ); }
+    const int	scope= RTCscopeTEXT;
 
-    if  ( PROPmaskISSET( updMask, TApropFONT_NUMBER ) )
-	{ docRtfWriteArgTag( rw, "f", ta->taFontNumber ); }
+    if  ( docRtfWriteItemProperties( rw, scope, taSet,
+			(RtfGetIntProperty)textGetTextProperty, taSetMask,
+			TextRegularProperties1, TextRegularPropertyCount1 ) )
+	{ LLDEB(scope,TextRegularPropertyCount1); return -1;	}
 
-    if  ( PROPmaskISSET( updMask, TApropFONTSIZE ) )
-	{ docRtfWriteArgTag( rw, "fs", ta->taFontSizeHalfPoints ); }
-
-    if  ( PROPmaskISSET( updMask, TApropTEXT_COLOR ) )
-	{ docRtfWriteArgTag( rw, "cf", ta->taTextColorNumber ); }
-
-    if  ( PROPmaskISSET( updMask, TApropBORDER ) )
+    if  ( PROPmaskISSET( taSetMask, TApropSHADING ) )
 	{
-	const int	anyway= 1;
-
-	docRtfSaveBorderByNumber( rw, "chbrdr",
-					    ta->taBorderNumber, anyway );
-	}
-
-    if  ( PROPmaskISSET( updMask, TApropSHADING ) )
-	{
-	const struct BufferDocument *		bd= rw->rwDocument;
+	const struct BufferDocument *	bd= rw->rwDocument;
 	const ItemShading *		is;
 
-	is= docGetItemShadingByNumber( bd, ta->taShadingNumber );
+	is= docGetItemShadingByNumber( bd, taSet->taShadingNumber );
 
 	if  ( is->isBackColor > 0		&&
 	      is->isPattern == DOCspSOLID	&&
 	      is->isLevel == 0			)
 	    { docRtfWriteArgTag( rw, "cb", is->isBackColor );	}
 
-	docRtfSaveShadingByNumber( rw, ta->taShadingNumber,
-		DOCrtf_TextShadingTags, DOCrtf_TextShadingTagCount,
-		"chcfpat", "chcbpat", "chshdng" );
+	docRtfSaveShadingByNumber( rw, RTCscopeTEXT_SHADING,
+						    taSet->taShadingNumber );
 	}
 
-    if  ( PROPmaskISSET( updMask, TApropFONTBOLD ) )
-	{ docRtfWriteFlagTag( rw, "b", ta->taFontIsBold );	}
+    if  ( docRtfWriteItemProperties( rw, scope, taSet,
+			(RtfGetIntProperty)textGetTextProperty, taSetMask,
+			TextRegularProperties2, TextRegularPropertyCount2 ) )
+	{ LLDEB(scope,TextRegularPropertyCount2); return -1;	}
 
-    if  ( PROPmaskISSET( updMask, TApropFONTSLANTED ) )
-	{ docRtfWriteFlagTag( rw, "i", ta->taFontIsSlanted );	}
+    /* Until underline issue is resolved
+    if  ( PROPmaskISSET( taSetMask, TApropTEXTUNDERLINED ) )
+	{ docRtfWriteFlagTag( rw, "ul", taSet->taTextIsUnderlined );	}
+    */
 
-    if  ( PROPmaskISSET( updMask, TApropTEXTUNDERLINED ) )
-	{ docRtfWriteFlagTag( rw, "ul", ta->taTextIsUnderlined );	}
-
-    if  ( PROPmaskISSET( updMask, TApropSUPERSUB ) )
+    if  ( PROPmaskISSET( taSetMask, TApropBASELINE_SHIFT ) )
 	{
-	docRtfWriteEnumTag( rw, DOCrtf_SupersubTags, ta->taSuperSub,
-				    DOCrtf_SupersubTagCount, TEXTva_COUNT );
+	if  ( taSet->taBaselineShiftHalfPoints >= 0 )
+	    {
+	    docRtfWriteArgTag( rw, "up",  taSet->taBaselineShiftHalfPoints );
+	    }
+	else{
+	    docRtfWriteArgTag( rw, "dn", -taSet->taBaselineShiftHalfPoints );
+	    }
 	}
 
-    if  ( PROPmaskISSET( updMask, TApropBASELINE_SHIFT ) )
-	{
-	if  ( ta->taBaselineShiftHalfPoints >= 0 )
-	    { docRtfWriteArgTag( rw, "up",  ta->taBaselineShiftHalfPoints ); }
-	else{ docRtfWriteArgTag( rw, "dn", -ta->taBaselineShiftHalfPoints ); }
-	}
-
-    if  ( PROPmaskISSET( updMask, TApropSMALLCAPS ) )
-	{ docRtfWriteFlagTag( rw, "scaps", ta->taSmallCaps );	}
-
-    if  ( PROPmaskISSET( updMask, TApropCAPITALS ) )
-	{ docRtfWriteFlagTag( rw, "caps", ta->taCapitals );	}
-
-    if  ( PROPmaskISSET( updMask, TApropSTRIKETHROUGH ) )
-	{ docRtfWriteFlagTag( rw, "strike", ta->taHasStrikethrough );	}
-
-    if  ( PROPmaskISSET( updMask, TApropLOCALE ) )
-	{ docRtfWriteArgTag( rw, "lang", ta->taLocaleId );	}
-    if  ( PROPmaskISSET( updMask, TApropNOPROOF ) )
-	{ docRtfWriteFlagTag( rw, "noproof", ta->taNoProof );	}
-
-    return;
+    return 0;
     }
 
 void docRtfSaveTextAttribute(		RtfWriter *		rw,
@@ -122,7 +122,7 @@ void docRtfSaveTextAttribute(		RtfWriter *		rw,
 	  PROPmaskISSET( updMask, TApropFONT_NUMBER )	)
 	{
 	const DocumentProperties *	dp= rw->rwDocument->bdProperties;
-	const DocumentFontList *	dfl= dp->dpFontList;
+	const struct DocumentFontList *	dfl= dp->dpFontList;
 	const DocumentFont *		df;
 
 	df= fontFontListGetFontByNumber( dfl, taFile.taFontNumber );
@@ -207,9 +207,9 @@ void docRtfWriteSwitchTextAttributes(	RtfWriter *		rw,
 					const char *		first )
     {
     const struct BufferDocument *	bd= rw->rwDocument;
-    TextAttribute		ta;
+    TextAttribute			ta;
 
-    int				symbol= ' ';
+    int					symbol= ' ';
 
     if  ( first )
 	{
@@ -225,7 +225,7 @@ void docRtfWriteSwitchTextAttributes(	RtfWriter *		rw,
     if  ( ta.taFontNumber >= 0 )
 	{
 	const DocumentProperties *	dp= bd->bdProperties;
-	const DocumentFontList *	dfl= dp->dpFontList;
+	const struct DocumentFontList *	dfl= dp->dpFontList;
 
 	PropertyMask			taSetMask;
 	PropertyMask			doneMask;

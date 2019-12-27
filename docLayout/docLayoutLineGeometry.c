@@ -7,6 +7,7 @@
 #   include	"docLayoutConfig.h"
 
 #   include	"docLayoutLine.h"
+#   include	"layoutContext.h"
 #   include	<docPropVal.h>
 #   include	<docTextParticule.h>
 #   include	<docTreeNode.h>

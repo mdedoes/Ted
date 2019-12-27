@@ -13,6 +13,7 @@
 #   include	<docNodeTree.h>
 #   include	"docSelectLayout.h"
 #   include	<docSelect.h>
+#   include	<docTreeType.h>
 
 #   include	<docDebug.h>
 #   include	<appDebugon.h>

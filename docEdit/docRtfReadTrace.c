@@ -25,8 +25,10 @@
 #   include	<sioGeneral.h>
 #   include	<docAttributes.h>
 #   include	<docBuf.h>
+#   include	<docDocument.h>
 #   include	<docRtfReadTreeStack.h>
 #   include	<docRtfReadTrace.h>
+#   include	<docNodeTree.h>
 
 #   include	<appDebugon.h>
 

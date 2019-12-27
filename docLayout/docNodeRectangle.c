@@ -3,6 +3,7 @@
 #   include	<limits.h>
 
 #   include	"docLayout.h"
+#   include	"layoutContext.h"
 #   include	<docBlockOrnaments.h>
 #   include	<docPageGrid.h>
 #   include	<docTreeNode.h>

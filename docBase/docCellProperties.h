@@ -58,6 +58,21 @@ typedef struct CellProperties
 			 */
     int			cpBottomBorderNumber;
 
+			/**
+			 *  The (potential) top-left to bottom-right diagonal
+			 *  style. This is a border style. (\\cldglu)
+			 */
+    int			cpLtrDiagonalBorderNumber;
+
+			/**
+			 *  The (potential) top-right to bottom-left diagonal
+			 *  style. This is a border style. (\\cldgll)
+			 */
+    int			cpRtlDiagonalBorderNumber;
+
+			/**
+			 *  The (potential) shading style of the cell.
+			 */
     int			cpShadingNumber;
 
     int			cpPreferredWidth;
@@ -70,16 +85,19 @@ typedef struct CellProperties
 			 *  swap left and top padding.
 			 */
     short int		cpTopPadding;
+
 			/**
 			 *  Padding at the left of the cell. 
 			 *  MS-Word swaps left and top padding in the RTF 
 			 *  file.
 			 */
     short int		cpLeftPadding;
+
 			/**
 			 *  Padding at the right of the cell. 
 			 */
     short int		cpRightPadding;
+
 			/**
 			 *  Padding at the bottom of the cell. 
 			 */
@@ -99,7 +117,13 @@ typedef struct CellProperties
 
     unsigned char	cpNoShading; /* clshdrawnil */
 
-    unsigned char	cpValign;			/*  (enum)	*/
+			/**
+			 *  Vertical alignment of the contents of the cell.
+			 *  The default is DOCtvaTOP. Other possible values are 
+			 *  DOCtvaCENTERED and DOCtvaBOTTOM.
+			 */
+    unsigned char	cpValign;
+
     unsigned char	cpTextFlow;			/*  (enum)	*/
     } CellProperties;
 
@@ -117,6 +141,9 @@ typedef enum CellProperty
     CLpropLEFT_BORDER,
     CLpropRIGHT_BORDER,
     CLpropBOTTOM_BORDER,
+
+    CLpropLEFT_RIGHT_DIAGONAL,
+    CLpropRIGHT_LEFT_DIAGONAL,
 
     CLpropSHADING,
     CLpropCLW_WIDTH,

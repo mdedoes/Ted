@@ -867,6 +867,8 @@ static int bmHashColorsRGB8(	HashBucket ***		pHashTable,
 				int			maxcolors,
 				unsigned int		mask )
     {
+    int				rval= 0;
+
     unsigned int		r;
     unsigned int		g;
     unsigned int		b;
@@ -885,7 +887,7 @@ static int bmHashColorsRGB8(	HashBucket ***		pHashTable,
     /*  1  */
     hashTable= (HashBucket **)malloc( HASH_SIZE* sizeof(HashBucket *) );
     if  ( ! hashTable )
-	{ XDEB(hashTable); return -1;	}
+	{ XDEB(hashTable); rval= -1; goto ready;	}
     for ( row= 0; row < HASH_SIZE; row++ )
 	{ hashTable[row]= (HashBucket *)0;	}
 
@@ -902,7 +904,7 @@ static int bmHashColorsRGB8(	HashBucket ***		pHashTable,
 		{ from++;	}
 
 	    if  ( hash < 0 || hash >= HASH_SIZE )
-		{ LLDEB(hash,HASH_SIZE); return -1; }
+		{ LLDEB(hash,HASH_SIZE); rval= -1; goto ready; }
 
 	    hashBucket= hashTable[hash];
 	    while( hashBucket )
@@ -917,17 +919,22 @@ static int bmHashColorsRGB8(	HashBucket ***		pHashTable,
 		{ hashBucket->hbCount++; continue;	}
 
 	    if  ( bmInsertHash( hashTable, hash, colorCount++, r, g, b ) )
-		{ LDEB(1); bmFreeColorHash( hashTable ); return -1; }
+		{ LDEB(1); rval= -1; goto ready; }
 
 	    if  ( colorCount > maxcolors )
-		{ bmFreeColorHash( hashTable ); return 1; }
+		{ rval= 1; goto ready; }
 	    }
 	}
 
     *pColorCount= colorCount;
-    *pHashTable= hashTable;
+    *pHashTable= hashTable; hashTable= (HashBucket **)0;
 
-    return 0;
+  ready:
+
+    if  ( hashTable )
+	{ bmFreeColorHash( hashTable );	}
+
+    return rval;
     }
 
 /************************************************************************/

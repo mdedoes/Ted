@@ -25,13 +25,10 @@ int docCalculateRefFieldValue(	MemoryBuffer *			mbResult,
 				struct BufferDocument *		bd )
     {
     DocumentSelection		dsInside;
-    int				headPart;
-    int				tailPart;
 
     docInitDocumentSelection( &dsInside );
 
-    if  ( docFindBookmarkInDocument( &dsInside, &headPart, &tailPart,
-							    bd, markName ) )
+    if  ( docFindBookmarkInDocument( &dsInside, bd, markName ) )
 	{
 	utilMemoryBufferAppendString( mbResult, "<<? " );
 	utilMemoryAppendBuffer( mbResult, markName );

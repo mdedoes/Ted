@@ -20,27 +20,32 @@
 #   include	<docNodeTree.h>
 
 #   include	<appDebugon.h>
+#   include	<docDebug.h>
 
 #   define	VALIDATE_TREE	0
 
 /************************************************************************/
 
 static struct BufferItem * docCopyXNode(
+				int *				pReady,
 				DocumentCopyJob *		dcj,
 				const SelectionScope *		ssRoot,
 				struct BufferItem *		parentNodeTo,
 				int				n,
-				const struct BufferItem *	nodeFrom );
+				const struct BufferItem *	nodeFrom,
+				const struct DocumentSelection * ds );
 
 /************************************************************************/
 
-static int docCopyXNodeChilden(	DocumentCopyJob *	dcj,
-				const SelectionScope *	ssRoot,
-				struct BufferItem *	parentNodeTo,
-				int			to,
-				const struct BufferItem *	parentNodeFrom,
-				int			from,
-				int			n )
+static int docCopyXNodeChilden(
+			DocumentCopyJob *		dcj,
+			const SelectionScope *		ssRoot,
+			struct BufferItem *		parentNodeTo,
+			int				to,
+			const struct BufferItem *	parentNodeFrom,
+			int				from,
+			int				n,
+			const struct DocumentSelection * ds )
     {
     int		i;
 
@@ -49,10 +54,15 @@ static int docCopyXNodeChilden(	DocumentCopyJob *	dcj,
 
     for ( i= 0; i < n; i++ )
 	{
-	const struct BufferItem *	childFrom= parentNodeFrom->biChildren[from];
+	int			ready= 0;
+	const BufferItem *	childFrom= parentNodeFrom->biChildren[from];
 
-	if  ( ! docCopyXNode( dcj, ssRoot, parentNodeTo, to, childFrom ) )
+	if  ( ! docCopyXNode( &ready, dcj, ssRoot, parentNodeTo, to,
+							childFrom, ds ) )
 	    { LDEB(i); return -1;	}
+
+	if  ( ready )
+	    { return 1;	}
 
 	/*  Compensate for the shift.	*/
 	if  ( parentNodeTo == parentNodeFrom	&&
@@ -66,31 +76,40 @@ static int docCopyXNodeChilden(	DocumentCopyJob *	dcj,
     }
 
 
-int docCopyNodeChildren(	DocumentCopyJob *	dcj,
-				struct BufferItem *		parentNodeTo,
-				int			to,
-				const struct BufferItem *	parentNodeFrom,
-				int			from,
-				int			n )
+int docCopyNodeChildren( DocumentCopyJob *		dcj,
+			struct BufferItem *		parentNodeTo,
+			int				to,
+			const struct BufferItem *	parentNodeFrom,
+			int				from,
+			int				n )
     {
+    int				rval;
     EditOperation *		eo= dcj->dcjEditOperation;
     const SelectionScope *	ssRoot= &(eo->eoSelectionScope);
 
-    return docCopyXNodeChilden( dcj, ssRoot,
-				parentNodeTo, to, parentNodeFrom, from, n );
+    rval= docCopyXNodeChilden( dcj, ssRoot,
+				parentNodeTo, to,
+				parentNodeFrom, from, n,
+				(const struct DocumentSelection *)0 );
+    if  ( rval )
+	{ LDEB(rval); return -1;	}
+
+    return 0;
     }
 
 /************************************************************************/
 
 static struct BufferItem * docCopyCellNode(
+				int *				pReady,
 				DocumentCopyJob *		dcj,
 				const SelectionScope *		ssRoot,
 				struct BufferItem *		rowNodeTo,
 				int				colTo,
 				const struct BufferItem *	cellNodeFrom,
-				int				copyProperties )
+				int				copyProperties,
+				const struct DocumentSelection * ds )
     {
-    EditOperation *	eo= dcj->dcjEditOperation;
+    EditOperation *		eo= dcj->dcjEditOperation;
     struct BufferDocument *	bdTo= eo->eoDocument;
 
     struct BufferItem *	cellNodeTo;
@@ -114,7 +133,8 @@ static struct BufferItem * docCopyCellNode(
 	{
 	struct BufferItem *	childNode= cellNodeFrom->biChildren[child];
 
-	if  ( ! docCopyXNode( dcj, ssRoot, cellNodeTo, child, childNode ) )
+	if  ( ! docCopyXNode( pReady, dcj, ssRoot, cellNodeTo,
+						child, childNode, ds ) )
 	    { LDEB(child); return (struct BufferItem *)0;	}
 	}
 
@@ -131,11 +151,13 @@ static struct BufferItem * docCopyCellNode(
 /************************************************************************/
 
 static struct BufferItem * docCopyRowNode(
+				int *				pReady,
 				DocumentCopyJob *		dcj,
 				const SelectionScope *		ssRoot,
 				struct BufferItem *		sectNodeTo,
 				int				n,
-				const struct BufferItem *	rowNodeFrom )
+				const struct BufferItem *	rowNodeFrom,
+				const struct DocumentSelection * ds )
     {
     EditOperation *		eo= dcj->dcjEditOperation;
     struct BufferDocument *	bdTo= eo->eoDocument;
@@ -156,8 +178,9 @@ static struct BufferItem * docCopyRowNode(
 	struct BufferItem *	cellNodeTo;
 	const int		copyCellProperties= 0;
 
-	cellNodeTo= docCopyCellNode( dcj, ssRoot, rowNodeTo, col,
-			    rowNodeFrom->biChildren[col], copyCellProperties );
+	cellNodeTo= docCopyCellNode( pReady, dcj, ssRoot, rowNodeTo,
+		    col, rowNodeFrom->biChildren[col],
+		    copyCellProperties, ds );
 	if  ( ! cellNodeTo )
 	    { XDEB(cellNodeTo); return (struct BufferItem *)0;	}
 	}
@@ -177,17 +200,21 @@ static struct BufferItem * docCopyRowNode(
 /************************************************************************/
 
 static struct BufferItem * docCopySectNode(
+			int *				pReady,
 			DocumentCopyJob *		dcj,
 			const SelectionScope *		ssRoot,
 			struct BufferItem *		parentNodeTo,
 			int				n,
-			const struct BufferItem *	sectNodeFrom )
+			const struct BufferItem *	sectNodeFrom,
+			const struct DocumentSelection * ds )
     {
-    EditOperation *	eo= dcj->dcjEditOperation;
+    EditOperation *		eo= dcj->dcjEditOperation;
     struct BufferDocument *	bdTo= eo->eoDocument;
 
-    struct BufferItem *	rval= (struct BufferItem *)0;
-    struct BufferItem *	sectNodeTo= (struct BufferItem *)0;
+    struct BufferItem *		rval= (struct BufferItem *)0;
+    struct BufferItem *		sectNodeTo= (struct BufferItem *)0;
+
+    int				res;
 
     if  ( parentNodeTo )
 	{
@@ -219,9 +246,13 @@ static struct BufferItem * docCopySectNode(
 				    sectNodeFrom, dcj->dcjSourceDocument ) )
 	{ LDEB(1); goto ready;	}
 
-    if  ( docCopyNodeChildren( dcj, sectNodeTo, 0,
-			    sectNodeFrom, 0, sectNodeFrom->biChildCount ) )
-	{ LDEB(1); goto ready;	}
+    res= docCopyXNodeChilden( dcj, ssRoot, sectNodeTo, 0,
+			    sectNodeFrom, 0, sectNodeFrom->biChildCount,
+			    ds );
+    if  ( res < 0 )
+	{ LDEB(res); goto ready;	}
+    if  ( res > 0 )
+	{ *pReady= 1;	}
 
     if  ( ! dcj->dcjInExternalTree && parentNodeTo )
 	{
@@ -253,44 +284,55 @@ static struct BufferItem * docCopySectNode(
     }
 
 static struct BufferItem * docCopyXNode(
+				int *				pReady,
 				DocumentCopyJob *		dcj,
 				const SelectionScope *		ssRoot,
 				struct BufferItem *		parentNodeTo,
 				int				n,
-				const struct BufferItem *	nodeFrom )
+				const struct BufferItem *	nodeFrom,
+				const struct DocumentSelection * ds )
     {
-    const int		copyCellProperties= 1;
     struct BufferItem *	res;
 
     switch( nodeFrom->biLevel )
 	{
 	case DOClevPARA:
-	    res= docCopyParaNode( dcj, ssRoot, parentNodeTo, n, nodeFrom );
+	    res= docCopyParaNode( dcj, ssRoot, parentNodeTo,
+							n, nodeFrom, ds );
 	    if  ( ! res )
 		{ LXDEB(nodeFrom->biLevel,res);	}
+	    if  ( pReady && ds && nodeFrom == ds->dsHead.dpNode )
+		{ *pReady= 1;	}
 	    return res;
 
 	case DOClevCELL:
-	    res= docCopyCellNode( dcj, ssRoot, parentNodeTo, n, nodeFrom,
-							copyCellProperties );
+	    {
+	    const int		copyCellProperties= 1;
+
+	    res= docCopyCellNode( pReady, dcj, ssRoot, parentNodeTo,
+				    n, nodeFrom, copyCellProperties, ds );
 	    if  ( ! res )
-		{ LXDEB(nodeFrom->biLevel,res);	}
+		{ SXDEB(docLevelStr(nodeFrom->biLevel),res);	}
 	    return res;
+	    }
 
 	case DOClevROW:
-	    res= docCopyRowNode(  dcj, ssRoot, parentNodeTo, n, nodeFrom );
+	    res= docCopyRowNode( pReady, dcj, ssRoot, parentNodeTo,
+							n, nodeFrom, ds );
 	    if  ( ! res )
 		{ LXDEB(nodeFrom->biLevel,res);	}
 	    return res;
 
 	case DOClevSECT:
-	    res= docCopySectNode( dcj, ssRoot, parentNodeTo, n, nodeFrom );
+	    res= docCopySectNode( pReady, dcj, ssRoot, parentNodeTo,
+							n, nodeFrom, ds );
 	    if  ( ! res )
 		{ LXDEB(nodeFrom->biLevel,res);	}
 	    return res;
 
 	default:
-	    LDEB(nodeFrom->biLevel); return (struct BufferItem *)0;
+	    SDEB(docLevelStr(nodeFrom->biLevel));
+	    return (struct BufferItem *)0;
 	}
     }
 
@@ -303,9 +345,29 @@ struct BufferItem * docCopyNode( DocumentCopyJob *		dcj,
     const SelectionScope *	ssRoot= &(eo->eoSelectionScope);
     struct BufferItem *		res;
 
-    res= docCopyXNode( dcj, ssRoot, parentNodeTo, n, nodeFrom );
+    res= docCopyXNode( (int *)0, dcj, ssRoot,
+				    parentNodeTo, n, nodeFrom,
+				    (const struct DocumentSelection *)0 );
     if  ( ! res )
-	{XDEB(res);	}
+	{ XDEB(res);	}
+    return res;
+    }
+
+struct BufferItem * docCopyNodeSelection(
+				DocumentCopyJob *		dcj,
+				struct BufferItem *		parentNodeTo,
+				int				n,
+				const struct BufferItem *	nodeFrom,
+				const struct DocumentSelection * ds )
+    {
+    EditOperation *		eo= dcj->dcjEditOperation;
+    const SelectionScope *	ssRoot= &(eo->eoSelectionScope);
+    struct BufferItem *		res;
+
+    res= docCopyXNode( (int *)0, dcj, ssRoot,
+				    parentNodeTo, n, nodeFrom, ds );
+    if  ( ! res )
+	{ XDEB(res);	}
     return res;
     }
 
@@ -326,8 +388,9 @@ int docCopyDocumentTree( 	DocumentCopyJob *		dcj,
     dcj->dcjFieldStack= (struct FieldStackLevel *)0;
     dcj->dcjInExternalTree++;
 
-    treeTo->dtRoot= docCopySectNode( dcj, ssRoot, (struct BufferItem *)0, 0,
-							    treeFrom->dtRoot );
+    treeTo->dtRoot= docCopySectNode( (int *)0, dcj, ssRoot,
+				    (struct BufferItem *)0, 0, treeFrom->dtRoot,
+				    (const struct DocumentSelection *)0 );
     if  ( ! treeTo->dtRoot )
 	{ XDEB(treeTo->dtRoot); rval= -1;	}
 

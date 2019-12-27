@@ -60,6 +60,9 @@ typedef enum FormatterResult
 	     */
     FORMATstopPARTIAL,
 
+	    /**
+	     *  The number of possible values
+	     */
     FORMATstop_COUNT
     } FormatterResult;
 

@@ -21,44 +21,48 @@
 /*									*/
 /************************************************************************/
 
-static void docRtfSaveShading(	RtfWriter *			rw,
-				const ItemShading *		is,
-				const char * const * 		patTags,
-				int				patTagCount,
-				const char *			foreTag,
-				const char *			backTag,
-				const char *			levelTag )
+static int docRtfSaveShading(	RtfWriter *			rw,
+				int				scope,
+				const ItemShading *		is )
     {
     if  ( is->isPattern != DOCspSOLID )
 	{
-	docRtfWriteEnumTag( rw, patTags, is->isPattern,
-						patTagCount, PSshd_COUNT );
+	if  ( docRtfWriteProperty( rw, scope, ISpropPATTERN, is->isPattern ) )
+	    { LLLDEB(scope,ISpropPATTERN,is->isPattern); return -1;	}
+
 	}
 
     if  ( is->isForeColor > 0 )
-	{ docRtfWriteArgTag( rw, foreTag, is->isForeColor );	}
+	{
+	if  ( docRtfWriteProperty( rw, scope,
+					ISpropFORE_COLOR, is->isForeColor ) )
+	    { LLLDEB(scope,ISpropFORE_COLOR,is->isForeColor); return -1; }
+	}
     if  ( is->isBackColor > 0 )
-	{ docRtfWriteArgTag( rw, backTag, is->isBackColor );	}
+	{
+	if  ( docRtfWriteProperty( rw, scope,
+					ISpropBACK_COLOR, is->isBackColor ) )
+	    { LLLDEB(scope,ISpropBACK_COLOR,is->isBackColor); return -1; }
+	}
     if  ( is->isLevel > 0 )
-	{ docRtfWriteArgTag( rw, levelTag, is->isLevel );	}
+	{
+	if  ( docRtfWriteProperty( rw, scope,
+					ISpropLEVEL, is->isLevel ) )
+	    { LLLDEB(scope,ISpropLEVEL,is->isLevel); return -1; }
+	}
 
-    return;
+    return 0;
     }
 
 void docRtfSaveShadingByNumber(	RtfWriter *			rw,
-				int				num,
-				const char * const * 		patTags,
-				int				patTagCount,
-				const char *			foreTag,
-				const char *			backTag,
-				const char *			levelTag )
+				int				scope,
+				int				num )
     {
     const ItemShading *		is;
 
     is= docGetItemShadingByNumber( rw->rwDocument, num );
 
-    docRtfSaveShading( rw, is, patTags, patTagCount,
-					    foreTag, backTag, levelTag );
+    docRtfSaveShading( rw, scope, is );
 
     return;
     }

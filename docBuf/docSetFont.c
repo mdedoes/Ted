@@ -6,7 +6,6 @@
 
 #   include	"docBufConfig.h"
 
-#   include	"docBuf.h"
 #   include	"docTreeNode.h"
 #   include	<docTextParticule.h>
 #   include	<textAttribute.h>

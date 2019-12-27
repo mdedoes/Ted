@@ -11,6 +11,7 @@
 
 #   include	"docLayout.h"
 #   include	"docLayoutStopCode.h"
+#   include	"layoutContext.h"
 #   include	<docPageGrid.h>
 #   include	<docTreeType.h>
 #   include	<docTreeNode.h>
@@ -34,7 +35,7 @@
 void docInitLayoutJob(	LayoutJob *	lj )
     {
     lj->ljChangedRectanglePixels= (struct DocumentRectangle *)0;
-    layoutInitContext( &(lj->ljContext) );
+    lj->ljContext= (const struct LayoutContext *)0;
     lj->ljChangedNode= (struct BufferItem *)0;
     lj->ljReachedDocumentBottom= 0;
 
@@ -75,9 +76,9 @@ void docCleanLayoutJob(	LayoutJob *	lj )
 # endif
 
 static int docInvalidateChangedLayout(
-				struct BufferItem *			node,
-				const struct DocumentSelection *	ds,
-				const struct BufferItem *		bodySectNode,
+				struct BufferItem *		node,
+				const struct DocumentSelection * ds,
+				const struct BufferItem *	bodySectNode,
 				void *				through )
     {
     if  ( node->biLevel == DOClevPARA )
@@ -97,7 +98,7 @@ static int docInvalidateChangedLayout(
 /************************************************************************/
 
 int docLayoutInvalidateRange(	struct DocumentSelection *	dsLayout,
-				struct BufferDocument *	bd,
+				struct BufferDocument *		bd,
 				const struct DocumentTree *	tree,
 				EditRange *			er )
     {
@@ -176,7 +177,7 @@ static int docLayoutGetInitialFrameImpl(
 					const LayoutPosition *	lpHere,
 					struct BufferItem *	node )
     {
-    const LayoutContext *	lc= &(lj->ljContext);
+    const LayoutContext *	lc= lj->ljContext;
     struct BufferDocument *	bd= lc->lcDocument;
     const struct BufferItem *	prevParaNode= (const struct BufferItem *)0;
 
@@ -207,7 +208,7 @@ int docLayoutGetInitialFrame(		BlockFrame *		bf,
 					const LayoutPosition *	lpHere,
 					struct BufferItem *	node )
     {
-    const LayoutContext *	lc= &(lj->ljContext);
+    const LayoutContext *	lc= lj->ljContext;
     struct BufferDocument *	bd= lc->lcDocument;
 
     /*  2  */
@@ -270,7 +271,7 @@ void docLayoutSetBottomPosition( int *				pChanged,
     }
 
 void docLayoutSetNodeBottom(	int *			pChanged,
-				struct BufferItem *		node,
+				struct BufferItem *	node,
 				const LayoutPosition *	lp,
 				const LayoutContext *	lc,
 				DocumentRectangle *	drChanged )
@@ -286,11 +287,11 @@ void docLayoutSetNodeBottom(	int *			pChanged,
 /*									*/
 /************************************************************************/
 
-void docLayoutStartNodeLayout(	struct BufferItem *		node,
+void docLayoutStartNodeLayout(	struct BufferItem *	node,
 				const LayoutJob *	lj,
 				const LayoutPosition *	lpHere )
     {
-    const LayoutContext *	lc= &(lj->ljContext);
+    const LayoutContext *	lc= lj->ljContext;
     DocumentRectangle *		drChanged= lj->ljChangedRectanglePixels;
     int				y0;
     int				y1;
@@ -318,12 +319,12 @@ void docLayoutStartNodeLayout(	struct BufferItem *		node,
     }
 
 void docLayoutFinishNodeLayout(	int *			pChanged,
-				struct BufferItem *		node,
+				struct BufferItem *	node,
 				const LayoutJob *	lj,
 				const LayoutPosition *	lpHere )
     {
     docLayoutSetBottomPosition( pChanged, &(node->biBelowPosition),
-		    lpHere, &(lj->ljContext), lj->ljChangedRectanglePixels );
+		    lpHere, lj->ljContext, lj->ljChangedRectanglePixels );
 
     return;
     }

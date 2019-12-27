@@ -39,52 +39,29 @@ int docRtfObjectProperty(	const RtfControlWord *	rcw,
 
     switch( rcw->rcwID )
 	{
-	case IOpropRESULT_KIND:
-	    io->ioRtfResultKind= arg;
-	    break;
-
-	case IOpropEMBED_KIND:
-	    io->ioRtfEmbedKind= arg;
-	    break;
-
-	case IOpropOBJTWIPS_WIDE:
-	    io->ioTwipsWide= arg;
-	    break;
-	case IOpropOBJTWIPS_HIGH:
-	    io->ioTwipsHigh= arg;
-	    break;
-
 	case IOpropOBJSCALE_X:
 	    if  ( arg < 1 )
 		{ LDEB(arg); arg= 1;	}
-	    io->ioScaleXSet= arg;
+	    if  ( docSetObjectProperty( io, rcw->rcwID, arg ) )
+		{ SDEB(rcw->rcwWord); return 0;	}
 	    io->ioScaleXUsed= io->ioScaleXSet;
 	    break;
+
 	case IOpropOBJSCALE_Y:
 	    if  ( arg < 1 )
 		{ LDEB(arg); arg= 1;	}
-	    io->ioScaleYSet= arg;
+	    if  ( docSetObjectProperty( io, rcw->rcwID, arg ) )
+		{ SDEB(rcw->rcwWord); return 0;	}
 	    io->ioScaleYUsed= io->ioScaleYSet;
-	    break;
-
-	case IOpropOBJCROP_TOP:
-	    io->ioTopCropTwips= arg;
-	    break;
-	case IOpropOBJCROP_BOTTOM:
-	    io->ioBottomCropTwips= arg;
-	    break;
-	case IOpropOBJCROP_LEFT:
-	    io->ioLeftCropTwips= arg;
-	    break;
-	case IOpropOBJCROP_RIGHT:
-	    io->ioRightCropTwips= arg;
 	    break;
 
 	case IOprop_UNSUPPORTED:
 	    break;
 
 	default:
-	    SLDEB(rcw->rcwWord,rcw->rcwID);
+	    if  ( docSetObjectProperty( io, rcw->rcwID, arg ) )
+		{ SDEB(rcw->rcwWord); return 0;	}
+
 	    break;
 	}
 

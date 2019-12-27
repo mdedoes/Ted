@@ -14,8 +14,6 @@
 #   include	"docHtmlWriteImpl.h"
 #   include	<docHyperlinkField.h>
 #   include	<docBookmarkField.h>
-#   include	<docNotes.h>
-#   include	<docDocumentNote.h>
 #   include	<docDocumentField.h>
 #   include	<docFieldKind.h>
 
@@ -25,10 +23,9 @@
 int docHtmlStartAnchor(	HtmlWritingContext *		hwc,
 			int				isNote,
 			const MemoryBuffer *		fileName,
-			const MemoryBuffer *		markName,
-			const MemoryBuffer *		refName,
-			const char *			title,
-			int				titleSize )
+			const MemoryBuffer *		mbTarget,
+			const MemoryBuffer *		mbSource,
+			const MemoryBuffer *		mbTitle )
     {
     XmlWriter *			xw= &(hwc->hwcXmlWriter);
     SimpleOutputStream *	sos= xw->xwSos;
@@ -38,10 +35,10 @@ int docHtmlStartAnchor(	HtmlWritingContext *		hwc,
 
     if  ( fileName && utilMemoryBufferIsEmpty( fileName ) )
 	{ fileName= (const MemoryBuffer *)0;	}
-    if  ( markName && utilMemoryBufferIsEmpty( markName ) )
-	{ markName= (const MemoryBuffer *)0;	}
-    if  ( refName && utilMemoryBufferIsEmpty( refName ) )
-	{ refName= (const MemoryBuffer *)0;	}
+    if  ( mbTarget && utilMemoryBufferIsEmpty( mbTarget ) )
+	{ mbTarget= (const MemoryBuffer *)0;	}
+    if  ( mbSource && utilMemoryBufferIsEmpty( mbSource ) )
+	{ mbSource= (const MemoryBuffer *)0;	}
 
     docHtmlPutString( "<a", hwc );
 
@@ -51,24 +48,24 @@ int docHtmlStartAnchor(	HtmlWritingContext *		hwc,
 	}
     afterSpace= 0;
 
-    if  ( fileName || markName )
+    if  ( fileName || mbTarget )
 	{
 	needed += 1+ 6;
 	if  ( fileName )
 	    { needed += fileName->mbSize;	}
-	if  ( markName )
-	    { needed += 1+ markName->mbSize;	}
+	if  ( mbTarget )
+	    { needed += 1+ mbTarget->mbSize;	}
 	needed += 1;
 	}
 
-    if  ( refName )
-	{ needed += 1+ 6+ refName->mbSize+ 1;	}
+    if  ( mbSource )
+	{ needed += 1+ 6+ mbSource->mbSize+ 1;	}
 
     if  ( xw->xwColumn > 5		&&
 	  xw->xwColumn+ needed > 76	)
 	{ docHtmlNewLine( hwc ); afterSpace= 1;		}
 
-    if  ( fileName || markName )
+    if  ( fileName || mbTarget )
 	{
 	if  ( ! afterSpace )
 	    { docHtmlPutString( " ", hwc ); }
@@ -78,35 +75,35 @@ int docHtmlStartAnchor(	HtmlWritingContext *		hwc,
 	if  ( fileName )
 	    { xmlEscapeBuffer( xw, fileName );	}
 
-	if  ( markName )
+	if  ( mbTarget )
 	    {
 	    (void)sioOutPutByte( '#', sos );
-	    xmlEscapeBuffer( xw, markName );
+	    xmlEscapeBuffer( xw, mbTarget );
 	    }
 
 	docHtmlPutString( "\"", hwc );
 	afterSpace= 0;
 	}
 
-    if  ( refName )
+    if  ( mbSource )
 	{
 	if  ( ! afterSpace )
 	    { docHtmlPutString( " ", hwc ); }
 
 	docHtmlPutString( "id=\"", hwc );
-	xmlEscapeBuffer( xw, refName );
+	xmlEscapeBuffer( xw, mbSource );
 
 	docHtmlPutString( "\"", hwc );
 	afterSpace= 0;
 	}
 
-    if  ( titleSize > 0 )
+    if  ( mbTitle && ! utilMemoryBufferIsEmpty( mbTitle ) )
 	{
 	if  ( ! afterSpace )
 	    { docHtmlPutString( " ", hwc ); }
 
 	docHtmlPutString( "title=\"", hwc );
-	xmlEscapeCharacters( xw, title, titleSize );
+	xmlEscapeBuffer( xw, mbTitle );
 
 	docHtmlPutString( "\"", hwc );
 	afterSpace= 0;
@@ -124,9 +121,6 @@ int docHtmlStartField(	const DocumentField *		df,
     {
     int			rval= 0;
 
-    const char *	title= (const char *)0;
-    int			titleSize= 0;
-
     HyperlinkField		hf;
     const MemoryBuffer *	mbBookmark= (const MemoryBuffer *)0;
 
@@ -136,13 +130,13 @@ int docHtmlStartField(	const DocumentField *		df,
 	{
 	case DOCfkCHFTN:
 	    hwc->hwcInHyperlink++;
-	    if  ( ! hwc->hwcInBookmark && hwc->hwcInHyperlink == 1 )
+	    if  ( /*! hwc->hwcInBookmark &&*/ hwc->hwcInHyperlink == 1 )
 		{ docHtmlStartNote( df, hwc, node, attNr );	}
 	    break;
 
 	case DOCfkHYPERLINK:
 	    hwc->hwcInHyperlink++;
-	    if  ( ! hwc->hwcInBookmark && hwc->hwcInHyperlink == 1 )
+	    if  ( /*! hwc->hwcInBookmark &&*/ hwc->hwcInHyperlink == 1 )
 		{
 		if  ( ! docGetHyperlinkField( &hf, df ) )
 		    {
@@ -153,7 +147,7 @@ int docHtmlStartField(	const DocumentField *		df,
 		    docHtmlStartAnchor( hwc, isNote,
 					    &(hf.hfFile), &(hf.hfBookmark),
 					    (const MemoryBuffer *)0,
-					    title, titleSize );
+					    (const MemoryBuffer *)0 );
 
 		    docHtmlChangeAttributes( hwc, attNr );
 
@@ -205,7 +199,7 @@ int docHtmlFinishField(	const DocumentField *		df,
 	{
 	case DOCfkCHFTN:
 	case DOCfkHYPERLINK:
-	    if  ( ! hwc->hwcInBookmark && hwc->hwcInHyperlink == 1 )
+	    if  ( /*! hwc->hwcInBookmark &&*/ hwc->hwcInHyperlink == 1 )
 		{
 		docHtmlChangeAttributes( hwc, -1 );
 
@@ -239,33 +233,3 @@ int docHtmlFinishField(	const DocumentField *		df,
     
     return 0;
     }
-
-/************************************************************************/
-
-int docHtmlSaveNotes(	HtmlWritingContext *	hwc )
-    {
-    DocumentField *	dfNote;
-    DocumentNote *	dn;
-
-    docHtmlPutString( "<hr/>", hwc );
-
-    for ( dfNote= docGetFirstNoteOfDocument( &dn, hwc->hwcDocument, -1 );
-	  dfNote;
-	  dfNote= docGetNextNoteInDocument( &dn, hwc->hwcDocument, dfNote, -1 ) )
-	{
-	struct DocumentTree *	ei;
-
-	ei= &(dn->dnDocumentTree);
-	if  ( ! ei->dtRoot )
-	    { XDEB(ei->dtRoot); continue;	}
-
-	if  ( docHtmlSaveSelection( hwc, ei, (const struct DocumentSelection *)0 ) )
-	    { XDEB(ei->dtRoot); return -1; }
-	}
-
-    if  ( hwc->hwcNoteDefCount != hwc->hwcNoteRefCount )
-	{ LLDEB(hwc->hwcNoteDefCount,hwc->hwcNoteRefCount);	}
-
-    return 0;
-    }
-

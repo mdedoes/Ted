@@ -9,7 +9,6 @@
 
 #   include	"docHtmlConfig.h"
 
-#   include	<string.h>
 #   include	<stdio.h>
 #   include	<ctype.h>
 
@@ -27,9 +26,13 @@
 typedef struct HtmlWriter
     {
 			/**
-			 * The file name if any
+			 * The file name if any. This is an absolute name.
 			 */
     const MemoryBuffer *	hwFilename;
+			/**
+			 * The relative file name if any. It is only set if 
+			 * hwFilename is set.
+			 */
     MemoryBuffer		hwRelativeName;
     MemoryBuffer		hwFilesDirectoryAbs;
     MemoryBuffer		hwFilesDirectoryRel;
@@ -88,32 +91,35 @@ int docHtmlSaveDocument(	SimpleOutputStream *		sos,
 				int				inlineImages )
     {
     int				rval= 0;
+    HtmlWritingSettings		hws;
     HtmlWritingContext		hwc;
     HtmlWriter			hw;
 
     if  ( filename && utilMemoryBufferIsEmpty( filename ) )
 	{ filename= (const MemoryBuffer *)0;	}
 
+    docInitHtmlWritingSettings( &hws );
     docInitHtmlWritingContext( &hwc );
     docInitHtmlWriter( &hw );
 
-    hwc.hwcSupportsBullets= 1;
-    hwc.hwcEmitBackground= 1;
+    hws.hwsInlineCss= ( bd->bdObjectList.iolPagedList.plItemCount == 0 || ! filename );
+    hws.hwsGetCssName= docHtmlGetCssName;
+    hws.hwsInlineImages= inlineImages || ! filename;
+    hws.hwsOpenImageStream= docHtmlOpenImageStream;
+    hws.hwsGetImageSrc= docHtmlGetImageSrc;
+    hws.hwsInlineNotes= 0;
 
-    hwc.hwcXmlWriter.xwSos= sos;
-    hwc.hwcXmlWriter.xwCrlf= 0;
+    hws.hwsEmitBackground= 1;
 
-    hwc.hwcLayoutContext= lc;
-    hwc.hwcOpenImageStream= docHtmlOpenImageStream;
-    hwc.hwcGetImageSrc= docHtmlGetImageSrc;
-    hwc.hwcGetCssName= docHtmlGetCssName;
-    hwc.hwcPrivate= (void *)&hw;
-    hwc.hwcDocument= bd;
-    hwc.hwcInlineCss= ( bd->bdObjectList.iolPagedList.plItemCount == 0 || ! filename );
-    hwc.hwcInlineNotes= 0;
-    hwc.hwcInlineImages= inlineImages;
+    hws.hwsLayoutContext= lc;
+    hws.hwsDocument= bd;
 
     hw.hwFilename= filename;
+
+    hwc.hwcXmlWriter.xwCrlf= 0;
+    docStartHtmlWritingContext( &hwc, &hws, sos );
+
+    hwc.hwcPrivate= (void *)&hw;
 
     if  ( hw.hwFilename )
 	{
@@ -134,13 +140,11 @@ int docHtmlSaveDocument(	SimpleOutputStream *		sos,
 						    (const char *)0 ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 
-	if  ( utilMemoryBufferAppendBytes( &(hw.hwFilesDirectoryAbs),
-				(const unsigned char *)DocHtmlDirectorySuffix,
-				DocHtmlDirectorySuffixLength ) )
+	if  ( utilMemoryBufferAppendString( &(hw.hwFilesDirectoryAbs),
+						DocHtmlDirectorySuffix ) )
 	    { LDEB(1); rval= -1; goto ready;	}
-	if  ( utilMemoryBufferAppendBytes( &(hw.hwFilesDirectoryRel),
-				(const unsigned char *)DocHtmlDirectorySuffix,
-				DocHtmlDirectorySuffixLength ) )
+	if  ( utilMemoryBufferAppendString( &(hw.hwFilesDirectoryRel),
+						DocHtmlDirectorySuffix ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 	}
 
@@ -151,28 +155,29 @@ int docHtmlSaveDocument(	SimpleOutputStream *		sos,
 					(const struct DocumentSelection *)0 ) )
 	{ LDEB(1); rval= -1; goto ready; }
 
-    if  ( ! hwc.hwcInlineNotes )
-	{
-	if  ( hwc.hwcNoteRefCount > 0	&&
-	      docHtmlSaveNotes( &hwc )	)
-	    { LDEB(hwc.hwcNoteRefCount); rval= -1; goto ready;	}
-	}
-
-    if  ( docHtmlFinishDocument( &hwc ) )
+    if  ( docHtmlFinishDocumentBody( &hwc ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( hwc.hwcImageCount > 0	|| ! hwc.hwcInlineCss )
+    if  ( ( hwc.hwcImageCount > 0 && ! hws.hwsInlineImages )	||
+	  ! hws.hwsInlineCss					)
 	{
 	if  ( fileTestDirectory( &(hw.hwFilesDirectoryAbs) )	&&
 	      fileMakeDirectory( &(hw.hwFilesDirectoryAbs) )	)
-	    { LDEB(1); rval= -1; goto ready;	}
+	    {
+	    LLLDEB(hwc.hwcImageCount,hws.hwsInlineCss,hws.hwsInlineImages);
+	    rval= -1; goto ready;
+	    }
 	}
 
-    if  ( ! hwc.hwcInlineCss && docDocHtmlWriteCss( &hwc ) )
+    if  ( ! hws.hwsInlineCss && docDocHtmlWriteCss( &hwc ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( docHtmlSaveImageFiles( &hwc ) )
-	{ LDEB(hwc.hwcImageCount); rval= -1; goto ready;	}
+    if  ( ( hwc.hwcImageCount > 0 && ! hws.hwsInlineImages )	&&
+            docHtmlSaveImageFiles( &hwc ) )
+	{
+	LLDEB(hwc.hwcImageCount,hws.hwsInlineImages);
+	rval= -1; goto ready;
+	}
 
   ready:
 
@@ -199,8 +204,7 @@ static int docHtmlGetNameX(		MemoryBuffer *		target,
 	    { LDEB(1); return -1;	}
 	}
 
-    if  ( utilMemoryBufferAppendBytes( target,
-		(const unsigned char *)slashName, strlen( slashName ) ) )
+    if  ( utilMemoryBufferAppendString( target, slashName ) )
 	{ LDEB(1); return -1;	}
 
     return 0;

@@ -30,6 +30,7 @@
 #   include	<docBuf.h>
 #   include	<docAttributes.h>
 #   include	<docShapeGeometry.h>
+#   include	<layoutContext.h>
 
 #   include	<appDebugon.h>
 
@@ -54,7 +55,7 @@ static int docSvgSetFont(	DrawingContext *	dc,
 				int			textAttrNumber,
 				const TextAttribute *	ta )
     {
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
     const AfmFontInfo *		afi;
 
     afi= docDocLayoutGetFontInfo( lc, ta );
@@ -150,7 +151,7 @@ static int docSvgDrawOrnaments(	const BlockOrnaments *		bo,
     {
     SvgWriter *			sw= (SvgWriter *)through;
     XmlWriter *			xw= &(sw->swXmlWriter);
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
     const struct BufferDocument *	bd= lc->lcDocument;
 
     int				rectBorder= 0;
@@ -363,7 +364,7 @@ int docSvgEmitStroke(	SvgWriter *			sw,
 
 static int docSvgFinishPage(	void *				vsw,
 				DrawingContext *		dc,
-				struct BufferItem *			bodySectNode,
+				struct BufferItem *		bodySectNode,
 				int				page,
 				int				asLast )
     {
@@ -390,6 +391,7 @@ static int docSvgFinishPage(	void *				vsw,
 static int docSvgDrawStartPage(	void *				vsw,
 				const DocumentGeometry *	dgPage,
 				DrawingContext *		dc,
+				const char *			why,
 				int				page )
     {
     SvgWriter *		sw= (SvgWriter *)vsw;
@@ -469,27 +471,21 @@ static int docSvgDrawPageRange(	SvgWriter *		sw,
 				int			lastPage,
 				int			asLast )
     {
-    int				i;
     LayoutPosition		lpBelow;
+    struct BufferItem *		sectNode;
 
     docInitLayoutPosition( &lpBelow );
 
-    for ( i= 0; i < bodyNode->biChildCount; i++ )
-	{
-	if  ( bodyNode->biChildren[i]->biBelowPosition.lpPage >= firstPage )
-	    { break;	}
-	}
+    sectNode= docFindFirstSectionOnPage( bodyNode, firstPage );
+    if  ( ! sectNode )
+	{ LXDEB(firstPage,sectNode); return -1;	}
 
-    if  ( i >= bodyNode->biChildCount )
-	{ LDEB(i); return -1; }
-
-    docSvgDrawStartPage( (void *)sw,
-	    &(bodyNode->biChildren[i]->biSectDocumentGeometry), dc, firstPage );
+    if  ( docSvgDrawStartPage( (void *)sw, &(sectNode->biSectDocumentGeometry),
+						    dc, "start", firstPage ) )
+	{ LDEB(firstPage); return -1;	}
 
     if  ( ! dc->dcPostponeHeadersFooters )
-	{
-	docDrawPageHeader( bodyNode->biChildren[i], (void *)sw, dc, firstPage );
-	}
+	{ docDrawPageHeader( sectNode, (void *)sw, dc, firstPage );	}
 
     if  ( docDrawShapesForPage( (void *)sw, dc, 1, firstPage ) )
 	{ LDEB(firstPage);	}
@@ -499,25 +495,17 @@ static int docSvgDrawPageRange(	SvgWriter *		sw,
     if  ( lastPage < 0 )
 	{ lastPage= bodyNode->biBelowPosition.lpPage;	}
 
-    for ( i= bodyNode->biChildCount- 1; i >= 0; i-- )
-	{
-	if  ( bodyNode->biChildren[i]->biTopPosition.lpPage <= lastPage )
-	    { break;	}
-	}
-
-    if  ( i < 0 )
-	{ LDEB(i); return -1;	}
+    sectNode= docFindLastSectionOnPage( bodyNode, lastPage );
+    if  ( ! sectNode )
+	{ LXDEB(lastPage,sectNode); return -1;	}
 
     if  ( docDrawShapesForPage( (void *)sw, dc, 0, lastPage ) )
 	{ LDEB(lastPage);	}
 
     if  ( ! dc->dcPostponeHeadersFooters )
-	{
-	docDrawPageFooter( bodyNode->biChildren[i], (void *)sw, dc, lastPage );
-	}
+	{ docDrawPageFooter( sectNode, (void *)sw, dc, lastPage );	}
 
-    docSvgFinishPage( (void *)sw, dc, bodyNode->biChildren[i],
-						    lastPage, asLast );
+    docSvgFinishPage( (void *)sw, dc, sectNode, lastPage, asLast );
 
     return 0;
     }
@@ -546,7 +534,7 @@ static void docSvgSetDrawingContext(	DrawingContext *	dc,
     dc->dcStartPage= docSvgDrawStartPage;
     dc->dcStartTreeLayout= startTreeLayout;
 
-    dc->dcLayoutContext= *lc;
+    dc->dcLayoutContext= lc;
 
     dc->dcFirstPage= firstPage;
     dc->dcLastPage= lastPage;

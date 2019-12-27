@@ -323,7 +323,7 @@ const FieldKindInformation DOC_FieldKinds[]=
 		NO_DEST,
 		docRecalculateMergeField,
 		(CALCULATE_TEXT_STRING)0,
-		FIELDdoDOC_INFO,
+		FIELDdoMERGE, /* Have their own call */
 		RESULT_READONLY,
 		SINGLE_PARAGRAPH,
     },

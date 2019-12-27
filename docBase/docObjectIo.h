@@ -47,4 +47,7 @@ extern int docGetRasterImageForObjectData(
 
 extern int docGetRasterImageForObject(	struct InsertedObject *	io );
 
+extern int docSaveRasterBytesToObject(	struct InsertedObject *	io,
+					struct RasterImage *	ri );
+
 #   endif	/*  DOC_OBJECT_IO_H	*/

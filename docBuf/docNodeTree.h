@@ -18,6 +18,7 @@ struct BufferItem;
 struct DocumentTree;
 struct RowProperties;
 struct SelectionScope;
+struct LayoutPosition;
 
 /************************************************************************/
 /*									*/
@@ -117,5 +118,34 @@ extern struct BufferItem * docGetCommonParent(
 extern struct BufferItem * docGetBodySectNodeOfScope(
 				const struct SelectionScope *	ss,
 				const struct BufferDocument *	bd );
+
+extern void docSetTreeTypeOfNode(	struct BufferItem *	node,
+					int			treeType );
+
+extern void docInvalidateSectHeaderFooterLayout(
+				struct BufferItem *		sectNode );
+
+extern void docInvalidateParagraphLayout( struct BufferItem *	paraNode );
+
+extern void docInvalidateNodeLayout(	struct BufferItem *	node );
+
+extern int docNodeAtExtremity(	int *				pAtExtremity,
+				const struct BufferItem *	parentNode,
+				const struct BufferItem *	paraNode,
+				int				after );
+
+extern int docGetMatchingCell(	const struct BufferItem *	rowNode,
+				const struct BufferItem *	cellNode );
+
+extern void docTableDetermineCellspans(
+				int *				pRowspan,
+				int *				pColspan,
+				const struct BufferItem *	cellNode );
+
+extern int docGetCellBottom(	struct LayoutPosition *		lpBottom,
+				const struct BufferItem *	cellNode );
+
+extern void docDelimitTables(		struct BufferItem *	parentNode,
+					int			recursively );
 
 #   endif

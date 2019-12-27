@@ -15,6 +15,7 @@
 #   include	<fontDocFont.h>
 
 #   include	<appDebugon.h>
+#   include	<string.h>
 
 /************************************************************************/
 /*									*/
@@ -64,7 +65,7 @@ AfmFontInfo * drawGetFontInfo(	const MemoryBuffer *		fn,
 const AfmFontInfo * drawGetFontInfoForAttribute(
 				const IndexSet **		pUnicodesWanted,
 				const TextAttribute *		ta,
-				const DocumentFontList *	dfl,
+				const struct DocumentFontList *	dfl,
 				const PostScriptFontList *	psfl )
     {
     DocumentFont *		df;
@@ -121,21 +122,10 @@ int drawGetDeferredFontMetricsForList(	PostScriptFontList *	psfl )
 
 int drawGetDeferredFontMetrics(		AfmFontInfo *		afi )
     {
-#   if USE_FONTCONFIG
     if  ( afi->afiMetricsDeferred				&&
-	  utilMemoryBufferIsEmpty( &(afi->afiAfmFileName) )	)
-	{
-	if  ( drawFcGetFontMetrics( afi ) )
-	    { SDEB(afi->afiFullName); return -1;	}
-	}
-#   endif
-
-    if  ( afi->afiMetricsDeferred				&&
-	  ! utilMemoryBufferIsEmpty( &(afi->afiAfmFileName) )	)
-	{
-	if  ( psGetDeferredMetrics( afi ) )
-	    { LDEB(afi->afiAfmFileName.mbSize); return -1;	}
-	}
+	  afi->afiResolveMetrics				&&
+	  (*afi->afiResolveMetrics)( afi )			)
+	{ SLDEB(afi->afiFullName,afi->afiMetricsDeferred); return -1; }
 
     if  ( afi->afiMetricsDeferred )
 	{ SLDEB(afi->afiFullName,afi->afiMetricsDeferred); return -1; }

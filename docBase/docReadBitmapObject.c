@@ -11,8 +11,7 @@
 
 #   include	<bmio.h>
 #   include	<sioFileio.h>
-#   include	<sioHex.h>
-#   include	<sioMemory.h>
+#   include	<sioHexedMemory.h>
 
 #   include	"docObject.h"
 #   include	"docObjectIo.h"
@@ -42,8 +41,7 @@ int docReadRasterObject(	InsertedObject *	io,
 
     PictureProperties *		pip= &(io->ioPictureProperties);
 
-    SimpleOutputStream *	sosMem= (SimpleOutputStream *)0;
-    SimpleOutputStream *	sosHex= (SimpleOutputStream *)0;
+    SimpleOutputStream *	sosData= (SimpleOutputStream *)0;
     SimpleInputStream *		sisFile= (SimpleInputStream *)0;
 
     bmInitRasterImage( &ri );
@@ -69,13 +67,9 @@ int docReadRasterObject(	InsertedObject *	io,
     pip->pipTwipsHigh= io->ioTwipsHigh;
 
     io->ioResultData.mbSize= 0;
-    sosMem= sioOutMemoryOpen( &(io->ioObjectData) );
-    if  ( ! sosMem )
-	{ XDEB(sosMem); rval= -1; goto ready;	}
-
-    sosHex= sioOutHexOpen( sosMem );
-    if  ( ! sosHex )
-	{ XDEB(sosHex); rval= -1; goto ready;	}
+    sosData= sioOutHexedMemoryOpen( &(io->ioObjectData) );
+    if  ( ! sosData )
+	{ XDEB(sosData); rval= -1; goto ready;	}
 
     if  ( ! strcmp( contentType, "image/jpeg" ) )
 	{
@@ -97,7 +91,7 @@ int docReadRasterObject(	InsertedObject *	io,
 	if  ( ! sisFile )
 	    { XDEB(sisFile); rval= -1; goto ready; }
 
-	if  ( sioCopyStream( sosHex, sisFile ) )
+	if  ( sioCopyStream( sosData, sisFile ) )
 	    { LDEB(1); rval= -1; goto ready; }
 
 	includedAsRaster= 1;
@@ -106,7 +100,7 @@ int docReadRasterObject(	InsertedObject *	io,
     if  ( ! includedAsRaster						&&
 	  bmCanSaveAsContentType( &(ri.riDescription), "image/png" )	)
 	{
-	if  ( bmPngWritePng( &(ri.riDescription), ri.riBytes, sosHex ) )
+	if  ( bmPngWritePng( &(ri.riDescription), ri.riBytes, sosData ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 
 	io->ioKind= DOCokPICTPNGBLIP;
@@ -116,7 +110,7 @@ int docReadRasterObject(	InsertedObject *	io,
 
     if  ( ! includedAsRaster )
 	{
-	if  ( bmWmfWriteWmf( &(ri.riDescription), ri.riBytes, sosHex ) )
+	if  ( bmWmfWriteWmf( &(ri.riDescription), ri.riBytes, sosData ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 
 	pip->pipMetafileIsRaster= 1;
@@ -133,10 +127,8 @@ int docReadRasterObject(	InsertedObject *	io,
 
     if  ( sisFile )
 	{ sioInClose( sisFile );	}
-    if  ( sosHex )
-	{ sioOutClose( sosHex );	}
-    if  ( sosMem )
-	{ sioOutClose( sosMem );	}
+    if  ( sosData )
+	{ sioOutClose( sosData );	}
 
     return rval;
     }
@@ -260,3 +252,91 @@ int docGetRasterImageForObject(	InsertedObject *	io )
 
     return 0;
     }
+
+/************************************************************************/
+
+int docSaveRasterBytesToObject(	InsertedObject *	io,
+				RasterImage *		ri )
+    {
+    int				rval= 0;
+
+    PictureProperties *		pip;
+
+    MemoryBuffer		mb;
+    SimpleOutputStream *	sosData= (SimpleOutputStream *)0;
+
+    int				includedAsRaster= 0;
+
+    const char *		contentType="?";
+
+    utilInitMemoryBuffer( &mb );
+
+    pip= &(io->ioPictureProperties);
+
+    sosData= sioOutHexedMemoryOpen( &mb );
+    if  ( ! sosData )
+	{ XDEB(sosData); rval= -1; goto ready;	}
+
+    if  ( ri->riFormat >= 0 )
+	{ contentType= bmGetContentTypeOfFormat( ri->riFormat );	}
+
+    if  ( ! includedAsRaster			&&
+	  ! strcmp( contentType, "image/png" )	)
+	{
+	if  ( bmPngWritePng( &(ri->riDescription), ri->riBytes, sosData ) )
+	    { LDEB(1); rval= -1; goto ready;	}
+
+	io->ioKind= DOCokPICTPNGBLIP;
+	pip->pipType= DOCokPICTPNGBLIP;
+	includedAsRaster= 1;
+	}
+
+    if  ( ! includedAsRaster			&&
+	  ! strcmp( contentType, "image/jpeg" )	)
+	{
+	if  ( bmJpegWriteJfif( &ri->riDescription, ri->riBytes, sosData ) )
+	    { LDEB(1); rval= -1; goto ready;	}
+
+	io->ioKind= DOCokPICTJPEGBLIP;
+	pip->pipType= DOCokPICTJPEGBLIP;
+	includedAsRaster= 1;
+	}
+
+    if  ( ! includedAsRaster )
+	{
+	if  ( bmWmfWriteWmf( &(ri->riDescription), ri->riBytes, sosData ) )
+	    { LDEB(1); rval= -1; goto ready;	}
+
+	pip->pipMetafileIsRaster= 1;
+	pip->pipMetafileBitmapBpp= ri->riDescription.bdBitsPerPixel;
+
+	io->ioKind= DOCokPICTWMETAFILE;
+	pip->pipType= DOCokPICTWMETAFILE;
+	pip->pipMapMode= 8;
+	}
+
+    sioOutClose( sosData ); sosData= (SimpleOutputStream *)0;
+
+    bmImageSizeTwips( &(pip->pipTwipsWide), &(pip->pipTwipsHigh),
+							&(ri->riDescription) );
+    io->ioTwipsWide= pip->pipTwipsWide;
+    io->ioTwipsHigh= pip->pipTwipsHigh;
+
+    io->ioObjectData= mb; /* steal */
+    utilInitMemoryBuffer( &mb );
+
+    bmCleanRasterImage( &(io->ioRasterImage) );
+    io->ioRasterImage= *ri; /* steal */
+    bmInitRasterImage( ri );
+    bmFreeRasterImage( ri );
+
+  ready:
+
+    utilCleanMemoryBuffer( &mb );
+
+    if  ( sosData )
+	{ sioOutClose( sosData );	}
+
+    return rval;
+    }
+

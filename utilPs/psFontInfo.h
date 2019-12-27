@@ -319,8 +319,6 @@ extern void psRemoveMetricsFromInfo(	AfmFontInfo *		afi );
 extern int psFindAlternate(		const AfmFontInfo *	afi,
 					const char *		glyphName );
 
-extern int psGetDeferredMetrics(	AfmFontInfo *		afi );
-
 extern int psFontInfoAddMetric(		AfmFontInfo *			afi,
 					int				C,
 					int				WX,

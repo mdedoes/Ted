@@ -22,7 +22,7 @@ typedef struct PropertyMask
 			(pm)->pmBits[(v)/8] &= ~(1<<((v)%8))
 
 #   define	PROPmaskISSET( pm, v ) \
-			( (pm)->pmBits[(v)/8] & (1<<((v)%8)) ) != 0
+			( ( (pm)->pmBits[(v)/8] & (1<<((v)%8)) ) != 0 )
 
 #   define PMDEB(pm) utilDebugPropMask( __FILE__, __LINE__, #pm, (pm) )
 

@@ -23,7 +23,7 @@
 /*									*/
 /************************************************************************/
 
-void docRtfWriteStyleSheet(	RtfWriter *		rwc,
+void docRtfWriteStyleSheet(	RtfWriter *			rwc,
 				const DocumentStyleSheet *	dss )
     {
     int				i;

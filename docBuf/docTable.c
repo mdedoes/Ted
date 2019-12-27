@@ -348,7 +348,7 @@ int docGetMatchingCell(		const struct BufferItem *	rowNode,
     /*  2  */
     for ( col= 0; col < rowNode->biChildCount; col++ )
 	{
-	struct BufferItem *		cellNode= rowNode->biChildren[col];
+	struct BufferItem *	cellNode= rowNode->biChildren[col];
 	const CellProperties *	cp= cellNode->biCellProperties;
 
 	if  ( ! cp )
@@ -404,7 +404,7 @@ void docAvoidMergedCellTail(	DocumentSelection *	dsNew,
 /************************************************************************/
 
 void docGetCellRectangleProperties(	CellProperties *		cpTo,
-					const struct BufferItem *		rowNode,
+					const struct BufferItem *	rowNode,
 					const TableRectangle *		tr,
 					const DocumentAttributeMap *	dam )
     {

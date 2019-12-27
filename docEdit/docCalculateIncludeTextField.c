@@ -33,25 +33,30 @@
 #   include	<docNodeTree.h>
 #   include	<docFields.h>
 #   include	<docScanner.h>
+#   include	<utilTree.h>
 
+#   include	<docDebug.h>
 #   include	<appDebugon.h>
 
 /************************************************************************/
 
 static struct BufferDocument * docIncludeTextOpenDocument(
+				RecalculateFields *		rf,
 				const IncludeTextField *	itf,
 				const MemoryBuffer *		refFileName )
     {
-    struct BufferDocument *		bdFrom= (struct BufferDocument *)0;
-    struct SimpleInputStream *		sisFile= (struct SimpleInputStream *)0;
+    struct BufferDocument *	bdSource= (struct BufferDocument *)0;
+    struct SimpleInputStream *	sisFile= (struct SimpleInputStream *)0;
     int				format= -1;
 
     const int			rtfFlags= RTFflagLENIENT;
     const int			relativeIsFile= 1;
 
     MemoryBuffer		absolute;
+    const char *		absoluteString;
 
     utilInitMemoryBuffer( &absolute );
+
 
     if  ( fileAbsoluteName( &absolute,
 		&(itf->itfFilename), relativeIsFile, refFileName ) < 0 )
@@ -59,6 +64,24 @@ static struct BufferDocument * docIncludeTextOpenDocument(
 	SDEB(utilMemoryBufferGetString(refFileName));
 	SDEB(utilMemoryBufferGetString(&(itf->itfFilename)));
 	goto ready;
+	}
+
+    absoluteString= utilMemoryBufferGetString( &absolute );
+
+    if  ( ! rf->rfIncludeDocumentCache )
+	{
+	rf->rfIncludeDocumentCache= utilTreeMakeTree( 0 );
+
+	if  ( ! rf->rfIncludeDocumentCache )
+	    { XDEB(rf->rfIncludeDocumentCache); goto ready;	}
+	}
+    else{
+	bdSource= (struct BufferDocument *)utilTreeGetEQ(
+					    rf->rfIncludeDocumentCache,
+					    (const char **)0,
+					    absoluteString );
+	if  ( bdSource )
+	    { goto ready;	}
 	}
 
     format= utilDocumentGetOpenFormat( (int *)0,
@@ -85,25 +108,29 @@ static struct BufferDocument * docIncludeTextOpenDocument(
     switch( format )
 	{
 	case TEDdockindRTF:
-	    bdFrom= docRtfReadFile( sisFile, rtfFlags );
-	    if  ( ! bdFrom )
+	    bdSource= docRtfReadFile( sisFile, rtfFlags );
+	    if  ( ! bdSource )
 		{
-		SXDEB(utilMemoryBufferGetString(&absolute),bdFrom);
+		SXDEB(utilMemoryBufferGetString(&absolute),bdSource);
 		goto ready;
 		}
 	    break;
 	case TEDdockindTEXT_OPEN:
-	    bdFrom= docPlainReadFile( sisFile, (int *)0,
+	    bdSource= docPlainReadFile( sisFile, (int *)0,
 					(const struct DocumentGeometry *)0 );
-	    if  ( ! bdFrom )
+	    if  ( ! bdSource )
 		{
-		SXDEB(utilMemoryBufferGetString(&absolute),bdFrom);
+		SXDEB(utilMemoryBufferGetString(&absolute),bdSource);
 		goto ready;
 		}
 	    break;
 	default:
 	    LDEB(format); goto ready;
 	}
+
+    utilTreeStoreValue( rf->rfIncludeDocumentCache,
+					(void **)0, (const char **)0,
+					absoluteString, bdSource );
 
   ready:
 
@@ -112,23 +139,21 @@ static struct BufferDocument * docIncludeTextOpenDocument(
 
     utilCleanMemoryBuffer( &absolute );
 
-    return bdFrom;
+    return bdSource;
     }
 
 /************************************************************************/
 
 static int docRecalculateIncludeTextFieldIncludeSource(
-					struct BufferDocument *	bdTo,
-					DocumentField *		dfInclude,
-					const MemoryBuffer *	refFileName,
-					struct BufferDocument *	bdFrom )
+				EditRange *			erInserted,
+				struct BufferDocument *		bdTarget,
+				DocumentField *			dfInclude,
+				const DocumentSelection *	dsTarget,
+				const MemoryBuffer *		refFileName,
+				struct BufferDocument *		bdSource,
+				const DocumentSelection *	dsSource )
     {
     int				rval= 0;
-
-    DocumentSelection		dsInsideItf;
-    DocumentSelection		dsAroundItf;
-    int				part0;
-    int				part1;
 
     EditOperation		eo;
     DocumentCopyJob		dcj;
@@ -138,17 +163,13 @@ static int docRecalculateIncludeTextFieldIncludeSource(
     docInitEditOperation( &eo );
     docInitDocumentCopyJob( &dcj );
 
-    if  ( docDelimitFieldInDoc( &dsInsideItf, &dsAroundItf,
-					    &part0, &part1, bdTo, dfInclude ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-
     eo.eoBodySectNode= docGetBodySectNodeOfScope(
-					&(dfInclude->dfSelectionScope), bdTo );
+				&(dfInclude->dfSelectionScope), bdTarget );
 
-    if  ( docStartEditOperation( &eo, &dsInsideItf, bdTo, dfInclude ) )
+    if  ( docStartEditOperation( &eo, dsTarget, bdTarget, dfInclude ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( docSet2DocumentCopyJob( &dcj, &eo, bdFrom, &(bdFrom->bdBody),
+    if  ( docSet2DocumentCopyJob( &dcj, &eo, bdSource, &(bdSource->bdBody),
 					    refFileName, forceAttributeTo) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
@@ -156,8 +177,17 @@ static int docRecalculateIncludeTextFieldIncludeSource(
     dcj.dcjCopyHeadParaProperties= 1;
     dcj.dcjCopyTailParaProperties= 1;
 
-    if  ( docIncludeDocument( &dcj ) )
-	{ LDEB(1); rval= -1; goto ready;	}
+    if  ( docSelectionIsSet( dsSource ) )
+	{
+	if  ( docIncludeSelection( &dcj, dsSource ) )
+	    { LDEB(1); rval= -1; goto ready;	}
+	}
+    else{
+	if  ( docIncludeDocument( &dcj ) )
+	    { LDEB(1); rval= -1; goto ready;	}
+	}
+
+    *erInserted= eo.eoSelectedRange;
 
   ready:
 
@@ -172,6 +202,12 @@ static int docRecalculateIncludeTextFieldIncludeSource(
 typedef struct RecalculateIncludeTextFields
     {
     RecalculateFields *		ritfRecalculateFields;
+
+				    /**
+				     *  The file name of the target document.
+				     *  Used to open included files with a 
+				     *  relative name.
+				     */
     const MemoryBuffer *	ritfRefFileName;
 
     } RecalculateIncludeTextFields;
@@ -203,6 +239,7 @@ static int docRecalculateIncludeTextFieldVisitField(
 				    ritf->ritfRefFileName ) < 0 )
 	    { LDEB(1); return -1;	}
 
+	ritf->ritfRecalculateFields->rfFieldsUpdated++;
 	return SCANadviceSKIP;
 	}
 
@@ -212,6 +249,158 @@ static int docRecalculateIncludeTextFieldVisitField(
 # ifdef __GNUC__
 # pragma GCC diagnostic pop
 # endif
+
+/************************************************************************/
+
+static int docInsertIncludeSourceInstance(
+				DocumentField *			dfInclude,
+				RecalculateFields *		rf,
+				const MemoryBuffer *		refFileName,
+				DocumentSelection *		dsTarget,
+				const DocumentSelection *	dsSource,
+				BufferDocument *		bdSource,
+				int				constantFields )
+    {
+    struct BufferDocument *	bdTarget= rf->rfDocument;
+
+    EditRange			erInserted;
+
+    docInitEditRange( &erInserted );
+
+    if  ( docRecalculateIncludeTextFieldIncludeSource( &erInserted, bdTarget,
+					dfInclude, dsTarget,
+					refFileName, bdSource, dsSource ) )
+	{ LDEB(1); return -1;	}
+
+    if  ( docRecalculateTextLevelFieldsInEditRange( rf, &erInserted ) )
+	{ LDEB(1); return -1;	}
+
+    if  ( ! constantFields )
+	{
+	RecalculateIncludeTextFields	ritf;
+
+	ritf.ritfRecalculateFields= rf;
+	ritf.ritfRefFileName= &(bdSource->bdProperties->dpFilename);
+
+	if  ( docScanFieldsInRange( &(dfInclude->dfResultFields),
+				(EditRange *)0,
+				docRecalculateIncludeTextFieldVisitField,
+				(TreeFieldVisitor)0, &ritf ) < 0 )
+	    { LDEB(1); return -1;	}
+	}
+
+    return 0;
+    }
+
+static int docInsertIncludeInstances(
+				const IncludeTextField *	itf,
+				DocumentField *			dfInclude,
+				RecalculateFields *		rf,
+				const MemoryBuffer *		refFileName,
+				const DocumentSelection *	dsSource,
+				BufferDocument *		bdSource )
+    {
+    int			rval= 0;
+
+    BufferDocument *	bdTarget= rf->rfDocument;
+
+    const char *	xfor= utilMemoryBufferGetString( &(itf->itfFor) );
+    const char *	xin= utilMemoryBufferGetString( &(itf->itfIn) );
+
+    InstanceStream *	is= (InstanceStream *)0;
+
+    int			round= 0;
+
+    if  ( ! rf->rfFieldDataProvider )
+	{ /*XDEB(rf->rfFieldDataProvider);*/ rval= 1; goto ready;	}
+    if  ( utilMemoryBufferIsEmpty( &(itf->itfIn) ) )
+	{ SSDEB(xfor,xin); rval= -1; goto ready;		}
+
+    is= docRecalculateFieldsOpenInstanceStream( rf, xfor, xin );
+    if  ( ! is )
+	{ SSXDEB(xfor,xin,is); rval= -1; goto ready;	}
+
+    for (;;)
+	{
+	DocumentSelection		dsInsideItf;
+	DocumentSelection		dsAroundItf;
+
+	int				res= (*is->isToNext)( is );
+
+	if  ( res < 0 )
+	    { SSLDEB(xfor,xin,res); rval= -1; goto ready;	}
+	if  ( res > 0 )
+	    { break;						}
+
+	if  ( docDelimitFieldInDoc( &dsInsideItf, &dsAroundItf,
+				(int *)0, (int *)0, bdTarget, dfInclude ) )
+	    {
+	    LDEB(1); rval= -1;
+	    docListFieldTree(&(bdTarget->bdBody),bdTarget);
+	    goto ready;
+	    }
+
+	if  ( round > 0 )
+	    {
+	    DocumentPosition dpTail= dsInsideItf.dsTail;
+LDEB(docNumberOfParagraph(dpTail.dpNode));
+LDEB(dpTail.dpStroff);
+	    docSetIBarSelection( &dsInsideItf, &dpTail );
+	    }
+
+	if  ( docInsertIncludeSourceInstance( dfInclude, rf, refFileName,
+				    &dsInsideItf, dsSource, bdSource,
+				    itf->itfConstantFields ) )
+	    { LDEB(1); rval= -1; goto ready;	}
+
+	round++;
+	}
+
+# if 0
+    /* HACK */
+    if  ( round > 0 )
+	{
+	DocumentSelection		dsInsideItf;
+	DocumentSelection		dsAroundItf;
+
+	if  ( docDelimitFieldInDoc( &dsInsideItf, &dsAroundItf,
+				(int *)0, (int *)0, bdTarget, dfInclude ) )
+	    {
+	    LDEB(1); rval= -1;
+	    docListFieldTree(&(bdTarget->bdBody),bdTarget);
+	    goto ready;
+	    }
+
+	if  ( dsAroundItf.dsHead.dpNode->biParaParticuleCount == 1	&&
+	      dsAroundItf.dsTail.dpNode->biParaParticuleCount == 1	)
+	    {
+	    EditOperation	eo;
+
+	    docInitEditOperation( &eo );
+
+	    if  ( docStartEditOperation( &eo, &dsAroundItf, bdTarget,
+							(DocumentField *)0 ) )
+
+		{ LDEB(1); rval= -1; goto ready;	}
+
+	    if  ( docDeleteField( (DocumentSelection *)0, &eo, dfInclude ) )
+		{ LDEB(1); rval= -1; goto ready;	}
+
+	    docDeleteNode( bdTarget, eo.eoTree, dsAroundItf.dsTail.dpNode );
+	    docDeleteNode( bdTarget, eo.eoTree, dsAroundItf.dsHead.dpNode );
+
+	    docCleanEditOperation( &eo );
+	    }
+	}
+# endif
+
+  ready:
+
+    if  ( is )
+	{ docRecalculateFieldsCloseInstanceStream( is );	}
+
+    return rval;
+    }
 
 /************************************************************************/
 /*									*/
@@ -224,48 +413,67 @@ static int docRecalculateIncludeTextField(
 					RecalculateFields *	rf,
 					const MemoryBuffer *	refFileName )
     {
-    struct BufferDocument *		bdTo= rf->rfDocument;
     int				rval= 0;
+
+    struct BufferDocument *	bdTarget= rf->rfDocument;
     IncludeTextField		itf;
-    struct BufferDocument *		bdFrom= (struct BufferDocument *)0;
+    struct BufferDocument *	bdSource= (struct BufferDocument *)0;
+
+    DocumentSelection		dsInsideSource;
 
     docInitIncludeTextField( &itf );
+
+    docInitDocumentSelection( &dsInsideSource );
 
     if  ( docGetIncludeTextField( &itf, dfInclude ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    bdFrom= docIncludeTextOpenDocument( &itf, refFileName );
-    if  ( ! bdFrom )
+    bdSource= docIncludeTextOpenDocument( rf, &itf, refFileName );
+    if  ( ! bdSource )
 	{
-	SXDEB(utilMemoryBufferGetString(&(itf.itfFilename)),bdFrom);
+	SXDEB(utilMemoryBufferGetString(&(itf.itfFilename)),bdSource);
 	rval= 1; goto ready;
 	}
 
     /*  ?  */
-    bdFrom->bdProperties->dpHasOpenEnd= 1;
+    bdSource->bdProperties->dpHasOpenEnd= 1;
 
-    if  ( docRecalculateIncludeTextFieldIncludeSource( bdTo,
-					    dfInclude, refFileName, bdFrom ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-
-    if  ( ! itf.itfConstantFields )
+    if  ( ! utilMemoryBufferIsEmpty( &(itf.itfBookmark) ) )
 	{
-	RecalculateIncludeTextFields	ritf;
+	if  ( docFindBookmarkInDocument( &dsInsideSource,
+					bdSource, &(itf.itfBookmark) ) )
+	    {
+	    SDEB(utilMemoryBufferGetString(&(itf.itfBookmark)));
+	    rval= -1; goto ready;
+	    }
+	}
 
-	ritf.ritfRecalculateFields= rf;
-	ritf.ritfRefFileName= &(bdFrom->bdProperties->dpFilename);
+    if  ( ! utilMemoryBufferIsEmpty( &(itf.itfFor) ) )
+	{
+	if  ( docInsertIncludeInstances( &itf, dfInclude, rf, refFileName,
+					&dsInsideSource, bdSource ) < 0 )
+	    { LDEB(1); rval= -1; goto ready;	}
+	}
+    else{
+	DocumentSelection		dsInsideItf;
+	DocumentSelection		dsAroundItf;
 
-	if  ( docScanFieldsInRange( &(dfInclude->dfResultFields),
-				(EditRange *)0,
-				docRecalculateIncludeTextFieldVisitField,
-				(TreeFieldVisitor)0, &ritf ) < 0 )
+	if  ( docDelimitFieldInDoc( &dsInsideItf, &dsAroundItf,
+				(int *)0, (int *)0, bdTarget, dfInclude ) )
+	    { LDEB(1); rval= -1; goto ready;	}
+
+	if  ( docInsertIncludeSourceInstance( dfInclude, rf, refFileName,
+				    &dsInsideItf, &dsInsideSource, bdSource,
+				    itf.itfConstantFields ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 	}
 
   ready:
 
-    if  ( bdFrom )
-	{ docFreeDocument( bdFrom );	}
+    /* NO: If is cached on the RecalculateFields
+    if  ( bdSource )
+	{ docFreeDocument( bdSource );	}
+    */
 
     docCleanIncludeTextField( &itf );
 
@@ -274,15 +482,15 @@ static int docRecalculateIncludeTextField(
 
 int docRecalculateIncludeTextFields( RecalculateFields *		rf )
     {
-    struct BufferDocument *	bdDoc= rf->rfDocument;
+    struct BufferDocument *		bdTarget= rf->rfDocument;
 
     RecalculateIncludeTextFields	ritf;
 
     ritf.ritfRecalculateFields= rf;
-    ritf.ritfRefFileName= &(bdDoc->bdProperties->dpFilename);
+    ritf.ritfRefFileName= &(bdTarget->bdProperties->dpFilename);
 
     /*  3  */
-    if  ( docScanFieldsInRange( &(bdDoc->bdBody.dtRootFields),
+    if  ( docScanFieldsInRange( &(bdTarget->bdBody.dtRootFields),
 				(EditRange *)0,
 				docRecalculateIncludeTextFieldVisitField,
 				(TreeFieldVisitor)0, &ritf ) < 0 )

@@ -6,6 +6,7 @@
 #   include	"docDrawLine.h"
 #   include	"docLayoutLine.h"
 #   include	"docLayout.h"
+#   include	"layoutContext.h"
 #   include	<docTextLine.h>
 #   include	<docTabStop.h>
 
@@ -45,10 +46,11 @@ static void docSetDrawTextLine(
 			const struct ParagraphFrame *	pf,
 			const DocumentRectangle *	drLineFramePixels )
     {
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
 
     dtl->dtlThrough= through;
     dtl->dtlDrawingContext= dc;
+    dtl->dtlDocument= lc->lcDocument;
 
     dtl->dtlTextLine= tl;
     dtl->dtlPartUpto= tl->tlFirstParticule+ tl->tlParticuleCount;
@@ -91,6 +93,7 @@ static void docInitDrawTextLine(	DrawTextLine *	dtl )
     {
     dtl->dtlThrough= (void *)0;
     dtl->dtlDrawingContext= (DrawingContext *)0;
+    dtl->dtlDocument= (struct BufferDocument *)0;
 
     geoInitRectangle( &(dtl->dtlLineFrameRectanglePixels) );
     docInitLayoutPosition( &(dtl->dtlShiftedTopPosition) );
@@ -127,8 +130,7 @@ static void docDrawRunUnderlines(	const DrawTextLine *	dtl,
 					const LayoutPosition *	baseLine )
     {
     DrawingContext *		dc= dtl->dtlDrawingContext;
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
-    struct BufferDocument *	bd= lc->lcDocument;
+    struct BufferDocument *	bd= dtl->dtlDocument;
 
     const struct BufferItem *	paraNode= dtl->dtlParaNode;
     int				part= partFrom;
@@ -176,8 +178,7 @@ static void docDrawRunStrikethrough(	const DrawTextLine *	dtl,
 					const LayoutPosition *	baseLine )
     {
     DrawingContext *		dc= dtl->dtlDrawingContext;
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
-    struct BufferDocument *	bd= lc->lcDocument;
+    struct BufferDocument *	bd= dtl->dtlDocument;
 
     const struct BufferItem *	paraNode= dtl->dtlParaNode;
     int				part= partFrom;
@@ -219,8 +220,7 @@ static int docDrawTextBorders(
 			int				xTwips )
     {
     DrawingContext *			dc= dtl->dtlDrawingContext;
-    const LayoutContext *		lc= &(dc->dcLayoutContext);
-    struct BufferDocument *		bd= lc->lcDocument;
+    struct BufferDocument *		bd= dtl->dtlDocument;
     const struct TextLine *		tl= dtl->dtlTextLine;
 
     BlockOrnaments			ornaments;
@@ -308,8 +308,7 @@ static int docDrawTextShading(
 			int				xTwips )
     {
     DrawingContext *			dc= dtl->dtlDrawingContext;
-    const LayoutContext *		lc= &(dc->dcLayoutContext);
-    struct BufferDocument *		bd= lc->lcDocument;
+    struct BufferDocument *		bd= dtl->dtlDocument;
     const struct TextLine *		tl= dtl->dtlTextLine;
 
     BlockOrnaments			ornaments;
@@ -727,7 +726,6 @@ static int docDrawLineRun(	const TextRun *			tr,
 static int docDrawLineParticules(	DrawTextLine *			dtl )
     {
     DrawingContext *		dc= dtl->dtlDrawingContext;
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
 
     int				res;
 
@@ -748,7 +746,7 @@ static int docDrawLineParticules(	DrawTextLine *			dtl )
     if  ( dc->dcDrawInlineObject )
 	{ objectVisitor= docDrawLineObject;	}
 
-    res= docScanLineDisplayOrder( lc->lcDocument,
+    res= docScanLineDisplayOrder( dtl->dtlDocument,
 				dtl->dtlParaNode, dtl->dtlTextLine,
 				(struct DocumentSelection *)0, flags,
 				docDrawLineParticule,
@@ -802,7 +800,7 @@ int docDrawTextLine(	struct BufferItem *		paraNode,
 			const BlockOrigin *		bo )
     {
     int				rval= 0;
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
 
     ParticuleData *		pd= (ParticuleData *)0;
     int				part= tl->tlFirstParticule;

@@ -25,6 +25,8 @@ typedef struct AfmCatalog
     PostScriptFontList *	acFontList;
     } AfmCatalog;
 
+static int psGetDeferredMetrics(	AfmFontInfo *		afi );
+
 /************************************************************************/
 /*									*/
 /*  Make a catalog of postscript fonts for the font chooser.		*/
@@ -257,7 +259,7 @@ int psSaveAfms(		const PostScriptFontList *	psfl,
     return rval;
     }
 
-int psGetDeferredMetrics(	AfmFontInfo *		afi )
+static int psGetDeferredMetrics(	AfmFontInfo *		afi )
     {
     int			rval= 0;
     struct SimpleInputStream *	sisAfm= (struct SimpleInputStream *)0;

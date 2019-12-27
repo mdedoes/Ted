@@ -8,142 +8,17 @@
 
 #   include	"docLayout.h"
 #   include	"docLayoutStopCode.h"
+#   include	"layoutContext.h"
 #   include	<docTreeType.h>
 #   include	<docTreeNode.h>
 #   include	"docRowLayout.h"
 #   include	"docStripLayoutJob.h"
-#   include	<docPropVal.h>
 #   include	<docRowProperties.h>
 #   include	<docCellProperties.h>
-#   include	<docBuf.h>
 #   include	<docBlockFrame.h>
 
 #   include	<docDebug.h>
 #   include	<appDebugon.h>
-
-/************************************************************************/
-/*									*/
-/*  Shift cell contents of the cells in a row that are not top-aligned.	*/
-/*									*/
-/*  Experimentation with MS-Word shows the following behavior for cells	*/
-/*  that span more than one row:					*/
-/*									*/
-/*  TOP    aligned cells behave as expected.				*/
-/*  CENTER aligned cells with content that fits on the first page,	*/
-/*	   vertically center the contents on the first page. If the	*/
-/*	   content is higher than the space on the first page, the cell	*/
-/*	   behaves as a top-aligned cell.				*/
-/*  BOTTOM aligned cells with content that fits on the first page, top	*/
-/*	   align the contents on the first page. If the content is	*/
-/*	   higher than the space on the first page, the cell behaves as	*/
-/*	   a top-aligned cell.						*/
-/*									*/
-/************************************************************************/
-
-static void docLayoutValignCell( BufferItem *			cellNode,
-				BlockFrame *			bf,
-				const LayoutPosition *		lpRowTop,
-				const LayoutPosition *		lpBelow,
-				const LayoutJob *		lj )
-    {
-    const CellProperties *	thisCp= cellNode->biCellProperties;
-
-    LayoutPosition		lpCellTop= cellNode->biTopPosition;
-    int				rowHigh= lpBelow->lpPageYTwips-
-							lpRowTop->lpPageYTwips;
-    int				cellHigh= cellNode->biBelowPosition.lpPageYTwips-
-							lpCellTop.lpPageYTwips;
-
-    int				paraFrom= 0;
-    int				paraUpto= cellNode->biChildCount;
-
-    if  ( cellHigh >= rowHigh )
-	{ return;	}
-
-    switch( thisCp->cpValign )
-	{
-	case DOCtvaTOP:
-	    return;
-
-	case DOCtvaCENTERED:
-	    cellNode->biCellTopInset= ( rowHigh- cellHigh )/ 2;
-	    lpCellTop.lpPageYTwips += cellNode->biCellTopInset;
-
-	    docRedoParaStripLayout( lj, bf, &lpCellTop,
-					    cellNode, paraFrom, paraUpto );
-	    return;
-
-	case DOCtvaBOTTOM:
-	    cellNode->biCellTopInset= rowHigh- cellHigh;
-	    lpCellTop.lpPageYTwips += cellNode->biCellTopInset;
-
-	    docRedoParaStripLayout( lj, bf, &lpCellTop,
-					    cellNode, paraFrom, paraUpto );
-	    return;
-
-	default:
-	    LDEB(thisCp->cpValign);
-	    return;
-	}
-    }
-
-static int docLayoutRowValignCells(
-				BufferItem *			rowNode,
-				BlockFrame *			bf,
-				const LayoutPosition *		lpBelow,
-				const ParagraphLayoutPosition *	rowPlp,
-				const LayoutJob *		lj )
-    {
-    int				col;
-    const CellProperties *	cp;
-    const ParagraphLayoutJob *	plj;
-
-    const RowProperties *	rp= rowNode->biRowProperties;
-
-    cp= rp->rpCells;
-    plj= rowPlp->pspChildren;
-    for ( col= 0; col < rowNode->biChildCount; cp++, plj++, col++ )
-	{
-	BufferItem *			cellNode= rowNode->biChildren[col];
-
-	if  ( cellNode->biCellRowspan > 1 )
-	    { continue;	}
-	if  ( ! docLayoutStripDone( &(plj->pljPos), plj) )
-	    { continue;	}
-
-
-	if  ( docCompareLayoutPositionFrames( &(rowNode->biTopPosition),
-							    lpBelow ) != 0 )
-	    { continue;	}
-
-	if  ( cp->cpVerticalMerge == CELLmergeFOLLOW )
-	    {
-	    if  ( cellNode->biCellMergedCellTopRow < 0	)
-		{ continue;	}
-	    else{
-		struct BufferItem *	topRowNode;
-
-		int		topRow= cellNode->biCellMergedCellTopRow;
-		int		topCol= cellNode->biCellMergedCellTopCol;
-
-		topRowNode= rowNode->biParent->biChildren[topRow];
-
-		if  ( docCompareLayoutPositionFrames(
-				&(topRowNode->biTopPosition), lpBelow ) != 0 )
-		    { continue;	}
-
-		docLayoutValignCell( topRowNode->biChildren[topCol], bf,
-			    &(topRowNode->biTopPosition), lpBelow, lj );
-		}
-	    }
-	else{
-	    docLayoutValignCell( cellNode, bf, &(rowNode->biTopPosition),
-								lpBelow, lj );
-	    }
-	}
-
-    return 0;
-    }
 
 /************************************************************************/
 /*									*/
@@ -175,29 +50,8 @@ static void docLayoutFinishRow(	LayoutPosition *		lpHere,
     plj= rowPlp->pspChildren;
     for ( col= 0; col < rowNode->biChildCount; cp++, plj++, col++ )
 	{
-	BufferItem *			cellNode= rowNode->biChildren[col];
-	ParagraphLayoutPosition *	plp= &(plj->pljPos);
-
-	if  ( cp->cpVerticalMerge == CELLmergeFOLLOW		&&
-	      cellNode->biCellMergedCellTopRow >= 0		)
-	    {
-	    docLayoutPushBottomDown( &(rowNode->biRowBelowAllCellsPosition),
-					&(plj->cljMergedCellBelowPosion) );
-	    docLayoutPushBottomDown( lpHere,
-					&(plj->cljMergedCellBelowPosion) );
-	    continue;
-	    }
-
-	if  ( CELL_MERGED( cp ) )
-	    { continue;	}
-
-	cellNode->biBelowPosition= plp->plpPos;
-
-	docLayoutPushBottomDown(
-		    &(rowNode->biRowBelowAllCellsPosition), &(plp->plpPos) );
-
-	if  ( cellNode->biCellRowspan <= 1 )
-	    { docLayoutPushBottomDown( lpHere, &(plp->plpPos) ); }
+	docLayoutFinishCell( lpHere, &(rowNode->biRowBelowAllCellsPosition),
+				    rowNode->biChildren[col], cp, plj );
 	}
 
     if  ( docCompareLayoutPositionFrames( lpHere,
@@ -208,14 +62,14 @@ static void docLayoutFinishRow(	LayoutPosition *		lpHere,
 	rowHeightTwips= lpHere->lpPageYTwips-
 				    rowNode->biTopPosition.lpPageYTwips;
 
-	/*  3: if rowNode->biRowHeightTwips > 0   */
+	/*  3: if rp->rpHeightTwips > 0   */
 	if  ( rowHeightTwips < rp->rpHeightTwips )
 	    {
 	    lpHere->lpPageYTwips +=  rp->rpHeightTwips- rowHeightTwips;
 	    lpHere->lpAtTopOfColumn= 0;
 	    }
 
-	/*  4: if rowNode->biRowHeightTwips < 0  */
+	/*  4: if rp->rpHeightTwips < 0  */
 	if  ( rowHeightTwips < -rp->rpHeightTwips )
 	    {
 	    lpHere->lpPageYTwips += -rp->rpHeightTwips- rowHeightTwips;
@@ -226,7 +80,7 @@ static void docLayoutFinishRow(	LayoutPosition *		lpHere,
 	if  ( rp->rpHeightTwips < 0			&&
 	      rowHeightTwips > -rp->rpHeightTwips	)
 	    {
-	    /* LLDEB(rowNode->biRowHeightTwips,rowHeightTwips); */
+	    /* LLDEB(rp->rpHeightTwips,rowHeightTwips); */
 	    lpHere->lpPageYTwips -= rowHeightTwips+ rp->rpHeightTwips;
 	    }
 	}
@@ -246,13 +100,6 @@ static void docLayoutFinishRow(	LayoutPosition *		lpHere,
 /*  1)  For a fixed height row, determine the amount of space left for	*/
 /*	it.								*/
 /*  2)  For all columns in the table..					*/
-/*  3)  Cells in a row span or a colspan play no role...		*/
-/*  4)  This column was already exhausted on a previous page..		*/
-/*  5)  Format paragraphs inside this cell.				*/
-/*  6)  Remember how far we have descended on the page.			*/
-/*  7)  Anything left over that must be moved to the next page?		*/
-/*  7a) Distinguish between the situation where a fixed height row has	*/
-/*	reached its capacity and that where the page is full.		*/
 /*									*/
 /************************************************************************/
 
@@ -270,13 +117,11 @@ static int docLayoutRowPageStrip(
     int				continueInNextFrame= 0;
     int				someAtHead= 0;
 
-    LayoutPosition		lpBottom;
+    LayoutPosition		lpBottom= *lpHere;
     const CellProperties *	cp;
     ParagraphLayoutJob *	plj;
 
     const RowProperties *	rp= rowNode->biRowProperties;
-
-    lpBottom= *lpHere;
 
     continueInNextFrame= 0;
 
@@ -290,36 +135,11 @@ static int docLayoutRowPageStrip(
     plj= rowPlp->pspChildren;
     for ( col= 0; col < rowNode->biChildCount; cp++, plj++, col++ )
 	{
-	BufferItem *			cellNode= rowNode->biChildren[col];
-	ParagraphLayoutPosition *	plp= &(plj->pljPos);
-	int				stopCode= FORMATstopREADY;
-
-	/*  3  */
-	if  ( CELL_MERGED( cp ) )
-	    { continue;	}
-
-	/*  4  */
-	if  ( docLayoutStripDone( plp, plj ) )
-	    { continue;	}
-
-	/*  5  */
-	plp->plpPos= *lpHere;
-
-	docCellStripFrame( cellNode, bf, plj );
-
-	if  ( docLayoutStripChildren( &stopCode, plj, bf, cellNode ) )
-	    { LDEB(1); return -1;	}
-
-	/*  6  */
-	docLayoutPushBottomDown(
-		    &(rowNode->biRowBelowAllCellsPosition), &(plp->plpPos) );
-	if  ( cellNode->biCellRowspan <= 1 )
-	    { docLayoutPushBottomDown( &lpBottom, &(plp->plpPos) );	}
-
-	/*  7,7a  */
-	if  ( cellNode->biTreeType == DOCinBODY		&&
-	      stopCode == FORMATstopBLOCK_FULL		)
-	    { continueInNextFrame= 1;	}
+	if  ( docLayoutCellPageStrip( lpHere, &lpBottom,
+			&(rowNode->biRowBelowAllCellsPosition),
+			&continueInNextFrame, rowNode->biChildren[col],
+			cp, bf, plj ) )
+	    { LDEB(col); return -1;	}
 	}
 
     cp= rp->rpCells;
@@ -330,6 +150,7 @@ static int docLayoutRowPageStrip(
 
 	if  ( docLayoutAtStripHead( &(plj->pljPos) ) )
 	    {
+	    /*  An empty cell is done at the head of its contents */
 	    if  ( ! docLayoutStripDone( plp, plj ) )
 		{ someAtHead= 1;	}
 	    }
@@ -374,25 +195,13 @@ static int docLayoutStartRowCells(
     for ( col= 0; col < rowNode->biChildCount; cellPlj++, col++ )
 	{
 	struct BufferItem *	cellNode= rowNode->biChildren[col];
-	const int		para= 0;
-	const int		line= 0;
-	const int		part= 0;
 
-	const int	recursively= 0;
-
-	docDelimitTables( cellNode, recursively );
-
-	cellNode->biCellTopInset= 0;
-
-	docBeginParagraphLayoutProgress( cellPlj, lj,
-					    para, line, part,
-					    cellNode->biChildCount, lpHere );
-
-	cellNode->biTopPosition= *lpHere;
+	docLayoutStartCell( cellNode, lj, lpHere, cellPlj );
 
 	/*  3  */
 	cellNode->biCellRowspan= 1;
-	if  ( cellNode->biCellProperties->cpVerticalMerge != CELLmergeNONE )
+	if  ( cellNode->biCellProperties &&
+	      cellNode->biCellProperties->cpVerticalMerge != CELLmergeNONE )
 	    {
 	    docRowLayoutRowspanAdmin( cellNode, rowNode, nextRowNode,
 							nextRow, cellPlj );
@@ -484,7 +293,7 @@ static int docLayoutStartRow(
 			const BlockFrame *		bf,
 			ParagraphLayoutPosition *	rowPlp )
     {
-    const LayoutContext *	lc= &(lj->ljContext);
+    const LayoutContext *	lc= lj->ljContext;
     const int			atRowTop= 1;
 
     const RowProperties * const	rp= rowNode->biRowProperties;
@@ -551,7 +360,7 @@ static int docRowLayoutToNextColumn(
 				int			atTopOfRow,
 				BlockFrame *		bf )
     {
-    const LayoutContext *	lc= &(lj->ljContext);
+    const LayoutContext *	lc= lj->ljContext;
 
     int				inset= 0;
     const int			belowText= 0;
@@ -607,19 +416,7 @@ static int docRowToNextColumn(	LayoutPosition *	lpHere,
     plj= rowPlj->pljPos.pspChildren;
     for ( col= 0; col < rowNode->biChildCount; plj++, col++ )
 	{
-	const struct BufferItem *	cellNode= rowNode->biChildren[col];
-	int				advanced;
-	int				advanceAnyway= 0;
-
-	if  ( docLayoutStripDone( &(plj->pljPos), plj ) )
-	    { continue;	}
-
-	if  ( cellNode->biChildren[plj->pljPos0.pspChild]->biLevel ==
-								DOClevROW )
-	    { continue;	}
-
-	docCommitStripLayout( &advanced, advanceAnyway, plj,
-				lpBefore.lpPage, lpBefore.lpColumn, cellNode );
+	docCellToNextColumn( &lpBefore, rowNode->biChildren[col], plj );
 	}
 
     return 0;
@@ -646,7 +443,10 @@ int docLayoutRowInStrip(	int *				pStopCode,
     int			someAtHead= 0;
     const int		precededByHeader= 0;
 
-    if  ( ! rowPlp->pspChildAdvanced )
+    const int		atHead= ! rowPlp->pspChildAdvanced;
+    int			col;
+
+    if  ( atHead )
 	{
 	rowNode->biTopPosition= rowPlp->plpPos;
 
@@ -664,6 +464,13 @@ int docLayoutRowInStrip(	int *				pStopCode,
 					    &toNextColumn, &someAtHead,
 					    rowNode, rowPlp, bf, lj ) )
 	{ LDEB(1); return -1;	}
+
+    for ( col= 0; col < rowPlp->pspChildCount; col++ )
+	{
+	if  ( rowPlp->pspChildren[col].pljPos.pspChild > 0	||
+	      rowPlp->pspChildren[col].pljPos.pspChildAdvanced	)
+	    { rowPlp->pspChildAdvanced= 1;	}
+	}
 
     if  ( toNextColumn )
 	{

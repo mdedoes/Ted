@@ -11,8 +11,8 @@
 #   include	<docTreeType.h>
 #   include	<docTreeNode.h>
 #   include	"docRtfWriterImpl.h"
+#   include	"docRtfControlWord.h"
 #   include	"docRtfTags.h"
-#   include	<docBreakKind.h>
 #   include	<docDocumentProperties.h>
 #   include	<docSectProperties.h>
 #   include	<docBuf.h>
@@ -27,108 +27,54 @@
 /*									*/
 /************************************************************************/
 
-void docRtfSaveSectionProperties( RtfWriter *			rw,
-				const PropertyMask *		spMask,
-				const SectionProperties *	sp )
+static const int SectRegularProperties[]=
+{
+    DGpropPAGE_WIDTH,
+    DGpropPAGE_HEIGHT,
+    DGpropLEFT_MARGIN,
+    DGpropTOP_MARGIN,
+    DGpropRIGHT_MARGIN,
+    DGpropBOTTOM_MARGIN,
+    DGpropGUTTER,
+    DGpropMARGMIR,
+    DGpropHEADER_POSITION,
+    DGpropFOOTER_POSITION,
+    SPpropRTOL,
+    SPpropSTYLE,
+    SPpropTITLEPG,
+    SPpropENDPG,
+    SPpropBREAK_KIND,
+    SPpropNUMBER_STYLE,
+    SPpropNUMBER_HYPHEN,
+    SPpropPAGE_RESTART,
+    SPpropSTART_PAGE, /*  Count from 1! */
+    SPpropPAGE_RESTART,
+    SPpropCOLUMN_COUNT,
+    SPpropCOLUMN_SPACING,
+};
+
+static const int SectRegularPropertyCount=
+			sizeof(SectRegularProperties)/sizeof(int);
+
+int docRtfSaveSectionProperties( RtfWriter *			rw,
+				const PropertyMask *		spSetMask,
+				const SectionProperties *	spSet )
     {
-    const DocumentGeometry *	dg= &(sp->spDocumentGeometry);
+    const int			scope= RTCscopeSECT;
 
-    /**************/
+    if  ( docRtfWriteItemProperties( rw, scope, spSet,
+			(RtfGetIntProperty)docGetSectionProperty, spSetMask,
+			SectRegularProperties, SectRegularPropertyCount ) )
+	{ LLDEB(scope,SectRegularPropertyCount); return -1;	}
 
-    if  ( PROPmaskISSET( spMask, DGpropPAGE_WIDTH ) )
-	{ docRtfWriteArgTag( rw, "pgwsxn",	dg->dgPageWideTwips );	}
-    if  ( PROPmaskISSET( spMask, DGpropPAGE_HEIGHT ) )
-	{ docRtfWriteArgTag( rw, "pghsxn",	dg->dgPageHighTwips );	}
-    if  ( PROPmaskISSET( spMask, DGpropLEFT_MARGIN ) )
-	{ docRtfWriteArgTag( rw, "marglsxn",dg->dgMargins.roLeftOffset );	}
-    if  ( PROPmaskISSET( spMask, DGpropTOP_MARGIN ) )
-	{
-	docRtfWriteArgTag( rw, "margtsxn",dg->dgMargins.roTopOffset );
-	}
-    if  ( PROPmaskISSET( spMask, DGpropRIGHT_MARGIN ) )
-	{
-	docRtfWriteArgTag( rw, "margrsxn",dg->dgMargins.roRightOffset );
-	}
-    if  ( PROPmaskISSET( spMask, DGpropBOTTOM_MARGIN ) )
-	{
-	docRtfWriteArgTag( rw, "margbsxn",dg->dgMargins.roBottomOffset );
-	}
-    if  ( PROPmaskISSET( spMask, DGpropGUTTER ) )
-	{
-	docRtfWriteArgTag( rw, "guttersxn",dg->dgGutterTwips );
-	}
-    if  ( PROPmaskISSET( spMask, DGpropMARGMIR ) && dg->dgMirrorMargins )
-	{
-	docRtfWriteTag( rw, "margmirsxn" );
-	}
-    if  ( PROPmaskISSET( spMask, DGpropHEADER_POSITION ) )
-	{
-	docRtfWriteArgTag( rw, "headery", dg->dgHeaderPositionTwips );
-	}
-    if  ( PROPmaskISSET( spMask, DGpropFOOTER_POSITION ) )
-	{
-	docRtfWriteArgTag( rw, "footery", dg->dgFooterPositionTwips );
-	}
-
-    /**************/
-
-    if  ( PROPmaskISSET( spMask, SPpropRTOL ) )
-	{
-	docRtfWriteAltTag( rw, "rtlsect", "ltrsect", sp->spRToL );
-	}
-
-    if  ( PROPmaskISSET( spMask, SPpropSTYLE ) )
-	{ docRtfWriteArgTag( rw, "ds", sp->spStyle );	}
-
-    if  ( PROPmaskISSET( spMask, SPpropTITLEPG ) )
-	{ docRtfWriteFlagTag( rw, RTFtag_titlepg, sp->spHasTitlePage );	}
-    if  ( PROPmaskISSET( spMask, SPpropENDPG ) )
-	{ docRtfWriteFlagTag( rw, RTFtag_endpg, sp->spHasEndPage );	}
-
-    if  ( PROPmaskISSET( spMask, SPpropBREAK_KIND ) )
-	{
-	docRtfWriteEnumTag( rw, DOCrtf_SectBreakTags, sp->spBreakKind,
-				    DOCrtf_SectBreakTagCount, DOCibk_COUNT );
-	}
-
-    if  ( PROPmaskISSET( spMask, SPpropNUMBER_STYLE ) )
-	{
-	docRtfWriteEnumTag( rw, DOCrtf_PageNumberStyleTags,
-			    sp->spPageNumberStyle,
-			    DOCrtf_PageNumberStyleTagCount, DOCpgn_COUNT );
-	}
-
-    if  ( PROPmaskISSET( spMask, SPpropNUMBER_HYPHEN ) )
-	{
-	docRtfWriteEnumTag( rw, DOCrtf_PageNumberHyphenTags,
-			    sp->spPageNumberHyphen,
-			    DOCrtf_PageNumberHyphenTagCount, DOCpgnh_COUNT );
-	}
-
-    if  ( PROPmaskISSET( spMask, SPpropPAGE_RESTART ) )
-	{
-	docRtfWriteAltTag( rw, "pgnrestart", "pgncont",
-						sp->spRestartPageNumbers );
-	}
-
-    if  ( PROPmaskISSET( spMask, SPpropSTART_PAGE ) )
-	{
-	docRtfWriteArgTag( rw, "pgnstarts", sp->spStartPageNumber+ 1 );
-	}
-
-    if  ( PROPmaskISSET( spMask, SPpropCOLUMN_COUNT ) )
-	{ docRtfWriteArgTag( rw, "cols", sp->spColumnCount );	}
-    if  ( PROPmaskISSET( spMask, SPpropCOLUMN_SPACING ) )
-	{ docRtfWriteArgTag( rw, "colsx", sp->spColumnSpacingTwips ); }
-
-    if  ( PROPmaskISSET( spMask, SPpropCOLUMNS )	||
-	  sp->spColumnCount > 1				)
+    if  ( PROPmaskISSET( spSetMask, SPpropCOLUMNS )	||
+	  spSet->spColumnCount > 1			)
 	{
 	int			i;
-	const SectionColumn *	sc= sp->spColumns;
+	const SectionColumn *	sc= spSet->spColumns;
 
 
-	for ( i= 0; i < sp->spColumnCount; sc++, i++ )
+	for ( i= 0; i < spSet->spColumnCount; sc++, i++ )
 	    {
 	    if  ( sc->scColumnWidthTwips == 0	&&
 		  sc->scSpaceAfterTwips == 0	)
@@ -147,15 +93,15 @@ void docRtfSaveSectionProperties( RtfWriter *			rw,
 	    }
 	}
 
-    if  ( PROPmaskISSET( spMask, SPpropLINEBETCOL ) )
-	{ docRtfWriteFlagTag( rw, "linebetcol", sp->spLineBetweenColumns ); }
+    if  ( PROPmaskISSET( spSetMask, SPpropLINEBETCOL ) )
+	{ docRtfWriteFlagTag( rw, "linebetcol", spSet->spLineBetweenColumns ); }
 
     docRtfWriteNextLine( rw );
 
     /**************/
 
-    docRtfSaveNotesProperties( rw, spMask,
-			    &(sp->spNotesProperties.fepFootnotesProps),
+    docRtfSaveNotesProperties( rw, spSetMask,
+			    &(spSet->spNotesProperties.fepFootnotesProps),
 			    DOCsectFOOTNOTE_PROP_MAP, "sftnstart",
 			    DOCrtf_SectFootNotesJustificationTags,
 			    DOCrtf_SectFootNotesJustificationTagCount,
@@ -165,8 +111,8 @@ void docRtfSaveSectionProperties( RtfWriter *			rw,
 			    DOCrtf_SectFootNotesNumberStyleTags,
 			    DOCrtf_SectFootNotesNumberStyleTagCount );
 
-    docRtfSaveNotesProperties( rw, spMask,
-			    &(sp->spNotesProperties.fepEndnotesProps),
+    docRtfSaveNotesProperties( rw, spSetMask,
+			    &(spSet->spNotesProperties.fepEndnotesProps),
 			    DOCsectENDNOTE_PROP_MAP, "saftnstart",
 			    DOCrtf_SectEndNotesJustificationTags,
 			    DOCrtf_SectEndNotesJustificationTagCount,
@@ -176,7 +122,7 @@ void docRtfSaveSectionProperties( RtfWriter *			rw,
 			    DOCrtf_SectEndNotesNumberStyleTags,
 			    DOCrtf_SectEndNotesNumberStyleTagCount );
 
-    return;
+    return 0;
     }
 
 /************************************************************************/
@@ -192,7 +138,7 @@ int docRtfSaveSectionPropertiesOfNode(
 			    RtfWriter *				rw,
 			    const struct BufferItem *		sectNode )
     {
-    const SectionProperties *	sp= sectNode->biSectProperties;
+    const SectionProperties *	spSet= sectNode->biSectProperties;
     const DocumentProperties *	dp= rw->rwDocument->bdProperties;
 
     SectionProperties		spDef;
@@ -217,7 +163,7 @@ int docRtfSaveSectionPropertiesOfNode(
     utilPropMaskFill( &spCmpMask, SPprop_COUNT );
 
     utilPropMaskClear( &spDifMask );
-    docSectPropertyDifference( &spDifMask, &spDef, &spCmpMask, sp );
+    docSectPropertyDifference( &spDifMask, &spDef, &spCmpMask, spSet );
 
     if  ( rw->rwCurrentTree->ptSelection )
 	{
@@ -236,7 +182,7 @@ int docRtfSaveSectionPropertiesOfNode(
     docCleanParagraphProperties( &(rw->rwCurrentTree->ptParagraphProperties) );
     docInitParagraphProperties( &(rw->rwCurrentTree->ptParagraphProperties) );
 
-    docRtfSaveSectionProperties( rw, &spDifMask, sp );
+    docRtfSaveSectionProperties( rw, &spDifMask, spSet );
 
     rw->rwSectionPropertiesSaved= 1;
 
@@ -317,11 +263,11 @@ static const int HeaderFooterTypeCount=
 /*									*/
 /************************************************************************/
 
-int docRtfSaveSectHeadersFooters(	RtfWriter *		rw,
-					const struct BufferItem *	sectNode )
+int docRtfSaveSectHeadersFooters(
+				RtfWriter *			rw,
+				const struct BufferItem *	sectNode )
     {
-    const struct BufferItem *		prevNode= (const struct BufferItem *)0;
-    const DocumentProperties *	dp= rw->rwDocument->bdProperties;
+    const struct BufferItem *	prevNode= (const struct BufferItem *)0;
 
     int				hdft;
 
@@ -332,21 +278,24 @@ int docRtfSaveSectHeadersFooters(	RtfWriter *		rw,
 					    sectNode->biNumberInParent- 1];
 	}
 
+#   if 0
+    {
+    const DocumentProperties *	dp= rw->rwDocument->bdProperties;
+
     /*  Word 11+ uses right header/footer anyway. For compatibility: */
+    /*  Now that Open/Libre Office behaves like MS-Word No longer do this. */
     if  ( ! dp->dpHasFacingPages )
 	{
 	if  ( docRtfSaveSectHeaderFooter( rw, sectNode, prevNode,
 					    "header", DOCinRIGHT_HEADER ) )
 	    { LDEB(1); return -1;	}
-	}
 
-    /*  Word 11+ uses right header/footer anyway. For compatibility: */
-    if  ( ! dp->dpHasFacingPages )
-	{
 	if  ( docRtfSaveSectHeaderFooter( rw, sectNode, prevNode,
 					    "footer", DOCinRIGHT_FOOTER ) )
 	    { LDEB(1); return -1;	}
 	}
+    }
+#   endif
 
     for ( hdft= 0; hdft < HeaderFooterTypeCount; hdft++ )
 	{

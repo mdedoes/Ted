@@ -9,6 +9,7 @@ struct ParticuleData;
 struct TextLine;
 struct BufferItem;
 struct ParagraphFrame;
+struct BufferDocument;
 
 /************************************************************************/
 
@@ -16,6 +17,11 @@ typedef struct DrawTextLine
     {
     void *			dtlThrough;
     struct DrawingContext *	dtlDrawingContext;
+
+				/**
+				 *  The document that we are drawing
+				 */
+    struct BufferDocument *	dtlDocument;
 
 				/**
 				 *  Pixel rectangle for the line. It is used

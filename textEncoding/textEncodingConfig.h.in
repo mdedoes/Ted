@@ -47,4 +47,11 @@
 #undef HAVE_LIBICONV
 #undef USE_LIBICONV
 
+#undef HAVE_LIBPCRE2
+#undef USE_LIBPCRE2
+
+/* Does not really belong to this directory */
+#undef HAVE_LIBJANSSON
+#undef USE_LIBJANSSON
+
 #   endif	/*  TEXT_ENCODING_CONFIG_H  */

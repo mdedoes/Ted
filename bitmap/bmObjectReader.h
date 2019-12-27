@@ -9,27 +9,14 @@
 
 #   include	"bmio.h"
 
-struct SimpleInputStream;
 struct MemoryBuffer;
 struct RasterImage;
-
-typedef struct ObjectReader
-    {
-    struct SimpleInputStream *	orSisMem;
-    struct SimpleInputStream *	orSisHex;
-    } ObjectReader;
 
 /************************************************************************/
 /*									*/
 /*  Routine declarations.						*/
 /*									*/
 /************************************************************************/
-
-extern void bmInitObjectReader(	struct ObjectReader *		or );
-extern void bmCleanObjectReader( struct ObjectReader *		or );
-
-extern int bmOpenObjectReader(	ObjectReader *			or,
-				const struct MemoryBuffer *	mb );
 
 extern int bmReadRasterObject(	struct RasterImage *		ri,
 				bmReadBitmap			readRaster,

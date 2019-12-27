@@ -3,7 +3,7 @@
 
 /* Regular expressions via PCRE */
 
-#   define	REGflagESCAPE_REGEX	(1<<0)
+#   define	REGflagNO_REGEX		(1<<0)
 #   define	REGflagCASE_INSENSITIVE	(1<<1)
 #   define	REGflagAS_WORD		(1<<2)
 
@@ -26,9 +26,10 @@ int regGetFullMatch(	int *			pFrom,
 			int *			pPast,
 			const ExpressionMatch *	em );
 
-extern regProg *regCompile( const char *, int options );
+extern regProg *regCompile(	const char *	expression,
+				int		options );
 
-extern void regFree( regProg * prog );
+extern void regFree(		regProg *	prog );
 
 extern int regFindLeftToRight(	ExpressionMatch *	em,
 				const regProg *		prog,

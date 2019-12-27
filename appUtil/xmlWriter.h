@@ -18,6 +18,8 @@ typedef struct XmlWriter
     int				xwColumn;
     } XmlWriter;
 
+extern const char	XML_DECLARATION[];
+
 /************************************************************************/
 /*									*/
 /*  Routine declarations.						*/
@@ -25,6 +27,8 @@ typedef struct XmlWriter
 /************************************************************************/
 
 extern void xmlInitXmlWriter(		XmlWriter *		xw );
+
+extern void xmlCloseXmlWriter(		XmlWriter *		xw );
 
 extern void xmlPutString(		const char *		s,
 					XmlWriter *		xw );
@@ -54,9 +58,18 @@ extern void xmlEscapeCharacters(	XmlWriter *		xw,
 extern void xmlEscapeBuffer(	XmlWriter *			xw,
 				const struct MemoryBuffer *	mb );
 
-extern void xmlStartDataUrl(	XmlWriter *		xw,
+extern struct SimpleOutputStream * xmlStartDataUrl(
+				XmlWriter *		xw,
 				const char *		attributeName,
 				const char *		contentType );
+
+extern void xmlFinishDataUrl(	XmlWriter *			xw,
+				struct SimpleOutputStream *	sosImage );
+
+extern int xmlWriteDataUrl(	XmlWriter *			xw,
+				const char *			attributeName,
+				const char *			contentType,
+				const struct MemoryBuffer *	objectData );
 
 #   endif	/*	XML_WRITER_H	*/
 

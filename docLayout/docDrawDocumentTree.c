@@ -2,16 +2,17 @@
 
 #   include	"docDraw.h"
 #   include	"docLayout.h"
+#   include	"layoutContext.h"
 #   include	<docTreeType.h>
 #   include	<docTreeNode.h>
 #   include	<docNotes.h>
 #   include	<docDocumentNote.h>
 #   include	<docDocumentField.h>
-#   include	<docPageGrid.h>
 #   include	<docSelect.h>
 #   include	<docBuf.h>
 #   include	<docNodeTree.h>
 #   include	<geoRectangle.h>
+#   include	<docHeaderFooterScopes.h>
 
 #   include	<appDebugon.h>
 
@@ -53,7 +54,7 @@ static int docDrawHeaderFooter(	struct BufferItem *	bodySectNode,
 				DrawingContext *	dc,
 				int			page )
     {
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
     const int			column= 0; /* irrelevant */
     LayoutPosition		lpBelow;
 
@@ -96,7 +97,7 @@ int docDrawPageHeader(	struct BufferItem *		bodySectNode,
 			DrawingContext *		dc,
 			int				page )
     {
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
     struct BufferDocument *	bd= lc->lcDocument;
 
     struct DocumentTree *	tree= (struct DocumentTree *)0;
@@ -117,7 +118,7 @@ int docDrawPageFooter(	struct BufferItem *		bodySectNode,
 			DrawingContext *		dc,
 			int				page )
     {
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
     struct BufferDocument *	bd= lc->lcDocument;
 
     struct DocumentTree *	tree= (struct DocumentTree *)0;
@@ -152,7 +153,7 @@ static int docDrawNoteSeparator(
 			const DocumentNote *		dnFirstNote,
 			int				treeType )
     {
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
     const struct DocumentTree *	firstNoteTree;
     struct DocumentTree *	noteSepTree;
     int				y0Twips;
@@ -207,7 +208,7 @@ int docDrawFootnotesForColumn(	int				page,
 				DrawingContext *		dc )
     {
     int				rval= 0;
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
     struct BufferDocument *	bd= lc->lcDocument;
     DocumentField *		dfNote;
     DocumentNote *		dn;
@@ -271,7 +272,7 @@ int docDrawEndnotesForSection(		LayoutPosition *	lpBelow,
 					DrawingContext *	dc )
     {
     int				rval= 0;
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
     struct BufferDocument *	bd= lc->lcDocument;
     struct BufferItem *		bodySectNode;
 

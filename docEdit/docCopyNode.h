@@ -14,6 +14,7 @@ struct SelectionScope;
 struct BufferDocument;
 struct BufferItem;
 struct TextParticule;
+struct DocumentSelection;
 
 /************************************************************************/
 /*									*/
@@ -66,12 +67,20 @@ extern struct BufferItem * docCopyNode(
 				int				n,
 				const struct BufferItem *	nodeFrom );
 
+extern struct BufferItem * docCopyNodeSelection(
+				struct DocumentCopyJob *	dcj,
+				struct BufferItem *		parentNodeTo,
+				int				n,
+				const struct BufferItem *	nodeFrom,
+				const struct DocumentSelection * ds );
+
 extern struct BufferItem * docCopyParaNode(
 				struct DocumentCopyJob *	dcj,
 				const struct SelectionScope *	ssRoot,
 				struct BufferItem *		parentNodeTo,
 				int				n,
-				const struct BufferItem *	paraNodeFrom );
+				const struct BufferItem *	paraNodeFrom,
+				const struct DocumentSelection * ds );
 
 extern int docAppendDocument(	struct BufferDocument *	bdTo,
 				struct BufferDocument *	bdFrom,

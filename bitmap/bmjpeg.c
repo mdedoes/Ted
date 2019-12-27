@@ -4,7 +4,6 @@
 
 #   include	<stdlib.h>
 #   include	<stdio.h>
-#   include	<time.h>
 
 #   include	<jpeglib.h>
 #   include	<setjmp.h>

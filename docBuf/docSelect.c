@@ -134,8 +134,8 @@ int docDocumentTail(	DocumentPosition *	dp,
 /*									*/
 /************************************************************************/
 
-void docAvoidParaHeadField(	DocumentPosition *	dp,
-				int *			pPart,
+void docAvoidParaHeadField(	DocumentPosition *		dp,
+				int *				pPart,
 				const struct BufferDocument *	bd )
     {
     struct DocumentField *	dfHead= (struct DocumentField *)0;

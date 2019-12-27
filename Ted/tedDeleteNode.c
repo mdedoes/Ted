@@ -9,7 +9,7 @@
 #   include	<stddef.h>
 #   include	<ctype.h>
 
-#   include	"tedEdit.h"
+#   include	"tedEditOperation.h"
 #   include	<tedDocFront.h>
 #   include	<docRtfTrace.h>
 #   include	<docEditImpl.h>
@@ -64,7 +64,7 @@ static int tedEditDeleteSelectedParagaphs(	DocumentPosition *	dpNew,
 	int		sectionsDeleted= 0;
 	int		paragraphsDeleted= 0;
 
-	tedEditIncludeNodeInRedraw( teo,  dsParas.dsHead.dpNode );
+	tedEditIncludeNodeInRedraw( teo, dsParas.dsHead.dpNode );
 
 	docEditDeleteNodes( eo, &sectionsDeleted,
 				    &firstParaDeleted, &paragraphsDeleted,
@@ -177,8 +177,8 @@ int tedDocDeleteCurrentFrame(	struct EditDocument *	ed,
 static int tedEditDeleteSelectedSections(
 					DocumentPosition *	dpNew,
 					int *			pSide,
-					struct BufferItem *		sectNode0,
-					struct BufferItem *		sectNode1,
+					struct BufferItem *	sectNode0,
+					struct BufferItem *	sectNode1,
 					TedEditOperation *	teo )
     {
     int				rval= 0;

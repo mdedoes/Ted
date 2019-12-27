@@ -14,6 +14,7 @@
 #   include	<svgWriter.h>
 #   include	"docSvgDrawImpl.h"
 #   include	"docHtmlWriteImpl.h"
+#   include	"layoutContext.h"
 
 #   include	<appDebugon.h>
 
@@ -37,15 +38,22 @@ int docSvgDrawShapeText(	const DocumentRectangle *	drHere,
     int				rval= 0;
     SvgWriter *			sw= (SvgWriter *)vsw;
     XmlWriter *			xw= &(sw->swXmlWriter);
-    const LayoutContext *	lc= &(dc->dcLayoutContext);
+    const LayoutContext *	lc= dc->dcLayoutContext;
     char			bodyStyle[100+1];
 
     DocumentRectangle	drRaw;
+
+    HtmlWritingSettings	hws;
     HtmlWritingContext	hwc;
 
+    docInitHtmlWritingSettings( &hws );
     docInitHtmlWritingContext( &hwc );
 
-    hwc.hwcDocument= lc->lcDocument;
+    hws.hwsLayoutContext= lc;
+    hws.hwsDocument= lc->lcDocument;
+
+    docStartHtmlWritingContext( &hwc, &hws, xw->xwSos );
+
     hwc.hwcXmlWriter.xwSos= xw->xwSos;
 
     drRaw.drX0= 0;
