@@ -2311,6 +2311,10 @@ static RtfControlWord	docRtfPropertyWords[]=
     RTF_DEST_XX( "listoverridetable", RTCscopeDOC,
 				DPpropLISTOVERRIDETABLE,
 						docRtfListOverrideTable ),
+    /* Not ready yet
+    RTF_DEST_XX( "userprops",	RTCscopeDOC,
+				DPpropUSERPROPS,	docRtfUserProperties ),
+    */
     RTF_DEST_XX( "info",	RTCscopeDOC,
 				DPprop_INFO,	docRtfReadInfo ),
     RTF_DEST_XX( "revtbl",	RTCscopeDOC,

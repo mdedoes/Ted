@@ -222,28 +222,39 @@ static int docCssEmitBorderStyle(
     /* style */
     if  ( sioOutPutString( " solid", sos ) < 0 )
 	{ LDEB(1); return -1;	}
+    col += 6;
 
     /* color */
     if  ( bp->bpColor == 0 )
 	{
 	if  ( sioOutPutString( " black", sos ) < 0 )
 	    { LDEB(1); return -1;	}
+	col += 6;
 	}
     else{
 	const DocumentProperties *	dp= bd->bdProperties;
 	const ColorPalette *		colpal= dp->dpColorPalette;
-	const RGB8Color *		rgb8= colpal->cpColors+ bp->bpColor;
 
 	char				scratch[50];
 
-	sprintf( scratch, " #%02x%02x%02x",
-					rgb8->rgb8Red,
-					rgb8->rgb8Green,
-					rgb8->rgb8Blue );
+	if  ( bp->bpColor < colpal->cpColorCount )
+	    {
+	    const RGB8Color *	rgb8= colpal->cpColors+ bp->bpColor;
 
-	if  ( sioOutPutString( scratch, sos ) < 0 )
-	    { LDEB(1); return -1;	}
-	col += strlen( scratch );
+	    sprintf( scratch, " #%02x%02x%02x",
+					    rgb8->rgb8Red,
+					    rgb8->rgb8Green,
+					    rgb8->rgb8Blue );
+
+	    if  ( sioOutPutString( scratch, sos ) < 0 )
+		{ LDEB(1); return -1;	}
+	    col += strlen( scratch );
+	    }
+	else{
+	    if  ( sioOutPutString( " black", sos ) < 0 )
+		{ LDEB(1); return -1;	}
+	    col += 6;
+	    }
 	}
 
     if  ( sioOutPutByte( ';', sos ) < 0 )

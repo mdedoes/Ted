@@ -8,6 +8,7 @@ config.status
 confdefs.h
 autom4te.cache
 lib/
+configure~
 
 Ted/makefile
 Ted/tedConfig.h

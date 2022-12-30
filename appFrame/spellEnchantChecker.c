@@ -16,7 +16,14 @@
 #   include	<indSpellChecker.h>
 
 		/* apt-get install libenchant-dev */
+# if ENCHANT_VERSION == 1
 #   include	<enchant/enchant.h>
+# endif
+
+		/* apt-get install libenchant-2-dev */
+# if ENCHANT_VERSION == 2
+#   include	<enchant-2/enchant.h>
+# endif
 
 #   include	<appDebugon.h>
 

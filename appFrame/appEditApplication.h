@@ -289,11 +289,12 @@ typedef struct EditApplication
     int				eaAppSelectionTypeCount;
 
     struct PrintDestination *	eaPrintDestinations;
-    int			eaPrintDestinationCount;
-    int			eaDefaultPrintDestination;
-    int			eaPrintDestinationsCollected;
 
-    struct NamedImage *	eaNamedImages;
+    int				eaPrintDestinationCount;
+    int				eaDefaultPrintDestination;
+    int				eaPrintDestinationsCollected;
+
+    struct NamedImage *		eaNamedImages;
     int				eaNamedImageCount;
 
     unsigned int	eaNextDocumentId;
@@ -523,10 +524,6 @@ extern int appFileCanOpen(	const EditApplication *		ea,
 extern int appPostScriptFontCatalog(	EditApplication *	ea );
 
 extern int appGetPrintDestinations(	EditApplication *	ea );
-
-extern const struct AppSelectionType * appDocGetSelectionType(
-				const EditApplication *		ea,
-				const char *			selection );
 
 extern int appMakeDocumentWindow(	struct EditDocument **	pEd,
 					EditApplication *	ea,

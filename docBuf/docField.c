@@ -317,6 +317,17 @@ const FieldKindInformation DOC_FieldKinds[]=
 		SINGLE_PARAGRAPH,
     },
     {
+	"DOCPROPERTY",
+		DOClevSPAN,
+		FIELD_IN_RTF,
+		NO_DEST,
+		docRecalculateParaStringTextParticules,
+		docCalculateDocPropertyFieldString,
+		FIELDdoDOC_INFO,
+		RESULT_READONLY,
+		SINGLE_PARAGRAPH,
+    },
+    {
 	"MERGEFIELD",
 		DOClevSPAN,
 		FIELD_IN_RTF,

@@ -37,9 +37,7 @@ extern struct EditDocument * appOpenDocument(
 				int				readOnly,
 				const struct MemoryBuffer *	filename );
 
-extern void appDocToFront(	APP_WIDGET			option,
-				void *				voided,
-				void *				e );
+extern APP_MENU_CALLBACK_H( appDocToFront, option, voided, e );
 
 void appQuitApplication(	APP_WIDGET			option,
 				APP_WIDGET			relative,

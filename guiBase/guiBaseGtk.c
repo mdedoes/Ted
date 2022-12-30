@@ -21,10 +21,20 @@
 /*									*/
 /************************************************************************/
 
+static void guiCallGtkWidgetDestroy( GtkWidget * widget, void * null )
+    {
+    gtk_widget_destroy( widget );
+    }
+
 void guiEmptyParentWidget(	APP_WIDGET		parent )
     {
     gtk_container_foreach( GTK_CONTAINER( parent ),
+				    guiCallGtkWidgetDestroy, NULL );
+    /*
+    gtk_container_foreach( GTK_CONTAINER( parent ),
+				    guiCallGtkWidgetDestroy, NULL );
 				    (GtkCallback)gtk_widget_destroy, NULL );
+    */
     }
 
 /************************************************************************/

@@ -281,6 +281,25 @@ int utilMemoryBufferEqualsString(		const MemoryBuffer *	mb,
     return utilMemoryCompareBuffers( &mbLoc, mb ) == 0;
     }
 
+/* Only use for simple comparisons like file extensions */
+int utilMemoryBufferEqualStringIgnoreCase(	const MemoryBuffer *	mb,
+						const char *		s )
+    {
+    const unsigned char *pb = mb->mbBytes;
+    const unsigned char *ps = (const unsigned char *)s;
+
+    while ( *pb == *ps || tolower( *pb ) == tolower( *ps ) || toupper( *pb ) == toupper( *ps ) )
+	{
+	if  ( *ps == '\0' ) {
+	    return 1;
+	}
+
+	pb++; ps++;
+	}
+
+    return 0;
+    }
+
 /************************************************************************/
 /*									*/
 /*  Find bytes in a memory buffer.					*/

@@ -11,6 +11,7 @@
 #   include	<docRowProperties.h>
 #   include	<textAttribute.h>
 #   include	<utilPagedList.h>
+#   include	<docNotesProperties.h>
 #   include	"docRtfWriter.h"
 
 struct tm;
@@ -338,7 +339,7 @@ extern int docRtfSaveNotesProperties(
 		RtfWriter *			rw,
 		const struct PropertyMask *	mask,
 		const struct NotesProperties *	np,
-		const int			propMap[],
+		const int			propMap[NOTESprop_COUNT],
 		const char *			startNrTag,
 		const char * const *		justificationTags,
 		int				justificationTagCount,

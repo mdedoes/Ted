@@ -37,8 +37,9 @@ CFLAGS=	\
 
 #CFLAGS= -g -O2 $(WFLAGS) $(INCLUDES)
 
-# 57!!obs
+# 58!!obs
 OBS	=	\
+		docUserProperties.o\
 		docTreeType.o\
 		docTextParticule.o\
 		docTextLine.o\
@@ -808,4 +809,13 @@ docTextParticule.o: \
 docTreeType.o: \
     docTreeType.h \
     docTreeType.c
+
+docUserProperties.o: \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPropMask.h \
+    docBaseConfig.h \
+    docUserProperties.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    docUserProperties.c
 

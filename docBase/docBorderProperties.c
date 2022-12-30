@@ -64,8 +64,7 @@ int docBorderThick(		int *				pSpace,
 
 /************************************************************************/
 /*									*/
-/*  1) Are the columns in two RowProperties 'the same' (Do they align?)	*/
-/*  2) All column properties identical?					*/
+/*  Are the two BorderProperties 'the same'?				*/
 /*									*/
 /************************************************************************/
 

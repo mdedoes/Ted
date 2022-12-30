@@ -1750,6 +1750,7 @@ docRtfSaveCellProperties.o: \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
     ../docBase/docCellProperties.h \
+    ../docBase/docNotesProperties.h \
     ../docBase/docParaProperties.h \
     ../docBase/docRowProperties.h \
     docRtfConfig.h \
@@ -1837,6 +1838,7 @@ docRtfSaveField.o: \
     ../docBase/docLayoutPosition.h \
     ../docBase/docListNumberTree.h \
     ../docBase/docNoteProperties.h \
+    ../docBase/docNotesProperties.h \
     ../docBase/docParaProperties.h \
     ../docBase/docRowProperties.h \
     ../docBase/docSelectionScope.h \
@@ -1926,6 +1928,7 @@ docRtfSaveObject.o: \
     ../appUtil/utilPalette.h \
     ../bitmap/bitmap.h \
     ../docBase/docLayoutPosition.h \
+    ../docBase/docNotesProperties.h \
     ../docBase/docObject.h \
     ../docBase/docObjectProperties.h \
     ../docBase/docParaProperties.h \
@@ -1949,6 +1952,7 @@ docRtfSaveParaProperties.o: \
     ../appUtil/utilPropMask.h \
     ../docBase/docBreakKind.h \
     ../docBase/docFrameProperties.h \
+    ../docBase/docNotesProperties.h \
     ../docBase/docParaProperties.h \
     ../docBase/docRowProperties.h \
     ../docBuf/docAttributes.h \
@@ -1968,6 +1972,7 @@ docRtfSaveParagraph.o: \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
     ../docBase/docLayoutPosition.h \
+    ../docBase/docNotesProperties.h \
     ../docBase/docParaProperties.h \
     ../docBase/docRowProperties.h \
     ../docBase/docSelectionScope.h \
@@ -2001,6 +2006,7 @@ docRtfSaveRowProperties.o: \
     ../appUtil/utilPropMask.h \
     ../docBase/docCellProperties.h \
     ../docBase/docFrameProperties.h \
+    ../docBase/docNotesProperties.h \
     ../docBase/docParaProperties.h \
     ../docBase/docRowProperties.h \
     ../docBuf/docAttributes.h \
@@ -2057,6 +2063,7 @@ docRtfSaveShading.o: \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilPagedList.h \
     ../docBase/docItemShading.h \
+    ../docBase/docNotesProperties.h \
     ../docBase/docParaProperties.h \
     ../docBase/docRowProperties.h \
     ../docBuf/docAttributes.h \
@@ -2081,6 +2088,7 @@ docRtfSaveShape.o: \
     ../bitmap/bitmap.h \
     ../bitmap/bmio.h \
     ../docBase/docListNumberTree.h \
+    ../docBase/docNotesProperties.h \
     ../docBase/docObjectProperties.h \
     ../docBase/docParaProperties.h \
     ../docBase/docPictureProperties.h \
@@ -2331,6 +2339,7 @@ docRtfWriteListOverrideTable.o: \
     ../docBase/docListOverrideLevel.h \
     ../docBase/docListOverrideTable.h \
     ../docBase/docListTable.h \
+    ../docBase/docNotesProperties.h \
     ../docBase/docParaProperties.h \
     ../docBase/docRowProperties.h \
     docRtfConfig.h \
@@ -2350,6 +2359,7 @@ docRtfWriteListTable.o: \
     ../docBase/docListDepth.h \
     ../docBase/docListLevel.h \
     ../docBase/docListTable.h \
+    ../docBase/docNotesProperties.h \
     ../docBase/docParaProperties.h \
     ../docBase/docRowProperties.h \
     docRtfConfig.h \
@@ -2403,6 +2413,7 @@ docRtfWriteNode.o: \
     ../docBase/docInsertedObjectList.h \
     ../docBase/docLayoutPosition.h \
     ../docBase/docListNumberTree.h \
+    ../docBase/docNotesProperties.h \
     ../docBase/docParaProperties.h \
     ../docBase/docRowProperties.h \
     ../docBase/docScanner.h \
@@ -2438,6 +2449,7 @@ docRtfWritePicture.o: \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
+    ../docBase/docNotesProperties.h \
     ../docBase/docObjectProperties.h \
     ../docBase/docParaProperties.h \
     ../docBase/docPictureProperties.h \
@@ -2459,6 +2471,7 @@ docRtfWriteProperty.o: \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
     ../docBase/docBorderProperties.h \
+    ../docBase/docNotesProperties.h \
     ../docBase/docParaProperties.h \
     ../docBase/docRowProperties.h \
     ../docBuf/docAttributes.h \
@@ -2480,6 +2493,7 @@ docRtfWriteText.o: \
     ../appUtil/utilPagedList.h \
     ../docBase/docInsertedObjectList.h \
     ../docBase/docListNumberTree.h \
+    ../docBase/docNotesProperties.h \
     ../docBase/docParaProperties.h \
     ../docBase/docRowProperties.h \
     ../docBase/docStyleSheet.h \
@@ -2512,6 +2526,7 @@ docRtfWriterImpl.o: \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
     ../docBase/docLayoutPosition.h \
+    ../docBase/docNotesProperties.h \
     ../docBase/docParaProperties.h \
     ../docBase/docPropVal.h \
     ../docBase/docRowProperties.h \

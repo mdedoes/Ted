@@ -83,6 +83,7 @@ typedef enum DocumentProperty
     DPpropSTYLESHEET,
     DPpropLISTTABLE,
     DPpropLISTOVERRIDETABLE,
+    DPpropUSERPROPS,
 
     DPprop_COUNT,
 

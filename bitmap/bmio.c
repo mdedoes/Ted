@@ -70,12 +70,12 @@ int bmRead(	const struct MemoryBuffer *	filename,
 	if  ( ! bmFileTypes[fileType]->bftRead )
 	    { continue;	}
 
-	if  ( utilMemoryBufferEqualsString( &extension,
+	if  ( utilMemoryBufferEqualStringIgnoreCase( &extension,
 				bmFileTypes[fileType]->bftFileExtension ) )
 	    {
 	    if  ( (*bmFileTypes[fileType]->bftRead)( filename,
 						&buffer, bd, &privateType ) )
-		{ LDEB(fileType); break;	}
+		{ SLDEB(utilMemoryBufferGetString(filename),fileType); break;	}
 
 	    for (	fileFormat= 0;
 			fileFormat < bmNumberOfFileFormats;

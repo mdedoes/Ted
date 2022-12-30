@@ -688,7 +688,7 @@ static int appMetaSelectPatternBrushObjectSvg(	DeviceContext *		dc,
     SvgWriter *			sw= (SvgWriter *)through;
     XmlWriter *			xw= &(sw->swXmlWriter);
     char			id[20];
-    char			viewBox[20];
+    char			viewBox[40];
 
     if  ( pb->pbTileNumber < 0 )
 	{

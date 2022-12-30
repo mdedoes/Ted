@@ -80,7 +80,7 @@ GifFileType * EGifOpenFileHandle(	SimpleOutputStream *	sos )
 
     memset( gft, '\0', sizeof(GifFileType) );
 
-    strncpy( gft->gftVersionString, GIF87_STAMP, 6 )[6]= '\0';
+    strcpy( gft->gftVersionString, GIF87_STAMP )[6]= '\0';
 
     gft->gftSos= sos;
     gft->gftSosBlocked= (SimpleOutputStream *)0;

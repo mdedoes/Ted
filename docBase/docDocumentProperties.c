@@ -273,6 +273,7 @@ int docCopyDocumentProperties(	DocumentProperties *		to,
     PROPmaskUNSET( &dpSetMask, DPpropSTYLESHEET );
     PROPmaskUNSET( &dpSetMask, DPpropLISTTABLE );
     PROPmaskUNSET( &dpSetMask, DPpropLISTOVERRIDETABLE );
+    PROPmaskUNSET( &dpSetMask, DPpropUSERPROPS );
 
     PROPmaskUNSET( &dpSetMask, DPpropGENERATOR );
     PROPmaskUNSET( &dpSetMask, DPpropTITLE );

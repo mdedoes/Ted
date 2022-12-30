@@ -48,7 +48,7 @@ typedef struct RowNode
 				 *  past refer to similar rows.
 				 *
 				 *  The sequence number of the first table
-				 *  row in the parent of the sequance of rows 
+				 *  row in the parent of the sequence of rows 
 				 *  that we have decided to be a table.
 				 */
     int				brTableFirst;

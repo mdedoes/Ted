@@ -58,7 +58,7 @@
 #   include	<docObject.h>
 #   include	<docPropVal.h>
 #   include	<utilIndexMapping.h>
-#   include	"docParaScanner.h"
+#   include	<docParaScanner.h>
 #   include	<docBuf.h>
 #   include	<docStripFrame.h>
 #   include	<docObjects.h>

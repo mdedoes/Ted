@@ -130,7 +130,7 @@ int docPsPrintTab(	const DrawTextLine *		dtl,
 
 /************************************************************************/
 /*									*/
-/*  Save procedures to use implement tab leades in PostScript.		*/
+/*  Save procedures to use implement tab leaders in PostScript.		*/
 /*									*/
 /************************************************************************/
 

@@ -16,6 +16,8 @@
 #   include	<docBookmarkField.h>
 #   include	<docDocumentField.h>
 #   include	<docFieldKind.h>
+#   include	<docField.h>
+#   include	<docDocPropertyField.h>
 
 #   include	<docDebug.h>
 #   include	<appDebugon.h>
@@ -114,15 +116,58 @@ int docHtmlStartAnchor(	HtmlWritingContext *		hwc,
     return 0;
     }
 
+static void docHtmlStartFieldText(	const DocumentField *		df,
+					const FieldKindInformation *	fki,
+					HtmlWritingContext *		hwc )
+    {
+    MemoryBuffer	mbClasses;
+    DocPropertyField	dpf;
+
+
+    utilInitMemoryBuffer( &mbClasses );
+    docInitDocPropertyField( &dpf );
+
+    utilMemoryBufferAppendString( &mbClasses, docFieldKindStr( df->dfKind ) );
+
+    switch( df->dfKind )
+	{
+	case DOCfkDOCPROPERTY:
+	if  ( ! docGetDocPropertyField( &dpf, df ) )
+	    {
+	    utilMemoryBufferAppendString( &mbClasses, " " );
+	    utilMemoryAppendBuffer( &mbClasses, &(dpf.dpfPropertyName) );
+	    }
+	default:
+	    break;
+	}
+
+    docHtmlPutString( "<span class=\"", hwc );
+    xmlEscapeBuffer( &(hwc->hwcXmlWriter), &mbClasses );
+    docHtmlPutString( "\">", hwc );
+
+    docCleanDocPropertyField( &dpf );
+    utilCleanMemoryBuffer( &mbClasses );
+
+    return;
+    }
+
+static void docHtmlFinishFieldText(	HtmlWritingContext *	hwc )
+    {
+    docHtmlPutString( "</span>", hwc );
+    return;
+    }
+
 int docHtmlStartField(	const DocumentField *		df,
 			HtmlWritingContext *		hwc,
 			const struct BufferItem *	node,
 			int				attNr )
     {
-    int			rval= 0;
+    int				rval= 0;
 
     HyperlinkField		hf;
     const MemoryBuffer *	mbBookmark= (const MemoryBuffer *)0;
+
+    const FieldKindInformation * fki= DOC_FieldKinds+ df->dfKind;
 
     docInitHyperlinkField( &hf );
 
@@ -181,9 +226,13 @@ int docHtmlStartField(	const DocumentField *		df,
 
 	case DOCfkPAGEREF:
 	    hwc->hwcInPageref++;
+	    if  ( fki->fkiSingleParagraph )
+		{ docHtmlStartFieldText( df, fki, hwc );	}
 	    break;
 
 	default:
+	    if  ( fki->fkiSingleParagraph )
+		{ docHtmlStartFieldText( df, fki, hwc ); }
 	    break;
 	}
 
@@ -195,6 +244,8 @@ int docHtmlStartField(	const DocumentField *		df,
 int docHtmlFinishField(	const DocumentField *		df,
 			HtmlWritingContext *		hwc )
     {
+    const FieldKindInformation * fki= DOC_FieldKinds+ df->dfKind;
+
     switch( df->dfKind )
 	{
 	case DOCfkCHFTN:
@@ -225,9 +276,13 @@ int docHtmlFinishField(	const DocumentField *		df,
 
 	case DOCfkPAGEREF:
 	    hwc->hwcInPageref--;
+	    if  ( fki->fkiSingleParagraph )
+		{ docHtmlFinishFieldText( hwc );	}
 	    break;
 
 	default:
+	    if  ( fki->fkiSingleParagraph )
+		{ docHtmlFinishFieldText( hwc );	}
 	    break;
 	}
     

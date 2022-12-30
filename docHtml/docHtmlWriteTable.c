@@ -135,6 +135,8 @@ int docHtmlEnterCellNode( HtmlWritingContext *		hwc,
 
     int				cellPadding;
 
+    docLayoutInitBlockFrame( &bf );
+
     docTableDetermineCellspans( &rowspan, &colspan, cellNode );
 
     docBlockFrameTwips( &bf, cellNode->biChildren[0],

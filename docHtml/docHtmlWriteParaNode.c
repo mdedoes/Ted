@@ -303,7 +303,7 @@ static int docHtmlWriteUnbulletedParagraph(	HtmlParagraphWriter *	hpw )
     {
     HtmlWritingContext *	hwc= hpw->hpwHtmlWriter;
 
-    docHtmlPutString( "<div", hwc );
+  docHtmlPutString( "<div", hwc );
     docHtmlPutString( " style=\"", hwc );
 
     if  ( docHtmlTextIndentsToStyle( hpw ) )

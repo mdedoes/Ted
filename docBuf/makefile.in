@@ -39,7 +39,7 @@ CFLAGS=	\
 
 #CFLAGS= -g -O2 $(WFLAGS) $(INCLUDES)
 
-# 81!!obs
+# 82!!obs
 OBS	=	\
 		docTreeScanner.o\
 		docTreeParaScanner.o\
@@ -117,6 +117,7 @@ OBS	=	\
 		docCalculateFormulaFunction.o\
 		docCalculateFormulaField.o\
 		docCalculateDocpropField.o\
+		docCalculateDocPropertyField.o\
 		docCalcuateChftnField.o\
 		docBuf.o\
 		docAttributes.o
@@ -268,6 +269,27 @@ docCalcuateChftnField.o: \
     ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docCalcuateChftnField.c
+
+docCalculateDocPropertyField.o: \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docStyleSheet.h \
+    docBufConfig.h \
+    docBuf.h \
+    docDocumentTree.h \
+    docDrawingShapeList.h \
+    docEvalField.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocPropertyField.h \
+    ../docField/docDocumentFieldList.h \
+    docRecalculateFields.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    docCalculateDocPropertyField.c
 
 docCalculateDocpropField.o: \
     ../appUtil/appSystem.h \
@@ -1462,6 +1484,7 @@ docNodeObjects.o: \
     docBufConfig.h \
     docBuf.h \
     docCellNode.h \
+    docDebug.h \
     docDocumentTree.h \
     docDrawingShapeList.h \
     ../docField/docChildFields.h \

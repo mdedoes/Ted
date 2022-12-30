@@ -349,7 +349,8 @@ int docRtfSaveFieldHead(	RtfWriter *			rw,
 
     fki= DOC_FieldKinds+ df->dfKind;
 
-    if  ( fki->fkiIsFieldInRtf )
+    if  ( fki->fkiIsFieldInRtf ||
+	  ( df->dfKind == DOCfkUNKNOWN && df->dfInstructions.fiComponentCount > 0 ) )
 	{
 	if  ( df->dfKind != DOCfkMERGEFIELD				||
 	      ! ( rw->rwSaveFlags & RTFflagNO_MERGEFIELDS )		)
@@ -439,7 +440,8 @@ int docRtfSaveFieldTail(	RtfWriter *			rw,
     if  ( df->dfKind == DOCfkTC || df->dfKind == DOCfkTCN )
 	{ docRtfWriteDestinationEnd( rw ); }
 
-    if  ( fki->fkiIsFieldInRtf )
+    if  ( fki->fkiIsFieldInRtf ||
+	  ( df->dfKind == DOCfkUNKNOWN && df->dfInstructions.fiComponentCount > 0 ) )
 	{
 	if  ( df->dfKind != DOCfkMERGEFIELD		    	||
 	      ! ( rw->rwSaveFlags & RTFflagNO_MERGEFIELDS )	)

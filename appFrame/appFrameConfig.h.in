@@ -9,6 +9,7 @@
 #undef HAVE_XFT
 #undef HAVE_FONTCONFIG
 #undef HAVE_ENCHANT
+#undef ENCHANT_VERSION
 
 #undef USE_XFT
 #undef USE_FONTCONFIG

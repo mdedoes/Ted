@@ -126,7 +126,7 @@ void appAppSetWindowsOption(	APP_WIDGET		menu,
     ami.amiText= utilMemoryBufferGetString( title );
     ami.amiKey= (char *)0;
     ami.amiKeyText= (char *)0;
-    ami.amiCallback= (APP_MENU_CALLBACK_T)appDocToFront;
+    ami.amiCallback= appDocToFront;
 
     item= guiSetToggleMenuItem( menu, &(ed->edToplevel), &ami, (void *)ed );
 

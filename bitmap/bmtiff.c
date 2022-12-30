@@ -18,37 +18,37 @@
 typedef struct TiffReader
     {
     TIFF *		trTiff;
-    uint16		trCompression;
-    uint16		trBitsPerSample;
-    uint16		trPlanarConfig;
+    unsigned short	trCompression;
+    unsigned short	trBitsPerSample;
+    unsigned short	trPlanarConfig;
 
 
     unsigned long	trStripSize;
 
     unsigned char	trTiled;
-    uint32		trTileWide;
-    uint32		trTileHigh;
+    unsigned int		trTileWide;
+    unsigned int		trTileHigh;
 
     unsigned long	trTileSize;
     unsigned long	trTileRowSize;
     unsigned char *	trTileBuffer;
 
-    uint16		trPhotometric;
+    unsigned short	trPhotometric;
 
     float *		trYcbcrCoefficients;
     float *		trReferenceBlackWhite;
-    uint16		trYcbcrPositioning;
-    uint16		trYcbcrSubSamplingX;
-    uint16		trYcbcrSubSamplingY;
+    unsigned short	trYcbcrPositioning;
+    unsigned short	trYcbcrSubSamplingX;
+    unsigned short	trYcbcrSubSamplingY;
 
     /* libtiff wants these contigous and in this order */
     TIFFYCbCrToRGB	trYCbCrToRGB;
     TIFFRGBValue	tr_clamptab[4*256];
     int			tr_cr_r_tab[256];
     int			tr_cb_b_tab[256];
-    int32		tr_cr_g_tab[256];
-    int32		tr_cb_g_tab[256];
-    int32		tr_y_tab[256];
+    int			tr_cr_g_tab[256];
+    int			tr_cb_g_tab[256];
+    int			tr_y_tab[256];
     /* end contiguous block */
 
     } TiffReader;
@@ -85,9 +85,9 @@ static int bmTiffExtractYcbrcr(		TiffReader *		tr )
 static int bmTiffExtractPalette(	TiffReader *		tr,
 					BitmapDescription *	bd )
     {
-    unsigned short *		redMap= (uint16 *)0;
-    unsigned short *		greenMap= (uint16 *)0;
-    unsigned short *		blueMap= (uint16 *)0;
+    unsigned short *		redMap= (unsigned short *)0;
+    unsigned short *		greenMap= (unsigned short *)0;
+    unsigned short *		blueMap= (unsigned short *)0;
 
     int				color;
 
@@ -137,9 +137,9 @@ static int bmTiffExtractDescription(	int *			pFileFormat,
     {
     int			fileFormat;
 
-    uint16		u16;
-    uint32		u32;
-    uint16 *		whatKind;
+    unsigned short		u16;
+    unsigned int		u32;
+    unsigned short *		whatKind;
 
     if  ( TIFFGetField( tr->trTiff, TIFFTAG_COMPRESSION, &(tr->trCompression) ) != 1 )
 	{ LDEB(TIFFTAG_COMPRESSION); return -1;	}
@@ -327,8 +327,8 @@ static int bmTiffYCbCrtoRGB(	TiffReader *		tr,
 				unsigned char *		to,
 				const unsigned char *	from )
     {
-    uint32	Y, Cb, Cr;
-    uint32	r, g, b;
+    unsigned int	Y, Cb, Cr;
+    unsigned int	r, g, b;
 
     TIFFYCbCrtoRGB( &(tr->trYCbCrToRGB), Y, Cb, Cr, &r, &g, &b);
 

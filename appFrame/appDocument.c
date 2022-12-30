@@ -63,9 +63,7 @@ void appMakeDocVisible(	EditApplication *	ea,
 	}
     }
 
-void appDocToFront(	APP_WIDGET	option,
-			void *		voided,
-			void *		e )
+APP_MENU_CALLBACK_H( appDocToFront, option, voided, e )
     {
     EditDocument *		ed= (EditDocument *)voided;
     EditApplication *		ea= ed->edApplication;

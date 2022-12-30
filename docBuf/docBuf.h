@@ -64,7 +64,15 @@ typedef struct BufferDocument
     struct DocumentProperties *	bdProperties;
 
     InsertedObjectList		bdObjectList;
+
+				/**
+				 * The style sheet for the document. This 
+				 * should have been a member of bdProperties:
+				 * It does not relate to the structure of the
+				 * document.
+				 */
     DocumentStyleSheet		bdStyleSheet;
+
     DocumentFieldList		bdFieldList;
     DrawingShapeList		bdShapeList;
 

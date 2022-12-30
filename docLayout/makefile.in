@@ -1739,8 +1739,10 @@ docPsPrint.o: \
     ../docBase/docSectProperties.h \
     ../docBase/docSelectionScope.h \
     ../docBase/docStyleSheet.h \
+    ../docBase/docTreeType.h \
     ../docBuf/docBuf.h \
     ../docBuf/docCellNode.h \
+    ../docBuf/docDebug.h \
     ../docBuf/docDocumentTree.h \
     ../docBuf/docDrawingShapeList.h \
     ../docBuf/docHeaderFooterScopes.h \
@@ -1760,6 +1762,7 @@ docPsPrint.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     layoutContext.h \
+    ../textEncoding/textMsLocale.h \
     ../utilGeo/geoAffineTransform.h \
     ../utilGeo/geoDocumentPageSetup.h \
     ../utilGeo/geoRectangle.h \
@@ -2013,6 +2016,7 @@ docScreenDraw.o: \
     layoutContext.h \
     ../utilGeo/geo2DInteger.h \
     ../utilGeo/geoRectangle.h \
+    ../utilPs/psShading.h \
     ../utilPs/textAttribute.h \
     docScreenDraw.c
 
@@ -2037,6 +2041,7 @@ docScreenDrawObject.o: \
     ../include/appDebugon.h \
     layoutContext.h \
     ../utilGeo/geoRectangle.h \
+    ../utilPs/psShading.h \
     ../utilPs/textAttribute.h \
     docScreenDrawObject.c
 
@@ -2089,6 +2094,7 @@ docScreenDrawSelected.o: \
     ../include/appDebugon.h \
     layoutContext.h \
     ../utilGeo/geoRectangle.h \
+    ../utilPs/psShading.h \
     ../utilPs/textAttribute.h \
     docScreenDrawSelected.c
 
@@ -2124,6 +2130,7 @@ docScreenDrawShape.o: \
     ../utilGeo/geoAffineTransform.h \
     ../utilGeo/geoGrid.h \
     ../utilGeo/geoRectangle.h \
+    ../utilPs/psShading.h \
     ../utilPs/textAttribute.h \
     docScreenDrawShape.c
 
@@ -2159,6 +2166,7 @@ docScreenDrawTextLines.o: \
     layoutContext.h \
     ../utilGeo/geoGrid.h \
     ../utilGeo/geoRectangle.h \
+    ../utilPs/psShading.h \
     ../utilPs/psTextExtents.h \
     ../utilPs/textAttribute.h \
     docScreenDrawTextLines.c
@@ -2195,6 +2203,7 @@ docScreenFindLinePosition.o: \
     layoutContext.h \
     ../textEncoding/uniUtf8.h \
     ../utilGeo/geoRectangle.h \
+    ../utilPs/psShading.h \
     ../utilPs/psTextExtents.h \
     ../utilPs/textAttribute.h \
     docScreenFindLinePosition.c
@@ -2310,6 +2319,7 @@ docScreenLayoutFindX.o: \
     ../include/appDebugon.h \
     layoutContext.h \
     ../utilGeo/geoRectangle.h \
+    ../utilPs/psShading.h \
     ../utilPs/psTextExtents.h \
     docScreenLayoutFindX.c
 
@@ -2429,6 +2439,7 @@ docSelectionGeometry.o: \
     ../utilGeo/geoDocumentPageSetup.h \
     ../utilGeo/geoRectangle.h \
     ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/psShading.h \
     ../utilPs/textAttribute.h \
     docSelectionGeometry.c
 

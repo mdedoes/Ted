@@ -159,8 +159,16 @@ int docRtfSaveDocumentProperties( RtfWriter *			rw,
 	{
 	docRtfWriteNextLine( rw );
 	docRtfWriteListOverrideTable( rw,
-				    &(dpSet->dpListAdmin->laListOverrideTable) );
+				&(dpSet->dpListAdmin->laListOverrideTable) );
 	}
+
+    /* Not ready yet
+    if  ( PROPmaskISSET( dpSetMask, DPpropUSERPROPS ) )
+	{
+	docRtfWriteNextLine( rw );
+	docRtfWriteUserProperties( rw, &(rw->rwDocument->bdUserProperties) );
+	}
+    */
 
     if  ( PROPmaskISSET( dpSetMask, DPpropGENERATOR ) )
 	{ docRtfSaveInfo( rw, RTFtag__generator, &(dpSet->dpGeneratorWrite) ); }

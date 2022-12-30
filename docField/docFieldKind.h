@@ -60,6 +60,16 @@ typedef enum FieldKind
 	     */
     DOCfkFILENAME,
 
+	    /**
+	     *  Insert the value of a user property that belongs to the
+	     *  document.
+	     */
+    DOCfkDOCPROPERTY,
+
+	    /**
+	     *  Insert the value of a value that is obtained from another
+	     *  document or a database etc.
+	     */
     DOCfkMERGEFIELD,
     DOCfkFORMTEXT,
     DOCfkFORMCHECKBOX,

@@ -10,6 +10,7 @@
 
 #   include	<drawDrawingSurface.h>
 #   include	<utilColor.h>
+#   include	<psShading.h>
 
 struct InsertedObject;
 struct BlockOrnaments;
@@ -70,7 +71,7 @@ extern int docScreenDrawInlineObject(
 
 extern void docScreenDrawShadedRectangle(
 			const struct LayoutContext *		lc,
-			DrawingSurface *			shadingPixmaps,
+			DrawingSurface				shadingPixmaps[PSshd_COUNT],
 			int					pattern,
 			const struct DocumentRectangle *	drShade );
 

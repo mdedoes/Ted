@@ -76,6 +76,10 @@ extern char * utilMemoryStrdup(	const MemoryBuffer *		mbFrom );
 extern int utilMemoryBufferEqualsString(	const MemoryBuffer *	mb,
 						const char *		s );
 
+extern int utilMemoryBufferEqualStringIgnoreCase(
+						const MemoryBuffer *	mb,
+						const char *		s );
+
 extern int utilMemoryBufferLastIndexOf(	const MemoryBuffer *	mb,
 					int			val );
 

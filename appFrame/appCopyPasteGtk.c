@@ -54,6 +54,7 @@ static int appGetResponseType(	AppSelectionType **		pAst,
 				int *				pTtargetFound,
 				AppSelectionType *		ast,
 				int				astCount,
+				int				forWhat,
 				APP_ATOM			selection,
 				APP_ATOM			target )
     {
@@ -74,7 +75,14 @@ static int appGetResponseType(	AppSelectionType **		pAst,
     for ( i= 0; i < ast->astTargetTypeCount; astt++, i++ )
 	{
 	if  ( astt->asttTargetAtom == target )
-	    { break;	}
+	    {
+	    if  ( ( forWhat & FOR_COPY ) && ! astt->asttGiveCopy )
+		{ continue;	}
+	    if  ( ( forWhat & FOR_PASTE ) && ! astt->asttUsePaste )
+		{ continue;	}
+
+	    break;
+	    }
 	}
 
     if  ( i >= ast->astTargetTypeCount )
@@ -233,6 +241,7 @@ boe
     if  ( appGetResponseType( &ast, &astt, &targetFound,
 				ea->eaDocSelectionTypes,
 				ea->eaDocSelectionTypeCount,
+				FOR_PASTE,
 				selection,
 				gtk_selection_data_get_target( gsd ) ) )
 	{ LDEB(1); return;	}
@@ -253,8 +262,12 @@ boe
 	    }
 	}
     else{
-	(*astt->asttUsePaste)( w, gsd, time, voided );
-	ea->eaGotPaste= 1;
+	if  ( ! astt->asttUsePaste )
+	    { XDEB(astt->asttUsePaste);	}
+	else{
+	    (*astt->asttUsePaste)( w, gsd, time, voided );
+	    ea->eaGotPaste= 1;
+	    }
 	gtk_main_quit();
 	}
     }
@@ -315,6 +328,7 @@ APP_GIVE_COPY( appDocReplyToCopyRequest, w, gsd, voided )
     if  ( appGetResponseType( &ast, &astt, &targetFound,
 				    ea->eaDocSelectionTypes,
 				    ea->eaDocSelectionTypeCount,
+				    FOR_COPY,
 				    gtk_selection_data_get_selection( gsd ),
 				    gtk_selection_data_get_target( gsd ) ) )
 	{ LDEB(1); return;	}

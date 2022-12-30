@@ -434,9 +434,11 @@ docHtmlWriteField.o: \
     ../docBase/docSelectionScope.h \
     ../docBuf/docBlockFrame.h \
     ../docBuf/docDebug.h \
+    ../docBuf/docField.h \
     ../docBuf/docStripFrame.h \
     ../docField/docBookmarkField.h \
     ../docField/docChildFields.h \
+    ../docField/docDocPropertyField.h \
     ../docField/docDocumentField.h \
     ../docField/docFieldInstructions.h \
     ../docField/docFieldKind.h \

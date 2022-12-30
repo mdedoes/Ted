@@ -25,7 +25,9 @@ const AppSelectionType * appDocGetSelectionType(
     for ( i= 0; i < ea->eaDocSelectionTypeCount; ast++, i++ )
 	{
 	if  ( ! strcmp( ast->astSelectionString, selection ) )
-	    { break;	}
+	    {
+	    break;
+	    }
 	}
 
     if  ( i >= ea->eaDocSelectionTypeCount )

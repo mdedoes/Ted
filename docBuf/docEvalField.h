@@ -91,6 +91,12 @@ extern int docCalculateFilenameFieldString(
 			const struct DocumentField *		df,
 			const struct RecalculateFields *	rf );
 
+extern int docCalculateDocPropertyFieldString(
+			int *					pCalculated,
+			struct MemoryBuffer *			mbResult,
+			const struct DocumentField *		df,
+			const struct RecalculateFields *	rf );
+
 extern int docCalculateRefFieldString(
 			int *					pCalculated,
 			struct MemoryBuffer *			mbResult,

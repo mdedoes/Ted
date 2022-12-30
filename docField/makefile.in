@@ -33,7 +33,7 @@ CFLAGS=	\
 
 #CFLAGS= -g -O2 $(WFLAGS) $(INCLUDES)
 
-# 27!!obs
+# 28!!obs
 OBS	=	\
 		docTocField.o\
 		docTcField.o\
@@ -57,6 +57,7 @@ OBS	=	\
 		docFieldGetSet.o\
 		docDocumentFieldList.o\
 		docDocumentField.o\
+		docDocPropertyField.o\
 		docDebugFieldInstructions.o\
 		docDateField.o\
 		docBookmarkField.o
@@ -117,6 +118,22 @@ docDebugFieldInstructions.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     docDebugFieldInstructions.c
+
+docDocPropertyField.o: \
+    ../appUtil/utilMemoryBuffer.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docSelectionScope.h \
+    docChildFields.h \
+    docDocPropertyField.h \
+    docDocumentField.h \
+    docFieldConfig.h \
+    docFieldFormat.h \
+    docFieldInstructions.h \
+    docFieldKind.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    docDocPropertyField.c
 
 docDocumentField.o: \
     ../appUtil/utilMemoryBuffer.h \
