@@ -302,7 +302,7 @@ static int docDrawNodeLow(	LayoutPosition *		lpBelow,
 
     /*  4  */
     if  ( dc->dcFirstPage >= 0				&&
-	  lpBelowNodeOffspring.lpPage < dc->dcFirstPage		)
+	  lpBelowNodeOffspring.lpPage < dc->dcFirstPage	)
 	{ return 0;	}
 
     if  ( dc->dcLastPage >= 0				&&
@@ -313,6 +313,9 @@ static int docDrawNodeLow(	LayoutPosition *		lpBelow,
 	{
 	docLayoutPushBottomDown( lpBelow, &(node->biTopPosition) );
 	}
+
+    if  ( dc->dcStartNode && (*dc->dcStartNode)( through, dc, node ) )
+	{ LDEB(node->biLevel); return -1; }
 
     switch( node->biLevel )
 	{
@@ -348,6 +351,9 @@ static int docDrawNodeLow(	LayoutPosition *		lpBelow,
 	default:
 	    LDEB(node->biLevel); return -1;
 	}
+
+    if  ( dc->dcFinishNode && (*dc->dcFinishNode)( through, dc, node ) )
+	{ LDEB(node->biLevel); return -1; }
 
     return 0;
     }

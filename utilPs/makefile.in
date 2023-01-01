@@ -32,7 +32,7 @@ WFLAGS=	-Wall			\
 
 #CFLAGS= $(WFLAGS) -g -O2 $(INCLUDES)
 
-# 37!!obs
+# 38!!obs
 OBS	=	\
 		textAttributeUtil.o\
 		textAttribute.o\
@@ -51,6 +51,7 @@ OBS	=	\
 		psPrintPdf.o\
 		psPrint.o\
 		psPostScriptFontList.o\
+		psPdfmarkContent.o\
 		psPdfmark.o\
 		psNup.o\
 		psMatchFont.o\
@@ -373,6 +374,21 @@ psPdfmark.o: \
     ../utilGeo/geoRectangleOffsets.h \
     utilPsConfig.h \
     psPdfmark.c
+
+psPdfmarkContent.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    psNup.h \
+    psPrint.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    utilPsConfig.h \
+    psPdfmarkContent.c
 
 psPostScriptFontList.o: \
     ../appUtil/appUtilConfig.h \

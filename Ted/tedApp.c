@@ -79,6 +79,10 @@ void tedDetermineDefaultSettings(	TedAppResources *	tar )
 					    tar->tarPdfOutlineString ) )
 	{ SDEB(tar->tarPdfOutlineString);	}
 
+    if  ( appDetermineBoolean( &(tar->tarPdfMarkContentInt),
+					    tar->tarPdfMarkContentString ) )
+	{ SDEB(tar->tarPdfMarkContentString);	}
+
     if  ( appDetermineBoolean( &(tar->tarOverridePaperSizeInt),
 					    tar->tarOverridePaperSizeString ) )
 	{ SDEB(tar->tarOverridePaperSizeString);	}

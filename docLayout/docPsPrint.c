@@ -23,6 +23,7 @@
 #   include	"docLayout.h"
 #   include	"docPsPrintImpl.h"
 #   include	"docPsPrint.h"
+#   include	<docTreeNode.h>
 #   include	"layoutContext.h"
 #   include	<docTreeNode.h>
 #   include	<docDocumentProperties.h>
@@ -33,8 +34,10 @@
 #   include	<docBuf.h>
 #   include	<psPrint.h>
 #   include	<docHeaderFooterScopes.h>
+#   include	<textMsLocale.h>
 
 #   include	<appDebugon.h>
+#   include	<docDebug.h>
 
 #   define	SHOW_PAGE_GRID	0
 
@@ -371,6 +374,7 @@ int docPsPrintDocument(	struct SimpleOutputStream *	sos,
 			const MemoryBuffer *		fontDirectory,
 			double				shadingMesh,
 			int				emitOutline,
+			int				markContent,
 			const LayoutContext *		lc,
 			const PrintGeometry *		pg )
     {
@@ -401,6 +405,7 @@ int docPsPrintDocument(	struct SimpleOutputStream *	sos,
 	{ emitOutline= 0;	}
 
     docInitDrawingContext( &dc );
+    psInitPrintingState( &ps );
 
     dc.dcSetColorRgb= docPsSetColorRgb;
     dc.dcSetFont= docPsSetFont;
@@ -421,6 +426,17 @@ int docPsPrintDocument(	struct SimpleOutputStream *	sos,
     dc.dcStartPage= docPsPrintStartPage;
     dc.dcStartTreeLayout= startTreeLayout;
 
+    if  ( markContent )
+	{
+	dc.dcStartNode= docPsPrintStartNode;
+	dc.dcFinishNode= docPsPrintFinishNode;
+	dc.dcStartLines= docPsPrintStartLines;
+	dc.dcFinishLines= docPsPrintFinishLines;
+	dc.dcStartTree= docPsPrintStartTree;
+	dc.dcFinishTree= docPsPrintFinishTree;
+	ps.psTagDocumentStructure= 1;
+	}
+
     dc.dcLayoutContext= lc;
 
     dc.dcFirstPage= pg->pgFirstPage;
@@ -431,7 +447,6 @@ int docPsPrintDocument(	struct SimpleOutputStream *	sos,
     if  ( pg->pgOmitHeadersOnEmptyPages )
 	{ dc.dcPostponeHeadersFooters= 1;	}
 
-    psInitPrintingState( &ps );
     ps.psSos= sos;
     ps.psUsePostScriptFilters= pg->pgUsePostScriptFilters;
     ps.psUsePostScriptIndexedImages= pg->pgUsePostScriptIndexedImages;
@@ -517,6 +532,13 @@ int docPsPrintDocument(	struct SimpleOutputStream *	sos,
 
 	    sioInClose( sis );
 	    }
+	}
+
+    if  ( ps.psTagDocumentStructure )
+	{
+	if  ( psPdfmarkMarkedDocumentSetup( &ps,
+			    textGetMsLocaleTagById( dp->dpDefaultLocaleId ) ) )
+	    { LDEB(dp->dpDefaultLocaleId);	}
 	}
 
     if  ( docHasDocumentInfo( dp ) )

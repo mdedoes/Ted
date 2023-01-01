@@ -146,6 +146,7 @@ int tedPrintDocument(	SimpleOutputStream *		sos,
     double			shadingMesh= -1;
     TedAppResources *		tar= (TedAppResources *)ea->eaResourceData;
     int				emitOutline= tar->tarPdfOutlineInt > 0;
+    int				markContent= tar->tarPdfMarkContentInt > 0;
 
     MemoryBuffer		fontDir;
 
@@ -164,7 +165,8 @@ int tedPrintDocument(	SimpleOutputStream *		sos,
 				    ea->eaApplicationName,
 				    ea->eaReference,
 				    &fontDir,
-				    shadingMesh, emitOutline, &lc, pg ) )
+				    shadingMesh, emitOutline, markContent,
+				    &lc, pg ) )
 	{ LDEB(1); rval= -1;	}
 
   ready:

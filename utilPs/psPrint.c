@@ -370,6 +370,10 @@ void psInitPrintingState(	PrintingState *	ps )
     ps->psUsePostScriptIndexedImages= 1;
     ps->ps7Bits= 0;
 
+    ps->psTagDocumentStructure= 0;
+    ps->psDocContentMarkCount= 0;
+    ps->psPageContentMarkCount= 0;
+
     return;
     }
 
@@ -551,3 +555,12 @@ void psFlushLink(		PrintingState *		ps,
     return;
     }
 
+int psNewPageContentId(	PrintingState *		ps )
+    {
+    return ps->psPageContentMarkCount++;
+    }
+
+int psNewDocContentId(	PrintingState *		ps )
+    {
+    return ps->psDocContentMarkCount++;
+    }

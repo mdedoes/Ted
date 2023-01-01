@@ -42,7 +42,7 @@ CFLAGS=	\
 
 #CFLAGS= -g -O2 $(WFLAGS) $(INCLUDES)
 
-# 73!!obs
+# 74!!obs
 OBS	=	\
 		layoutContext.o\
 		docValignCells.o\
@@ -63,6 +63,7 @@ OBS	=	\
 		docScreenDraw.o\
 		docPsPrintTextLine.o\
 		docPsPrintTabs.o\
+		docPsPrintStructure.o\
 		docPsPrintShapes.o\
 		docPsPrintPdfmarks.o\
 		docPsPrintOrnaments.o\
@@ -1739,7 +1740,6 @@ docPsPrint.o: \
     ../docBase/docSectProperties.h \
     ../docBase/docSelectionScope.h \
     ../docBase/docStyleSheet.h \
-    ../docBase/docTreeType.h \
     ../docBuf/docBuf.h \
     ../docBuf/docCellNode.h \
     ../docBuf/docDebug.h \
@@ -1921,6 +1921,39 @@ docPsPrintShapes.o: \
     ../utilPs/psPrintShape.h \
     ../utilPs/textAttribute.h \
     docPsPrintShapes.c
+
+docPsPrintStructure.o: \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyleSheet.h \
+    ../docBase/docTreeType.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDebug.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docTreeNode.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    docLayoutConfig.h \
+    docPsPrintImpl.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/psNup.h \
+    ../utilPs/psPrint.h \
+    docPsPrintStructure.c
 
 docPsPrintTabs.o: \
     ../appUtil/sioGeneral.h \

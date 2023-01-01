@@ -306,15 +306,20 @@ int docPsPrintOrnaments(	const BlockOrnaments *		bo,
 				int				page,
 				const DocumentRectangle *	drOutside,
 				const DocumentRectangle *	drInside,
-				void *				through,
+				void *				vps,
 				struct DrawingContext *		dc )
     {
-    PrintingState *		ps= (PrintingState *)through;
+    PrintingState *		ps= (PrintingState *)vps;
     const LayoutContext *	lc= dc->dcLayoutContext;
     const struct BufferDocument *	bd= lc->lcDocument;
     const DocumentProperties *	dp= bd->bdProperties;
 
     int				done= 0;
+
+    if  ( ps->psTagDocumentStructure			&&
+	  ! utilPropMaskIsEmpty( &(bo->boPropMask) )	&&
+	  psPdfBeginMarkedContent( ps, "Artifact", -1 )	)
+	{ LDEB(-1); return -1;	}
 
     if  ( PROPmaskISSET( &(bo->boPropMask), ORNdrawSHADE ) )
 	{
@@ -431,6 +436,11 @@ int docPsPrintOrnaments(	const BlockOrnaments *		bo,
 
     if  ( done )
 	{ sioOutPrintf( ps->psSos, "\n" ); }
+
+    if  ( ps->psTagDocumentStructure			&&
+	  ! utilPropMaskIsEmpty( &(bo->boPropMask) )	&&
+	  psPdfEndMarkedContent( ps )	)
+	{ LDEB(1); return -1;	}
 
     return 0;
     }

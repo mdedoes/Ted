@@ -49,6 +49,9 @@ typedef struct TedAppResources
     char *			tarPdfOutlineString;
     int				tarPdfOutlineInt;
 
+    char *			tarPdfMarkContentString;
+    int				tarPdfMarkContentInt;
+
     char *			tarOverridePaperSizeString;
     int				tarOverridePaperSizeInt;
 

@@ -65,6 +65,13 @@ void docInitDrawingContext(	DrawingContext *	dc )
     dc->dcStartPage= (START_PAGE)0;
     dc->dcStartTreeLayout= (START_TREE_LAYOUT)0;
 
+    dc->dcStartNode= (START_NODE)0;
+    dc->dcFinishNode= (FINISH_NODE)0;
+    dc->dcStartLines= (START_LINES)0;
+    dc->dcFinishLines= (FINISH_LINES)0;
+    dc->dcStartTree= (START_TREE)0;
+    dc->dcFinishTree= (FINISH_TREE)0;
+
     return;
     }
 

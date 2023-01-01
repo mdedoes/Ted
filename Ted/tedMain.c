@@ -113,6 +113,9 @@ static AppConfigurableResource TEDApplicationResourceTable[]=
     APP_RESOURCE( "pdfOutline",
 		offsetof(TedAppResources,tarPdfOutlineString),
 		"1" ),
+    APP_RESOURCE( "pdfMarkContent",
+		offsetof(TedAppResources,tarPdfMarkContentString),
+		"0" ),
     APP_RESOURCE( "overridePaperSize",
 		offsetof(TedAppResources,tarOverridePaperSizeString),
 		"0" ),
@@ -199,8 +202,10 @@ static AppSelectionTargetType TedClipboardTargets[]=
 {
     { "application/rtf", (APP_ATOM)0,	tedPasteClipboardRtf,
 					tedCopyClipboardRtf		},
+    /* Not for Paste!
     { "text/html", (APP_ATOM)0,		(APP_PASTE_REPLY)0,
 					tedCopyClipboardHtml		},
+    */
     { "UTF8_STRING", (APP_ATOM)0,	tedPasteClipboardString,
 					tedCopyClipboardString		},
     { "STRING",	(APP_ATOM)0,		tedPasteClipboardString,

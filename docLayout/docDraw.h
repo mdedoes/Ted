@@ -147,6 +147,53 @@ typedef int (*FINISH_TEXT_LINE)(
 			const struct DrawTextLine *		dtl,
 			int					x1Twips );
 
+			/**
+			 *  Keep track of the document hierarchy while 
+			 *  drawing. This is to make it possble to tag the 
+			 *  structural elements in the output. This is used 
+			 *  to support the ISO 14289-1 (PDF/UA) requirements.
+			 *  (We use PdfMarks for that). These two are invoked
+			 *  around the actual drawing of the document node.
+			 */
+typedef int (*START_NODE)(	void *				through,
+				struct DrawingContext *		dc,
+				struct BufferItem *		node );
+
+typedef int (*FINISH_NODE)(	void *				through,
+				struct DrawingContext *		dc,
+				struct BufferItem *		node );
+
+			/**
+			 *  Keep track of the document hierarchy while 
+			 *  drawing. As nodes may be split by page breaks,
+			 *  at some places finer control is needed. These 
+			 *  two are invoked around the actual drawing of 
+			 *  the lines on a single page of of the document.
+			 */
+typedef int (*START_LINES)(	void *				through,
+				struct DrawingContext *		dc,
+				struct BufferItem *		node );
+
+typedef int (*FINISH_LINES)(	void *				through,
+				struct DrawingContext *		dc,
+				struct BufferItem *		node );
+
+			/**
+			 *  Keep track of the document hierarchy while 
+			 *  drawing. These two are invoked around the 
+			 *  drawing of separate document trees like the 
+			 *  document body, the page headers/footers,
+			 *  foot/end notes etc.
+			 */
+typedef int (*START_TREE)(	void *				through,
+				struct DrawingContext *		dc,
+				struct DocumentTree *		tree );
+
+typedef int (*FINISH_TREE)(	void *				through,
+				struct DrawingContext *		dc,
+				struct DocumentTree *		tree );
+
+
 typedef struct DrawingContext
     {
     int				dcCurrentTextAttributeSet;
@@ -269,6 +316,15 @@ typedef struct DrawingContext
     FINISH_PAGE			dcFinishPage;
     START_PAGE			dcStartPage;
     START_TREE_LAYOUT		dcStartTreeLayout;
+
+    START_NODE			dcStartNode;
+    FINISH_NODE			dcFinishNode;
+
+    START_LINES			dcStartLines;
+    FINISH_LINES		dcFinishLines;
+
+    START_TREE			dcStartTree;
+    FINISH_TREE			dcFinishTree;
     } DrawingContext;
 
 /************************************************************************/

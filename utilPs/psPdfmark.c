@@ -372,3 +372,16 @@ int psSetPageProperty(		PrintingState *		ps,
 
     return 0;
     }
+
+int psSetCatalogProperty(	PrintingState *		ps,
+				const char *		key,
+				const char *		value )
+    {
+    sioOutPrintf( ps->psSos, "[ {Catalog} << " );
+    sioOutPrintf( ps->psSos, "/%s ", key );
+    psPrintStringValue( ps, value, strlen( value ) );
+    sioOutPrintf( ps->psSos, " >> /PUT pdfmark\n" );
+
+    return 0;
+    }
+

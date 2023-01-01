@@ -23,6 +23,8 @@ struct TextAttribute;
 struct DocumentRectangle;
 struct PrintingState;
 struct AffineTransform2D;
+struct DocumentTree;
+struct BufferItem;
 
 /************************************************************************/
 /*									*/
@@ -141,6 +143,29 @@ extern int docPsDocinfoPdfmark( struct PrintingState *		ps,
 			const char *			applicationReference,
 			const struct DocumentProperties *	dp );
 
-extern int docPsOutlinePdfmarks(	struct PrintingState *		ps,
-					struct BufferDocument *	bd );
+extern int docPsOutlinePdfmarks( struct PrintingState *		ps,
+				struct BufferDocument *		bd );
 
+extern int docPsPrintStartTree(	void *				vps,
+				struct DrawingContext *		dc,
+				struct DocumentTree *		tree );
+
+extern int docPsPrintFinishTree( void *				vps,
+				struct DrawingContext *		dc,
+				struct DocumentTree *		tree );
+
+extern int docPsPrintStartLines( void *				vps,
+				struct DrawingContext *		dc,
+				struct BufferItem *		node );
+
+extern int docPsPrintFinishLines( void *			vps,
+				struct DrawingContext *		dc,
+				struct BufferItem *		node );
+
+extern int docPsPrintStartNode( void *				vps,
+				struct DrawingContext *		dc,
+				struct BufferItem *		node );
+
+extern int docPsPrintFinishNode( void *				vps,
+				struct DrawingContext *		dc,
+				struct BufferItem *		node );

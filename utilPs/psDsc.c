@@ -229,7 +229,12 @@ int psStartPage(	PrintingState *			ps,
     sioOutPrintf( ps->psSos, " concat\n" );
 
     if  ( firstOnSheet )
-	{ sioOutPrintf( ps->psSos, "%%%%EndPageSetup\n" );	}
+	{
+	if  ( ps->psTagDocumentStructure && psPdfmarkMarkedPageSetup( ps, ps->psSheetsPrinted ) )
+	    { LDEB(ps->psTagDocumentStructure); return -1;	}
+
+	sioOutPrintf( ps->psSos, "%%%%EndPageSetup\n" );
+	}
 
     return 0;
     }
@@ -277,6 +282,11 @@ int psFinishPage(	PrintingState *		ps,
 	if  ( sheetIsEmpty )
 	    { psDrawSometingInvisible( ps );	}
 
+	/* Do final administration of the marks on the page. */
+	/* This must be done BEFORE showpage as the implementation uses the page dictionary */
+	if  ( ps->psTagDocumentStructure && psPdfmarkFinishMarkedPage( ps, ps->psSheetsPrinted ) )
+	    { LDEB(ps->psTagDocumentStructure); return -1;	}
+
 	if  ( psPageOperator( "showpage grestore", ps, documentPage ) )
 	    { LDEB(documentPage); return -1;	}
 
@@ -295,6 +305,10 @@ int psFinishPage(	PrintingState *		ps,
     if  ( asLast )
 	{
 	sioOutPrintf( ps->psSos, "%%%%Trailer\n" );
+
+	if  ( ps->psTagDocumentStructure && psPdfmarkMarkedDocumentTrailer( ps ) )
+	    { LDEB(ps->psTagDocumentStructure); return -1;	}
+
 	sioOutPrintf( ps->psSos, "%%%%Pages: %d\n", ps->psSheetsPrinted );
 	sioOutPrintf( ps->psSos, "%%%%EOF\n" );
 	}

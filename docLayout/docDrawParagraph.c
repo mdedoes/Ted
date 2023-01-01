@@ -386,6 +386,9 @@ int docDrawTextLines(	void *				through,
 	LLDEB(pds->pdsShadeTop.lpColumn,pds->pdsShadeBelow.lpColumn);
 	}
 
+    if  ( dc->dcStartLines && (*dc->dcStartLines)( through, dc, paraNode ) )
+	{ LDEB(1); return -1;	}
+
     /*  1  */
     while( line < paraNode->biParaLineCount )
 	{
@@ -463,10 +466,18 @@ int docDrawTextLines(	void *				through,
 	if  ( res < 0 )
 	    { LDEB(res); return -1; }
 	if  ( res == SCANadviceSTOP )
-	    { return res;	}
+	    {
+	    if  ( dc->dcFinishLines && (*dc->dcFinishLines)( through, dc, paraNode ) )
+		{ LDEB(1); return -1;	}
+
+	    return res;
+	    }
 
 	line++; tl++;
 	}
+
+    if  ( dc->dcFinishLines && (*dc->dcFinishLines)( through, dc, paraNode ) )
+	{ LDEB(1); return -1;	}
 
     return 0;
     }

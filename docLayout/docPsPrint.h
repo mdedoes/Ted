@@ -26,6 +26,7 @@ extern int docPsPrintDocument(
 			const struct MemoryBuffer *	fontDirectory,
 			double				shadingMesh,
 			int				emitOutline,
+			int				markContent,
 			const struct LayoutContext *	lc,
 			const struct PrintGeometry *	pg );
 

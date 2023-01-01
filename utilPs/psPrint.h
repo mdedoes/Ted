@@ -23,8 +23,19 @@ struct MemoryBuffer;
 
 typedef struct PrintingState
     {
+				/**
+				 * The output stream that receives the 
+				 * actual PostScript that we emit
+				 */
     struct SimpleOutputStream *	psSos;
 
+				/**
+				 * The number (counting from 0) in the 
+				 * document of the page that received 
+				 * something visible. Empty pages are 
+				 * only counted when a subsequent page 
+				 * receives visible content.
+				 */
     int				psLastPageMarked;
     int				psLastSheetMarked;
     int				psPagesPrinted;
@@ -54,6 +65,23 @@ typedef struct PrintingState
     unsigned char		psUsePostScriptFilters;
     unsigned char		psUsePostScriptIndexedImages;
     unsigned char		ps7Bits;
+
+				/**
+				 * If set, we emit PDF marks that tag
+				 * pieces of the document in a way that tries 
+				 * to be compliant with ISO 14289-1 (PDF/UA).
+				 */
+    unsigned char		psTagDocumentStructure;
+				/**
+				 * The number of marked content items in
+				 * the document as a whole.
+				 */
+    int				psDocContentMarkCount;
+				/**
+				 * The number of marked content items on
+				 * the current Page
+				 */
+    int				psPageContentMarkCount;
     } PrintingState;
 
 /************************************************************************/
@@ -205,7 +233,7 @@ extern void psGotoPdfmark(	struct SimpleOutputStream *	sos,
 				const struct MemoryBuffer *	title );
 
 extern int psPageModePdfmark(	struct SimpleOutputStream *	sos,
-				const char *		pageMode );
+				const char *			pageMode );
 
 extern int psSaveEpsFile(	struct SimpleOutputStream *	sos,
 				DocumentRectangle *		drBBox,
@@ -229,14 +257,58 @@ extern int psSetToPdfCommand(	struct MemoryBuffer *		command,
 
 extern int psSetTestToPdfCommand( struct MemoryBuffer *		command );
 
-extern int psOutlinePdfmark(	PrintingState *		ps,
-				int			childCount,
-				int			closed,
+extern int psOutlinePdfmark(	PrintingState *			ps,
+				int				childCount,
+				int				closed,
 				const struct MemoryBuffer *	title,
 				const struct MemoryBuffer *	markName );
 
 extern int psSetPageProperty(	PrintingState *			ps,
 				const char *			key,
 				const char *			value );
+
+extern int psSetCatalogProperty( PrintingState *		ps,
+				const char *			key,
+				const char *			value );
+
+extern int psPdfMarkPosition(	PrintingState *			ps,
+				const char *			roleTag,
+				int				contentId );
+
+extern int psPdfBeginMarkedContent( PrintingState *		ps,
+				const char *			roleTag,
+				int				contentId );
+
+extern int psPdfBeginArtifact( PrintingState *			ps,
+				const char *			typeName,
+				const char *			subtypeName,
+				int				contentId );
+
+extern int psPdfEndMarkedContent( PrintingState *		ps );
+
+extern int psPdfmarkAppendContentToReadingOrder(
+				PrintingState *			ps,
+				const char *			roleTag,
+				int				page,
+				int				docContentId,
+				int				pageContentId );
+
+extern int psPdfmarkMarkedDocumentSetup(
+				PrintingState *			ps,
+				const char *			localeTag );
+
+extern int psPdfmarkMarkedDocumentTrailer(
+				PrintingState *			ps );
+
+extern int psPdfmarkMarkedPageSetup(
+				PrintingState *			ps,
+				int				page );
+
+extern int psPdfmarkFinishMarkedPage(
+				PrintingState *			ps,
+				int				page );
+
+extern int psNewPageContentId(	PrintingState *			ps );
+extern int psNewDocContentId(	PrintingState *			ps );
 
 #   endif	/*  UTIL_PS_H  */
