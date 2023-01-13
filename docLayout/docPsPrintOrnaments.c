@@ -48,7 +48,7 @@ static void psSolidBorderProc(	struct SimpleOutputStream *		sos,
     return;
     }
 
-static void psDashHorBorderProc( struct SimpleOutputStream *		sos,
+static void psDashHorBorderProc( struct SimpleOutputStream *	sos,
 				const char *			name,
 				const unsigned char *		dashes,
 				int				dashCount )
@@ -106,7 +106,7 @@ static void psDashHorBorderProc( struct SimpleOutputStream *		sos,
     sioOutPrintf( sos, "  } bind def\n" );
     }
 
-static void psDashVerBorderProc( struct SimpleOutputStream *		sos,
+static void psDashVerBorderProc( struct SimpleOutputStream *	sos,
 				const char *			name,
 				const unsigned char *		dashes,
 				int				dashCount )
@@ -311,14 +311,14 @@ int docPsPrintOrnaments(	const BlockOrnaments *		bo,
     {
     PrintingState *		ps= (PrintingState *)vps;
     const LayoutContext *	lc= dc->dcLayoutContext;
-    const struct BufferDocument *	bd= lc->lcDocument;
+    const struct BufferDocument * bd= lc->lcDocument;
     const DocumentProperties *	dp= bd->bdProperties;
 
     int				done= 0;
 
     if  ( ps->psTagDocumentStructure			&&
 	  ! utilPropMaskIsEmpty( &(bo->boPropMask) )	&&
-	  psPdfBeginMarkedContent( ps, "Artifact", -1 )	)
+	  docPsBeginMarkedContent( dc, ps, "Artifact", -1 )	)
 	{ LDEB(-1); return -1;	}
 
     if  ( PROPmaskISSET( &(bo->boPropMask), ORNdrawSHADE ) )
@@ -439,7 +439,7 @@ int docPsPrintOrnaments(	const BlockOrnaments *		bo,
 
     if  ( ps->psTagDocumentStructure			&&
 	  ! utilPropMaskIsEmpty( &(bo->boPropMask) )	&&
-	  psPdfEndMarkedContent( ps )	)
+	  docPsEndMarkedContent( dc, ps )		)
 	{ LDEB(1); return -1;	}
 
     return 0;

@@ -174,6 +174,7 @@ int psPdfmarkMarkedPageSetup(	PrintingState *		ps,
     sioOutPrintf( ps->psSos, "[ /_objdef {PTREE%d} /type /array /OBJ pdfmark\n", page );
     sioOutPrintf( ps->psSos, "[ /_objdef {PANN%d} /type /array /OBJ pdfmark\n", page );
 
+    ps->psPageFirstMarkId= ps->psDocContentMarkCount;
     ps->psPageContentMarkCount= 0;
 
     return 0;
@@ -185,11 +186,11 @@ int psPdfmarkFinishMarkedPage(	PrintingState *		ps,
     sioOutPrintf( ps->psSos, "%% finishing page %d\n", page );
 
     /* God knows what this means */
-    sioOutPrintf( ps->psSos, "[ {ThisPage} <</StructParents 0>> /PUT pdfmark\n" );
+    sioOutPrintf( ps->psSos, "[ {ThisPage} <</StructParents %d>> /PUT pdfmark\n", page );
     sioOutPrintf( ps->psSos, "[ {ThisPage} <</Annots {PANN%d}>> /PUT pdfmark\n", page );
     sioOutPrintf( ps->psSos, "[ {ThisPage} <</Tabs /S>> /PUT pdfmark\n" );
 
-    sioOutPrintf( ps->psSos, "[ {NTREEA} 0 /APPEND pdfmark\n" );
+    sioOutPrintf( ps->psSos, "[ {NTREEA} %d /APPEND pdfmark\n", page );
     sioOutPrintf( ps->psSos, "[ {NTREEA} {PTREE%d} /APPEND pdfmark\n", page );
 
     return 0;

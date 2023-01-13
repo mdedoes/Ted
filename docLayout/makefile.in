@@ -1923,6 +1923,8 @@ docPsPrintShapes.o: \
     docPsPrintShapes.c
 
 docPsPrintStructure.o: \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
@@ -1941,9 +1943,11 @@ docPsPrintStructure.o: \
     ../docBuf/docRowNode.h \
     ../docBuf/docSectNode.h \
     ../docBuf/docTreeNode.h \
+    docDraw.h \
     ../docField/docChildFields.h \
     ../docField/docDocumentFieldList.h \
     docLayoutConfig.h \
+    docLayoutDocumentTree.h \
     docPsPrintImpl.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
@@ -1953,6 +1957,7 @@ docPsPrintStructure.o: \
     ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psNup.h \
     ../utilPs/psPrint.h \
+    ../utilPs/textAttribute.h \
     docPsPrintStructure.c
 
 docPsPrintTabs.o: \

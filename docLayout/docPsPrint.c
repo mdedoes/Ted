@@ -290,8 +290,7 @@ static int docPsPrintStartPage(	void *				vps,
     {
     PrintingState *	ps= (PrintingState *)vps;
 
-    dc->dcCurrentTextAttributeSet= 0;
-    dc->dcCurrentColorSet= 0;
+    docResetDrawingContextState( dc );
 
     psRefreshNupSchema( ps, dgPage );
 

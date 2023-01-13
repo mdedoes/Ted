@@ -169,3 +169,12 @@ extern int docPsPrintStartNode( void *				vps,
 extern int docPsPrintFinishNode( void *				vps,
 				struct DrawingContext *		dc,
 				struct BufferItem *		node );
+
+extern int docPsBeginMarkedContent(
+				struct DrawingContext *		dc,
+				struct PrintingState *		ps,
+				const char *			roleTag,
+				int				contentId );
+
+extern int docPsEndMarkedContent( struct DrawingContext *	dc,
+				struct PrintingState *		ps );

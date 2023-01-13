@@ -317,8 +317,7 @@ int docPsPrintShapeImage(	PrintingState *			ps,
 						pip->pipType, lc, x0, y0 ) )
 		{ LDEB(1); break;	}
 
-	    dc->dcCurrentTextAttributeSet= 0;
-	    dc->dcCurrentColorSet= 0;
+	    docResetDrawingContextState( dc );
 	    return 0;
 
 	case DOCokPICTPNGBLIP:
@@ -450,8 +449,7 @@ int docPsPrintInlineObject(	const DrawTextLine *		dtl,
 			    drTwips->drX0, drTwips->drY1 ) )
 		{ LDEB(1); break;	}
 
-	    dc->dcCurrentTextAttributeSet= 0;
-	    dc->dcCurrentColorSet= 0;
+	    docResetDrawingContextState( dc );
 	    ps->psLinkParticulesDone++;
 	    return 0;
 
@@ -476,8 +474,7 @@ int docPsPrintInlineObject(	const DrawTextLine *		dtl,
 				drTwips->drX0, drTwips->drY1 ) )
 		    { LDEB(1); break;	}
 
-		dc->dcCurrentTextAttributeSet= 0;
-		dc->dcCurrentColorSet= 0;
+		docResetDrawingContextState( dc );
 		ps->psLinkParticulesDone++;
 		return 1;
 		}
@@ -500,8 +497,7 @@ int docPsPrintInlineObject(	const DrawTextLine *		dtl,
 				drTwips->drX0, drTwips->drY1 ) )
 		{ LDEB(1); break;	}
 
-	    dc->dcCurrentTextAttributeSet= 0;
-	    dc->dcCurrentColorSet= 0;
+	    docResetDrawingContextState( dc );
 	    ps->psLinkParticulesDone++;
 	    return 0;
 

@@ -260,7 +260,7 @@ int bmPsPrintJpegImage(	SimpleOutputStream *		sos,
     int				rval= 0;
     SimpleOutputStream *	sos85= (SimpleOutputStream *)0;
 
-    sioOutPrintf( sos, "gsave 10 dict begin %% {> bitmap image\n" );
+    sioOutPrintf( sos, "gsave 10 dict begin %% {> raster image\n" );
 
     if  ( ox != 0 || oy != 0 || xscale != 1.0 || yscale != 1.0 )
 	{

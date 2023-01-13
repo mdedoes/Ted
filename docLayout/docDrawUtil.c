@@ -75,6 +75,12 @@ void docInitDrawingContext(	DrawingContext *	dc )
     return;
     }
 
+void docResetDrawingContextState(	DrawingContext *	dc )
+    {
+    dc->dcCurrentTextAttributeSet= 0;
+    dc->dcCurrentColorSet= 0;
+    }
+
 /************************************************************************/
 /*									*/
 /*  Cause subsequent drawing to be done in a certain color.		*/

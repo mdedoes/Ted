@@ -126,8 +126,7 @@ static int docDrawDrawingShape(	const DocumentRectangle *	drOutside,
 	      (*dc->dcDrawShape)( drOutside, atOutside, page, ds, dc, through )	)
 	    { LDEB(1); rval= -1; goto ready;	}
 
-	dc->dcCurrentTextAttributeSet= 0;
-	dc->dcCurrentColorSet= 0;
+	docResetDrawingContextState( dc );
 
 	if  ( ds->dsDrawing.sd_WrapText == SHAPEtextWRAP_NONE )
 	    { drHere.drX1= INT_MAX;	}

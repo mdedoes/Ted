@@ -373,6 +373,7 @@ void psInitPrintingState(	PrintingState *	ps )
     ps->psTagDocumentStructure= 0;
     ps->psDocContentMarkCount= 0;
     ps->psPageContentMarkCount= 0;
+    ps->psPageFirstMarkId= 0;
 
     return;
     }

@@ -196,9 +196,26 @@ typedef int (*FINISH_TREE)(	void *				through,
 
 typedef struct DrawingContext
     {
+				/**
+				 *  Is the current text attribute set to a value that 
+				 *  we can rely upon? (Font, Size)
+				 */
     int				dcCurrentTextAttributeSet;
+				/**
+				 *  The current text attribute. If we want to draw in
+				 *  this font, with this size, we do not have to set it
+				 *  again.
+				 */
     TextAttribute		dcCurrentTextAttribute;
+				/**
+				 *  Is the current color set to a value that 
+				 *  we can rely upon?
+				 */
     int				dcCurrentColorSet;
+				/**
+				 *  The current color. If we want to draw in
+				 *  this color, we do not have to set it again.
+				 */
     RGB8Color			dcCurrentColor;
 
     const struct LayoutContext * dcLayoutContext;
@@ -334,6 +351,8 @@ typedef struct DrawingContext
 /************************************************************************/
 
 extern void docInitDrawingContext(	DrawingContext *	dc );
+
+extern void docResetDrawingContextState( DrawingContext *	dc );
 
 extern int docDrawNode(		struct LayoutPosition *		lpBelow,
 				struct BufferItem *		node,

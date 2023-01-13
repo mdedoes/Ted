@@ -43,6 +43,11 @@ typedef struct PrintingState
     int				psSheetsStarted;
 
     const struct PostScriptFontList *	psPostScriptFontList;
+				/**
+				 *  The font that is currently set.
+				 *  It is cached to avoid setting the 
+				 *  same font over-and-over again.
+				 */
     const struct AfmFontInfo *		psCurrentFontInfo;
 
     PrintGeometry		psPrintGeometry;
@@ -79,9 +84,16 @@ typedef struct PrintingState
     int				psDocContentMarkCount;
 				/**
 				 * The number of marked content items on
-				 * the current Page
+				 * the current page
 				 */
     int				psPageContentMarkCount;
+				/**
+				 * The (potential) first ID of marked content
+				 * on the current page. psPageFirstMarkId is 
+				 * only meaningful if there are marks on the
+				 * page.
+				 */
+    int				psPageFirstMarkId;
     } PrintingState;
 
 /************************************************************************/
@@ -279,7 +291,7 @@ extern int psPdfBeginMarkedContent( PrintingState *		ps,
 				const char *			roleTag,
 				int				contentId );
 
-extern int psPdfBeginArtifact( PrintingState *			ps,
+extern int psPdfBeginArtifact(	PrintingState *			ps,
 				const char *			typeName,
 				const char *			subtypeName,
 				int				contentId );

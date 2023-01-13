@@ -9,7 +9,9 @@
 
 #   include	<stddef.h>
 
+#   include	<sioGeneral.h>
 #   include	"docPsPrintImpl.h"
+#   include	"docDraw.h"
 #   include	<docTreeNode.h>
 #   include	<docTreeNode.h>
 #   include	<docTreeType.h>
@@ -27,6 +29,37 @@ static int docPsMarkNode(	struct BufferItem *		node )
     {
     return 0 && node->biTreeType == DOCinBODY &&
 	    node->biTopPosition.lpPage == node->biBelowPosition.lpPage;
+    }
+
+int docPsBeginMarkedContent(	struct DrawingContext *	dc,
+				PrintingState *		ps,
+				const char *		roleTag,
+				int			contentId )
+    {
+    sioOutPrintf( ps->psSos, "gsave\n" );
+    return psPdfBeginMarkedContent( ps, roleTag, contentId );
+    }
+
+int docPsEndMarkedContent(	struct DrawingContext *	dc,
+				PrintingState *		ps )
+    {
+    psPdfEndMarkedContent( ps );
+
+    sioOutPrintf( ps->psSos, "grestore\n" );
+    docResetDrawingContextState( dc );
+
+    return 0;
+    }
+
+static int docPsPrintBeginArtifact(
+			struct DrawingContext *		dc,
+			PrintingState *			ps,
+			const char *			typeName,
+			const char *			subtypeName,
+			int				contentId )
+    {
+    sioOutPrintf( ps->psSos, "gsave\n" );
+    return psPdfBeginArtifact( ps, typeName, subtypeName, contentId );
     }
 
 /************************************************************************/
@@ -54,7 +87,7 @@ int docPsPrintStartTree(	void *				vps,
 	case DOCinLEFT_HEADER:
 	case DOCinRIGHT_HEADER:
 	case DOCinLAST_HEADER:
-	    if  ( psPdfBeginArtifact( ps, "Pagination", "Header", -1 )	)
+	    if  ( docPsPrintBeginArtifact( dc, ps, "Pagination", "Header", -1 )	)
 		{ LDEB(tree->dtRoot->biTreeType); return -1;	}
 	    break;
 
@@ -63,14 +96,14 @@ int docPsPrintStartTree(	void *				vps,
 	case DOCinLEFT_FOOTER:
 	case DOCinRIGHT_FOOTER:
 	case DOCinLAST_FOOTER:
-	    if  ( psPdfBeginArtifact( ps, "Pagination", "Footer", -1 )	)
+	    if  ( docPsPrintBeginArtifact( dc, ps, "Pagination", "Footer", -1 )	)
 		{ LDEB(tree->dtRoot->biTreeType); return -1;	}
 	    break;
 
 	default:
 	    /* What about notes and text in shapes? */
 	    SDEB(docTreeTypeStr(tree->dtRoot->biTreeType));
-	    if  ( psPdfBeginMarkedContent( ps, "Artifact", -1 )	)
+	    if  ( docPsBeginMarkedContent( dc, ps, "Artifact", -1 )	)
 		{ LDEB(tree->dtRoot->biTreeType); return -1;	}
 	    break;
 	}
@@ -98,14 +131,14 @@ int docPsPrintFinishTree( void *			vps,
 	case DOCinLEFT_FOOTER:
 	case DOCinRIGHT_FOOTER:
 	case DOCinLAST_FOOTER:
-	    if  ( psPdfEndMarkedContent( ps )	)
+	    if  ( docPsEndMarkedContent( dc, ps )	)
 		{ LDEB(tree->dtRoot->biTreeType); return -1;	}
 	    break;
 
 	default:
 	    /* What about notes and text in shapes? */
 	    if  ( tree->dtRoot->biTreeType != DOCinBODY		&&
-		  psPdfEndMarkedContent( ps )			)
+		  docPsEndMarkedContent( dc, ps )			)
 		{ LDEB(tree->dtRoot->biTreeType); return -1;	}
 	}
 
@@ -137,7 +170,7 @@ int docPsPrintStartLines( void *			vps,
 				ps->psSheetsPrinted, docContentId, pageContentId ) )
 	    { LDEB(node->biLevel); return -1;	}
 
-	if  ( psPdfBeginMarkedContent( ps, "P", pageContentId ) )
+	if  ( docPsBeginMarkedContent( dc, ps, "P", pageContentId ) )
 	    { LDEB(node->biLevel); return -1;	}
 	}
 
@@ -151,7 +184,7 @@ int docPsPrintFinishLines( void *			vps,
     PrintingState *	ps= (PrintingState *)vps;
 
     if  ( node->biTreeType == DOCinBODY 	&&
-	  psPdfEndMarkedContent( ps )		)
+	  docPsEndMarkedContent( dc, ps )		)
 	{ LDEB(node->biLevel); return -1;	}
 
     return 0;
@@ -174,13 +207,13 @@ int docPsPrintStartNode(	void *				vps,
 	{
 	case DOClevBODY:
 	    if  ( docPsMarkNode( node )			&&
-	          psPdfBeginMarkedContent( ps, "Part", -1 ) )
+	          docPsBeginMarkedContent( dc, ps, "Part", -1 ) )
 		{ LDEB(node->biLevel); return -1;	}
 	    break;
 
 	case DOClevSECT:
 	    if  ( docPsMarkNode( node )			&&
-		  psPdfBeginMarkedContent( ps, "Sect", -1 ) )
+		  docPsBeginMarkedContent( dc, ps, "Sect", -1 ) )
 		{ LDEB(node->biLevel); return -1;	}
 	    break;
 
@@ -188,7 +221,7 @@ int docPsPrintStartNode(	void *				vps,
 	    if  ( docPsMarkNode( node )			&&
 		  docIsRowNode( node->biParent )	)
 		{
-		if  ( psPdfBeginMarkedContent( ps, "TD", -1 ) )
+		if  ( docPsBeginMarkedContent( dc, ps, "TD", -1 ) )
 		    { LDEB(node->biLevel); return -1;	}
 		}
 	    break;
@@ -199,11 +232,11 @@ int docPsPrintStartNode(	void *				vps,
 		{
 		if  ( node->biNumberInParent == node->biRowTableFirst )
 		    {
-		    if  ( psPdfBeginMarkedContent( ps, "Table", -1 ) )
+		    if  ( docPsBeginMarkedContent( dc, ps, "Table", -1 ) )
 			{ LDEB(node->biLevel); return -1;	}
 		    }
 
-		if  ( psPdfBeginMarkedContent( ps, "TR", -1 ) )
+		if  ( docPsBeginMarkedContent( dc, ps, "TR", -1 ) )
 		    { LDEB(node->biLevel); return -1;	}
 		}
 	    break;
@@ -212,7 +245,7 @@ int docPsPrintStartNode(	void *				vps,
 	    /* Include as "Div": The actual lines are embedded in a "P" and */
 	    /* inserted in the reading order. */
 	    if  ( docPsMarkNode( node )			&&
-		  psPdfBeginMarkedContent( ps, "Div", -1 ) )
+		  docPsBeginMarkedContent( dc, ps, "Div", -1 ) )
 		{ LDEB(node->biLevel); return -1;	}
 	    break;
 
@@ -240,20 +273,20 @@ int docPsPrintFinishNode( void *			vps,
 	{
 	case DOClevBODY:
 	    if  ( docPsMarkNode( node )			&&
-		  psPdfEndMarkedContent( ps )		)
+		  docPsEndMarkedContent( dc, ps )	)
 		{ LDEB(node->biLevel); return -1;	}
 	    break;
 
 	case DOClevPARA:
 	    if  ( docPsMarkNode( node )			&&
-		  psPdfEndMarkedContent( ps )		)
+		  docPsEndMarkedContent( dc, ps )	)
 		{ LDEB(node->biLevel); return -1;	}
 	    break;
 
 	case DOClevSECT:
 	    if  ( docPsMarkNode( node )			)
 		{
-		if  ( psPdfEndMarkedContent( ps ) )
+		if  ( docPsEndMarkedContent( dc, ps ) )
 		    { LDEB(node->biLevel); return -1;	}
 		}
 	    break;
@@ -262,7 +295,7 @@ int docPsPrintFinishNode( void *			vps,
 	    if  ( docPsMarkNode( node )			&&
 		  docIsRowNode( node->biParent )	)
 		{
-		if  ( psPdfEndMarkedContent( ps ) )
+		if  ( docPsEndMarkedContent( dc, ps ) )
 		    { LDEB(node->biLevel); return -1;	}
 		}
 	    break;
@@ -272,13 +305,13 @@ int docPsPrintFinishNode( void *			vps,
 	    if  ( docPsMarkNode( node )			&&
 		  docIsRowNode( node )			)
 		{
-		if  ( psPdfEndMarkedContent( ps ) )
+		if  ( docPsEndMarkedContent( dc, ps ) )
 		    { LDEB(node->biLevel); return -1;	}
 
 		if  ( node->biNumberInParent == node->biRowTablePast- 1 )
 		    {
 		    /* Finish table */
-		    if  ( psPdfEndMarkedContent( ps ) )
+		    if  ( docPsEndMarkedContent( dc, ps ) )
 			{ LDEB(node->biLevel); return -1;	}
 		    }
 		}
