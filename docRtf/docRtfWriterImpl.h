@@ -296,6 +296,7 @@ extern int docRtfWriteDestinationEnd(	RtfWriter *		rw );
 
 extern int docRtfSavePicture(	RtfWriter *			rw,
 				const struct PictureProperties * pip,
+				const struct MemoryBuffer *	altText,
 				const struct MemoryBuffer *	pictureData );
 
 extern int docRtfSavePictureTags( RtfWriter *			rw,
@@ -479,5 +480,9 @@ extern int docRtfWriteGetFet(	struct PropertyMask *		dpSaveMask,
 
 extern int docRtfPutByte(	int			c,
 				RtfWriter *		rw );
+
+extern int docRtfSaveShapeString( RtfWriter *			rw,
+				const char *			word,
+				const struct MemoryBuffer *	mb );
 
 #   endif	/*	RTF_WRITER_IMPL_H	*/

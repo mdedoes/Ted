@@ -2447,6 +2447,7 @@ docRtfWriteNode.o: \
 
 docRtfWritePicture.o: \
     ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
     ../docBase/docNotesProperties.h \

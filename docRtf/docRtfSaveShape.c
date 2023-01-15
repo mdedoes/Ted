@@ -73,9 +73,9 @@ static int docRtfStartShapeProperty(
     return 0;
     }
 
-static int docRtfSaveShapeProperty( RtfWriter *			rw,
-				    int				prop,
-				    long			value )
+static int docRtfSaveShapeProperty( RtfWriter *		rw,
+			    int				prop,
+			    long			value )
     {
     const int			scope= RTCscopeSHAPE;
     const RtfControlWord *	rcw;
@@ -100,15 +100,15 @@ static int docRtfSaveShapeProperty( RtfWriter *			rw,
 
 static int docRtfSaveShapeVertices(
 				RtfWriter *			rw,
-				const char *			word,
+				const char *			sn,
 				const Point2DI *		points,
 				int				pointCount )
     {
     int		i;
     char	scratch[30+1];
 
-    if  ( docRtfStartShapeProperty( rw, word ) )
-	{ SDEB(word); return -1;	}
+    if  ( docRtfStartShapeProperty( rw, sn ) )
+	{ SDEB(sn); return -1;	}
 
     sprintf( scratch, "8;%d", pointCount );
     docRtfWriteDocEncodedString( rw, scratch, strlen(scratch) );
@@ -128,7 +128,7 @@ static int docRtfSaveShapeVertices(
 
 static int docRtfSaveShapeNumbers(
 				RtfWriter *			rw,
-				const char *			word,
+				const char *			sn,
 				const int *			numbers,
 				int				numberCount )
     {
@@ -136,8 +136,8 @@ static int docRtfSaveShapeNumbers(
     char	scratch[30+1];
     int		size= 2;
 
-    if  ( docRtfStartShapeProperty( rw, word ) )
-	{ SDEB(word); return -1;	}
+    if  ( docRtfStartShapeProperty( rw, sn ) )
+	{ SDEB(sn); return -1;	}
 
     for ( i= 0; i < numberCount; i++ )
 	{
@@ -161,17 +161,16 @@ static int docRtfSaveShapeNumbers(
     return 0;
     }
 
-static int docRtfSaveShapeString(
-				RtfWriter *		rw,
-				const char *		word,
+int docRtfSaveShapeString(	RtfWriter *		rw,
+				const char *		sn,
 				const MemoryBuffer *	mb )
     {
-    if  ( docRtfStartShapeProperty( rw, word ) )
-	{ SDEB(word); return -1;	}
+    if  ( docRtfStartShapeProperty( rw, sn ) )
+	{ SDEB(sn); return -1;	}
 
     if  ( docRtfWriteDocEncodedString( rw,
 				(const char *)(mb->mbBytes), mb->mbSize ) )
-	{ SLDEB(word,mb->mbSize); return -1;	}
+	{ SLDEB(sn,mb->mbSize); return -1;	}
 
     docRtfWriteDestinationEnd( rw );
     docRtfWriteDestinationEnd( rw );
@@ -316,7 +315,7 @@ static int docRtfSaveBehindShapeImage(
 
     sioOutClose( sosData ); sosData= (SimpleOutputStream *)0;
 
-    if  ( docRtfSavePicture( rw, &pip, &mbImage ) )
+    if  ( docRtfSavePicture( rw, &pip, &(ds->dsDrawing.sd_wzDescription), &mbImage ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
   ready:
@@ -360,6 +359,7 @@ int docRtfSaveDrawingShape(	RtfWriter *		rw,
 	docRtfStartShapeProperty( rw, "pib" );
 
 	if  ( docRtfSavePicture( rw, &(ds->dsPictureProperties),
+						    &(ds->dsDrawing.sd_wzDescription),
 						    &(ds->dsPictureData ) ) )
 	    { LDEB(1); return -1;	}
 

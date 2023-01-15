@@ -37,6 +37,7 @@ int docRtfSaveObject(		RtfWriter *			rw,
 	case DOCokPICTEMFBLIP:
 
 	    if  ( docRtfSavePicture( rw, &(io->ioPictureProperties),
+							&(io->ioAltText),
 							&(io->ioObjectData) ) )
 		{ LDEB(1); return -1;	}
 	    return 0;
@@ -115,6 +116,7 @@ int docRtfSaveObject(		RtfWriter *			rw,
 		docRtfWriteDestinationBegin( rw, RTFtag_result );
 
 		if  ( docRtfSavePicture( rw, &(io->ioPictureProperties),
+						    &(io->ioAltText),
 						    &(io->ioResultData) ) )
 		    { LDEB(1); return -1;	}
 

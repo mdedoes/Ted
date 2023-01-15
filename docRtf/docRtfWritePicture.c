@@ -15,6 +15,7 @@
 #   include	"docRtfTags.h"
 #   include	<docPictureProperties.h>
 #   include	<utilPropMask.h>
+#   include	<utilMemoryBuffer.h>
 
 #   include	<appDebugon.h>
 
@@ -158,6 +159,7 @@ static int docRtfPicturePropertyMask(
 
 int docRtfSavePicture(		RtfWriter *			rw,
 				const PictureProperties *	pip,
+				const struct MemoryBuffer *	altText,
 				const struct MemoryBuffer *	pictureData )
     {
     PropertyMask	pipSetMask;
@@ -166,6 +168,13 @@ int docRtfSavePicture(		RtfWriter *			rw,
 
     docRtfPicturePropertyMask( &pipSetMask, pip );
     docRtfSavePictureTags( rw, &pipSetMask, pip );
+
+    if  ( altText && ! utilMemoryBufferIsEmpty( altText ) )
+	{
+	docRtfWriteDestinationBegin( rw, "*\\picprop" );
+	docRtfSaveShapeString( rw, "wzDescription", altText );
+	docRtfWriteDestinationEnd( rw );
+	}
 
     docRtfWriteMemoryBuffer( rw, pictureData );
     docRtfWriteDestinationEnd( rw );
