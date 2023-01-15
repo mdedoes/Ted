@@ -17,6 +17,8 @@ void docInitIncludePictureField(	IncludePictureField *	ipf )
     utilInitMemoryBuffer( &(ipf->ipfFilename) );
     utilInitMemoryBuffer( &(ipf->ipfConverter) );
 
+    utilInitMemoryBuffer( &(ipf->ipfAltText) );
+
     ipf->ipfDoNotSaveResult= 0;
 
     ipf->ipfTwipsWide= 0;
@@ -29,6 +31,8 @@ void docCleanIncludePictureField(	IncludePictureField *	ipf )
     {
     utilCleanMemoryBuffer( &(ipf->ipfFilename) );
     utilCleanMemoryBuffer( &(ipf->ipfConverter) );
+
+    utilCleanMemoryBuffer( &(ipf->ipfAltText) );
     }
 
 /************************************************************************/
@@ -60,6 +64,17 @@ int docGetIncludePictureField(		IncludePictureField *	ipf,
 	    ic++, comp++;
 
 	    if  ( utilCopyMemoryBuffer( &(ipf->ipfConverter),
+							&(ic->icBuffer) ) )
+		{ LDEB(comp);	}
+
+	    continue;
+	    }
+
+	if  ( docComponentIsArgFlag( fi, comp, 'a' ) )
+	    {
+	    ic++, comp++;
+
+	    if  ( utilCopyMemoryBuffer( &(ipf->ipfAltText),
 							&(ic->icBuffer) ) )
 		{ LDEB(comp);	}
 

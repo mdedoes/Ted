@@ -296,14 +296,17 @@ extern int psPdfBeginArtifact(	PrintingState *			ps,
 				const char *			subtypeName,
 				int				contentId );
 
+extern int psPdfBeginFigure(	PrintingState *			ps,
+				const struct MemoryBuffer *	altText,
+				int				contentId );
+
 extern int psPdfEndMarkedContent( PrintingState *		ps );
 
 extern int psPdfmarkAppendContentToReadingOrder(
 				PrintingState *			ps,
 				const char *			roleTag,
 				int				page,
-				int				docContentId,
-				int				pageContentId );
+				int				docContentId );
 
 extern int psPdfmarkMarkedDocumentSetup(
 				PrintingState *			ps,
@@ -320,7 +323,6 @@ extern int psPdfmarkFinishMarkedPage(
 				PrintingState *			ps,
 				int				page );
 
-extern int psNewPageContentId(	PrintingState *			ps );
 extern int psNewDocContentId(	PrintingState *			ps );
 
 #   endif	/*  UTIL_PS_H  */

@@ -8,7 +8,6 @@
 
 #   include	<stddef.h>
 #   include	<stdio.h>
-#   include	<string.h>
 
 #   include	"psPrint.h"
 #   include	<geoRectangle.h>
@@ -86,7 +85,36 @@ int psPdfBeginArtifact( PrintingState *			ps,
     if  ( contentId >= 0 )
 	{
 	if  ( sioOutPrintf( ps->psSos, " /MCID /%d ", contentId ) < 0 )
-	    { SDEB(subtypeName); return -1;	}
+	    { LDEB(contentId); return -1;	}
+	}
+
+    if  ( sioOutPrintf( ps->psSos, " >> /BDC pdfmark\n" ) < 0 )
+	{ LDEB(1); return -1;	}
+
+    return 0;
+    }
+
+int psPdfBeginFigure(	PrintingState *			ps,
+			const MemoryBuffer *		altText,
+			int				contentId )
+    {
+    const char * const	roleTag= "Figure";
+
+    /* The propertList in ISO 32000-1:2008, 14.8.2.2.2 is a dictionary. See 14.6.2 */
+
+    if  ( sioOutPrintf( ps->psSos, "[ /%s << ", roleTag ) < 0 )
+	{ LDEB(1); return -1;	}
+
+    if  ( altText && ! utilMemoryBufferIsEmpty( altText ) )
+	{
+	if  ( sioOutPrintf( ps->psSos, " /Alt /%s ", utilMemoryBufferGetString( altText ) ) < 0 )
+	    { XDEB(altText); return -1;	}
+	}
+
+    if  ( contentId >= 0 )
+	{
+	if  ( sioOutPrintf( ps->psSos, " /MCID /%d ", contentId ) < 0 )
+	    { LDEB(contentId); return -1;	}
 	}
 
     if  ( sioOutPrintf( ps->psSos, " >> /BDC pdfmark\n" ) < 0 )
@@ -99,34 +127,6 @@ int psPdfEndMarkedContent(		PrintingState *		ps )
     {
     if  ( sioOutPrintf( ps->psSos, "[ /EMC pdfmark\n" ) < 0 )
 	{ LDEB(1); return -1;	}
-
-    return 0;
-    }
-
-int psPdfmarkAppendContentToReadingOrder(
-				PrintingState *		ps,
-				const char *		roleTag,
-				int			page,
-				int			docContentId,
-				int			pageContentId )
-    {
-    char	itemDict[50];
-
-    sprintf( itemDict, "TedRo%d", docContentId );
-
-    /* God knows what this means */
-    sioOutPrintf( ps->psSos, "[ /_objdef {%s} /type /dict /OBJ pdfmark\n",
-				    itemDict );
-    sioOutPrintf( ps->psSos, "[ {%s} <</S /%s /P {DOC} /K %d /Pg {ThisPage}>> /PUT pdfmark\n",
-				    itemDict, roleTag, pageContentId );
-    /* start debug */
-    sioOutPrintf( ps->psSos, "[ {%s} <</TedContentId %d /TedPageNr %d>> /PUT pdfmark %% Diagnostic\n",
-				    itemDict, pageContentId, page );
-    /* end debug */
-    sioOutPrintf( ps->psSos, "[ {DTREE} {%s} /APPEND pdfmark\n",
-				    itemDict );
-    sioOutPrintf( ps->psSos, "[ {PTREE%d} {%s} /APPEND pdfmark\n",
-				    page, itemDict );
 
     return 0;
     }
@@ -157,16 +157,6 @@ int psPdfmarkMarkedDocumentSetup( PrintingState *		ps,
     return 0;
     }
 
-int psPdfmarkMarkedDocumentTrailer( PrintingState *		ps )
-    {
-
-    /* God knows what this means */
-    sioOutPrintf( ps->psSos, "[ {NTREE} <</Nums {NTREEA}>> /PUT pdfmark\n" );
-    sioOutPrintf( ps->psSos, "[ {Catalog} <</StructTreeRoot {STR}>> /PUT pdfmark\n" );
-
-    return 0;
-    }
-
 int psPdfmarkMarkedPageSetup(	PrintingState *		ps,
 				int			page )
     {
@@ -176,6 +166,29 @@ int psPdfmarkMarkedPageSetup(	PrintingState *		ps,
 
     ps->psPageFirstMarkId= ps->psDocContentMarkCount;
     ps->psPageContentMarkCount= 0;
+
+    return 0;
+    }
+
+int psPdfmarkAppendContentToReadingOrder(
+				PrintingState *		ps,
+				const char *		roleTag,
+				int			page,
+				int			docContentId )
+    {
+    char	itemDict[50];
+
+    sprintf( itemDict, "TedRo%d", docContentId );
+
+    /* God knows what this means */
+    sioOutPrintf( ps->psSos, "[ /_objdef {%s} /type /dict /OBJ pdfmark\n",
+				    itemDict );
+    sioOutPrintf( ps->psSos, "[ {%s} <</S /%s /P {DOC} /K %d /Pg {ThisPage}>> /PUT pdfmark\n",
+				    itemDict, roleTag, docContentId );
+    sioOutPrintf( ps->psSos, "[ {DTREE} {%s} /APPEND pdfmark\n",
+				    itemDict );
+    sioOutPrintf( ps->psSos, "[ {PTREE%d} {%s} /APPEND pdfmark\n",
+				    page, itemDict );
 
     return 0;
     }
@@ -195,3 +208,14 @@ int psPdfmarkFinishMarkedPage(	PrintingState *		ps,
 
     return 0;
     }
+
+int psPdfmarkMarkedDocumentTrailer( PrintingState *		ps )
+    {
+
+    /* God knows what this means */
+    sioOutPrintf( ps->psSos, "[ {NTREE} <</Nums {NTREEA}>> /PUT pdfmark\n" );
+    sioOutPrintf( ps->psSos, "[ {Catalog} <</StructTreeRoot {STR}>> /PUT pdfmark\n" );
+
+    return 0;
+    }
+

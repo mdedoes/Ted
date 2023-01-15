@@ -272,7 +272,12 @@ static int docHtmlStartImgElement(
 	    { docHtmlWriteStringAttribute( hwc, "style", style );	}
 	}
 
-    docHtmlWriteStringAttribute( hwc, "alt", "<IMG>" );
+    if  ( utilMemoryBufferIsEmpty( &(io->ioAltText) ) )
+	{ docHtmlWriteStringAttribute( hwc, "alt", "<IMG>" );	}
+    else{
+	docHtmlWriteStringAttribute( hwc, "alt",
+			utilMemoryBufferGetString( &(io->ioAltText) ) );
+	}
 
     return rval;
     }

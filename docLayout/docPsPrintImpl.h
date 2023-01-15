@@ -170,11 +170,18 @@ extern int docPsPrintFinishNode( void *				vps,
 				struct DrawingContext *		dc,
 				struct BufferItem *		node );
 
-extern int docPsBeginMarkedContent(
+extern int docPsPrintBeginMarkedContent(
 				struct DrawingContext *		dc,
 				struct PrintingState *		ps,
 				const char *			roleTag,
 				int				contentId );
 
-extern int docPsEndMarkedContent( struct DrawingContext *	dc,
+extern int docPsPrintEndMarkedContent(
+				struct DrawingContext *		dc,
 				struct PrintingState *		ps );
+
+extern int docPsPrintBeginFigure(
+				struct DrawingContext *		dc,
+				struct PrintingState *		ps,
+				const struct MemoryBuffer *	altText,
+				int				contentId );

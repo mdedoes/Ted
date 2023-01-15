@@ -556,11 +556,6 @@ void psFlushLink(		PrintingState *		ps,
     return;
     }
 
-int psNewPageContentId(	PrintingState *		ps )
-    {
-    return ps->psPageContentMarkCount++;
-    }
-
 int psNewDocContentId(	PrintingState *		ps )
     {
     return ps->psDocContentMarkCount++;

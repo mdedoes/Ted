@@ -406,6 +406,17 @@ int docRtfShpString(	const RtfControlWord *	rcw,
 						rcw->rcwID, text, size ) )
 	{ SLDEB(rcw->rcwWord,size); rval= -1; goto ready;	}
 
+    /* The alternative text of an image. It is also used if the image is used outside a shape. */
+    if  ( rcw->rcwID == DSHPprop_wzDescription )
+	{
+	if  ( ! rr->rrInsertedObject )
+	    { LXDEB(arg,rr->rrInsertedObject);	}
+	else{
+	    if  ( utilMemoryBufferSetString( &(rr->rrInsertedObject->ioAltText), text ) )
+		{ SDEB(text); return -1;	}
+	    }
+	}
+
   ready:
 
     if  ( text )

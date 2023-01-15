@@ -18,6 +18,14 @@ typedef struct IncludePictureField
     unsigned char	ipfDoNotSaveResult;	/* \d	*/
 
 			/**
+			 *  Alternative text for the image.
+			 *  Until we have found an MS-Word compatible
+			 *  way, this serves to attach an alternative
+			 *  text to the inserted image.
+			 */
+    MemoryBuffer	ipfAltText;		/* \a	*/
+
+			/**
 			 *  Width of the image in twips. Only used 
 			 *  when the IncludePicture field is abused to 
 			 *  represent a NeXTGraphics object. (\w)

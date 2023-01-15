@@ -27,6 +27,8 @@ void docCleanInsertedObject( InsertedObject * io )
     utilCleanMemoryBuffer( &io->ioObjectName );
     utilCleanMemoryBuffer( &io->ioObjectClass );
 
+    utilCleanMemoryBuffer( &io->ioAltText );
+
     bmCleanRasterImage( &(io->ioRasterImage) );
     }
 
@@ -63,6 +65,8 @@ void docInitInsertedObject(	InsertedObject *	io )
     utilInitMemoryBuffer( &io->ioResultData );
     utilInitMemoryBuffer( &io->ioObjectName );
     utilInitMemoryBuffer( &io->ioObjectClass );
+
+    utilInitMemoryBuffer( &io->ioAltText );
     
     io->ioDrawingShape= (struct DrawingShape *)0;
 

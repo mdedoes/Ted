@@ -109,6 +109,12 @@ typedef struct InsertedObject
     MemoryBuffer	ioObjectName;
     MemoryBuffer	ioObjectClass;
 
+				/**
+				 *  The alternative text for HTML and 
+				 *  structured PDF production.
+				 */
+    MemoryBuffer	ioAltText;
+
     struct DrawingShape *	ioDrawingShape;
 
     struct DrawingSurface *	ioDrawingSurface;

@@ -444,31 +444,50 @@ int docPsPrintInlineObject(	const DrawTextLine *		dtl,
 	case DOCokPICTEMFBLIP:
 	case DOCokMACPICT:
 
+	    if  ( ps->psTagDocumentStructure )
+		{
+		}
+
 	    if  ( docPsPrintMetafile( ps, pip, &(io->ioObjectData),
 			    io->ioKind, lc,
 			    drTwips->drX0, drTwips->drY1 ) )
-		{ LDEB(1); break;	}
+		{ LDEB(1);	}
 
 	    docResetDrawingContextState( dc );
 	    ps->psLinkParticulesDone++;
+
+	    if  ( ps->psTagDocumentStructure && docPsPrintEndMarkedContent( dc, ps ) )
+		{ LDEB(1); return -1;	}
+
 	    return 0;
 
 	case DOCokPICTJPEGBLIP:
 	case DOCokPICTPNGBLIP:
+
+	    if  ( ps->psTagDocumentStructure )
+		{
+		}
 
 	    done= docPsPrintRasterImage( ps, io,
 				io->ioKind, &(io->ioObjectData),
 				drTwips->drX0, drTwips->drY1 );
 	    if  ( done < 0 )
 		{ LDEB(done); return -1;	}
+
+	    if  ( ps->psTagDocumentStructure && docPsPrintEndMarkedContent( dc, ps ) )
+		{ LDEB(1); return -1;	}
+
 	    return 0;
-	    break;
 
 	case DOCokOLEOBJECT:
 	    if  ( io->ioResultKind == DOCokPICTWMETAFILE	||
 		  io->ioResultKind == DOCokPICTEMFBLIP		||
 		  io->ioResultKind == DOCokMACPICT		)
 		{
+		if  ( ps->psTagDocumentStructure )
+		    {
+		    }
+
 		if  ( docPsPrintMetafile( ps, pip, &(io->ioResultData),
 				io->ioResultKind, lc,
 				drTwips->drX0, drTwips->drY1 ) )
@@ -476,29 +495,49 @@ int docPsPrintInlineObject(	const DrawTextLine *		dtl,
 
 		docResetDrawingContextState( dc );
 		ps->psLinkParticulesDone++;
-		return 1;
+
+		if  ( ps->psTagDocumentStructure && docPsPrintEndMarkedContent( dc, ps ) )
+		    { LDEB(1); return -1;	}
+
+		return 0;
 		}
 
 	    if  ( io->ioResultKind == DOCokPICTJPEGBLIP	||
 	    	  io->ioResultKind == DOCokPICTPNGBLIP	)
 		{
+		if  ( ps->psTagDocumentStructure )
+		    {
+		    }
+
 		done= docPsPrintRasterImage( ps, io,
 				io->ioResultKind, &(io->ioResultData),
 				drTwips->drX0, drTwips->drY1 );
 		if  ( done < 0 )
 		    { LDEB(done); return -1;	}
+
+		if  ( ps->psTagDocumentStructure && docPsPrintEndMarkedContent( dc, ps ) )
+		    { LDEB(1); return -1;	}
+
 		return 0;
 		}
 
 	    break;
 
 	case DOCokEPS_FILE:
+	    if  ( ps->psTagDocumentStructure )
+		{
+		}
+
 	    if  ( docPsPrintIncludeEpsObject( ps, io,
 				drTwips->drX0, drTwips->drY1 ) )
 		{ LDEB(1); break;	}
 
 	    docResetDrawingContextState( dc );
 	    ps->psLinkParticulesDone++;
+
+	    if  ( ps->psTagDocumentStructure && docPsPrintEndMarkedContent( dc, ps ) )
+		{ LDEB(1); return -1;	}
+
 	    return 0;
 
 	case DOCokDRAWING_SHAPE:

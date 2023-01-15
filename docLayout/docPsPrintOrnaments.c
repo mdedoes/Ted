@@ -318,7 +318,7 @@ int docPsPrintOrnaments(	const BlockOrnaments *		bo,
 
     if  ( ps->psTagDocumentStructure			&&
 	  ! utilPropMaskIsEmpty( &(bo->boPropMask) )	&&
-	  docPsBeginMarkedContent( dc, ps, "Artifact", -1 )	)
+	  docPsPrintBeginMarkedContent( dc, ps, "Artifact", -1 )	)
 	{ LDEB(-1); return -1;	}
 
     if  ( PROPmaskISSET( &(bo->boPropMask), ORNdrawSHADE ) )
@@ -439,7 +439,7 @@ int docPsPrintOrnaments(	const BlockOrnaments *		bo,
 
     if  ( ps->psTagDocumentStructure			&&
 	  ! utilPropMaskIsEmpty( &(bo->boPropMask) )	&&
-	  docPsEndMarkedContent( dc, ps )		)
+	  docPsPrintEndMarkedContent( dc, ps )		)
 	{ LDEB(1); return -1;	}
 
     return 0;

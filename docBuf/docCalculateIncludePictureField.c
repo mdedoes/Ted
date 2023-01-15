@@ -136,6 +136,9 @@ int docRecalculateIncludePictureField(
 		}
 	    }
 
+	if  ( utilCopyMemoryBuffer( &(io->ioAltText), &(ipf.ipfAltText) ) )
+	    { LDEB(1); return -1;	}
+
 	if  ( docFieldReplaceContents( &stroff,
 			&stroffShift, &textAttrNr,
 			paraNode, partHead, partCount,
