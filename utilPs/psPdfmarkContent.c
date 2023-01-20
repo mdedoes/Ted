@@ -15,9 +15,26 @@
 
 #   include	<appDebugon.h>
 
+
 /************************************************************************/
 /*									*/
 /*  Pdfmark functionality around marked content.			*/
+/*									*/
+/************************************************************************/
+
+int psNewDocContentId(	PrintingState *		ps )
+    {
+    return ps->psDocContentMarkCount++;
+    }
+
+int psNewPageContentId(	PrintingState *		ps )
+    {
+    return ps->psPageContentMarkCount++;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Mark a position in the document.					*/
 /*									*/
 /************************************************************************/
 
@@ -27,16 +44,25 @@ int psPdfMarkPosition(		PrintingState *		ps,
     {
     if  ( contentId < 0 )
 	{
-	if  ( sioOutPrintf( ps->psSos, "[ /%s /MP pdfmark\n", roleTag ) < 0 )
+	if  ( sioOutPrintf( ps->psSos,
+		"[ /%s /MP pdfmark\n", roleTag ) < 0 )
 	    { LDEB(1); return -1;	}
 	}
     else{
-	if  ( sioOutPrintf( ps->psSos, "[ /%s << /DP %d >> /BDC pdfmark\n", roleTag, contentId ) < 0 )
+	if  ( sioOutPrintf( ps->psSos,
+		"[ /%s << /DP %d >> /BDC pdfmark\n",
+		roleTag, contentId ) < 0 )
 	    { LDEB(1); return -1;	}
 	}
 
     return 0;
     }
+
+/************************************************************************/
+/*									*/
+/*  Begin/End a piece of marked content.				*/
+/*									*/
+/************************************************************************/
 
 int psPdfBeginMarkedContent(	PrintingState *		ps,
 				const char *		roleTag,
@@ -84,7 +110,7 @@ int psPdfBeginArtifact( PrintingState *			ps,
 
     if  ( contentId >= 0 )
 	{
-	if  ( sioOutPrintf( ps->psSos, " /MCID /%d ", contentId ) < 0 )
+	if  ( sioOutPrintf( ps->psSos, " /MCID %d ", contentId ) < 0 )
 	    { LDEB(contentId); return -1;	}
 	}
 
@@ -113,7 +139,7 @@ int psPdfBeginFigure(	PrintingState *			ps,
 
     if  ( contentId >= 0 )
 	{
-	if  ( sioOutPrintf( ps->psSos, " /MCID /%d ", contentId ) < 0 )
+	if  ( sioOutPrintf( ps->psSos, " /MCID %d ", contentId ) < 0 )
 	    { LDEB(contentId); return -1;	}
 	}
 
@@ -174,7 +200,8 @@ int psPdfmarkAppendContentToReadingOrder(
 				PrintingState *		ps,
 				const char *		roleTag,
 				int			page,
-				int			docContentId )
+				int			docContentId,
+				int			pageContentId )
     {
     char	itemDict[50];
 
@@ -184,7 +211,7 @@ int psPdfmarkAppendContentToReadingOrder(
     sioOutPrintf( ps->psSos, "[ /_objdef {%s} /type /dict /OBJ pdfmark\n",
 				    itemDict );
     sioOutPrintf( ps->psSos, "[ {%s} <</S /%s /P {DOC} /K %d /Pg {ThisPage}>> /PUT pdfmark\n",
-				    itemDict, roleTag, docContentId );
+				    itemDict, roleTag, pageContentId );
     sioOutPrintf( ps->psSos, "[ {DTREE} {%s} /APPEND pdfmark\n",
 				    itemDict );
     sioOutPrintf( ps->psSos, "[ {PTREE%d} {%s} /APPEND pdfmark\n",

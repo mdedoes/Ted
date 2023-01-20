@@ -70,7 +70,12 @@ int docPsPrintBeginFigure(
 			int				contentId )
     {
     /*sioOutPrintf( ps->psSos, "gsave\n" );*/
-    return psPdfBeginFigure( ps, altText, contentId );
+    if  ( altText && ! utilMemoryBufferIsEmpty( altText ) )
+	{ return psPdfBeginFigure( ps, altText, contentId );	}
+    else{
+	return docPsPrintBeginMarkedContent( dc, ps,
+					    "Artifact", contentId );
+	}
     }
 
 /************************************************************************/
@@ -175,9 +180,11 @@ int docPsPrintStartLines( void *			vps,
 	PrintingState *	ps= (PrintingState *)vps;
 
 	const int	docContentId= psNewDocContentId( ps );
+	const int	pageContentId= psNewPageContentId( ps );
 
 	if  ( psPdfmarkAppendContentToReadingOrder( ps, "P",
-				ps->psSheetsPrinted, docContentId ) )
+				ps->psSheetsPrinted,
+				docContentId, pageContentId ) )
 	    { LDEB(node->biLevel); return -1;	}
 
 	if  ( docPsPrintBeginMarkedContent( dc, ps, "P", docContentId ) )
