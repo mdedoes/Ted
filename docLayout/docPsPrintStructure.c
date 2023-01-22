@@ -71,7 +71,7 @@ int docPsPrintBeginFigure(
     /*sioOutPrintf( ps->psSos, "gsave\n" );*/
     if  ( altText && ! utilMemoryBufferIsEmpty( altText ) )
 	{
-	const int contentId= psNewPageContentId( ps );
+	const int contentId= psNewContentId( ps );
 
 	return psPdfBeginFigure( ps, altText, contentId );
 	}
@@ -181,16 +181,13 @@ int docPsPrintStartLines( void *			vps,
     if  ( node->biTreeType == DOCinBODY )
 	{
 	PrintingState *	ps= (PrintingState *)vps;
-
-	const int	docContentId= psNewDocContentId( ps );
-	const int	pageContentId= psNewPageContentId( ps );
+	const int	contentId= psNewContentId( ps );
 
 	if  ( psPdfmarkAppendContentToReadingOrder( ps, "P",
-				ps->psSheetsPrinted,
-				docContentId, pageContentId ) )
+				ps->psSheetsPrinted, contentId ) )
 	    { LDEB(node->biLevel); return -1;	}
 
-	if  ( docPsPrintBeginMarkedContent( dc, ps, "P", pageContentId ) )
+	if  ( docPsPrintBeginMarkedContent( dc, ps, "P", contentId ) )
 	    { LDEB(node->biLevel); return -1;	}
 	}
 

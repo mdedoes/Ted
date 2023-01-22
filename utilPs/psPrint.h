@@ -342,8 +342,7 @@ extern int psPdfmarkAppendContentToReadingOrder(
 				PrintingState *			ps,
 				const char *			structureType,
 				int				page,
-				int				docContentId,
-				int				pageContentId );
+				int				contentId );
 
 extern int psPdfmarkMarkedDocumentSetup(
 				PrintingState *			ps,
@@ -360,7 +359,6 @@ extern int psPdfmarkFinishMarkedPage(
 				PrintingState *			ps,
 				int				page );
 
-extern int psNewDocContentId(	PrintingState *			ps );
-extern int psNewPageContentId(	PrintingState *			ps );
+extern int psNewContentId(	PrintingState *			ps );
 
 #   endif	/*  UTIL_PS_H  */

@@ -22,12 +22,12 @@
 /*									*/
 /************************************************************************/
 
-int psNewDocContentId(	PrintingState *		ps )
-    {
-    return ps->psDocContentMarkCount++;
-    }
-
-int psNewPageContentId(	PrintingState *		ps )
+/**
+ * Return a new contentId. ISO 32000-1:2008, 14.7.4.2 requires this to
+ * be unique in the content stream. As we have one content stream per
+ * page, we distribute unique numbers per page. (Why must they be contiguous?)
+ */
+int psNewContentId(	PrintingState *		ps )
     {
     return ps->psPageContentMarkCount++;
     }
@@ -240,7 +240,7 @@ static const char PS_DOC_STRUCT_ITEM[]= "DOC";
 static const char PS_DOC_STRUCT_TREE_ROOT[]= "STR";
 
 			/**
-			 * The name of the number tree root in the document 
+			 * The name of the number tree root in the document
 			 * StructTreeRoot that holds the struct items that
 			 * correspond to the pages.  (Correct?)
 			 */
@@ -310,9 +310,9 @@ int psPdfmarkAppendContentToReadingOrder(
 				PrintingState *		ps,
 				const char *		structureType,
 				int			page,
-				int			docContentId,
 				int			pageContentId )
     {
+    int			docContentId= ps->psDocContentMarkCount++;
     char		itemDict[50];
 
     sprintf( itemDict, "TedRo%d", docContentId );
@@ -352,7 +352,7 @@ int psPdfmarkFinishMarkedPage(	PrintingState *		ps,
 
 /**
  * Finish the document structure
- * 1) Insert the Nums array in the root of the structure number tree 
+ * 1) Insert the Nums array in the root of the structure number tree
  * 2) Insert the structure number tree in the StructTreeRoot of the document.
  */
 int psPdfmarkMarkedDocumentTrailer( PrintingState *		ps )
