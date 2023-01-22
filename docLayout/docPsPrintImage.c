@@ -446,8 +446,7 @@ int docPsPrintInlineObject(	const DrawTextLine *		dtl,
 
 	    if  ( ps->psTagDocumentStructure			&&
 		  docPsPrintBeginFigure( dc, ps,
-				&(io->ioAltText),
-				psNewPageContentId( ps ) )	)
+					&(io->ioAltText) )	)
 		{ LDEB(1); return -1;	}
 
 	    if  ( docPsPrintMetafile( ps, pip, &(io->ioObjectData),
@@ -469,8 +468,7 @@ int docPsPrintInlineObject(	const DrawTextLine *		dtl,
 
 	    if  ( ps->psTagDocumentStructure			&&
 		  docPsPrintBeginFigure( dc, ps,
-				&(io->ioAltText),
-				psNewPageContentId( ps ) )	)
+					&(io->ioAltText) )	)
 		{ LDEB(1); return -1;	}
 
 	    done= docPsPrintRasterImage( ps, io,
@@ -491,8 +489,7 @@ int docPsPrintInlineObject(	const DrawTextLine *		dtl,
 		{
 		if  ( ps->psTagDocumentStructure		&&
 		      docPsPrintBeginFigure( dc, ps,
-				    &(io->ioAltText),
-				    psNewPageContentId( ps ) )	)
+					&(io->ioAltText) )	)
 		    { LDEB(1); return -1;	}
 
 		if  ( docPsPrintMetafile( ps, pip, &(io->ioResultData),
@@ -514,8 +511,7 @@ int docPsPrintInlineObject(	const DrawTextLine *		dtl,
 		{
 		if  ( ps->psTagDocumentStructure		&&
 		      docPsPrintBeginFigure( dc, ps,
-				    &(io->ioAltText),
-				    psNewPageContentId( ps ) )	)
+					&(io->ioAltText) )	)
 		    { LDEB(1); return -1;	}
 
 		done= docPsPrintRasterImage( ps, io,
@@ -535,8 +531,7 @@ int docPsPrintInlineObject(	const DrawTextLine *		dtl,
 	case DOCokEPS_FILE:
 	    if  ( ps->psTagDocumentStructure			&&
 		  docPsPrintBeginFigure( dc, ps,
-				&(io->ioAltText),
-				psNewPageContentId( ps ) )	)
+					&(io->ioAltText) )	)
 		{ LDEB(1); return -1;	}
 
 	    if  ( docPsPrintIncludeEpsObject( ps, io,

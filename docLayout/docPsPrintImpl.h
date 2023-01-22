@@ -183,5 +183,4 @@ extern int docPsPrintEndMarkedContent(
 extern int docPsPrintBeginFigure(
 				struct DrawingContext *		dc,
 				struct PrintingState *		ps,
-				const struct MemoryBuffer *	altText,
-				int				contentId );
+				const struct MemoryBuffer *	altText );

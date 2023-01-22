@@ -9,6 +9,7 @@ confdefs.h
 autom4te.cache
 lib/
 configure~
+/.idea/
 
 Ted/makefile
 Ted/tedConfig.h
