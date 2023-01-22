@@ -341,7 +341,6 @@ extern int psPdfEndMarkedContent( PrintingState *		ps );
 extern int psPdfmarkAppendContentToReadingOrder(
 				PrintingState *			ps,
 				const char *			structureType,
-				int				page,
 				int				contentId );
 
 extern int psPdfmarkMarkedDocumentSetup(

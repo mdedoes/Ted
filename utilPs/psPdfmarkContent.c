@@ -174,7 +174,7 @@ static int psPdfmarkDefineLeafStructItem(
 				const char *		itemDict,
 				const char *		parentDict,
 				const char *		structureType,
-				int			pageContentId )
+				int			contentId )
     {
     sioOutPrintf( ps->psSos,
 	"[ /_objdef {%s} /type /dict /OBJ pdfmark\n",
@@ -185,7 +185,7 @@ static int psPdfmarkDefineLeafStructItem(
 	itemDict,
 	structureType,
 	parentDict,
-	pageContentId );
+	contentId );
 
     return 0;
     }
@@ -309,18 +309,19 @@ int psPdfmarkMarkedPageSetup(	PrintingState *		ps,
 int psPdfmarkAppendContentToReadingOrder(
 				PrintingState *		ps,
 				const char *		structureType,
-				int			page,
-				int			pageContentId )
+				int			contentId )
     {
-    int			docContentId= ps->psDocContentMarkCount++;
+    const int		uniqueDictId= ps->psDocContentMarkCount++;
+    const int		page= ps->psSheetsPrinted;
+
     char		itemDict[50];
 
-    sprintf( itemDict, "TedRo%d", docContentId );
+    sprintf( itemDict, "TedRo%d", uniqueDictId );
 
     /* Define and populate a StructItem */
     psPdfmarkDefineLeafStructItem( ps,
 		    itemDict, PS_DOC_STRUCT_ITEM,
-		    structureType, pageContentId );
+		    structureType, contentId );
 
     sioOutPrintf( ps->psSos, "[ {DTREE} {%s} /APPEND pdfmark\n",
 				    itemDict );

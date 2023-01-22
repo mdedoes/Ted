@@ -183,8 +183,8 @@ int docPsPrintStartLines( void *			vps,
 	PrintingState *	ps= (PrintingState *)vps;
 	const int	contentId= psNewContentId( ps );
 
-	if  ( psPdfmarkAppendContentToReadingOrder( ps, "P",
-				ps->psSheetsPrinted, contentId ) )
+	if  ( psPdfmarkAppendContentToReadingOrder(
+					ps, "P", contentId ) )
 	    { LDEB(node->biLevel); return -1;	}
 
 	if  ( docPsPrintBeginMarkedContent( dc, ps, "P", contentId ) )
