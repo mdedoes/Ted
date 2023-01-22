@@ -501,7 +501,7 @@ static int docDrawLineTab(	const VisitParticule *	vp,
 	{ LDEB(res); return -1;	}
 
     if  ( vp->vpTextAttribute->taTextIsUnderlined	&&
-	  dc->dcDrawUnderline			)
+	  dc->dcDrawUnderline				)
 	{
 	docDrawRunUnderlines( dtl, x0Twips, vp->vpDirection,
 		vp->vpParticule, tp->tpStroff+ tp->tpStrlen, &spanBaseline );

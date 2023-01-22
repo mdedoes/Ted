@@ -173,7 +173,7 @@ extern int docPsPrintFinishNode( void *				vps,
 extern int docPsPrintBeginMarkedContent(
 				struct DrawingContext *		dc,
 				struct PrintingState *		ps,
-				const char *			roleTag,
+				const char *			structureType,
 				int				contentId );
 
 extern int docPsPrintEndMarkedContent(

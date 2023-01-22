@@ -32,11 +32,11 @@ static int docPsMarkNode(	struct BufferItem *		node )
 int docPsPrintBeginMarkedContent(
 				struct DrawingContext *	dc,
 				PrintingState *		ps,
-				const char *		roleTag,
+				const char *		structureType,
 				int			contentId )
     {
     /*sioOutPrintf( ps->psSos, "gsave\n" );*/
-    return psPdfBeginMarkedContent( ps, roleTag, contentId );
+    return psPdfBeginMarkedContent( ps, structureType, contentId );
     }
 
 int docPsPrintEndMarkedContent(	struct DrawingContext *	dc,
@@ -187,7 +187,7 @@ int docPsPrintStartLines( void *			vps,
 				docContentId, pageContentId ) )
 	    { LDEB(node->biLevel); return -1;	}
 
-	if  ( docPsPrintBeginMarkedContent( dc, ps, "P", docContentId ) )
+	if  ( docPsPrintBeginMarkedContent( dc, ps, "P", pageContentId ) )
 	    { LDEB(node->biLevel); return -1;	}
 	}
 

@@ -21,6 +21,8 @@ struct MemoryBuffer;
 /*									*/
 /************************************************************************/
 
+struct StructItem;
+
 typedef struct PrintingState
     {
 				/**
@@ -79,12 +81,20 @@ typedef struct PrintingState
     unsigned char		psTagDocumentStructure;
 				/**
 				 * The number of marked content items in
-				 * the document as a whole.
+				 * the document as a whole. We create a 
+				 * unique named dictionary for each StructElem 
+				 * in the document. This is used to generate 
+				 * the unique names.
 				 */
     int				psDocContentMarkCount;
 				/**
 				 * The number of marked content items on
-				 * the current page
+				 * the current page. As we produce a content
+				 * stream per page, and marked content ID's 
+				 * (MCID) must be unique within the stream,
+				 * we use this to produce a contiguous series 
+				 * of ids. See ISO 32000-1:2008, 14.7.4.2.
+				 * (second bullet).
 				 */
     int				psPageContentMarkCount;
 				/**
@@ -95,6 +105,14 @@ typedef struct PrintingState
 				 */
     int				psPageFirstMarkId;
     } PrintingState;
+
+typedef struct StructItem
+    {
+    MemoryBuffer	siDictionaryName;
+    struct StructItem *	siParent;
+    const char *	siStructureType;
+    int			siInChildSpan;
+    } StructItem;
 
 /************************************************************************/
 /*									*/
@@ -284,11 +302,11 @@ extern int psSetCatalogProperty( PrintingState *		ps,
 				const char *			value );
 
 extern int psPdfMarkPosition(	PrintingState *			ps,
-				const char *			roleTag,
+				const char *			structureType,
 				int				contentId );
 
 extern int psPdfBeginMarkedContent( PrintingState *		ps,
-				const char *			roleTag,
+				const char *			structureType,
 				int				contentId );
 
 extern int psPdfBeginArtifact(	PrintingState *			ps,
@@ -304,7 +322,7 @@ extern int psPdfEndMarkedContent( PrintingState *		ps );
 
 extern int psPdfmarkAppendContentToReadingOrder(
 				PrintingState *			ps,
-				const char *			roleTag,
+				const char *			structureType,
 				int				page,
 				int				docContentId,
 				int				pageContentId );

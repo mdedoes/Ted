@@ -39,19 +39,19 @@ int psNewPageContentId(	PrintingState *		ps )
 /************************************************************************/
 
 int psPdfMarkPosition(		PrintingState *		ps,
-				const char *		roleTag,
+				const char *		structureType,
 				int			contentId )
     {
     if  ( contentId < 0 )
 	{
 	if  ( sioOutPrintf( ps->psSos,
-		"[ /%s /MP pdfmark\n", roleTag ) < 0 )
+		"[ /%s /MP pdfmark\n", structureType ) < 0 )
 	    { LDEB(1); return -1;	}
 	}
     else{
 	if  ( sioOutPrintf( ps->psSos,
 		"[ /%s << /DP %d >> /BDC pdfmark\n",
-		roleTag, contentId ) < 0 )
+		structureType, contentId ) < 0 )
 	    { LDEB(1); return -1;	}
 	}
 
@@ -65,19 +65,19 @@ int psPdfMarkPosition(		PrintingState *		ps,
 /************************************************************************/
 
 int psPdfBeginMarkedContent(	PrintingState *		ps,
-				const char *		roleTag,
+				const char *		structureType,
 				int			contentId )
     {
     if  ( contentId < 0 )
 	{
 	if  ( sioOutPrintf( ps->psSos,
-			"[ /%s /BMC pdfmark\n", roleTag ) < 0 )
+			"[ /%s /BMC pdfmark\n", structureType ) < 0 )
 	    { LDEB(1); return -1;	}
 	}
     else{
 	if  ( sioOutPrintf( ps->psSos,
 			"[ /%s << /MCID %d >> /BDC pdfmark\n",
-			roleTag, contentId ) < 0 )
+			structureType, contentId ) < 0 )
 	    { LDEB(1); return -1;	}
 	}
 
@@ -89,11 +89,11 @@ int psPdfBeginArtifact( PrintingState *			ps,
 			const char *			subtypeName,
 			int				contentId )
     {
-    const char * const	roleTag= "Artifact";
+    const char * const	structureType= "Artifact";
 
     /* The propertList in ISO 32000-1:2008, 14.8.2.2.2 is a dictionary. See 14.6.2 */
 
-    if  ( sioOutPrintf( ps->psSos, "[ /%s << ", roleTag ) < 0 )
+    if  ( sioOutPrintf( ps->psSos, "[ /%s << ", structureType ) < 0 )
 	{ LDEB(1); return -1;	}
 
     if  ( typeName )
@@ -124,16 +124,22 @@ int psPdfBeginFigure(	PrintingState *			ps,
 			const MemoryBuffer *		altText,
 			int				contentId )
     {
-    const char * const	roleTag= "Figure";
+    const char * const	structureType= "Figure";
 
     /* The propertList in ISO 32000-1:2008, 14.8.2.2.2 is a dictionary. See 14.6.2 */
 
-    if  ( sioOutPrintf( ps->psSos, "[ /%s << ", roleTag ) < 0 )
+    if  ( sioOutPrintf( ps->psSos, "[ /%s << ", structureType ) < 0 )
 	{ LDEB(1); return -1;	}
 
     if  ( altText && ! utilMemoryBufferIsEmpty( altText ) )
 	{
-	if  ( sioOutPrintf( ps->psSos, " /Alt /%s ", utilMemoryBufferGetString( altText ) ) < 0 )
+	if  ( sioOutPrintf( ps->psSos, " /Alt " ) < 0 )
+	    { XDEB(altText); return -1;	}
+
+	if  ( psPrintPdfMarkStringValue( ps, altText ) < 0 )
+	    { XDEB(altText); return -1;	}
+
+	if  ( sioOutPrintf( ps->psSos, " " ) < 0 )
 	    { XDEB(altText); return -1;	}
 	}
 
@@ -157,6 +163,95 @@ int psPdfEndMarkedContent(		PrintingState *		ps )
     return 0;
     }
 
+/************************************************************************/
+/*									*/
+/*  Populate a StructItem as per table 323 in ISO 32000-1:2008 (14.7.4) */
+/*									*/
+/************************************************************************/
+
+static int psPdfmarkDefineLeafStructItem(
+				PrintingState *		ps,
+				const char *		itemDict,
+				const char *		parentDict,
+				const char *		structureType,
+				int			pageContentId )
+    {
+    sioOutPrintf( ps->psSos,
+	"[ /_objdef {%s} /type /dict /OBJ pdfmark\n",
+	itemDict );
+
+    sioOutPrintf( ps->psSos,
+	"[ {%s} <</S /%s /P {%s} /K %d /Pg {ThisPage}>> /PUT pdfmark\n",
+	itemDict,
+	structureType,
+	parentDict,
+	pageContentId );
+
+    return 0;
+    }
+
+static int psPdfmarkPopulateParentStructItem(
+				PrintingState *		ps,
+				const char *		itemDict,
+				const char *		parentDict,
+				const char *		structureType,
+				const char *		childObjectName )
+    {
+    sioOutPrintf( ps->psSos,
+	"[ {%s} <</S /%s /P {%s} /K {%s}>> /PUT pdfmark\n",
+	itemDict,
+	structureType,
+	parentDict,
+	childObjectName );
+
+    return 0;
+    }
+
+/**
+ * Populate the StructTreeRoot of the document.
+ * See table 3.2.2 in ISO 32000-1:2008, (14.7.2)
+ */
+static int psPdfmarkPopulateStructTreeRoot(
+				PrintingState *		ps,
+				const char *		rootDict,
+				const char *		parentTree,
+				const char *		childObjectName )
+    {
+    sioOutPrintf( ps->psSos,
+	"[ {%s} <</Type /StructTreeRoot /K {%s} /ParentTree {%s}>> /PUT pdfmark\n",
+	rootDict,
+	childObjectName,
+	parentTree );
+
+    return 0;
+    }
+
+
+			/**
+			 * The name of the StructItem dictionary that is
+			 * the root item of the document as a whole.
+			 */
+static const char PS_DOC_STRUCT_ITEM[]= "DOC";
+
+			/**
+			 * The name of the StructTreeRoot dictionary of the
+			 * document as a whole.
+			 */
+static const char PS_DOC_STRUCT_TREE_ROOT[]= "STR";
+
+			/**
+			 * The name of the number tree root in the document 
+			 * StructTreeRoot that holds the struct items that
+			 * correspond to the pages.  (Correct?)
+			 */
+static const char PS_DOC_NUMBER_TREE_ROOT[]= "NTREE";
+
+			/**
+			 * The name of the Nums array in the number tree root
+			 * in the document .
+			 */
+static const char PS_DOC_NUMBER_TREE_NUMS[]= "NTREEA";
+
 int psPdfmarkMarkedDocumentSetup( PrintingState *		ps,
 				const char *			localeTag )
     {
@@ -169,13 +264,27 @@ int psPdfmarkMarkedDocumentSetup( PrintingState *		ps,
 
     /* God knows what this means */
     sioOutPrintf( ps->psSos, "[ /_objdef {DTREE} /type /array /OBJ pdfmark\n" );
-    sioOutPrintf( ps->psSos, "[ /_objdef {NTREE} /type /dict /OBJ pdfmark\n" );
-    sioOutPrintf( ps->psSos, "[ /_objdef {NTREEA} /type /array /OBJ pdfmark\n" );
-    sioOutPrintf( ps->psSos, "[ /_objdef {DOC} /type /dict /OBJ pdfmark\n" );
-    sioOutPrintf( ps->psSos, "[ /_objdef {STR} /type /dict /OBJ pdfmark\n" );
     sioOutPrintf( ps->psSos,
-		"[ {STR} <</Type /StructTreeRoot /K {DOC} /ParentTree {NTREE}>> /PUT pdfmark\n" );
-    sioOutPrintf( ps->psSos, "[ {DOC} <</S /Document /P {STR} /K {DTREE}>> /PUT pdfmark\n" );
+    	"[ /_objdef {%s} /type /dict /OBJ pdfmark\n",
+	PS_DOC_NUMBER_TREE_ROOT );
+    sioOutPrintf( ps->psSos,
+	"[ /_objdef {%s} /type /array /OBJ pdfmark\n",
+	PS_DOC_NUMBER_TREE_NUMS );
+
+    sioOutPrintf( ps->psSos,
+	"[ /_objdef {%s} /type /dict /OBJ pdfmark\n",
+	PS_DOC_STRUCT_ITEM );
+
+    sioOutPrintf( ps->psSos,
+	"[ /_objdef {%s} /type /dict /OBJ pdfmark\n",
+	PS_DOC_STRUCT_TREE_ROOT );
+
+    psPdfmarkPopulateStructTreeRoot( ps,
+	PS_DOC_STRUCT_TREE_ROOT, PS_DOC_NUMBER_TREE_ROOT, PS_DOC_STRUCT_ITEM );
+
+    psPdfmarkPopulateParentStructItem( ps,
+	PS_DOC_STRUCT_ITEM, PS_DOC_STRUCT_TREE_ROOT,
+	"Document", "DTREE" );
 
     sioOutPrintf( ps->psSos,
 	    "[ {Catalog} <</ViewerPreferences <</DisplayDocTitle true>>>> /PUT pdfmark\n" );
@@ -196,22 +305,23 @@ int psPdfmarkMarkedPageSetup(	PrintingState *		ps,
     return 0;
     }
 
+
 int psPdfmarkAppendContentToReadingOrder(
 				PrintingState *		ps,
-				const char *		roleTag,
+				const char *		structureType,
 				int			page,
 				int			docContentId,
 				int			pageContentId )
     {
-    char	itemDict[50];
+    char		itemDict[50];
 
     sprintf( itemDict, "TedRo%d", docContentId );
 
-    /* God knows what this means */
-    sioOutPrintf( ps->psSos, "[ /_objdef {%s} /type /dict /OBJ pdfmark\n",
-				    itemDict );
-    sioOutPrintf( ps->psSos, "[ {%s} <</S /%s /P {DOC} /K %d /Pg {ThisPage}>> /PUT pdfmark\n",
-				    itemDict, roleTag, pageContentId );
+    /* Define and populate a StructItem */
+    psPdfmarkDefineLeafStructItem( ps,
+		    itemDict, PS_DOC_STRUCT_ITEM,
+		    structureType, pageContentId );
+
     sioOutPrintf( ps->psSos, "[ {DTREE} {%s} /APPEND pdfmark\n",
 				    itemDict );
     sioOutPrintf( ps->psSos, "[ {PTREE%d} {%s} /APPEND pdfmark\n",
@@ -230,18 +340,31 @@ int psPdfmarkFinishMarkedPage(	PrintingState *		ps,
     sioOutPrintf( ps->psSos, "[ {ThisPage} <</Annots {PANN%d}>> /PUT pdfmark\n", page );
     sioOutPrintf( ps->psSos, "[ {ThisPage} <</Tabs /S>> /PUT pdfmark\n" );
 
-    sioOutPrintf( ps->psSos, "[ {NTREEA} %d /APPEND pdfmark\n", page );
-    sioOutPrintf( ps->psSos, "[ {NTREEA} {PTREE%d} /APPEND pdfmark\n", page );
+    sioOutPrintf( ps->psSos,
+	"[ {%s} %d /APPEND pdfmark\n",
+	PS_DOC_NUMBER_TREE_NUMS, page );
+    sioOutPrintf( ps->psSos,
+    	"[ {%s} {PTREE%d} /APPEND pdfmark\n",
+	PS_DOC_NUMBER_TREE_NUMS, page );
 
     return 0;
     }
 
+/**
+ * Finish the document structure
+ * 1) Insert the Nums array in the root of the structure number tree 
+ * 2) Insert the structure number tree in the StructTreeRoot of the document.
+ */
 int psPdfmarkMarkedDocumentTrailer( PrintingState *		ps )
     {
 
-    /* God knows what this means */
-    sioOutPrintf( ps->psSos, "[ {NTREE} <</Nums {NTREEA}>> /PUT pdfmark\n" );
-    sioOutPrintf( ps->psSos, "[ {Catalog} <</StructTreeRoot {STR}>> /PUT pdfmark\n" );
+    /* 1 */
+    sioOutPrintf( ps->psSos,
+	    "[ {%s} <</Nums {%s}>> /PUT pdfmark\n",
+	    PS_DOC_NUMBER_TREE_ROOT, PS_DOC_NUMBER_TREE_NUMS );
+    /* 2 */
+    sioOutPrintf( ps->psSos, "[ {Catalog} <</StructTreeRoot {%s}>> /PUT pdfmark\n",
+	    PS_DOC_STRUCT_TREE_ROOT );
 
     return 0;
     }
