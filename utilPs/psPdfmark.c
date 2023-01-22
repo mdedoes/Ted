@@ -385,3 +385,56 @@ int psSetCatalogProperty(	PrintingState *		ps,
     return 0;
     }
 
+/************************************************************************/
+/*									*/
+/*  Insert the destination of a pdfmark jump in the Printout.		*/
+/*									*/
+/************************************************************************/
+
+int psDestPdfmark(		PrintingState *		ps,
+				int			lineTop,
+				const MemoryBuffer *	mbRef )
+    {
+    psEmitDestPdfmark( ps->psSos, &(ps->psCurrentTransform), lineTop, mbRef );
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Write links to be picked up by the distiller.			*/
+/*									*/
+/************************************************************************/
+
+void psFlushLink(		PrintingState *		ps,
+				int			x1,
+				int			lineTop,
+				int			lineHeight )
+    {
+    if  ( ps->psLinkParticulesDone > 0 )
+	{
+	DocumentRectangle	drLink;
+
+	drLink.drX0= ps->psLinkRectLeft;
+	drLink.drY0= lineTop+ lineHeight;
+	drLink.drX1= x1;
+	drLink.drY1= lineTop;
+
+	if  ( utilMemoryBufferIsEmpty( &(ps->psLinkTitle) ) )
+	    {
+	    psSourcePdfmark( ps->psSos, &drLink,
+					    &(ps->psLinkFile),
+					    &(ps->psLinkMark) );
+	    }
+	else{
+	    psGotoPdfmark( ps->psSos, &drLink,
+					    &(ps->psLinkFile),
+					    &(ps->psLinkMark),
+					    &(ps->psLinkTitle) );
+	    }
+
+	ps->psLinkParticulesDone= 0;
+	ps->psLinkRectLeft= x1;
+	}
+
+    return;
+    }

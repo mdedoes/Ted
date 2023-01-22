@@ -26,16 +26,16 @@ struct StructItem;
 typedef struct PrintingState
     {
 				/**
-				 * The output stream that receives the 
+				 * The output stream that receives the
 				 * actual PostScript that we emit
 				 */
     struct SimpleOutputStream *	psSos;
 
 				/**
-				 * The number (counting from 0) in the 
-				 * document of the page that received 
-				 * something visible. Empty pages are 
-				 * only counted when a subsequent page 
+				 * The number (counting from 0) in the
+				 * document of the page that received
+				 * something visible. Empty pages are
+				 * only counted when a subsequent page
 				 * receives visible content.
 				 */
     int				psLastPageMarked;
@@ -47,7 +47,7 @@ typedef struct PrintingState
     const struct PostScriptFontList *	psPostScriptFontList;
 				/**
 				 *  The font that is currently set.
-				 *  It is cached to avoid setting the 
+				 *  It is cached to avoid setting the
 				 *  same font over-and-over again.
 				 */
     const struct AfmFontInfo *		psCurrentFontInfo;
@@ -75,35 +75,53 @@ typedef struct PrintingState
 
 				/**
 				 * If set, we emit PDF marks that tag
-				 * pieces of the document in a way that tries 
+				 * pieces of the document in a way that tries
 				 * to be compliant with ISO 14289-1 (PDF/UA).
 				 */
     unsigned char		psTagDocumentStructure;
 				/**
 				 * The number of marked content items in
-				 * the document as a whole. We create a 
-				 * unique named dictionary for each StructElem 
-				 * in the document. This is used to generate 
+				 * the document as a whole. We create a
+				 * unique named dictionary for each StructElem
+				 * in the document. This is used to generate
 				 * the unique names.
 				 */
     int				psDocContentMarkCount;
 				/**
 				 * The number of marked content items on
 				 * the current page. As we produce a content
-				 * stream per page, and marked content ID's 
+				 * stream per page, and marked content ID's
 				 * (MCID) must be unique within the stream,
-				 * we use this to produce a contiguous series 
+				 * we use this to produce a contiguous series
 				 * of ids. See ISO 32000-1:2008, 14.7.4.2.
 				 * (second bullet).
 				 */
     int				psPageContentMarkCount;
 				/**
 				 * The (potential) first ID of marked content
-				 * on the current page. psPageFirstMarkId is 
+				 * on the current page. psPageFirstMarkId is
 				 * only meaningful if there are marks on the
 				 * page.
 				 */
     int				psPageFirstMarkId;
+
+				/**
+				 * We keep a stack of StructItem's to produce
+				 * a document structure that is similar to the
+				 * HTML structure that corresponds to the document.
+				 * In a few places, this is also used in tricks to
+				 * conform to the requirements of marked PDF.
+				 * E.G. to avoid nesting marked content and to
+				 * avoid inserting Artifacts inside marked content.
+				 *
+				 * NOTE 2 in ISO 32000-1:2008, 14.6.1 implicitly requires
+				 * marked content to be inside a content stream. As we have a
+				 * content stream per page, the marked content must not span
+				 * pages. So, at a page boundary we must pop the whole stack.
+				 * If necessary, we must push unfinished nodes in the
+				 * document hierarchy onto the stack on the next page again.
+				 */
+    struct StructItem *		psCurrentStructItem;
     } PrintingState;
 
 typedef struct StructItem
@@ -111,7 +129,7 @@ typedef struct StructItem
     MemoryBuffer	siDictionaryName;
     struct StructItem *	siParent;
     const char *	siStructureType;
-    int			siInChildSpan;
+    int			siIsLeaf;
     } StructItem;
 
 /************************************************************************/
