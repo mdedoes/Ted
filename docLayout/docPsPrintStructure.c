@@ -52,15 +52,14 @@ int docPsPrintEndMarkedContent(	struct DrawingContext *	dc,
     return 0;
     }
 
-static int docPsPrintBeginArtifact(
+static int docPsPrintBeginTypedArtifact(
 			struct DrawingContext *		dc,
 			PrintingState *			ps,
 			const char *			typeName,
-			const char *			subtypeName,
-			int				contentId )
+			const char *			subtypeName )
     {
     /*sioOutPrintf( ps->psSos, "gsave\n" );*/
-    return psPdfBeginArtifact( ps, typeName, subtypeName, contentId );
+    return psPdfBeginArtifact( ps, typeName, subtypeName, -1 );
     }
 
 int docPsPrintBeginFigure(
@@ -76,9 +75,16 @@ int docPsPrintBeginFigure(
 	return psPdfBeginFigure( ps, altText, contentId );
 	}
     else{
-	return docPsPrintBeginMarkedContent( dc, ps,
-					    "Artifact", -1 );
+	return docPsPrintBeginArtifact( dc, ps );
 	}
+    }
+
+int docPsPrintBeginArtifact(
+			struct DrawingContext *		dc,
+			PrintingState *			ps )
+    {
+    /*sioOutPrintf( ps->psSos, "gsave\n" );*/
+    return psPdfBeginMarkedContent( ps, "Artifact", -1 );
     }
 
 /************************************************************************/
@@ -106,7 +112,7 @@ int docPsPrintStartTree(	void *				vps,
 	case DOCinLEFT_HEADER:
 	case DOCinRIGHT_HEADER:
 	case DOCinLAST_HEADER:
-	    if  ( docPsPrintBeginArtifact( dc, ps, "Pagination", "Header", -1 )	)
+	    if  ( docPsPrintBeginTypedArtifact( dc, ps, "Pagination", "Header" )	)
 		{ LDEB(tree->dtRoot->biTreeType); return -1;	}
 	    break;
 
@@ -115,7 +121,7 @@ int docPsPrintStartTree(	void *				vps,
 	case DOCinLEFT_FOOTER:
 	case DOCinRIGHT_FOOTER:
 	case DOCinLAST_FOOTER:
-	    if  ( docPsPrintBeginArtifact( dc, ps, "Pagination", "Footer", -1 )	)
+	    if  ( docPsPrintBeginTypedArtifact( dc, ps, "Pagination", "Footer" )	)
 		{ LDEB(tree->dtRoot->biTreeType); return -1;	}
 	    break;
 

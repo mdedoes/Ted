@@ -184,3 +184,7 @@ extern int docPsPrintBeginFigure(
 				struct DrawingContext *		dc,
 				struct PrintingState *		ps,
 				const struct MemoryBuffer *	altText );
+
+extern int docPsPrintBeginArtifact(
+				struct DrawingContext *		dc,
+				struct PrintingState *		ps );
