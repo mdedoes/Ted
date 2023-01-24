@@ -318,7 +318,7 @@ int docPsPrintOrnaments(	const BlockOrnaments *		bo,
 
     if  ( ps->psTagDocumentStructure			&&
 	  ! utilPropMaskIsEmpty( &(bo->boPropMask) )	&&
-	  docPsPrintBeginMarkedContent( dc, ps, "Artifact", -1 )	)
+	  docPsPrintBeginArtifact( dc, ps )		)
 	{ LDEB(-1); return -1;	}
 
     if  ( PROPmaskISSET( &(bo->boPropMask), ORNdrawSHADE ) )
@@ -334,7 +334,7 @@ int docPsPrintOrnaments(	const BlockOrnaments *		bo,
 	    {
 	    docDrawSetColorRgb( dc, (void *)ps, &rgb8 );
 
-	    psFillRectangle( ps, 
+	    psFillRectangle( ps,
 			    drInside->drX0, drInside->drY0,
 			    drInside->drX1- drInside->drX0+ 1,
 			    drInside->drY1- drInside->drY0+ 1 );
@@ -356,7 +356,7 @@ int docPsPrintOrnaments(	const BlockOrnaments *		bo,
 
 	    docDrawSetColorRgb( dc, (void *)ps, &cf );
 
-	    psRectanglePath( ps, 
+	    psRectanglePath( ps,
 			    drInside->drX0, drInside->drY0,
 			    drInside->drX1- drInside->drX0+ 1,
 			    drInside->drY1- drInside->drY0+ 1 );

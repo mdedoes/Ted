@@ -56,8 +56,8 @@ int docPsPrintRunUnderline(	const DrawTextLine *	dtl,
     if  ( h < 10 )
 	{ h=  10;	}
 
-    if  ( ps->psTagDocumentStructure			&&
-	  docPsPrintBeginMarkedContent( dc, ps, "Artifact", -1 )	)
+    if  ( ps->psTagDocumentStructure		&&
+	  docPsPrintBeginArtifact( dc, ps )	)
 	{ LDEB(-1); return -1;	}
 
     docDrawSetColorNumber( dtl->dtlDrawingContext, dtl->dtlThrough,
@@ -94,8 +94,8 @@ int docPsPrintRunStrikethrough(	const DrawTextLine *	dtl,
     if  ( h < 10 )
 	{ h=  10;	}
 
-    if  ( ps->psTagDocumentStructure			&&
-	  docPsPrintBeginMarkedContent( dc, ps, "Artifact", -1 )	)
+    if  ( ps->psTagDocumentStructure		&&
+	  docPsPrintBeginArtifact( dc, ps )	)
 	{ LDEB(-1); return -1;	}
 
     docDrawSetColorNumber( dtl->dtlDrawingContext, dtl->dtlThrough,
