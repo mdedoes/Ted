@@ -128,7 +128,7 @@ int docPsPrintStartTree(	void *				vps,
 	default:
 	    /* What about notes and text in shapes? */
 	    SDEB(docTreeTypeStr(tree->dtRoot->biTreeType));
-	    if  ( docPsPrintBeginMarkedContent( dc, ps, "Artifact", -1 )	)
+	    if  ( docPsPrintBeginArtifact( dc, ps )	)
 		{ LDEB(tree->dtRoot->biTreeType); return -1;	}
 	    break;
 	}
@@ -180,6 +180,21 @@ int docPsPrintFinishTree( void *			vps,
 /*									*/
 /************************************************************************/
 
+static int docPsPrintStartLeaf(
+			PrintingState *		ps,
+			const char *		structureType )
+    {
+    const int	contentId= psNewContentId( ps );
+
+    if  ( psPdfmarkAppendMarkedLeaf( ps, structureType, contentId ) )
+	{ SDEB(structureType); return -1;	}
+
+    if  ( psPdfBeginMarkedContent( ps, structureType, contentId ) )
+	{ SDEB(structureType); return -1;	}
+
+    return 0;
+    }
+
 int docPsPrintStartLines( void *			vps,
 			struct DrawingContext *		dc,
 			struct BufferItem *		node )
@@ -187,12 +202,8 @@ int docPsPrintStartLines( void *			vps,
     if  ( node->biTreeType == DOCinBODY )
 	{
 	PrintingState *	ps= (PrintingState *)vps;
-	const int	contentId= psNewContentId( ps );
 
-	if  ( psPdfmarkAppendMarkedLeaf( ps, "P", contentId ) )
-	    { LDEB(node->biLevel); return -1;	}
-
-	if  ( docPsPrintBeginMarkedContent( dc, ps, "P", contentId ) )
+	if  ( docPsPrintStartLeaf( ps, "P" ) )
 	    { LDEB(node->biLevel); return -1;	}
 	}
 
