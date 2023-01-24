@@ -338,7 +338,7 @@ extern int psPdfBeginFigure(	PrintingState *			ps,
 
 extern int psPdfEndMarkedContent( PrintingState *		ps );
 
-extern int psPdfmarkAppendContentToReadingOrder(
+extern int psPdfmarkAppendMarkedLeaf(
 				PrintingState *			ps,
 				const char *			structureType,
 				int				contentId );

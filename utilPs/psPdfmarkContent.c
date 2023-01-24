@@ -306,8 +306,7 @@ int psPdfmarkMarkedPageSetup(	PrintingState *		ps,
     }
 
 
-int psPdfmarkAppendContentToReadingOrder(
-				PrintingState *		ps,
+int psPdfmarkAppendMarkedLeaf(	PrintingState *		ps,
 				const char *		structureType,
 				int			contentId )
     {
