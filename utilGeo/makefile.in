@@ -138,6 +138,7 @@ geoQuadTree.o: \
     geoQuadTree.c
 
 geoRectangle.o: \
+    geoAffineTransform.h \
     geoRectangle.h \
     geoRectangleOffsets.h \
     ../include/appDebug.h \

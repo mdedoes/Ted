@@ -332,9 +332,11 @@ extern int psPdfBeginArtifact(	PrintingState *			ps,
 				const char *			subtypeName,
 				int				contentId );
 
-extern int psPdfBeginFigure(	PrintingState *			ps,
-				const struct MemoryBuffer *	altText,
-				int				contentId );
+extern int psPdfBeginFigure(
+			PrintingState *				ps,
+			const struct DocumentRectangle *	drTwips,
+			const struct MemoryBuffer *		altText,
+			int					contentId );
 
 extern int psPdfEndMarkedContent( PrintingState *		ps );
 

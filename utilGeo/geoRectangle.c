@@ -4,6 +4,7 @@
 
 #   include	"geoRectangle.h"
 #   include	"geoRectangleOffsets.h"
+#   include	"geoAffineTransform.h"
 
 #   include	<appDebugon.h>
 
@@ -173,6 +174,67 @@ void geoLogRectangles(	const char *			label1,
 		label2,
 		dr2->drX0, dr2->drX1- dr2->drX0+ 1,
 		dr2->drY0, dr2->drY1- dr2->drY0+ 1 );
+
+    return;
+    }
+
+/**
+ * Determine the rectangle around the transform of the source rectangle.
+ * Depending on the transorm, that might be the transform of the source 
+ * rectangle.
+ */
+void geoTransformRectangle(	DocumentRectangle *		drTo,
+				const DocumentRectangle *	drFrom,
+				const AffineTransform2D *	at )
+    {
+    DocumentRectangle	dr;
+
+    double		x;
+    double		y;
+
+    x= AT2_X( drFrom->drX0, drFrom->drY0, at );
+    y= AT2_Y( drFrom->drX0, drFrom->drY0, at );
+
+    dr.drX0= dr.drX1= x;
+    dr.drY0= dr.drY1= y;
+
+    x= AT2_X( drFrom->drX1, drFrom->drY0, at );
+    y= AT2_Y( drFrom->drX1, drFrom->drY0, at );
+
+    if  ( dr.drX0 > x )
+	{ dr.drX0= x;	}
+    if  ( dr.drY0 > y )
+	{ dr.drY0= y;	}
+    if  ( dr.drX1 < x )
+	{ dr.drX1= x;	}
+    if  ( dr.drY1 < y )
+	{ dr.drY1= y;	}
+
+    x= AT2_X( drFrom->drX0, drFrom->drY1, at );
+    y= AT2_Y( drFrom->drX0, drFrom->drY1, at );
+
+    if  ( dr.drX0 > x )
+	{ dr.drX0= x;	}
+    if  ( dr.drY0 > y )
+	{ dr.drY0= y;	}
+    if  ( dr.drX1 < x )
+	{ dr.drX1= x;	}
+    if  ( dr.drY1 < y )
+	{ dr.drY1= y;	}
+
+    x= AT2_X( drFrom->drX1, drFrom->drY1, at );
+    y= AT2_Y( drFrom->drX1, drFrom->drY1, at );
+
+    if  ( dr.drX0 > x )
+	{ dr.drX0= x;	}
+    if  ( dr.drY0 > y )
+	{ dr.drY0= y;	}
+    if  ( dr.drX1 < x )
+	{ dr.drX1= x;	}
+    if  ( dr.drY1 < y )
+	{ dr.drY1= y;	}
+
+    *drTo= dr;
 
     return;
     }

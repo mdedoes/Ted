@@ -120,13 +120,17 @@ int psPdfBeginArtifact( PrintingState *			ps,
     return 0;
     }
 
+/**
+ *  Begin the marked content for a Figure.
+ *  The propertList in ISO 32000-1:2008, 14.8.2.2.2 is a dictionary. See 14.6.2
+ *  For other requirements, see 14.8.4.5
+ */
 int psPdfBeginFigure(	PrintingState *			ps,
+			const DocumentRectangle *	drTwips,
 			const MemoryBuffer *		altText,
 			int				contentId )
     {
     const char * const	structureType= "Figure";
-
-    /* The propertList in ISO 32000-1:2008, 14.8.2.2.2 is a dictionary. See 14.6.2 */
 
     if  ( sioOutPrintf( ps->psSos, "[ /%s << ", structureType ) < 0 )
 	{ LDEB(1); return -1;	}
@@ -141,6 +145,18 @@ int psPdfBeginFigure(	PrintingState *			ps,
 
 	if  ( sioOutPrintf( ps->psSos, " " ) < 0 )
 	    { XDEB(altText); return -1;	}
+	}
+
+    if  ( drTwips )
+	{
+	DocumentRectangle	dr;
+
+	geoTransformRectangle( &dr, drTwips, &(ps->psCurrentTransform) );
+
+	if  ( sioOutPrintf( ps->psSos,
+		"/A <</BBox [%d, %d, %d, %d] /Placement /Block /O /Layout>>",
+		dr.drX0, dr.drY0, dr.drX1, dr.drY1 ) < 0 )
+	    { XDEB(drTwips); return -1;	}
 	}
 
     if  ( contentId >= 0 )

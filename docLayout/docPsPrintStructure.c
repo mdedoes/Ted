@@ -87,16 +87,17 @@ static int docPsPrintBeginTypedArtifact(
     }
 
 int docPsPrintBeginFigure(
-			struct DrawingContext *		dc,
-			PrintingState *			ps,
-			const struct MemoryBuffer *	altText )
+		struct DrawingContext *			dc,
+		PrintingState *				ps,
+		const struct DocumentRectangle *	drTwips,
+		const struct MemoryBuffer *		altText )
     {
     /*sioOutPrintf( ps->psSos, "gsave\n" );*/
     if  ( altText && ! utilMemoryBufferIsEmpty( altText ) )
 	{
 	const int contentId= psNewContentId( ps );
 
-	return psPdfBeginFigure( ps, altText, contentId );
+	return psPdfBeginFigure( ps, drTwips, altText, contentId );
 	}
     else{
 	return docPsPrintBeginArtifact( dc, ps );

@@ -184,9 +184,10 @@ extern int docPsPrintEndMarkedGroup(
 				struct PrintingState *		ps );
 
 extern int docPsPrintBeginFigure(
-				struct DrawingContext *		dc,
-				struct PrintingState *		ps,
-				const struct MemoryBuffer *	altText );
+			struct DrawingContext *			dc,
+			struct PrintingState *			ps,
+			const struct DocumentRectangle *	drTwips,
+			const struct MemoryBuffer *		altText );
 
 extern int docPsPrintBeginArtifact(
 				struct DrawingContext *		dc,
