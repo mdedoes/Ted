@@ -66,7 +66,7 @@ int docPsPrintRunUnderline(	const DrawTextLine *	dtl,
 			x0Twips+ dtl->dtlXShift, y0, x1Twips- x0Twips, h );
 
     if  ( ps->psTagDocumentStructure			&&
-	  docPsPrintEndMarkedContent( dc, ps )		)
+	  docPsPrintEndArtifact( dc, ps )		)
 	{ LDEB(1); return -1;	}
 
     return 0;
@@ -104,7 +104,7 @@ int docPsPrintRunStrikethrough(	const DrawTextLine *	dtl,
 			x0Twips+ dtl->dtlXShift, y0, x1Twips- x0Twips, h );
 
     if  ( ps->psTagDocumentStructure			&&
-	  docPsPrintEndMarkedContent( dc, ps )		)
+	  docPsPrintEndArtifact( dc, ps )		)
 	{ LDEB(1); return -1;	}
 
     return 0;

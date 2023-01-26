@@ -439,7 +439,7 @@ int docPsPrintOrnaments(	const BlockOrnaments *		bo,
 
     if  ( ps->psTagDocumentStructure			&&
 	  ! utilPropMaskIsEmpty( &(bo->boPropMask) )	&&
-	  docPsPrintEndMarkedContent( dc, ps )		)
+	  docPsPrintEndArtifact( dc, ps )		)
 	{ LDEB(1); return -1;	}
 
     return 0;

@@ -458,7 +458,7 @@ int docPsPrintInlineObject(	const DrawTextLine *		dtl,
 	    ps->psLinkParticulesDone++;
 
 	    if  ( ps->psTagDocumentStructure		&&
-		  docPsPrintEndMarkedContent( dc, ps )	)
+		  docPsPrintEndMarkedLeaf( dc, ps )	)
 		{ LDEB(1); return -1;	}
 
 	    return 0;
@@ -477,7 +477,7 @@ int docPsPrintInlineObject(	const DrawTextLine *		dtl,
 	    if  ( done < 0 )
 		{ LDEB(done); return -1;	}
 
-	    if  ( ps->psTagDocumentStructure && docPsPrintEndMarkedContent( dc, ps ) )
+	    if  ( ps->psTagDocumentStructure && docPsPrintEndMarkedLeaf( dc, ps ) )
 		{ LDEB(1); return -1;	}
 
 	    return 0;
@@ -500,7 +500,7 @@ int docPsPrintInlineObject(	const DrawTextLine *		dtl,
 		docResetDrawingContextState( dc );
 		ps->psLinkParticulesDone++;
 
-		if  ( ps->psTagDocumentStructure && docPsPrintEndMarkedContent( dc, ps ) )
+		if  ( ps->psTagDocumentStructure && docPsPrintEndMarkedLeaf( dc, ps ) )
 		    { LDEB(1); return -1;	}
 
 		return 0;
@@ -520,7 +520,7 @@ int docPsPrintInlineObject(	const DrawTextLine *		dtl,
 		if  ( done < 0 )
 		    { LDEB(done); return -1;	}
 
-		if  ( ps->psTagDocumentStructure && docPsPrintEndMarkedContent( dc, ps ) )
+		if  ( ps->psTagDocumentStructure && docPsPrintEndMarkedLeaf( dc, ps ) )
 		    { LDEB(1); return -1;	}
 
 		return 0;
@@ -541,7 +541,7 @@ int docPsPrintInlineObject(	const DrawTextLine *		dtl,
 	    docResetDrawingContextState( dc );
 	    ps->psLinkParticulesDone++;
 
-	    if  ( ps->psTagDocumentStructure && docPsPrintEndMarkedContent( dc, ps ) )
+	    if  ( ps->psTagDocumentStructure && docPsPrintEndMarkedLeaf( dc, ps ) )
 		{ LDEB(1); return -1;	}
 
 	    return 0;

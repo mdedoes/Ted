@@ -29,17 +29,41 @@ static int docPsMarkNode(	struct BufferItem *		node )
 	    node->biTopPosition.lpPage == node->biBelowPosition.lpPage;
     }
 
-int docPsPrintBeginMarkedContent(
-				struct DrawingContext *	dc,
+int docPsPrintBeginMarkedGroup(	struct DrawingContext *	dc,
 				PrintingState *		ps,
-				const char *		structureType,
-				int			contentId )
+				const char *		structureType )
     {
     /*sioOutPrintf( ps->psSos, "gsave\n" );*/
-    return psPdfBeginMarkedContent( ps, structureType, contentId );
+    return psPdfBeginMarkedContent( ps, structureType, -1 );
     }
 
-int docPsPrintEndMarkedContent(	struct DrawingContext *	dc,
+int docPsPrintEndMarkedGroup(	struct DrawingContext *	dc,
+				PrintingState *		ps )
+    {
+    psPdfEndMarkedContent( ps );
+
+    /*
+    sioOutPrintf( ps->psSos, "grestore\n" );
+    docResetDrawingContextState( dc );
+    */
+
+    return 0;
+    }
+
+int docPsPrintEndMarkedLeaf(	struct DrawingContext *	dc,
+				PrintingState *		ps )
+    {
+    psPdfEndMarkedContent( ps );
+
+    /*
+    sioOutPrintf( ps->psSos, "grestore\n" );
+    docResetDrawingContextState( dc );
+    */
+
+    return 0;
+    }
+
+int docPsPrintEndArtifact(	struct DrawingContext *	dc,
 				PrintingState *		ps )
     {
     psPdfEndMarkedContent( ps );
@@ -156,14 +180,14 @@ int docPsPrintFinishTree( void *			vps,
 	case DOCinLEFT_FOOTER:
 	case DOCinRIGHT_FOOTER:
 	case DOCinLAST_FOOTER:
-	    if  ( docPsPrintEndMarkedContent( dc, ps )	)
+	    if  ( docPsPrintEndArtifact( dc, ps )	)
 		{ LDEB(tree->dtRoot->biTreeType); return -1;	}
 	    break;
 
 	default:
 	    /* What about notes and text in shapes? */
 	    if  ( tree->dtRoot->biTreeType != DOCinBODY		&&
-		  docPsPrintEndMarkedContent( dc, ps )			)
+		  docPsPrintEndArtifact( dc, ps )		)
 		{ LDEB(tree->dtRoot->biTreeType); return -1;	}
 	}
 
@@ -172,11 +196,8 @@ int docPsPrintFinishTree( void *			vps,
 
 /************************************************************************/
 /*									*/
-/*  Start printing slice of a paragraph.				*/
-/*									*/
-/*  This may involve closing and reopening many levels in the marked	*/
-/*  content. NOTE 3 in ISO 32000-1:2008, 14.6.1 explicitly forbids	*/
-/*  marked sequences to span pages.					*/
+/*  Start printing a piece of content that is included as a leaf in the	*/
+/*  structure tree.							*/
 /*									*/
 /************************************************************************/
 
@@ -194,6 +215,24 @@ static int docPsPrintStartLeaf(
 
     return 0;
     }
+
+static int docPsPrintFinishLeaf(
+			PrintingState *		ps )
+    {
+    if  ( psPdfEndMarkedContent( ps ) )
+	{ LDEB(1); return -1;	}
+
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
+/*  Start printing a slice of a paragraph.				*/
+/*									*/
+/*  This may involve closing and reopening many levels in the marked	*/
+/*  content.								*/
+/*									*/
+/************************************************************************/
 
 int docPsPrintStartLines( void *			vps,
 			struct DrawingContext *		dc,
@@ -214,11 +253,13 @@ int docPsPrintFinishLines( void *			vps,
 			struct DrawingContext *		dc,
 			struct BufferItem *		node )
     {
-    PrintingState *	ps= (PrintingState *)vps;
+    if  ( node->biTreeType == DOCinBODY )
+	{
+	PrintingState *	ps= (PrintingState *)vps;
 
-    if  ( node->biTreeType == DOCinBODY 	&&
-	  docPsPrintEndMarkedContent( dc, ps )	)
-	{ LDEB(node->biLevel); return -1;	}
+	if  ( docPsPrintFinishLeaf( ps ) )
+	    { LDEB(node->biLevel); return -1;	}
+	}
 
     return 0;
     }
@@ -240,13 +281,13 @@ int docPsPrintStartNode(	void *				vps,
 	{
 	case DOClevBODY:
 	    if  ( docPsMarkNode( node )			&&
-	          docPsPrintBeginMarkedContent( dc, ps, "Part", -1 ) )
+	          docPsPrintBeginMarkedGroup( dc, ps, "Part" ) )
 		{ LDEB(node->biLevel); return -1;	}
 	    break;
 
 	case DOClevSECT:
 	    if  ( docPsMarkNode( node )			&&
-		  docPsPrintBeginMarkedContent( dc, ps, "Sect", -1 ) )
+		  docPsPrintBeginMarkedGroup( dc, ps, "Sect" ) )
 		{ LDEB(node->biLevel); return -1;	}
 	    break;
 
@@ -254,7 +295,7 @@ int docPsPrintStartNode(	void *				vps,
 	    if  ( docPsMarkNode( node )			&&
 		  docIsRowNode( node->biParent )	)
 		{
-		if  ( docPsPrintBeginMarkedContent( dc, ps, "TD", -1 ) )
+		if  ( docPsPrintBeginMarkedGroup( dc, ps, "TD" ) )
 		    { LDEB(node->biLevel); return -1;	}
 		}
 	    break;
@@ -265,11 +306,11 @@ int docPsPrintStartNode(	void *				vps,
 		{
 		if  ( node->biNumberInParent == node->biRowTableFirst )
 		    {
-		    if  ( docPsPrintBeginMarkedContent( dc, ps, "Table", -1 ) )
+		    if  ( docPsPrintBeginMarkedGroup( dc, ps, "Table" ) )
 			{ LDEB(node->biLevel); return -1;	}
 		    }
 
-		if  ( docPsPrintBeginMarkedContent( dc, ps, "TR", -1 ) )
+		if  ( docPsPrintBeginMarkedGroup( dc, ps, "TR" ) )
 		    { LDEB(node->biLevel); return -1;	}
 		}
 	    break;
@@ -278,7 +319,7 @@ int docPsPrintStartNode(	void *				vps,
 	    /* Include as "Div": The actual lines are embedded in a "P" and */
 	    /* inserted in the reading order. */
 	    if  ( docPsMarkNode( node )			&&
-		  docPsPrintBeginMarkedContent( dc, ps, "Div", -1 ) )
+		  docPsPrintBeginMarkedGroup( dc, ps, "Div" ) )
 		{ LDEB(node->biLevel); return -1;	}
 	    break;
 
@@ -306,20 +347,20 @@ int docPsPrintFinishNode( void *			vps,
 	{
 	case DOClevBODY:
 	    if  ( docPsMarkNode( node )			&&
-		  docPsPrintEndMarkedContent( dc, ps )	)
+		  docPsPrintEndMarkedGroup( dc, ps )	)
 		{ LDEB(node->biLevel); return -1;	}
 	    break;
 
 	case DOClevPARA:
 	    if  ( docPsMarkNode( node )			&&
-		  docPsPrintEndMarkedContent( dc, ps )	)
+		  docPsPrintEndMarkedGroup( dc, ps )	)
 		{ LDEB(node->biLevel); return -1;	}
 	    break;
 
 	case DOClevSECT:
 	    if  ( docPsMarkNode( node )			)
 		{
-		if  ( docPsPrintEndMarkedContent( dc, ps ) )
+		if  ( docPsPrintEndMarkedGroup( dc, ps ) )
 		    { LDEB(node->biLevel); return -1;	}
 		}
 	    break;
@@ -328,7 +369,7 @@ int docPsPrintFinishNode( void *			vps,
 	    if  ( docPsMarkNode( node )			&&
 		  docIsRowNode( node->biParent )	)
 		{
-		if  ( docPsPrintEndMarkedContent( dc, ps ) )
+		if  ( docPsPrintEndMarkedGroup( dc, ps ) )
 		    { LDEB(node->biLevel); return -1;	}
 		}
 	    break;
@@ -338,13 +379,13 @@ int docPsPrintFinishNode( void *			vps,
 	    if  ( docPsMarkNode( node )			&&
 		  docIsRowNode( node )			)
 		{
-		if  ( docPsPrintEndMarkedContent( dc, ps ) )
+		if  ( docPsPrintEndMarkedGroup( dc, ps ) )
 		    { LDEB(node->biLevel); return -1;	}
 
 		if  ( node->biNumberInParent == node->biRowTablePast- 1 )
 		    {
 		    /* Finish table */
-		    if  ( docPsPrintEndMarkedContent( dc, ps ) )
+		    if  ( docPsPrintEndMarkedGroup( dc, ps ) )
 			{ LDEB(node->biLevel); return -1;	}
 		    }
 		}

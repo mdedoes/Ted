@@ -170,13 +170,16 @@ extern int docPsPrintFinishNode( void *				vps,
 				struct DrawingContext *		dc,
 				struct BufferItem *		node );
 
-extern int docPsPrintBeginMarkedContent(
+extern int docPsPrintBeginMarkedGroup(
 				struct DrawingContext *		dc,
 				struct PrintingState *		ps,
-				const char *			structureType,
-				int				contentId );
+				const char *			structureType );
 
-extern int docPsPrintEndMarkedContent(
+extern int docPsPrintEndMarkedLeaf(
+				struct DrawingContext *		dc,
+				struct PrintingState *		ps );
+
+extern int docPsPrintEndMarkedGroup(
 				struct DrawingContext *		dc,
 				struct PrintingState *		ps );
 
@@ -188,3 +191,8 @@ extern int docPsPrintBeginFigure(
 extern int docPsPrintBeginArtifact(
 				struct DrawingContext *		dc,
 				struct PrintingState *		ps );
+
+extern int docPsPrintEndArtifact(
+				struct DrawingContext *		dc,
+				struct PrintingState *		ps );
+
