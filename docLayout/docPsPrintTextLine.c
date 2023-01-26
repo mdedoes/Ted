@@ -242,6 +242,10 @@ int docPsPrintTextRun(		const TextRun *		tr,
     int				spanBaseline= baseLine->lpPageYTwips;
     const ParticuleData *	pd= dtl->dtlParticuleData+ tr->trPartFrom;
 
+    /* Make sure that we emit text inside a /Span if needed */
+    if  ( ps->psTagDocumentStructure && docPsPrintClaimSpan( ps, tr->trParaNode ) )
+	{ LDEB(1); return -1;	}
+
     if  ( psMakeOutputString( &printString, &scratchString,
 				    &segments, &segmentCount,
 				    tr->trTextAttribute, tr->trDirection,
@@ -261,6 +265,8 @@ int docPsPrintTextRun(		const TextRun *		tr,
 	}
 
     ps->psLinkParticulesDone += ( tr->trPartUpto- tr->trPartFrom );
+
+    /* Spans in the PDF document structure are closed as part of the enclosing logic */
 
   ready:
 

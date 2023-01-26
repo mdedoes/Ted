@@ -197,3 +197,5 @@ extern int docPsPrintEndArtifact(
 				struct DrawingContext *		dc,
 				struct PrintingState *		ps );
 
+extern int docPsPrintClaimSpan(	struct PrintingState *		ps,
+				struct BufferItem *		paraNode );

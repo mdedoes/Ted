@@ -129,6 +129,7 @@ typedef struct StructItem
     MemoryBuffer	siDictionaryName;
     struct StructItem *	siParent;
     const char *	siStructureType;
+    int			siContentId;
     int			siIsLeaf;
     } StructItem;
 
@@ -137,6 +138,11 @@ typedef struct StructItem
 /*  Routine declarations.						*/
 /*									*/
 /************************************************************************/
+
+extern void psPdfInitStructItem(
+			StructItem *			si );
+extern void psPdfCleanStructItem(
+			StructItem *			si );
 
 extern void psStartDSCDocument(
 			const PrintingState *		ps,
@@ -342,8 +348,7 @@ extern int psPdfEndMarkedContent( PrintingState *		ps );
 
 extern int psPdfmarkAppendMarkedLeaf(
 				PrintingState *			ps,
-				const char *			structureType,
-				int				contentId );
+				StructItem *			structItem );
 
 extern int psPdfmarkMarkedDocumentSetup(
 				PrintingState *			ps,
@@ -361,5 +366,10 @@ extern int psPdfmarkFinishMarkedPage(
 				int				page );
 
 extern int psNewContentId(	PrintingState *			ps );
+
+extern struct StructItem * psPdfLeafStructItem(
+				PrintingState *		ps,
+				const char *		structureType,
+				int			contentId );
 
 #   endif	/*  UTIL_PS_H  */

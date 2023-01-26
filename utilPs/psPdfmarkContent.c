@@ -8,10 +8,12 @@
 
 #   include	<stddef.h>
 #   include	<stdio.h>
+#   include	<stdlib.h>
 
 #   include	"psPrint.h"
 #   include	<geoRectangle.h>
 #   include	<sioGeneral.h>
+#   include	<utilMemoryBufferPrintf.h>
 
 #   include	<appDebugon.h>
 
@@ -321,22 +323,42 @@ int psPdfmarkMarkedPageSetup(	PrintingState *		ps,
     return 0;
     }
 
-
-int psPdfmarkAppendMarkedLeaf(	PrintingState *		ps,
+StructItem * psPdfLeafStructItem(
+				PrintingState *		ps,
 				const char *		structureType,
 				int			contentId )
     {
     const int		uniqueDictId= ps->psDocContentMarkCount++;
+    StructItem *	structItem= malloc( sizeof(StructItem) );
+
+    if  ( ! structItem )
+	{ XDEB(structItem); return structItem;	}
+
+    psPdfInitStructItem( structItem );
+
+    utilMemoryBufferPrintf( &(structItem->siDictionaryName), "TedRo%d", uniqueDictId );
+    structItem->siStructureType= structureType;
+    structItem->siContentId= contentId;
+    structItem->siIsLeaf= 1;
+
+    return structItem;
+    }
+
+
+/**
+ *  Define and populate a StructItem object in the output.
+ */
+int psPdfmarkAppendMarkedLeaf(	PrintingState *		ps,
+				StructItem *		structItem )
+    {
     const int		page= ps->psSheetsPrinted;
+    const char *	itemDict= utilMemoryBufferGetString( &(structItem->siDictionaryName) );
+    const char *	parentDict= PS_DOC_STRUCT_ITEM;
 
-    char		itemDict[50];
-
-    sprintf( itemDict, "TedRo%d", uniqueDictId );
-
-    /* Define and populate a StructItem */
+    /* Define and populate a StructItem object in the output. */
     psPdfmarkDefineLeafStructItem( ps,
-		    itemDict, PS_DOC_STRUCT_ITEM,
-		    structureType, contentId );
+		    itemDict, parentDict,
+		    structItem->siStructureType, structItem->siContentId );
 
     sioOutPrintf( ps->psSos, "[ {DTREE} {%s} /APPEND pdfmark\n",
 				    itemDict );

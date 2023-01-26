@@ -114,6 +114,61 @@ int docPsPrintBeginArtifact(
 
 /************************************************************************/
 /*									*/
+/*  Start printing a piece of content that is included as a leaf in the	*/
+/*  structure tree.							*/
+/*									*/
+/************************************************************************/
+
+static int docPsPrintStartLeaf(
+			PrintingState *		ps,
+			const char *		structureType )
+    {
+    const int	contentId= psNewContentId( ps );
+
+    StructItem * structItem= psPdfLeafStructItem( ps, structureType, contentId );
+
+    if  ( ! structItem )
+	{ XDEB(structItem); return -1;	}
+
+    if  ( psPdfmarkAppendMarkedLeaf( ps, structItem ) )
+	{ SDEB(structureType); return -1;	}
+
+    if  ( psPdfBeginMarkedContent( ps, structureType, contentId ) )
+	{ SDEB(structureType); return -1;	}
+
+    return 0;
+    }
+
+static int docPsPrintFinishLeaf(
+			PrintingState *		ps )
+    {
+    if  ( psPdfEndMarkedContent( ps ) )
+	{ LDEB(1); return -1;	}
+
+    return 0;
+    }
+
+/**
+ *  Make sure that if we are emitting textual content that is part 
+ *  of the reading order of the document, that the current leaf in 
+ *  the structure tree is a /Span.
+ */
+int docPsPrintClaimSpan(	PrintingState *		ps,
+				struct BufferItem *	paraNode )
+    {
+    if  ( 0 && paraNode->biTreeType == DOCinBODY )
+	{
+	if  ( ! ps->psCurrentStructItem 		||
+	      ! ps->psCurrentStructItem->siIsLeaf	)
+	    {
+	    }
+	}
+
+    return 0;
+    }
+
+/************************************************************************/
+/*									*/
 /*  Start/Finish printing a (sub)tree in the document tree. This is	*/
 /*  invoked to mark the content structure E.G. to support reflowing or	*/
 /*  PDF-UA.								*/
@@ -191,37 +246,6 @@ int docPsPrintFinishTree( void *			vps,
 		  docPsPrintEndArtifact( dc, ps )		)
 		{ LDEB(tree->dtRoot->biTreeType); return -1;	}
 	}
-
-    return 0;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Start printing a piece of content that is included as a leaf in the	*/
-/*  structure tree.							*/
-/*									*/
-/************************************************************************/
-
-static int docPsPrintStartLeaf(
-			PrintingState *		ps,
-			const char *		structureType )
-    {
-    const int	contentId= psNewContentId( ps );
-
-    if  ( psPdfmarkAppendMarkedLeaf( ps, structureType, contentId ) )
-	{ SDEB(structureType); return -1;	}
-
-    if  ( psPdfBeginMarkedContent( ps, structureType, contentId ) )
-	{ SDEB(structureType); return -1;	}
-
-    return 0;
-    }
-
-static int docPsPrintFinishLeaf(
-			PrintingState *		ps )
-    {
-    if  ( psPdfEndMarkedContent( ps ) )
-	{ LDEB(1); return -1;	}
 
     return 0;
     }

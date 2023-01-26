@@ -125,17 +125,32 @@ int psSetFont(	PrintingState *			ps,
 /*									*/
 /************************************************************************/
 
+void psPdfInitStructItem(	StructItem *	structItem )
+    {
+    utilInitMemoryBuffer( &(structItem->siDictionaryName) );
+
+    structItem->siParent= (StructItem *)0;
+    structItem->siStructureType= (const char *)0;
+    structItem->siContentId= -1;
+    structItem->siIsLeaf= 0;
+    }
+
+void psPdfCleanStructItem(	StructItem *	structItem )
+    {
+    utilCleanMemoryBuffer( &(structItem->siDictionaryName) );
+    }
+
 static void psPopStructItem(	PrintingState * ps )
     {
     if  ( ! ps->psCurrentStructItem )
 	{ XDEB(ps->psCurrentStructItem);	}
     else{
-	StructItem *	current= ps->psCurrentStructItem;
+	StructItem *	structItem= ps->psCurrentStructItem;
 
-	utilCleanMemoryBuffer( &(current->siDictionaryName) );
-	free( current );
+	ps->psCurrentStructItem= structItem->siParent;
 
-	ps->psCurrentStructItem= current->siParent;
+	psPdfCleanStructItem( structItem );
+	free( structItem );
 	}
     }
 
