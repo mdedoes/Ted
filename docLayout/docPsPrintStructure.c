@@ -57,6 +57,7 @@ int docPsPrintClaimSpan(	PrintingState *		ps,
 						    STRUCTtypeSPAN )	)
 	    {
 	    psPdfPopStructItem( ps );
+	    psPdfEndMarkedContent( ps );
 	    }
 
 	if  ( ! ps->psCurrentStructItem 		||
@@ -92,6 +93,7 @@ static int docPsPrintPopSpan(	PrintingState *		ps )
 						STRUCTtypeSPAN )	)
 	{
 	psPdfPopStructItem( ps );
+	psPdfEndMarkedContent( ps );
 	}
 
     return 0;
@@ -117,18 +119,13 @@ static int docPsPrintBeginMarkedGroup(
 static int docPsPrintEndMarkedGroup(
 				PrintingState *		ps )
     {
-    if  ( ps->psCurrentStructItem 		&&
-	  ! ps->psCurrentStructItem->siIsLeaf	)
-	{
-	psPdfPopStructItem( ps );
-	}
-    else{ XDEB(ps->psCurrentStructItem);	}
-
+    psPdfPopStructItem( ps );
     return psPdfEndMarkedContent( ps );
     }
 
 int docPsPrintEndFigure(	PrintingState *		ps )
     {
+    psPdfPopStructItem( ps );
     return psPdfEndMarkedContent( ps );
     }
 

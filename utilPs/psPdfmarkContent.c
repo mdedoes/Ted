@@ -414,11 +414,8 @@ static int psPdfmarkAppendDefinedItem(
 
     sioOutPrintf( ps->psSos, "[ {%s} {%s} /APPEND pdfmark\n",
 				    parentArray, itemDict );
-    if  ( ! structItem->siParent )
-	{
-	sioOutPrintf( ps->psSos, "[ {PTREE%d} {%s} /APPEND pdfmark\n",
+    sioOutPrintf( ps->psSos, "[ {PTREE%d} {%s} /APPEND pdfmark\n",
 				    page, itemDict );
-	}
 
     return 0;
     }
