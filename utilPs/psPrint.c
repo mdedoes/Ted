@@ -128,6 +128,7 @@ int psSetFont(	PrintingState *			ps,
 void psPdfInitStructItem(	StructItem *	structItem )
     {
     utilInitMemoryBuffer( &(structItem->siDictionaryName) );
+    utilInitMemoryBuffer( &(structItem->siChildArrayName) );
 
     structItem->siParent= (StructItem *)0;
     structItem->siStructureType= (const char *)0;
@@ -138,9 +139,10 @@ void psPdfInitStructItem(	StructItem *	structItem )
 void psPdfCleanStructItem(	StructItem *	structItem )
     {
     utilCleanMemoryBuffer( &(structItem->siDictionaryName) );
+    utilCleanMemoryBuffer( &(structItem->siChildArrayName) );
     }
 
-static void psPopStructItem(	PrintingState * ps )
+void psPdfPopStructItem(	PrintingState * ps )
     {
     if  ( ! ps->psCurrentStructItem )
 	{ XDEB(ps->psCurrentStructItem);	}
@@ -152,6 +154,15 @@ static void psPopStructItem(	PrintingState * ps )
 	psPdfCleanStructItem( structItem );
 	free( structItem );
 	}
+    }
+
+int psPdfPushStructItem(	PrintingState *	ps,
+				StructItem *	structItem )
+    {
+    structItem->siParent= ps->psCurrentStructItem;
+    ps->psCurrentStructItem= structItem;
+
+    return 0;
     }
 
 /************************************************************************/
@@ -216,7 +227,7 @@ void psCleanPrintingState(	PrintingState *	ps )
     utilCleanMemoryBuffer( &(ps->psLinkTitle) );
 
     while( ps->psCurrentStructItem )
-	{ psPopStructItem( ps );	}
+	{ psPdfPopStructItem( ps );	}
 
     return;
     }

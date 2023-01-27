@@ -445,7 +445,7 @@ int docPsPrintInlineObject(	const DrawTextLine *		dtl,
 	case DOCokMACPICT:
 
 	    if  ( ps->psTagDocumentStructure			&&
-		  docPsPrintBeginFigure( dc, ps, drTwips,
+		  docPsPrintBeginFigure( ps, drTwips,
 					&(io->ioAltText) )	)
 		{ LDEB(1); return -1;	}
 
@@ -457,8 +457,8 @@ int docPsPrintInlineObject(	const DrawTextLine *		dtl,
 	    docResetDrawingContextState( dc );
 	    ps->psLinkParticulesDone++;
 
-	    if  ( ps->psTagDocumentStructure		&&
-		  docPsPrintEndMarkedLeaf( dc, ps )	)
+	    if  ( ps->psTagDocumentStructure	&&
+		  docPsPrintEndFigure( ps )	)
 		{ LDEB(1); return -1;	}
 
 	    return 0;
@@ -467,7 +467,7 @@ int docPsPrintInlineObject(	const DrawTextLine *		dtl,
 	case DOCokPICTPNGBLIP:
 
 	    if  ( ps->psTagDocumentStructure			&&
-		  docPsPrintBeginFigure( dc, ps, drTwips,
+		  docPsPrintBeginFigure( ps, drTwips,
 					&(io->ioAltText) )	)
 		{ LDEB(1); return -1;	}
 
@@ -477,7 +477,7 @@ int docPsPrintInlineObject(	const DrawTextLine *		dtl,
 	    if  ( done < 0 )
 		{ LDEB(done); return -1;	}
 
-	    if  ( ps->psTagDocumentStructure && docPsPrintEndMarkedLeaf( dc, ps ) )
+	    if  ( ps->psTagDocumentStructure && docPsPrintEndFigure( ps ) )
 		{ LDEB(1); return -1;	}
 
 	    return 0;
@@ -488,7 +488,7 @@ int docPsPrintInlineObject(	const DrawTextLine *		dtl,
 		  io->ioResultKind == DOCokMACPICT		)
 		{
 		if  ( ps->psTagDocumentStructure		&&
-		      docPsPrintBeginFigure( dc, ps, drTwips,
+		      docPsPrintBeginFigure( ps, drTwips,
 					&(io->ioAltText) )	)
 		    { LDEB(1); return -1;	}
 
@@ -500,7 +500,7 @@ int docPsPrintInlineObject(	const DrawTextLine *		dtl,
 		docResetDrawingContextState( dc );
 		ps->psLinkParticulesDone++;
 
-		if  ( ps->psTagDocumentStructure && docPsPrintEndMarkedLeaf( dc, ps ) )
+		if  ( ps->psTagDocumentStructure && docPsPrintEndFigure( ps ) )
 		    { LDEB(1); return -1;	}
 
 		return 0;
@@ -510,7 +510,7 @@ int docPsPrintInlineObject(	const DrawTextLine *		dtl,
 	    	  io->ioResultKind == DOCokPICTPNGBLIP	)
 		{
 		if  ( ps->psTagDocumentStructure		&&
-		      docPsPrintBeginFigure( dc, ps, drTwips,
+		      docPsPrintBeginFigure( ps, drTwips,
 					&(io->ioAltText) )	)
 		    { LDEB(1); return -1;	}
 
@@ -520,7 +520,7 @@ int docPsPrintInlineObject(	const DrawTextLine *		dtl,
 		if  ( done < 0 )
 		    { LDEB(done); return -1;	}
 
-		if  ( ps->psTagDocumentStructure && docPsPrintEndMarkedLeaf( dc, ps ) )
+		if  ( ps->psTagDocumentStructure && docPsPrintEndFigure( ps ) )
 		    { LDEB(1); return -1;	}
 
 		return 0;
@@ -530,7 +530,7 @@ int docPsPrintInlineObject(	const DrawTextLine *		dtl,
 
 	case DOCokEPS_FILE:
 	    if  ( ps->psTagDocumentStructure			&&
-		  docPsPrintBeginFigure( dc, ps, drTwips,
+		  docPsPrintBeginFigure( ps, drTwips,
 					&(io->ioAltText) )	)
 		{ LDEB(1); return -1;	}
 
@@ -541,7 +541,7 @@ int docPsPrintInlineObject(	const DrawTextLine *		dtl,
 	    docResetDrawingContextState( dc );
 	    ps->psLinkParticulesDone++;
 
-	    if  ( ps->psTagDocumentStructure && docPsPrintEndMarkedLeaf( dc, ps ) )
+	    if  ( ps->psTagDocumentStructure && docPsPrintEndFigure( ps ) )
 		{ LDEB(1); return -1;	}
 
 	    return 0;

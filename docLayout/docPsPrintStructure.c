@@ -8,6 +8,7 @@
 #   include	"docLayoutConfig.h"
 
 #   include	<stddef.h>
+#   include	<string.h>
 
 #   include	"docPsPrintImpl.h"
 #   include	<docTreeNode.h>
@@ -19,7 +20,18 @@
 #   include	<appDebugon.h>
 #   include	<docDebug.h>
 
-#   define	SHOW_PAGE_GRID	0
+/**
+ * Standard structure types. See ISO 32000-1:2008, 14.8.4.
+ */
+static const char STRUCTtypeP[]= "P";
+static const char STRUCTtypeDIV[]= "Div";
+static const char STRUCTtypeSPAN[]= "Span";
+static const char STRUCTtypePART[]= "Part";
+static const char STRUCTtypeSECT[]= "Sect";
+static const char STRUCTtypeTD[]= "TD";
+static const char STRUCTtypeTR[]= "TR";
+static const char STRUCTtypeTABLE[]= "Table";
+static const char STRUCTtypeFIGURE[]= "Figure";
 
 /************************************************************************/
 
@@ -27,125 +39,6 @@ static int docPsMarkNode(	struct BufferItem *		node )
     {
     return 0 && node->biTreeType == DOCinBODY &&
 	    node->biTopPosition.lpPage == node->biBelowPosition.lpPage;
-    }
-
-int docPsPrintBeginMarkedGroup(	struct DrawingContext *	dc,
-				PrintingState *		ps,
-				const char *		structureType )
-    {
-    /*sioOutPrintf( ps->psSos, "gsave\n" );*/
-    return psPdfBeginMarkedContent( ps, structureType, -1 );
-    }
-
-int docPsPrintEndMarkedGroup(	struct DrawingContext *	dc,
-				PrintingState *		ps )
-    {
-    psPdfEndMarkedContent( ps );
-
-    /*
-    sioOutPrintf( ps->psSos, "grestore\n" );
-    docResetDrawingContextState( dc );
-    */
-
-    return 0;
-    }
-
-int docPsPrintEndMarkedLeaf(	struct DrawingContext *	dc,
-				PrintingState *		ps )
-    {
-    psPdfEndMarkedContent( ps );
-
-    /*
-    sioOutPrintf( ps->psSos, "grestore\n" );
-    docResetDrawingContextState( dc );
-    */
-
-    return 0;
-    }
-
-int docPsPrintEndArtifact(	struct DrawingContext *	dc,
-				PrintingState *		ps )
-    {
-    psPdfEndMarkedContent( ps );
-
-    /*
-    sioOutPrintf( ps->psSos, "grestore\n" );
-    docResetDrawingContextState( dc );
-    */
-
-    return 0;
-    }
-
-static int docPsPrintBeginTypedArtifact(
-			struct DrawingContext *		dc,
-			PrintingState *			ps,
-			const char *			typeName,
-			const char *			subtypeName )
-    {
-    /*sioOutPrintf( ps->psSos, "gsave\n" );*/
-    return psPdfBeginArtifact( ps, typeName, subtypeName, -1 );
-    }
-
-int docPsPrintBeginFigure(
-		struct DrawingContext *			dc,
-		PrintingState *				ps,
-		const struct DocumentRectangle *	drTwips,
-		const struct MemoryBuffer *		altText )
-    {
-    /*sioOutPrintf( ps->psSos, "gsave\n" );*/
-    if  ( altText && ! utilMemoryBufferIsEmpty( altText ) )
-	{
-	const int contentId= psNewContentId( ps );
-
-	return psPdfBeginFigure( ps, drTwips, altText, contentId );
-	}
-    else{
-	return docPsPrintBeginArtifact( dc, ps );
-	}
-    }
-
-int docPsPrintBeginArtifact(
-			struct DrawingContext *		dc,
-			PrintingState *			ps )
-    {
-    /*sioOutPrintf( ps->psSos, "gsave\n" );*/
-    return psPdfBeginMarkedContent( ps, "Artifact", -1 );
-    }
-
-/************************************************************************/
-/*									*/
-/*  Start printing a piece of content that is included as a leaf in the	*/
-/*  structure tree.							*/
-/*									*/
-/************************************************************************/
-
-static int docPsPrintStartLeaf(
-			PrintingState *		ps,
-			const char *		structureType )
-    {
-    const int	contentId= psNewContentId( ps );
-
-    StructItem * structItem= psPdfLeafStructItem( ps, structureType, contentId );
-
-    if  ( ! structItem )
-	{ XDEB(structItem); return -1;	}
-
-    if  ( psPdfmarkAppendMarkedLeaf( ps, structItem ) )
-	{ SDEB(structureType); return -1;	}
-
-    if  ( psPdfBeginMarkedContent( ps, structureType, contentId ) )
-	{ SDEB(structureType); return -1;	}
-
-    return 0;
-    }
-
-static int docPsPrintFinishLeaf(
-			PrintingState *		ps )
-    {
-    if  ( psPdfEndMarkedContent( ps ) )
-	{ LDEB(1); return -1;	}
-
-    return 0;
     }
 
 /**
@@ -156,15 +49,150 @@ static int docPsPrintFinishLeaf(
 int docPsPrintClaimSpan(	PrintingState *		ps,
 				struct BufferItem *	paraNode )
     {
-    if  ( 0 && paraNode->biTreeType == DOCinBODY )
+    if  ( paraNode->biTreeType == DOCinBODY )
 	{
+	if  ( ps->psCurrentStructItem 					&&
+	      ps->psCurrentStructItem->siIsLeaf				&&
+	      strcmp( ps->psCurrentStructItem->siStructureType,
+						    STRUCTtypeSPAN )	)
+	    {
+	    psPdfPopStructItem( ps );
+	    }
+
 	if  ( ! ps->psCurrentStructItem 		||
 	      ! ps->psCurrentStructItem->siIsLeaf	)
 	    {
+	    const int	contentId= psNewContentId( ps );
+	    StructItem * structItem= psPdfLeafStructItem( ps, STRUCTtypeSPAN, contentId );
+
+	    if  ( ! structItem || psPdfPushStructItem( ps, structItem ) )
+		{ XDEB(structItem); return -1;	}
+
+	    if  ( psPdfmarkAppendMarkedLeaf( ps, structItem ) )
+		{ LDEB(1); return -1;	}
+
+	    if  ( psPdfBeginMarkedContent( ps,
+		  structItem->siStructureType, structItem->siContentId ) )
+		{ LDEB(1); return -1;	}
 	    }
 	}
 
     return 0;
+    }
+
+/**
+ *  If the current StructItem on the stack is a /Span, pop it from 
+ *  the stack
+ */
+static int docPsPrintPopSpan(	PrintingState *		ps )
+    {
+    if  ( ps->psCurrentStructItem 					&&
+	  ps->psCurrentStructItem->siIsLeaf				&&
+	  ! strcmp( ps->psCurrentStructItem->siStructureType,
+						STRUCTtypeSPAN )	)
+	{
+	psPdfPopStructItem( ps );
+	}
+
+    return 0;
+    }
+
+static int docPsPrintBeginMarkedGroup(
+				PrintingState *		ps,
+				const char *		structureType )
+    {
+    const int	contentId= -1;
+
+    StructItem * structItem= psPdfGroupStructItem( ps, structureType, contentId );
+
+    if  ( ! structItem || psPdfPushStructItem( ps, structItem ) )
+	{ XDEB(structItem); return -1;	}
+
+    return psPdfBeginMarkedContent( ps, structureType, -1 );
+    }
+
+static int docPsPrintEndMarkedGroup(
+				PrintingState *		ps )
+    {
+    if  ( ps->psCurrentStructItem 		&&
+	  ! ps->psCurrentStructItem->siIsLeaf	)
+	{
+	psPdfPopStructItem( ps );
+	}
+    else{ XDEB(ps->psCurrentStructItem);	}
+
+    return psPdfEndMarkedContent( ps );
+    }
+
+int docPsPrintEndFigure(	PrintingState *		ps )
+    {
+    return psPdfEndMarkedContent( ps );
+    }
+
+int docPsPrintEndArtifact(	PrintingState *		ps )
+    {
+    return psPdfEndMarkedContent( ps );
+    }
+
+int docPsPrintBeginFigure(
+		PrintingState *				ps,
+		const struct DocumentRectangle *	drTwips,
+		const struct MemoryBuffer *		altText )
+    {
+    if  ( altText && ! utilMemoryBufferIsEmpty( altText ) )
+	{
+	const int contentId= psNewContentId( ps );
+	StructItem * structItem= psPdfLeafStructItem( ps, STRUCTtypeFIGURE, contentId );
+
+	if  ( docPsPrintPopSpan( ps ) )
+	    { LDEB(1); return -1;	}
+
+	if  ( ! structItem || psPdfPushStructItem( ps, structItem ) )
+	    { XDEB(structItem); return -1;	}
+
+	if  ( psPdfmarkAppendMarkedIllustration(
+				ps, structItem, drTwips, altText ) )
+	    { LDEB(1); return -1;	}
+
+	if  ( psPdfBeginMarkedContent( ps,
+	      structItem->siStructureType, structItem->siContentId ) )
+	    { LDEB(1); return -1;	}
+
+	return 0;
+	}
+    else{
+	return docPsPrintBeginArtifact( ps );
+	}
+    }
+
+/**
+ *  Begin an artifact in the output. We want to avoid /Artifacts 
+ *  inside marked content. For that reason, we pop a possible 
+ *  open /Span from the stack
+ */
+static int docPsPrintBeginTypedArtifact(
+			PrintingState *			ps,
+			const char *			typeName,
+			const char *			subtypeName )
+    {
+    if  ( docPsPrintPopSpan( ps ) )
+	{ LDEB(1); return -1;	}
+
+    return psPdfBeginArtifact( ps, typeName, subtypeName );
+    }
+
+/**
+ *  Begin an artifact in the output. We want to avoid /Artifacts 
+ *  inside marked content. For that reason, we pop a possible 
+ *  open /Span from the stack
+ */
+int docPsPrintBeginArtifact(
+			PrintingState *			ps )
+    {
+    if  ( docPsPrintPopSpan( ps ) )
+	{ LDEB(1); return -1;	}
+
+    return psPdfBeginMarkedContent( ps, "Artifact", -1 );
     }
 
 /************************************************************************/
@@ -192,7 +220,7 @@ int docPsPrintStartTree(	void *				vps,
 	case DOCinLEFT_HEADER:
 	case DOCinRIGHT_HEADER:
 	case DOCinLAST_HEADER:
-	    if  ( docPsPrintBeginTypedArtifact( dc, ps, "Pagination", "Header" )	)
+	    if  ( docPsPrintBeginTypedArtifact( ps, "Pagination", "Header" )	)
 		{ LDEB(tree->dtRoot->biTreeType); return -1;	}
 	    break;
 
@@ -201,14 +229,14 @@ int docPsPrintStartTree(	void *				vps,
 	case DOCinLEFT_FOOTER:
 	case DOCinRIGHT_FOOTER:
 	case DOCinLAST_FOOTER:
-	    if  ( docPsPrintBeginTypedArtifact( dc, ps, "Pagination", "Footer" )	)
+	    if  ( docPsPrintBeginTypedArtifact( ps, "Pagination", "Footer" )	)
 		{ LDEB(tree->dtRoot->biTreeType); return -1;	}
 	    break;
 
 	default:
 	    /* What about notes and text in shapes? */
 	    SDEB(docTreeTypeStr(tree->dtRoot->biTreeType));
-	    if  ( docPsPrintBeginArtifact( dc, ps )	)
+	    if  ( docPsPrintBeginArtifact( ps )	)
 		{ LDEB(tree->dtRoot->biTreeType); return -1;	}
 	    break;
 	}
@@ -236,56 +264,72 @@ int docPsPrintFinishTree( void *			vps,
 	case DOCinLEFT_FOOTER:
 	case DOCinRIGHT_FOOTER:
 	case DOCinLAST_FOOTER:
-	    if  ( docPsPrintEndArtifact( dc, ps )	)
+	    if  ( docPsPrintEndArtifact( ps )	)
 		{ LDEB(tree->dtRoot->biTreeType); return -1;	}
 	    break;
 
 	default:
 	    /* What about notes and text in shapes? */
 	    if  ( tree->dtRoot->biTreeType != DOCinBODY		&&
-		  docPsPrintEndArtifact( dc, ps )		)
+		  docPsPrintEndArtifact( ps )		)
 		{ LDEB(tree->dtRoot->biTreeType); return -1;	}
 	}
 
     return 0;
     }
 
-/************************************************************************/
-/*									*/
-/*  Start printing a slice of a paragraph.				*/
-/*									*/
-/*  This may involve closing and reopening many levels in the marked	*/
-/*  content.								*/
-/*									*/
-/************************************************************************/
-
+/**
+ *  Start printing a slice of a paragraph.
+ */
 int docPsPrintStartLines( void *			vps,
 			struct DrawingContext *		dc,
 			struct BufferItem *		node )
     {
+    PrintingState *	ps= (PrintingState *)vps;
+
+    /* This would be the correct code
+    if  ( docPsMarkNode( node )				&&
+	  docPsPrintBeginMarkedGroup( ps, STRUCTtypeDIV ) )
+	{ LDEB(node->biLevel); return -1;	}
+    */
+
+    /* Temporarily, we do this */
     if  ( node->biTreeType == DOCinBODY )
 	{
-	PrintingState *	ps= (PrintingState *)vps;
-
-	if  ( docPsPrintStartLeaf( ps, "P" ) )
+	if  ( docPsPrintBeginMarkedGroup( ps, STRUCTtypeDIV ) )
 	    { LDEB(node->biLevel); return -1;	}
 	}
 
     return 0;
     }
 
+/**
+ *  Finish printing a slice of a paragraph. If we are in an open 
+ *  span, close the span.
+ */
 int docPsPrintFinishLines( void *			vps,
 			struct DrawingContext *		dc,
 			struct BufferItem *		node )
     {
+    PrintingState *	ps= (PrintingState *)vps;
+
+    if  ( node->biTreeType == DOCinBODY	&&
+	  docPsPrintPopSpan( ps )	)
+	{ LDEB(1); return -1;	}
+
+
+    /* This would be the correct code
+    if  ( docPsMarkNode( node )			&&
+	  docPsPrintEndMarkedGroup( ps )	)
+	{ LDEB(node->biLevel); return -1;	}
+    */
+
+    /* Temporarily, we do this */
     if  ( node->biTreeType == DOCinBODY )
 	{
-	PrintingState *	ps= (PrintingState *)vps;
-
-	if  ( docPsPrintFinishLeaf( ps ) )
+	if  ( docPsPrintEndMarkedGroup( ps ) )
 	    { LDEB(node->biLevel); return -1;	}
 	}
-
     return 0;
     }
 
@@ -306,13 +350,13 @@ int docPsPrintStartNode(	void *				vps,
 	{
 	case DOClevBODY:
 	    if  ( docPsMarkNode( node )			&&
-	          docPsPrintBeginMarkedGroup( dc, ps, "Part" ) )
+	          docPsPrintBeginMarkedGroup( ps, STRUCTtypePART ) )
 		{ LDEB(node->biLevel); return -1;	}
 	    break;
 
 	case DOClevSECT:
 	    if  ( docPsMarkNode( node )			&&
-		  docPsPrintBeginMarkedGroup( dc, ps, "Sect" ) )
+		  docPsPrintBeginMarkedGroup( ps, STRUCTtypeSECT ) )
 		{ LDEB(node->biLevel); return -1;	}
 	    break;
 
@@ -320,7 +364,7 @@ int docPsPrintStartNode(	void *				vps,
 	    if  ( docPsMarkNode( node )			&&
 		  docIsRowNode( node->biParent )	)
 		{
-		if  ( docPsPrintBeginMarkedGroup( dc, ps, "TD" ) )
+		if  ( docPsPrintBeginMarkedGroup( ps, STRUCTtypeTD ) )
 		    { LDEB(node->biLevel); return -1;	}
 		}
 	    break;
@@ -331,20 +375,19 @@ int docPsPrintStartNode(	void *				vps,
 		{
 		if  ( node->biNumberInParent == node->biRowTableFirst )
 		    {
-		    if  ( docPsPrintBeginMarkedGroup( dc, ps, "Table" ) )
+		    if  ( docPsPrintBeginMarkedGroup( ps, STRUCTtypeTABLE ) )
 			{ LDEB(node->biLevel); return -1;	}
 		    }
 
-		if  ( docPsPrintBeginMarkedGroup( dc, ps, "TR" ) )
+		if  ( docPsPrintBeginMarkedGroup( ps, STRUCTtypeTR ) )
 		    { LDEB(node->biLevel); return -1;	}
 		}
 	    break;
 
 	case DOClevPARA:
-	    /* Include as "Div": The actual lines are embedded in a "P" and */
 	    /* inserted in the reading order. */
 	    if  ( docPsMarkNode( node )			&&
-		  docPsPrintBeginMarkedGroup( dc, ps, "Div" ) )
+		  docPsPrintBeginMarkedGroup( ps, STRUCTtypeP ) )
 		{ LDEB(node->biLevel); return -1;	}
 	    break;
 
@@ -372,31 +415,27 @@ int docPsPrintFinishNode( void *			vps,
 	{
 	case DOClevBODY:
 	    if  ( docPsMarkNode( node )			&&
-		  docPsPrintEndMarkedGroup( dc, ps )	)
+		  docPsPrintEndMarkedGroup( ps )	)
 		{ LDEB(node->biLevel); return -1;	}
 	    break;
 
 	case DOClevPARA:
 	    if  ( docPsMarkNode( node )			&&
-		  docPsPrintEndMarkedGroup( dc, ps )	)
+		  docPsPrintEndMarkedGroup( ps )	)
 		{ LDEB(node->biLevel); return -1;	}
 	    break;
 
 	case DOClevSECT:
-	    if  ( docPsMarkNode( node )			)
-		{
-		if  ( docPsPrintEndMarkedGroup( dc, ps ) )
-		    { LDEB(node->biLevel); return -1;	}
-		}
+	    if  ( docPsMarkNode( node )			&&
+		docPsPrintEndMarkedGroup( ps )		)
+		{ LDEB(node->biLevel); return -1;	}
 	    break;
 
 	case DOClevCELL:
 	    if  ( docPsMarkNode( node )			&&
-		  docIsRowNode( node->biParent )	)
-		{
-		if  ( docPsPrintEndMarkedGroup( dc, ps ) )
-		    { LDEB(node->biLevel); return -1;	}
-		}
+		  docIsRowNode( node->biParent )	&&
+		  docPsPrintEndMarkedGroup( ps )	)
+		{ LDEB(node->biLevel); return -1;	}
 	    break;
 
 	case DOClevROW:
@@ -404,13 +443,13 @@ int docPsPrintFinishNode( void *			vps,
 	    if  ( docPsMarkNode( node )			&&
 		  docIsRowNode( node )			)
 		{
-		if  ( docPsPrintEndMarkedGroup( dc, ps ) )
+		if  ( docPsPrintEndMarkedGroup( ps ) )
 		    { LDEB(node->biLevel); return -1;	}
 
 		if  ( node->biNumberInParent == node->biRowTablePast- 1 )
 		    {
 		    /* Finish table */
-		    if  ( docPsPrintEndMarkedGroup( dc, ps ) )
+		    if  ( docPsPrintEndMarkedGroup( ps ) )
 			{ LDEB(node->biLevel); return -1;	}
 		    }
 		}

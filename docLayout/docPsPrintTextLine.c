@@ -45,7 +45,6 @@ int docPsPrintRunUnderline(	const DrawTextLine *	dtl,
 				const LayoutPosition *	baseLine )
     {
     PrintingState *		ps= (PrintingState *)dtl->dtlThrough;
-    DrawingContext *		dc= dtl->dtlDrawingContext;
     const ParticuleData *	pd= dtl->dtlParticuleData;
 
     int				y0;
@@ -56,8 +55,8 @@ int docPsPrintRunUnderline(	const DrawTextLine *	dtl,
     if  ( h < 10 )
 	{ h=  10;	}
 
-    if  ( ps->psTagDocumentStructure		&&
-	  docPsPrintBeginArtifact( dc, ps )	)
+    if  ( ps->psTagDocumentStructure	&&
+	  docPsPrintBeginArtifact( ps )	)
 	{ LDEB(-1); return -1;	}
 
     docDrawSetColorNumber( dtl->dtlDrawingContext, dtl->dtlThrough,
@@ -66,7 +65,7 @@ int docPsPrintRunUnderline(	const DrawTextLine *	dtl,
 			x0Twips+ dtl->dtlXShift, y0, x1Twips- x0Twips, h );
 
     if  ( ps->psTagDocumentStructure			&&
-	  docPsPrintEndArtifact( dc, ps )		)
+	  docPsPrintEndArtifact( ps )		)
 	{ LDEB(1); return -1;	}
 
     return 0;
@@ -83,7 +82,6 @@ int docPsPrintRunStrikethrough(	const DrawTextLine *	dtl,
 				const LayoutPosition *	baseLine )
     {
     PrintingState *		ps= (PrintingState *)dtl->dtlThrough;
-    DrawingContext *		dc= dtl->dtlDrawingContext;
     const ParticuleData *	pd= dtl->dtlParticuleData;
 
     int				y0;
@@ -94,8 +92,8 @@ int docPsPrintRunStrikethrough(	const DrawTextLine *	dtl,
     if  ( h < 10 )
 	{ h=  10;	}
 
-    if  ( ps->psTagDocumentStructure		&&
-	  docPsPrintBeginArtifact( dc, ps )	)
+    if  ( ps->psTagDocumentStructure	&&
+	  docPsPrintBeginArtifact( ps )	)
 	{ LDEB(-1); return -1;	}
 
     docDrawSetColorNumber( dtl->dtlDrawingContext, dtl->dtlThrough,
@@ -104,7 +102,7 @@ int docPsPrintRunStrikethrough(	const DrawTextLine *	dtl,
 			x0Twips+ dtl->dtlXShift, y0, x1Twips- x0Twips, h );
 
     if  ( ps->psTagDocumentStructure			&&
-	  docPsPrintEndArtifact( dc, ps )		)
+	  docPsPrintEndArtifact( ps )		)
 	{ LDEB(1); return -1;	}
 
     return 0;

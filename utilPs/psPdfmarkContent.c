@@ -18,6 +18,31 @@
 #   include	<appDebugon.h>
 
 
+			/**
+			 * The name of the StructItem dictionary that is
+			 * the root item of the document as a whole.
+			 */
+static const char PS_DOC_STRUCT_ITEM[]= "DOC";
+
+			/**
+			 * The name of the StructTreeRoot dictionary of the
+			 * document as a whole.
+			 */
+static const char PS_DOC_STRUCT_TREE_ROOT[]= "STR";
+
+			/**
+			 * The name of the number tree root in the document
+			 * StructTreeRoot that holds the struct items that
+			 * correspond to the pages.  (Correct?)
+			 */
+static const char PS_DOC_NUMBER_TREE_ROOT[]= "NTREE";
+
+			/**
+			 * The name of the Nums array in the number tree root
+			 * in the document .
+			 */
+static const char PS_DOC_NUMBER_TREE_NUMS[]= "NTREEA";
+
 /************************************************************************/
 /*									*/
 /*  Pdfmark functionality around marked content.			*/
@@ -32,6 +57,49 @@
 int psNewContentId(	PrintingState *		ps )
     {
     return ps->psPageContentMarkCount++;
+    }
+
+StructItem * psPdfLeafStructItem(
+				PrintingState *		ps,
+				const char *		structureType,
+				int			contentId )
+    {
+    const int		uniqueDictId= ps->psDocContentMarkCount++;
+    StructItem *	structItem= malloc( sizeof(StructItem) );
+
+    if  ( ! structItem )
+	{ XDEB(structItem); return structItem;	}
+
+    psPdfInitStructItem( structItem );
+
+    utilMemoryBufferPrintf( &(structItem->siDictionaryName), "TedRo%d", uniqueDictId );
+    structItem->siStructureType= structureType;
+    structItem->siContentId= contentId;
+    structItem->siIsLeaf= 1;
+
+    return structItem;
+    }
+
+StructItem * psPdfGroupStructItem(
+				PrintingState *		ps,
+				const char *		structureType,
+				int			contentId )
+    {
+    const int		uniqueDictId= ps->psDocContentMarkCount++;
+    StructItem *	structItem= malloc( sizeof(StructItem) );
+
+    if  ( ! structItem )
+	{ XDEB(structItem); return structItem;	}
+
+    psPdfInitStructItem( structItem );
+
+    utilMemoryBufferPrintf( &(structItem->siDictionaryName), "TedRo%d", uniqueDictId );
+    utilMemoryBufferPrintf( &(structItem->siChildArrayName), "TedRo%dK", uniqueDictId );
+    structItem->siStructureType= structureType;
+    structItem->siContentId= contentId;
+    structItem->siIsLeaf= 0;
+
+    return structItem;
     }
 
 /************************************************************************/
@@ -88,8 +156,7 @@ int psPdfBeginMarkedContent(	PrintingState *		ps,
 
 int psPdfBeginArtifact( PrintingState *			ps,
 			const char *			typeName,
-			const char *			subtypeName,
-			int				contentId )
+			const char *			subtypeName )
     {
     const char * const	structureType= "Artifact";
 
@@ -110,63 +177,6 @@ int psPdfBeginArtifact( PrintingState *			ps,
 	    { SDEB(subtypeName); return -1;	}
 	}
 
-    if  ( contentId >= 0 )
-	{
-	if  ( sioOutPrintf( ps->psSos, " /MCID %d ", contentId ) < 0 )
-	    { LDEB(contentId); return -1;	}
-	}
-
-    if  ( sioOutPrintf( ps->psSos, " >> /BDC pdfmark\n" ) < 0 )
-	{ LDEB(1); return -1;	}
-
-    return 0;
-    }
-
-/**
- *  Begin the marked content for a Figure.
- *  The propertList in ISO 32000-1:2008, 14.8.2.2.2 is a dictionary. See 14.6.2
- *  For other requirements, see 14.8.4.5
- */
-int psPdfBeginFigure(	PrintingState *			ps,
-			const DocumentRectangle *	drTwips,
-			const MemoryBuffer *		altText,
-			int				contentId )
-    {
-    const char * const	structureType= "Figure";
-
-    if  ( sioOutPrintf( ps->psSos, "[ /%s << ", structureType ) < 0 )
-	{ LDEB(1); return -1;	}
-
-    if  ( altText && ! utilMemoryBufferIsEmpty( altText ) )
-	{
-	if  ( sioOutPrintf( ps->psSos, " /Alt " ) < 0 )
-	    { XDEB(altText); return -1;	}
-
-	if  ( psPrintPdfMarkStringValue( ps, altText ) < 0 )
-	    { XDEB(altText); return -1;	}
-
-	if  ( sioOutPrintf( ps->psSos, " " ) < 0 )
-	    { XDEB(altText); return -1;	}
-	}
-
-    if  ( drTwips )
-	{
-	DocumentRectangle	dr;
-
-	geoTransformRectangle( &dr, drTwips, &(ps->psCurrentTransform) );
-
-	if  ( sioOutPrintf( ps->psSos,
-		"/A <</BBox [%d, %d, %d, %d] /Placement /Block /O /Layout>>",
-		dr.drX0, dr.drY0, dr.drX1, dr.drY1 ) < 0 )
-	    { XDEB(drTwips); return -1;	}
-	}
-
-    if  ( contentId >= 0 )
-	{
-	if  ( sioOutPrintf( ps->psSos, " /MCID %d ", contentId ) < 0 )
-	    { LDEB(contentId); return -1;	}
-	}
-
     if  ( sioOutPrintf( ps->psSos, " >> /BDC pdfmark\n" ) < 0 )
 	{ LDEB(1); return -1;	}
 
@@ -181,29 +191,55 @@ int psPdfEndMarkedContent(		PrintingState *		ps )
     return 0;
     }
 
-/************************************************************************/
-/*									*/
-/*  Populate a StructItem as per table 323 in ISO 32000-1:2008 (14.7.4) */
-/*									*/
-/************************************************************************/
-
-static int psPdfmarkDefineLeafStructItem(
+/**
+ *  Create and populate the common menbers of a simple leaf StructItem 
+ *  as per table 323 in ISO 32000-1:2008 (14.7.4)
+ *  As a leaf refers to actually marked content, /K receives the contentId.
+ */
+static int psPdfmarkOpenLeafStructItem(
 				PrintingState *		ps,
-				const char *		itemDict,
-				const char *		parentDict,
-				const char *		structureType,
-				int			contentId )
+				StructItem *		structItem )
     {
+    const char * const	itemDict= utilMemoryBufferGetString( &(structItem->siDictionaryName) );
+    const char * const	parentDict= structItem->siParent?
+				utilMemoryBufferGetString( &(structItem->siParent->siDictionaryName) ) :
+				PS_DOC_STRUCT_ITEM;
+
     sioOutPrintf( ps->psSos,
 	"[ /_objdef {%s} /type /dict /OBJ pdfmark\n",
 	itemDict );
 
     sioOutPrintf( ps->psSos,
-	"[ {%s} <</S /%s /P {%s} /K %d /Pg {ThisPage}>> /PUT pdfmark\n",
+	"[ {%s} <</S /%s /P {%s} /K %d /Pg {ThisPage}\n",
 	itemDict,
-	structureType,
+	structItem->siStructureType,
 	parentDict,
-	contentId );
+	structItem->siContentId );
+
+    return 0;
+    }
+
+static int psPdfmarkCloseLeafStructItem(
+				PrintingState *		ps )
+    {
+    if  ( sioOutPrintf( ps->psSos, " >> /PUT pdfmark\n" ) < 0 )
+	{ LDEB(1); return -1;	}
+
+    return 0;
+    }
+
+/**
+ *  Populate a StructItem as per table 323 in ISO 32000-1:2008 (14.7.4)
+ */
+static int psPdfmarkDefineLeafStructItem(
+				PrintingState *		ps,
+				StructItem *		structItem )
+    {
+    if  ( psPdfmarkOpenLeafStructItem( ps, structItem ) )
+	{ SLDEB(structItem->siStructureType,structItem->siContentId); return -1;	}
+
+    if  ( psPdfmarkCloseLeafStructItem( ps ) )
+	{ SLDEB(structItem->siStructureType,structItem->siContentId); return -1;	}
 
     return 0;
     }
@@ -245,31 +281,6 @@ static int psPdfmarkPopulateStructTreeRoot(
     }
 
 
-			/**
-			 * The name of the StructItem dictionary that is
-			 * the root item of the document as a whole.
-			 */
-static const char PS_DOC_STRUCT_ITEM[]= "DOC";
-
-			/**
-			 * The name of the StructTreeRoot dictionary of the
-			 * document as a whole.
-			 */
-static const char PS_DOC_STRUCT_TREE_ROOT[]= "STR";
-
-			/**
-			 * The name of the number tree root in the document
-			 * StructTreeRoot that holds the struct items that
-			 * correspond to the pages.  (Correct?)
-			 */
-static const char PS_DOC_NUMBER_TREE_ROOT[]= "NTREE";
-
-			/**
-			 * The name of the Nums array in the number tree root
-			 * in the document .
-			 */
-static const char PS_DOC_NUMBER_TREE_NUMS[]= "NTREEA";
-
 int psPdfmarkMarkedDocumentSetup( PrintingState *		ps,
 				const char *			localeTag )
     {
@@ -281,7 +292,8 @@ int psPdfmarkMarkedDocumentSetup( PrintingState *		ps,
 
 
     /* God knows what this means */
-    sioOutPrintf( ps->psSos, "[ /_objdef {DTREE} /type /array /OBJ pdfmark\n" );
+    sioOutPrintf( ps->psSos,
+	"[ /_objdef {DTREE} /type /array /OBJ pdfmark\n" );
     sioOutPrintf( ps->psSos,
     	"[ /_objdef {%s} /type /dict /OBJ pdfmark\n",
 	PS_DOC_NUMBER_TREE_ROOT );
@@ -323,42 +335,15 @@ int psPdfmarkMarkedPageSetup(	PrintingState *		ps,
     return 0;
     }
 
-StructItem * psPdfLeafStructItem(
-				PrintingState *		ps,
-				const char *		structureType,
-				int			contentId )
-    {
-    const int		uniqueDictId= ps->psDocContentMarkCount++;
-    StructItem *	structItem= malloc( sizeof(StructItem) );
-
-    if  ( ! structItem )
-	{ XDEB(structItem); return structItem;	}
-
-    psPdfInitStructItem( structItem );
-
-    utilMemoryBufferPrintf( &(structItem->siDictionaryName), "TedRo%d", uniqueDictId );
-    structItem->siStructureType= structureType;
-    structItem->siContentId= contentId;
-    structItem->siIsLeaf= 1;
-
-    return structItem;
-    }
-
-
 /**
- *  Define and populate a StructItem object in the output.
+ *  Insert a StructItem in the hierarchy
  */
-int psPdfmarkAppendMarkedLeaf(	PrintingState *		ps,
+static int psPdfmarkAppendDefinedItem(
+				PrintingState *		ps,
 				StructItem *		structItem )
     {
     const int		page= ps->psSheetsPrinted;
-    const char *	itemDict= utilMemoryBufferGetString( &(structItem->siDictionaryName) );
-    const char *	parentDict= PS_DOC_STRUCT_ITEM;
-
-    /* Define and populate a StructItem object in the output. */
-    psPdfmarkDefineLeafStructItem( ps,
-		    itemDict, parentDict,
-		    structItem->siStructureType, structItem->siContentId );
+    const char * const	itemDict= utilMemoryBufferGetString( &(structItem->siDictionaryName) );
 
     sioOutPrintf( ps->psSos, "[ {DTREE} {%s} /APPEND pdfmark\n",
 				    itemDict );
@@ -366,6 +351,60 @@ int psPdfmarkAppendMarkedLeaf(	PrintingState *		ps,
 				    page, itemDict );
 
     return 0;
+    }
+
+/**
+ *  Define and populate a simple StructItem object in the output.
+ */
+int psPdfmarkAppendMarkedLeaf(	PrintingState *		ps,
+				StructItem *		structItem )
+    {
+    psPdfmarkDefineLeafStructItem( ps, structItem );
+
+    return psPdfmarkAppendDefinedItem( ps, structItem );
+    }
+
+/**
+ *  Define and populate an illustration simple StructItem object in the output.
+ *  See ISO 32000-1:2008, 14.8.4.5
+ */
+int psPdfmarkAppendMarkedIllustration(
+			PrintingState *			ps,
+			StructItem *			structItem,
+			const DocumentRectangle *	drTwips,
+			const MemoryBuffer *		altText )
+    {
+    if  ( psPdfmarkOpenLeafStructItem( ps, structItem ) )
+	{ SLDEB(structItem->siStructureType,structItem->siContentId); return -1;	}
+
+    if  ( altText && ! utilMemoryBufferIsEmpty( altText ) )
+	{
+	if  ( sioOutPrintf( ps->psSos, " /Alt " ) < 0 )
+	    { XDEB(altText); return -1;	}
+
+	if  ( psPrintPdfMarkStringValue( ps, altText ) < 0 )
+	    { XDEB(altText); return -1;	}
+
+	if  ( sioOutPrintf( ps->psSos, " " ) < 0 )
+	    { XDEB(altText); return -1;	}
+	}
+
+    if  ( drTwips )
+	{
+	DocumentRectangle	dr;
+
+	geoTransformRectangle( &dr, drTwips, &(ps->psCurrentTransform) );
+
+	if  ( sioOutPrintf( ps->psSos,
+		"/A <</BBox [%d %d %d %d] /Placement /Block /O /Layout>>",
+		dr.drX0, dr.drY0, dr.drX1, dr.drY1 ) < 0 )
+	    { XDEB(drTwips); return -1;	}
+	}
+
+    if  ( psPdfmarkCloseLeafStructItem( ps ) )
+	{ SLDEB(structItem->siStructureType,structItem->siContentId); return -1;	}
+
+    return psPdfmarkAppendDefinedItem( ps, structItem );
     }
 
 int psPdfmarkFinishMarkedPage(	PrintingState *		ps,

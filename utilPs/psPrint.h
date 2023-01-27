@@ -126,10 +126,34 @@ typedef struct PrintingState
 
 typedef struct StructItem
     {
+			    /**
+			     *  The name of the StructItem dictionary
+			     */
     MemoryBuffer	siDictionaryName;
+			    /**
+			     *  The name of the array with children of
+			     *  this StructItem. It is only used in 
+			     *  StructItems that implement a group.
+			     *  This is referenced as the /K member.
+			     */
+    MemoryBuffer	siChildArrayName;
+			    /**
+			     *  The parent of this StructItem
+			     */
     struct StructItem *	siParent;
+			    /**
+			     *  The type of structure
+			     */
     const char *	siStructureType;
+			    /**
+			     *  The content id (MCID) of the marked 
+			     *  content that matches this StructItem
+			     *  Only used in leaves.
+			     */
     int			siContentId;
+			    /**
+			     *  True if this StructItem is a leaf in the tree.
+			     */
     int			siIsLeaf;
     } StructItem;
 
@@ -143,6 +167,11 @@ extern void psPdfInitStructItem(
 			StructItem *			si );
 extern void psPdfCleanStructItem(
 			StructItem *			si );
+
+extern void psPdfPopStructItem(	PrintingState * 	ps );
+
+extern int psPdfPushStructItem(	PrintingState *	ps,
+				StructItem *	structItem );
 
 extern void psStartDSCDocument(
 			const PrintingState *		ps,
@@ -335,20 +364,19 @@ extern int psPdfBeginMarkedContent( PrintingState *		ps,
 
 extern int psPdfBeginArtifact(	PrintingState *			ps,
 				const char *			typeName,
-				const char *			subtypeName,
-				int				contentId );
-
-extern int psPdfBeginFigure(
-			PrintingState *				ps,
-			const struct DocumentRectangle *	drTwips,
-			const struct MemoryBuffer *		altText,
-			int					contentId );
+				const char *			subtypeName );
 
 extern int psPdfEndMarkedContent( PrintingState *		ps );
 
 extern int psPdfmarkAppendMarkedLeaf(
 				PrintingState *			ps,
 				StructItem *			structItem );
+
+extern int psPdfmarkAppendMarkedIllustration(
+			PrintingState *				ps,
+			StructItem *				structItem,
+			const struct DocumentRectangle *	drTwips,
+			const struct MemoryBuffer *		altText );
 
 extern int psPdfmarkMarkedDocumentSetup(
 				PrintingState *			ps,
@@ -368,6 +396,11 @@ extern int psPdfmarkFinishMarkedPage(
 extern int psNewContentId(	PrintingState *			ps );
 
 extern struct StructItem * psPdfLeafStructItem(
+				PrintingState *		ps,
+				const char *		structureType,
+				int			contentId );
+
+extern struct StructItem * psPdfGroupStructItem(
 				PrintingState *		ps,
 				const char *		structureType,
 				int			contentId );
