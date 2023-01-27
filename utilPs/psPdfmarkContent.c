@@ -1,6 +1,6 @@
 /************************************************************************/
 /*									*/
-/*  Pdfmark related PostScript generation.				*/
+/*  Pdfmarks for structured PDF related functionality.			*/
 /*									*/
 /************************************************************************/
 
@@ -23,6 +23,12 @@
 			 * the root item of the document as a whole.
 			 */
 static const char PS_DOC_STRUCT_ITEM[]= "DOC";
+
+			/**
+			 * The name of the /K child array of the PS_DOC_STRUCT_ITEM
+			 * StructItem for the document as a whole.
+			 */
+static const char PS_DOC_STRUCT_ITEM_KIDS[]= "DTREE";
 
 			/**
 			 * The name of the StructTreeRoot dictionary of the
@@ -93,8 +99,8 @@ StructItem * psPdfGroupStructItem(
 
     psPdfInitStructItem( structItem );
 
-    utilMemoryBufferPrintf( &(structItem->siDictionaryName), "TedRo%d", uniqueDictId );
-    utilMemoryBufferPrintf( &(structItem->siChildArrayName), "TedRo%dK", uniqueDictId );
+    utilMemoryBufferPrintf( &(structItem->siDictionaryName), "TedGr%d", uniqueDictId );
+    utilMemoryBufferPrintf( &(structItem->siChildArrayName), "TedGr%dK", uniqueDictId );
     structItem->siStructureType= structureType;
     structItem->siContentId= contentId;
     structItem->siIsLeaf= 0;
@@ -210,7 +216,7 @@ static int psPdfmarkOpenLeafStructItem(
 	itemDict );
 
     sioOutPrintf( ps->psSos,
-	"[ {%s} <</S /%s /P {%s} /K %d /Pg {ThisPage}\n",
+	"[ {%s} <</S /%s /P {%s} /K %d /Pg {ThisPage} ",
 	itemDict,
 	structItem->siStructureType,
 	parentDict,
@@ -219,7 +225,43 @@ static int psPdfmarkOpenLeafStructItem(
     return 0;
     }
 
-static int psPdfmarkCloseLeafStructItem(
+/**
+ *  Create and populate the common menbers of a StructItem that is meant
+ *  to receive children.  See table 323 in ISO 32000-1:2008 (14.7.4)
+ *  As a group refers to multiple children, /K refers to an array that 
+ *  receives the children.
+ *  We can safely include a reference to the current page as well: It 
+ *  is only required that some of the content referenced by /K is on 
+ *  the page referenced by /Pg.
+ */
+static int psPdfmarkOpenGroupStructItem(
+				PrintingState *		ps,
+				StructItem *		structItem )
+    {
+    const char * const	itemDict= utilMemoryBufferGetString( &(structItem->siDictionaryName) );
+    const char * const	parentDict= structItem->siParent?
+				utilMemoryBufferGetString( &(structItem->siParent->siDictionaryName) ) :
+				PS_DOC_STRUCT_ITEM;
+    const char * const	childArray= utilMemoryBufferGetString( &(structItem->siChildArrayName) );
+
+    sioOutPrintf( ps->psSos,
+	"[ /_objdef {%s} /type /dict /OBJ pdfmark\n",
+	itemDict );
+    sioOutPrintf( ps->psSos,
+	"[ /_objdef {%s} /type /array /OBJ pdfmark\n",
+	childArray );
+
+    sioOutPrintf( ps->psSos,
+	"[ {%s} <</S /%s /P {%s} /K {%s} /Pg {ThisPage} ",
+	itemDict,
+	structItem->siStructureType,
+	parentDict,
+	childArray );
+
+    return 0;
+    }
+
+static int psPdfmarkCloseStructItem(
 				PrintingState *		ps )
     {
     if  ( sioOutPrintf( ps->psSos, " >> /PUT pdfmark\n" ) < 0 )
@@ -230,6 +272,8 @@ static int psPdfmarkCloseLeafStructItem(
 
 /**
  *  Populate a StructItem as per table 323 in ISO 32000-1:2008 (14.7.4)
+ *  The StructItem is a simple leaf in the structure hierarchy. It will
+ *  not receive children.
  */
 static int psPdfmarkDefineLeafStructItem(
 				PrintingState *		ps,
@@ -238,25 +282,42 @@ static int psPdfmarkDefineLeafStructItem(
     if  ( psPdfmarkOpenLeafStructItem( ps, structItem ) )
 	{ SLDEB(structItem->siStructureType,structItem->siContentId); return -1;	}
 
-    if  ( psPdfmarkCloseLeafStructItem( ps ) )
+    if  ( psPdfmarkCloseStructItem( ps ) )
 	{ SLDEB(structItem->siStructureType,structItem->siContentId); return -1;	}
 
     return 0;
     }
 
-static int psPdfmarkPopulateParentStructItem(
+/**
+ *  Populate a StructItem as per table 323 in ISO 32000-1:2008 (14.7.4)
+ *  The StructItem is a group. It is intended to receive children.
+ */
+static int psPdfmarkDefineGroupStructItem(
+				PrintingState *		ps,
+				StructItem *		structItem )
+    {
+    if  ( psPdfmarkOpenGroupStructItem( ps, structItem ) )
+	{ SLDEB(structItem->siStructureType,structItem->siContentId); return -1;	}
+
+    if  ( psPdfmarkCloseStructItem( ps ) )
+	{ SLDEB(structItem->siStructureType,structItem->siContentId); return -1;	}
+
+    return 0;
+    }
+
+static int psPdfmarkPopulateGroupStructItem(
 				PrintingState *		ps,
 				const char *		itemDict,
 				const char *		parentDict,
 				const char *		structureType,
-				const char *		childObjectName )
+				const char *		childArrayName )
     {
     sioOutPrintf( ps->psSos,
 	"[ {%s} <</S /%s /P {%s} /K {%s}>> /PUT pdfmark\n",
 	itemDict,
 	structureType,
 	parentDict,
-	childObjectName );
+	childArrayName );
 
     return 0;
     }
@@ -293,7 +354,7 @@ int psPdfmarkMarkedDocumentSetup( PrintingState *		ps,
 
     /* God knows what this means */
     sioOutPrintf( ps->psSos,
-	"[ /_objdef {DTREE} /type /array /OBJ pdfmark\n" );
+	"[ /_objdef {%s} /type /array /OBJ pdfmark\n", PS_DOC_STRUCT_ITEM_KIDS );
     sioOutPrintf( ps->psSos,
     	"[ /_objdef {%s} /type /dict /OBJ pdfmark\n",
 	PS_DOC_NUMBER_TREE_ROOT );
@@ -312,9 +373,9 @@ int psPdfmarkMarkedDocumentSetup( PrintingState *		ps,
     psPdfmarkPopulateStructTreeRoot( ps,
 	PS_DOC_STRUCT_TREE_ROOT, PS_DOC_NUMBER_TREE_ROOT, PS_DOC_STRUCT_ITEM );
 
-    psPdfmarkPopulateParentStructItem( ps,
+    psPdfmarkPopulateGroupStructItem( ps,
 	PS_DOC_STRUCT_ITEM, PS_DOC_STRUCT_TREE_ROOT,
-	"Document", "DTREE" );
+	"Document", PS_DOC_STRUCT_ITEM_KIDS );
 
     sioOutPrintf( ps->psSos,
 	    "[ {Catalog} <</ViewerPreferences <</DisplayDocTitle true>>>> /PUT pdfmark\n" );
@@ -326,8 +387,10 @@ int psPdfmarkMarkedPageSetup(	PrintingState *		ps,
 				int			page )
     {
     /* God knows what this means */
-    sioOutPrintf( ps->psSos, "[ /_objdef {PTREE%d} /type /array /OBJ pdfmark\n", page );
-    sioOutPrintf( ps->psSos, "[ /_objdef {PANN%d} /type /array /OBJ pdfmark\n", page );
+    sioOutPrintf( ps->psSos,
+	    "[ /_objdef {PTREE%d} /type /array /OBJ pdfmark\n", page );
+    sioOutPrintf( ps->psSos,
+	    "[ /_objdef {PANN%d} /type /array /OBJ pdfmark\n", page );
 
     ps->psPageFirstMarkId= ps->psDocContentMarkCount;
     ps->psPageContentMarkCount= 0;
@@ -336,7 +399,8 @@ int psPdfmarkMarkedPageSetup(	PrintingState *		ps,
     }
 
 /**
- *  Insert a StructItem in the hierarchy
+ *  Insert a StructItem in the hierarchy. It already has been 
+ *  defined. So all names are known.
  */
 static int psPdfmarkAppendDefinedItem(
 				PrintingState *		ps,
@@ -344,11 +408,17 @@ static int psPdfmarkAppendDefinedItem(
     {
     const int		page= ps->psSheetsPrinted;
     const char * const	itemDict= utilMemoryBufferGetString( &(structItem->siDictionaryName) );
+    const char * const	parentArray= structItem->siParent?
+				utilMemoryBufferGetString( &(structItem->siParent->siChildArrayName) ) :
+				PS_DOC_STRUCT_ITEM_KIDS;
 
-    sioOutPrintf( ps->psSos, "[ {DTREE} {%s} /APPEND pdfmark\n",
-				    itemDict );
-    sioOutPrintf( ps->psSos, "[ {PTREE%d} {%s} /APPEND pdfmark\n",
+    sioOutPrintf( ps->psSos, "[ {%s} {%s} /APPEND pdfmark\n",
+				    parentArray, itemDict );
+    if  ( ! structItem->siParent )
+	{
+	sioOutPrintf( ps->psSos, "[ {PTREE%d} {%s} /APPEND pdfmark\n",
 				    page, itemDict );
+	}
 
     return 0;
     }
@@ -360,6 +430,18 @@ int psPdfmarkAppendMarkedLeaf(	PrintingState *		ps,
 				StructItem *		structItem )
     {
     psPdfmarkDefineLeafStructItem( ps, structItem );
+
+    return psPdfmarkAppendDefinedItem( ps, structItem );
+    }
+
+/**
+ *  Define and populate StructItem object that potentially 
+ *  receives children in the output.
+ */
+int psPdfmarkAppendMarkedGroup(	PrintingState *		ps,
+				StructItem *		structItem )
+    {
+    psPdfmarkDefineGroupStructItem( ps, structItem );
 
     return psPdfmarkAppendDefinedItem( ps, structItem );
     }
@@ -401,7 +483,7 @@ int psPdfmarkAppendMarkedIllustration(
 	    { XDEB(drTwips); return -1;	}
 	}
 
-    if  ( psPdfmarkCloseLeafStructItem( ps ) )
+    if  ( psPdfmarkCloseStructItem( ps ) )
 	{ SLDEB(structItem->siStructureType,structItem->siContentId); return -1;	}
 
     return psPdfmarkAppendDefinedItem( ps, structItem );

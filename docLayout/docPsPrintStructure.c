@@ -108,6 +108,9 @@ static int docPsPrintBeginMarkedGroup(
     if  ( ! structItem || psPdfPushStructItem( ps, structItem ) )
 	{ XDEB(structItem); return -1;	}
 
+    if  ( psPdfmarkAppendMarkedGroup( ps, structItem ) )
+	{ LDEB(1); return -1;	}
+
     return psPdfBeginMarkedContent( ps, structureType, -1 );
     }
 

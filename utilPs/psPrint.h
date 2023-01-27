@@ -372,6 +372,10 @@ extern int psPdfmarkAppendMarkedLeaf(
 				PrintingState *			ps,
 				StructItem *			structItem );
 
+extern int psPdfmarkAppendMarkedGroup(
+				PrintingState *			ps,
+				StructItem *			structItem );
+
 extern int psPdfmarkAppendMarkedIllustration(
 			PrintingState *				ps,
 			StructItem *				structItem,
