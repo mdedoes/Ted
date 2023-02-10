@@ -183,5 +183,7 @@ extern int docPsPrintBeginArtifact(
 extern int docPsPrintEndArtifact(
 				struct PrintingState *		ps );
 
-extern int docPsPrintClaimSpan(	struct PrintingState *		ps,
+extern int docPsPrintClaimInline( struct PrintingState *	ps,
 				struct BufferItem *		paraNode );
+
+extern int docPsPrintFinishInline( struct PrintingState *	ps );

@@ -61,12 +61,39 @@ typedef struct PrintingState
 
     DocumentRectangle		psSheetBoundingBox;
 
+				/**
+				 *  Non-zero while we are emitting 
+				 *  the content of a hyperlink
+				 */
     int				psInsideLink;
+				/**
+				 *  The number of text particules that
+				 *  we emitted inside the current hyperlink.
+				 */
     int				psLinkParticulesDone;
+				/**
+				 *  The x coordinate where we started to emit
+				 *  the current hyperlink. We use this to mark 
+				 *  the click rectangle of the hyperlink.
+				 */
     int				psLinkRectLeft;
 
+				/**
+				 *  The 'file' part of the current hyperlink
+				 *  destination. It refers to the destination document
+				 *  as a while.
+				 */
     MemoryBuffer		psLinkFile;
+				/**
+				 *  The bookmark part of the current hyperlink.
+				 *  It refers to a location inside the document.
+				 *  This is the equivalent of the HTML fragment identifier.
+				 */
     MemoryBuffer		psLinkMark;
+				/**
+				 *  The title for the current hyperlink.
+				 *  Currently, it is only used for notes.
+				 */
     MemoryBuffer		psLinkTitle;
 
     unsigned char		psUsePostScriptFilters;
@@ -97,6 +124,11 @@ typedef struct PrintingState
 				 * (second bullet).
 				 */
     int				psPageContentMarkCount;
+				/**
+				 * The number of annotations on the current page.
+				 * this is used to give them a sequence number.
+				 */
+    int				psPageAnnotationCount;
 				/**
 				 * The (potential) first ID of marked content
 				 * on the current page. psPageFirstMarkId is
@@ -130,6 +162,7 @@ typedef struct StructItem
 			     *  The name of the StructItem dictionary
 			     */
     MemoryBuffer	siDictionaryName;
+
 			    /**
 			     *  The name of the array with children of
 			     *  this StructItem. It is only used in 
@@ -137,14 +170,23 @@ typedef struct StructItem
 			     *  This is referenced as the /K member.
 			     */
     MemoryBuffer	siChildArrayName;
+
+			    /**
+			     *  For links, this is the name of the
+			     *  corresponding annotation dictionary.
+			     */
+    MemoryBuffer	siAnnotationDictionaryName;
+
 			    /**
 			     *  The parent of this StructItem
 			     */
     struct StructItem *	siParent;
+
 			    /**
 			     *  The type of structure
 			     */
     const char *	siStructureType;
+
 			    /**
 			     *  The content id (MCID) of the marked 
 			     *  content that matches this StructItem
@@ -155,6 +197,12 @@ typedef struct StructItem
 			     *  True if this StructItem is a leaf in the tree.
 			     */
     int			siIsLeaf;
+			    /**
+			     *  True if this StructItem is a textual (inline)
+			     *  leaf in the tree. E.G. a /Span or a /Link 
+			     *  StructItem.
+			     */
+    int			siIsInline;
     } StructItem;
 
 /************************************************************************/
@@ -299,21 +347,22 @@ extern void psRectanglePath(		PrintingState *		ps,
 					int			wide,
 					int			high );
 
-extern void psFlushLink(		PrintingState *		ps,
-					int			x1,
-					int			lineTop,
-					int			lineHeight );
+extern void psFlushLink(	PrintingState *		ps,
+				int			x1,
+				int			lineTop,
+				int			lineHeight );
 
-extern void psSourcePdfmark(	struct SimpleOutputStream *	sos,
-				const DocumentRectangle *	drLink,
-				const struct MemoryBuffer *	fileName,
-				const struct MemoryBuffer *	markName );
+extern void psSetLinkRectangle(	PrintingState *		ps,
+				int			x1Twips,
+				int			lineTop,
+				int			lineHeight,
+				const char *		annotationDictionaryName );
 
-extern void psGotoPdfmark(	struct SimpleOutputStream *	sos,
-				const DocumentRectangle *	drLink,
-				const struct MemoryBuffer *	fileName,
-				const struct MemoryBuffer *	markName,
-				const struct MemoryBuffer *	title );
+extern int psPdfmarkDefineAnnotationDictionary(
+				PrintingState *			ps,
+				const MemoryBuffer *		fileName,
+				const MemoryBuffer *		markName,
+				const char *			annotationDictionaryName );
 
 extern int psPageModePdfmark(	struct SimpleOutputStream *	sos,
 				const char *			pageMode );
@@ -346,6 +395,11 @@ extern int psOutlinePdfmark(	PrintingState *			ps,
 				const struct MemoryBuffer *	title,
 				const struct MemoryBuffer *	markName );
 
+extern int psPdfmarkSetAnnotationRectangle(
+			PrintingState *			ps,
+			const DocumentRectangle *	drLink,
+			const char *			annotationDictionaryName );
+
 extern int psSetPageProperty(	PrintingState *			ps,
 				const char *			key,
 				const char *			value );
@@ -376,6 +430,10 @@ extern int psPdfmarkAppendMarkedGroup(
 				PrintingState *			ps,
 				StructItem *			structItem );
 
+extern int psPdfmarkAppendMarkedLink(
+				PrintingState *			ps,
+				StructItem *			structItem );
+
 extern int psPdfmarkAppendMarkedIllustration(
 			PrintingState *				ps,
 			StructItem *				structItem,
@@ -402,6 +460,13 @@ extern int psNewContentId(	PrintingState *			ps );
 extern struct StructItem * psPdfLeafStructItem(
 				PrintingState *		ps,
 				const char *		structureType,
+				int			inLine,
+				int			contentId );
+
+extern struct StructItem * psPdfAnnotatedStructItem(
+				PrintingState *		ps,
+				const char *		structureType,
+				int			inLine,
 				int			contentId );
 
 extern struct StructItem * psPdfGroupStructItem(

@@ -76,7 +76,7 @@ void psImageQualityDistillerparams(	SimpleOutputStream *	sos )
 /*									*/
 /*  Emit the bookmark part of an internal link.				*/
 /*									*/
-/*  As the link is internal, we save both the source of the and its	*/
+/*  As the link is internal, we save both the source and its		*/
 /*  destination. This makes it possible to replace strange characters,	*/
 /*  rather than to escape them to pass them through the PostScript	*/
 /*  interpreter and the pdfmark translator.				*/
@@ -165,7 +165,8 @@ static int psUriLinkDestination(	SimpleOutputStream *	sos,
 
     psPrintString( sos, fileName, fileSize, sevenBits, utf8 );
 
-    if  ( markName && ! utilMemoryBufferIsEmpty( markName ) )
+    /* Caller never passes empty bookmarks */
+    if  ( markName )
 	{
 	if  ( sioOutPutByte( '#', sos ) < 0 )
 	    { return -1;	}
@@ -182,7 +183,9 @@ static void psWebLinkDestination(	SimpleOutputStream *	sos,
 					int			fileSize,
 					const MemoryBuffer *	markName )
     {
-    sioOutPrintf( sos, "  /Action << /Subtype /URI /URI (" );
+    /* WAS: sioOutPrintf( sos, "  /Action << /Subtype /URI /URI (" ); */
+
+    sioOutPrintf( sos, "  /A << /S /URI /URI (" );
 
     psUriLinkDestination( sos, fileName, fileSize, markName );
 
@@ -192,8 +195,8 @@ static void psWebLinkDestination(	SimpleOutputStream *	sos,
     }
 
 static void psFileLinkDestMark(	SimpleOutputStream *	sos,
-					const MemoryBuffer *	fileName,
-					const MemoryBuffer *	markName )
+				const MemoryBuffer *	fileName,
+				const MemoryBuffer *	markName )
     {
     const int		sevenBits= 1;
     const int		utf8= 1;
@@ -218,17 +221,19 @@ static void psFileLinkDestMark(	SimpleOutputStream *	sos,
 	    }
 	}
 
-    sioOutPrintf( sos, "  /Action /Launch /File (" );
+    /* WAS: sioOutPrintf( sos, "  /Action /Launch /File (" ); */
+    sioOutPrintf( sos, "  /S /Launch /File (" );
 
     psPrintString( sos, file, size, sevenBits, utf8 );
 
     sioOutPrintf( sos, ")\n" );
 
-    if  ( markName && ! utilMemoryBufferIsEmpty( markName ) )
+    /* Caller never passes empty bookmarks */
+    if  ( markName )
 	{
 	sioOutPrintf( sos, "  /URI (" );
 	psUriLinkDestination( sos, file, size, markName );
-	sioOutPrintf( sos, ")\n" );
+	sioOutPrintf( sos, ") " );
 	}
 
     return;
@@ -245,69 +250,149 @@ static void pdPdfmarkWriteClickArea(
 				SimpleOutputStream *		sos,
 				const DocumentRectangle *	drLink )
     {
-    sioOutPrintf( sos, "[ /Rect [ %d %d %d %d ]\n",
+    sioOutPrintf( sos, "/Rect [ %d %d %d %d ]\n",
 				drLink->drX0, drLink->drY0,
 				drLink->drX1, drLink->drY1 );
     sioOutPrintf( sos, "  /Border [ 0 0 0 ]\n" );
     }
 
-void psSourcePdfmark(		SimpleOutputStream *		sos,
+static int psPdfmarkWriteSourceProperties(
+				PrintingState *			ps,
+				const MemoryBuffer *		fileName,
+				const MemoryBuffer *		markName )
+    {
+    if  ( ! fileName )
+	{
+	if  ( ! markName )
+	    { XDEB(markName);	}
+	else{
+	    sioOutPrintf( ps->psSos, "  /Dest /" );
+
+	    psEmitDestination( ps->psSos, markName );
+	    sioOutPrintf( ps->psSos, " " );
+	    }
+	}
+    else{
+	psFileLinkDestMark( ps->psSos, fileName, markName );
+	}
+
+    sioOutPrintf( ps->psSos, "  /F 4 " ); /* for PDF/A compatibility */
+    sioOutPrintf( ps->psSos, "  /Type /Annot " );
+    sioOutPrintf( ps->psSos, "  /Subtype /Link " );
+
+    return 0;
+    }
+
+int psPdfmarkDefineAnnotationDictionary(
+				PrintingState *			ps,
+				const MemoryBuffer *		fileName,
+				const MemoryBuffer *		markName,
+				const char *			annotationDictionaryName )
+    {
+    int		pageAnnotationReference= 0;
+
+    if  ( fileName && utilMemoryBufferIsEmpty( fileName ) )
+	{ fileName= (const MemoryBuffer *)0;	}
+    if  ( markName && utilMemoryBufferIsEmpty( markName ) )
+	{ markName= (const MemoryBuffer *)0;	}
+
+    sioOutPrintf( ps->psSos,
+	"[ /_objdef {%s} /type /dict /OBJ pdfmark\n",
+	annotationDictionaryName );
+
+    sioOutPrintf( ps->psSos, "[ {%s} << ", annotationDictionaryName );
+
+    if  ( psPdfmarkWriteSourceProperties( ps, fileName, markName ) )
+	{ LDEB(1); return -1;	}
+
+    /* Sure about that? */
+    if  ( fileName )
+	{
+	if  ( sioOutPrintf( ps->psSos, " /Contents " ) < 0 )
+	    { XDEB(fileName); return -1;	}
+
+	if  ( psPrintPdfMarkStringValue( ps, fileName ) < 0 )
+	    { XDEB(fileName); return -1;	}
+
+	if  ( sioOutPrintf( ps->psSos, " " ) < 0 )
+	    { XDEB(fileName); return -1;	}
+	}
+
+    pageAnnotationReference= ps->psPageAnnotationCount++;
+    sioOutPrintf( ps->psSos, " /StructParent %d", pageAnnotationReference );
+
+    sioOutPrintf( ps->psSos, " >> /PUT pdfmark\n" );
+
+    return pageAnnotationReference;
+    }
+
+int psPdfmarkSetAnnotationRectangle(
+			PrintingState *			ps,
+			const DocumentRectangle *	drLink,
+			const char *			annotationDictionaryName )
+    {
+    DocumentRectangle	dr;
+
+    geoTransformRectangle( &dr, drLink, &(ps->psCurrentTransform) );
+
+    sioOutPrintf( ps->psSos, "[ {%s} << ", annotationDictionaryName );
+    pdPdfmarkWriteClickArea( ps->psSos, &dr );
+    sioOutPrintf( ps->psSos, " >> /PUT pdfmark\n" );
+
+    return 0;
+    }
+
+static int psSourcePdfmark(	PrintingState *			ps,
 				const DocumentRectangle *	drLink,
 				const MemoryBuffer *		fileName,
 				const MemoryBuffer *		markName )
     {
     if  ( fileName && utilMemoryBufferIsEmpty( fileName ) )
 	{ fileName= (const MemoryBuffer *)0;	}
+    if  ( markName && utilMemoryBufferIsEmpty( markName ) )
+	{ markName= (const MemoryBuffer *)0;	}
 
-    pdPdfmarkWriteClickArea( sos, drLink );
+    /* Start populating annotation pdfmark */
+    sioOutPrintf( ps->psSos, "[ " );
+    pdPdfmarkWriteClickArea( ps->psSos, drLink );
 
-    if  ( ! fileName )
-	{
-	if  ( ! markName || utilMemoryBufferIsEmpty( markName ) )
-	    { XDEB(markName);	}
-	else{
-	    sioOutPrintf( sos, "  /Dest /" );
+    if  ( psPdfmarkWriteSourceProperties( ps, fileName, markName ) )
+	{ LDEB(1); return -1;	}
 
-	    psEmitDestination( sos, markName );
-	    sioOutPrintf( sos, "\n" );
-	    }
-	}
-    else{
-	psFileLinkDestMark( sos, fileName, markName );
-	}
+    sioOutPrintf( ps->psSos, "/ANN pdfmark\n" );
 
-    sioOutPrintf( sos, "  /Subtype /Link\n" );
-    sioOutPrintf( sos, "/ANN pdfmark\n" );
-
-    return;
+    return 0;
     }
 
-void psGotoPdfmark(		SimpleOutputStream *		sos,
+static void psGotoPdfmark(	PrintingState *			ps,
 				const DocumentRectangle *	drLink,
 				const MemoryBuffer *		fileName,
 				const MemoryBuffer *		markName,
 				const MemoryBuffer *		title )
     {
-    psSourcePdfmark( sos, drLink, fileName, markName );
+    if  ( fileName && utilMemoryBufferIsEmpty( fileName ) )
+	{ fileName= (const MemoryBuffer *)0;	}
+    if  ( markName && utilMemoryBufferIsEmpty( markName ) )
+	{ markName= (const MemoryBuffer *)0;	}
+
+    psSourcePdfmark( ps, drLink, fileName, markName );
 
 #   if 0
     Does not work. (Why?)
 
     static int		n= 0;
 
-    if  ( fileName && utilMemoryBufferIsEmpty( fileName ) )
-	{ fileName= (const MemoryBuffer *)0;	}
-
+    sioOutPrintf( ps->psSos, "[ " );
     pdPdfmarkWriteClickArea( sos, drLink );
 
-    sioOutPrintf( sos, "  /T (Widget%d)\n", n++ );
-    sioOutPrintf( sos, "  /TU (tooltip text)\n" );
-    sioOutPrintf( sos, "  /FT /Btn\n" );
-    sioOutPrintf( sos, "  /F 4\n" );
-    sioOutPrintf( sos, "  /Ff 65536\n" ); /* Pushbutton */
-    sioOutPrintf( sos, "  /Action <</Subtype/GoTo /D/%s>>\n", utilMemoryBufferGetString( markName ) );
+    sioOutPrintf( sos, "  /T (Widget%d) ", n++ );
+    sioOutPrintf( sos, "  /TU (tooltip text) " );
+    sioOutPrintf( sos, "  /FT /Btn " );
+    sioOutPrintf( sos, "  /F 4 " );
+    sioOutPrintf( sos, "  /Ff 65536 " ); /* Pushbutton */
+    sioOutPrintf( sos, "  /Action <</Subtype/GoTo /D/%s>> ", utilMemoryBufferGetString( markName ) );
 
-    sioOutPrintf( sos, "  /Subtype /Widget\n" );
+    sioOutPrintf( sos, "  /Subtype /Widget " );
     sioOutPrintf( sos, "/ANN pdfmark\n" );
 #   endif
 
@@ -421,15 +506,12 @@ void psFlushLink(		PrintingState *		ps,
 
 	if  ( utilMemoryBufferIsEmpty( &(ps->psLinkTitle) ) )
 	    {
-	    psSourcePdfmark( ps->psSos, &drLink,
-					    &(ps->psLinkFile),
-					    &(ps->psLinkMark) );
+	    psSourcePdfmark( ps, &drLink,
+			&(ps->psLinkFile), &(ps->psLinkMark) );
 	    }
 	else{
-	    psGotoPdfmark( ps->psSos, &drLink,
-					    &(ps->psLinkFile),
-					    &(ps->psLinkMark),
-					    &(ps->psLinkTitle) );
+	    psGotoPdfmark( ps, &drLink,
+			&(ps->psLinkFile), &(ps->psLinkMark), &(ps->psLinkTitle) );
 	    }
 
 	ps->psLinkParticulesDone= 0;
@@ -438,3 +520,30 @@ void psFlushLink(		PrintingState *		ps,
 
     return;
     }
+
+void psSetLinkRectangle(	PrintingState *		ps,
+				int			x1Twips,
+				int			lineTop,
+				int			lineHeight,
+				const char *		annotationDictionaryName )
+    {
+    DocumentRectangle	drLink;
+    DocumentRectangle	dr;
+
+    drLink.drX0= ps->psLinkRectLeft;
+    drLink.drY0= lineTop+ lineHeight;
+    drLink.drX1= x1Twips;
+    drLink.drY1= lineTop;
+
+    geoTransformRectangle( &dr, &drLink, &(ps->psCurrentTransform) );
+
+    sioOutPrintf( ps->psSos, "[ {%s} << ", annotationDictionaryName );
+    pdPdfmarkWriteClickArea( ps->psSos, &dr );
+    sioOutPrintf( ps->psSos, " >> /PUT pdfmark\n" );
+
+    ps->psLinkParticulesDone= 0;
+    ps->psLinkRectLeft= x1Twips;
+
+    return;
+    }
+

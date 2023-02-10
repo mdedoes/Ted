@@ -17,6 +17,11 @@
 
 #   include	<appDebugon.h>
 
+			/**
+			 * The name of the StructTreeRoot dictionary of the
+			 * document as a whole.
+			 */
+static const char PS_DOC_STRUCT_TREE_ROOT[]= "STR";
 
 			/**
 			 * The name of the StructItem dictionary that is
@@ -31,23 +36,53 @@ static const char PS_DOC_STRUCT_ITEM[]= "DOC";
 static const char PS_DOC_STRUCT_ITEM_KIDS[]= "DTREE";
 
 			/**
-			 * The name of the StructTreeRoot dictionary of the
-			 * document as a whole.
-			 */
-static const char PS_DOC_STRUCT_TREE_ROOT[]= "STR";
-
-			/**
 			 * The name of the number tree root in the document
-			 * StructTreeRoot that holds the struct items that
-			 * correspond to the pages.  (Correct?)
+			 * StructTreeRoot that only holds the leaf
+			 * StructItems that refer to a marked content or other
+			 * objects. See NTREEA and PTREEA%d.
 			 */
 static const char PS_DOC_NUMBER_TREE_ROOT[]= "NTREE";
 
 			/**
 			 * The name of the Nums array in the number tree root
-			 * in the document .
+			 * in the document.
+			 * The array is a sequence of tuples consisting of a number and an object.
+			 * The number is a unique counter starting from 0.
+			 * In case of a page content, the object is an array of only the leaf StructItems
+			 * that refer to that page. (/K equals to a ContentId)
+			 * In case of an annotation, the object is the reference to the annotation.
 			 */
 static const char PS_DOC_NUMBER_TREE_NUMS[]= "NTREEA";
+
+			/**
+			 * The name, unique per page, of the array that contains only the leaf StuctItems
+			 * of a page marked content. To be used at the end of the page for populating NTREEA.
+			 *
+			 * Often, all the StuctItems (/P, /Link, /Figure /Span) are leaves.
+			 * So for each marked content the same StructItem is put in DTREE and PTREEA%d
+			 *
+			 * The ParentTree is the only way to find the corresponding StuctItem starting with a contentId.
+			 * A pdf reader accesses the Structure Tree using the value of Page -> StructParents as the number
+			 * and contentId as an index in PTREE%d.
+			 *
+			 * In case of an annotation the number is taken from Annotation -> StructParent
+			 * and the object of the tuple is the Annotation.
+			 *
+			 * See 14.7.4.4 for the Adobe description.
+			 *
+			 * This is used as an sprintf format for the page number.
+			 */
+
+static const char PS_DOC_PAGE_PARENT_TREE[]= "PTREEA%d";
+
+			/**
+			 * The name, unique per page, of the array that contains the annotations
+			 * of the page.
+			 * To be used at the end of the page for populating {ThisPage} -> Annotations.
+			 *
+			 * This is used as an sprintf format for the page number.
+			 */
+static const char PS_DOC_PAGE_ANNOTATIONS[]= "PANN%d";
 
 /************************************************************************/
 /*									*/
@@ -58,7 +93,7 @@ static const char PS_DOC_NUMBER_TREE_NUMS[]= "NTREEA";
 /**
  * Return a new contentId. ISO 32000-1:2008, 14.7.4.2 requires this to
  * be unique in the content stream. As we have one content stream per
- * page, we distribute unique numbers per page. (Why must they be contiguous?)
+ * page, we distribute unique numbers per page.
  */
 int psNewContentId(	PrintingState *		ps )
     {
@@ -68,6 +103,7 @@ int psNewContentId(	PrintingState *		ps )
 StructItem * psPdfLeafStructItem(
 				PrintingState *		ps,
 				const char *		structureType,
+				int			inLine,
 				int			contentId )
     {
     const int		uniqueDictId= ps->psDocContentMarkCount++;
@@ -82,6 +118,30 @@ StructItem * psPdfLeafStructItem(
     structItem->siStructureType= structureType;
     structItem->siContentId= contentId;
     structItem->siIsLeaf= 1;
+    structItem->siIsInline= inLine;
+
+    return structItem;
+    }
+
+StructItem * psPdfAnnotatedStructItem(
+				PrintingState *		ps,
+				const char *		structureType,
+				int			inLine,
+				int			contentId )
+    {
+    StructItem *	structItem= malloc( sizeof(StructItem) );
+
+    if  ( ! structItem )
+	{ XDEB(structItem); return structItem;	}
+
+    psPdfInitStructItem( structItem );
+
+    utilMemoryBufferPrintf( &(structItem->siDictionaryName), "TedRo%d", ps->psDocContentMarkCount++ );
+    utilMemoryBufferPrintf( &(structItem->siAnnotationDictionaryName), "TedAn%d", ps->psDocContentMarkCount++ );
+    structItem->siStructureType= structureType;
+    structItem->siContentId= contentId;
+    structItem->siIsLeaf= 1;
+    structItem->siIsInline= inLine;
 
     return structItem;
     }
@@ -104,6 +164,7 @@ StructItem * psPdfGroupStructItem(
     structItem->siStructureType= structureType;
     structItem->siContentId= contentId;
     structItem->siIsLeaf= 0;
+    structItem->siIsInline= 0;
 
     return structItem;
     }
@@ -198,7 +259,7 @@ int psPdfEndMarkedContent(		PrintingState *		ps )
     }
 
 /**
- *  Create and populate the common menbers of a simple leaf StructItem 
+ *  Create and populate the common members of a simple leaf StructItem
  *  as per table 323 in ISO 32000-1:2008 (14.7.4)
  *  As a leaf refers to actually marked content, /K receives the contentId.
  */
@@ -228,10 +289,10 @@ static int psPdfmarkOpenLeafStructItem(
 /**
  *  Create and populate the common menbers of a StructItem that is meant
  *  to receive children.  See table 323 in ISO 32000-1:2008 (14.7.4)
- *  As a group refers to multiple children, /K refers to an array that 
+ *  As a group refers to multiple children, /K refers to an array that
  *  receives the children.
- *  We can safely include a reference to the current page as well: It 
- *  is only required that some of the content referenced by /K is on 
+ *  We can safely include a reference to the current page as well: It
+ *  is only required that some of the content referenced by /K is on
  *  the page referenced by /Pg.
  */
 static int psPdfmarkOpenGroupStructItem(
@@ -386,36 +447,46 @@ int psPdfmarkMarkedDocumentSetup( PrintingState *		ps,
 int psPdfmarkMarkedPageSetup(	PrintingState *		ps,
 				int			page )
     {
-    /* God knows what this means */
+    char	pageParentTreeName[50];
+    char	annotationArrayName[50];
+
+    sprintf( pageParentTreeName, PS_DOC_PAGE_PARENT_TREE, page );
+    sprintf( annotationArrayName, PS_DOC_PAGE_ANNOTATIONS, page );
+
     sioOutPrintf( ps->psSos,
-	    "[ /_objdef {PTREE%d} /type /array /OBJ pdfmark\n", page );
+	    "[ /_objdef {%s} /type /array /OBJ pdfmark\n", pageParentTreeName );
     sioOutPrintf( ps->psSos,
-	    "[ /_objdef {PANN%d} /type /array /OBJ pdfmark\n", page );
+	    "[ /_objdef {%s} /type /array /OBJ pdfmark\n", annotationArrayName );
 
     ps->psPageFirstMarkId= ps->psDocContentMarkCount;
     ps->psPageContentMarkCount= 0;
+    ps->psPageAnnotationCount= 0;
 
     return 0;
     }
 
 /**
- *  Insert a StructItem in the hierarchy. It already has been 
+ *  Insert a StructItem in the hierarchy. It already has been
  *  defined. So all names are known.
  */
 static int psPdfmarkAppendDefinedItem(
 				PrintingState *		ps,
 				StructItem *		structItem )
     {
+    char	pageParentTreeName[50];
+
     const int		page= ps->psSheetsPrinted;
     const char * const	itemDict= utilMemoryBufferGetString( &(structItem->siDictionaryName) );
     const char * const	parentArray= structItem->siParent?
 				utilMemoryBufferGetString( &(structItem->siParent->siChildArrayName) ) :
 				PS_DOC_STRUCT_ITEM_KIDS;
 
+    sprintf( pageParentTreeName, PS_DOC_PAGE_PARENT_TREE, page );
+
     sioOutPrintf( ps->psSos, "[ {%s} {%s} /APPEND pdfmark\n",
 				    parentArray, itemDict );
-    sioOutPrintf( ps->psSos, "[ {PTREE%d} {%s} /APPEND pdfmark\n",
-				    page, itemDict );
+    sioOutPrintf( ps->psSos, "[ {%s} {%s} /APPEND pdfmark\n",
+				    pageParentTreeName, itemDict );
 
     return 0;
     }
@@ -432,7 +503,7 @@ int psPdfmarkAppendMarkedLeaf(	PrintingState *		ps,
     }
 
 /**
- *  Define and populate StructItem object that potentially 
+ *  Define and populate StructItem object that potentially
  *  receives children in the output.
  */
 int psPdfmarkAppendMarkedGroup(	PrintingState *		ps,
@@ -486,22 +557,75 @@ int psPdfmarkAppendMarkedIllustration(
     return psPdfmarkAppendDefinedItem( ps, structItem );
     }
 
+int psPdfmarkAppendMarkedLink(	PrintingState *		ps,
+				StructItem *		structItem )
+    {
+    const char * const	itemDict= utilMemoryBufferGetString( &(structItem->siDictionaryName) );
+    const char * const	parentDict= structItem->siParent?
+				utilMemoryBufferGetString( &(structItem->siParent->siDictionaryName) ) :
+				PS_DOC_STRUCT_ITEM;
+    const char * const	annotationDictionaryName=
+				utilMemoryBufferGetString( &(structItem->siAnnotationDictionaryName) );
+
+    const int	page= ps->psSheetsPrinted;
+    char	annotationArrayName[50];
+    int 	pageAnnotationReference;
+
+    pageAnnotationReference= psPdfmarkDefineAnnotationDictionary( ps,
+				    &(ps->psLinkFile), &(ps->psLinkMark),
+				    annotationDictionaryName );
+    if  ( pageAnnotationReference < 0 )
+	{ LDEB(pageAnnotationReference); return -1;	}
+
+    sioOutPrintf( ps->psSos,
+	"[ /_objdef {%s} /type /dict /OBJ pdfmark\n",
+	itemDict );
+
+    sioOutPrintf( ps->psSos,
+	"[ {%s} <</S /%s /P {%s} /K [ <</Obj {%s} /Pg {ThisPage} /Type /OBJR>> %d ] /Pg {ThisPage} ",
+	itemDict,
+	structItem->siStructureType,
+	parentDict,
+	utilMemoryBufferGetString( &(structItem->siAnnotationDictionaryName) ),
+	structItem->siContentId );
+
+    if  ( psPdfmarkCloseStructItem( ps ) )
+	{ SLDEB(structItem->siStructureType,structItem->siContentId); return -1;	}
+
+    sprintf( annotationArrayName, PS_DOC_PAGE_ANNOTATIONS, page );
+
+    sioOutPrintf( ps->psSos,
+	"[ {%s} {%s} /APPEND pdfmark\n",
+	annotationArrayName, annotationDictionaryName );
+
+    return psPdfmarkAppendDefinedItem( ps, structItem );
+    }
+
 int psPdfmarkFinishMarkedPage(	PrintingState *		ps,
 				int			page )
     {
+    char	pageParentTreeName[50];
+    char	annotationArrayName[50];
+
+    sprintf( pageParentTreeName, PS_DOC_PAGE_PARENT_TREE, page );
+    sprintf( annotationArrayName, PS_DOC_PAGE_ANNOTATIONS, page );
+
     sioOutPrintf( ps->psSos, "%% finishing page %d\n", page );
 
-    /* God knows what this means */
-    sioOutPrintf( ps->psSos, "[ {ThisPage} <</StructParents %d>> /PUT pdfmark\n", page );
-    sioOutPrintf( ps->psSos, "[ {ThisPage} <</Annots {PANN%d}>> /PUT pdfmark\n", page );
-    sioOutPrintf( ps->psSos, "[ {ThisPage} <</Tabs /S>> /PUT pdfmark\n" );
+    sioOutPrintf( ps->psSos,
+	    "[ {ThisPage} <</StructParents %d>> /PUT pdfmark\n", page );
+    sioOutPrintf( ps->psSos,
+	    "[ {ThisPage} <</Annots {%s}>> /PUT pdfmark\n",
+	    annotationArrayName );
+    sioOutPrintf( ps->psSos,
+	    "[ {ThisPage} <</Tabs /S>> /PUT pdfmark\n" );
 
     sioOutPrintf( ps->psSos,
 	"[ {%s} %d /APPEND pdfmark\n",
 	PS_DOC_NUMBER_TREE_NUMS, page );
     sioOutPrintf( ps->psSos,
-    	"[ {%s} {PTREE%d} /APPEND pdfmark\n",
-	PS_DOC_NUMBER_TREE_NUMS, page );
+    	"[ {%s} {%s} /APPEND pdfmark\n",
+	PS_DOC_NUMBER_TREE_NUMS, pageParentTreeName );
 
     return 0;
     }

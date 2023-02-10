@@ -24,7 +24,7 @@
  * Standard structure types. See ISO 32000-1:2008, 14.8.4.
  */
 static const char STRUCTtypeP[]= "P";
-static const char STRUCTtypeDIV[]= "Div";
+/*static const char STRUCTtypeDIV[]= "Div";*/
 static const char STRUCTtypeSPAN[]= "Span";
 static const char STRUCTtypePART[]= "Part";
 static const char STRUCTtypeSECT[]= "Sect";
@@ -32,6 +32,7 @@ static const char STRUCTtypeTD[]= "TD";
 static const char STRUCTtypeTR[]= "TR";
 static const char STRUCTtypeTABLE[]= "Table";
 static const char STRUCTtypeFIGURE[]= "Figure";
+static const char STRUCTtypeLINK[]= "Link";
 
 /************************************************************************/
 
@@ -44,17 +45,16 @@ static int docPsMarkNode(	struct BufferItem *		node )
 /**
  *  Make sure that if we are emitting textual content that is part 
  *  of the reading order of the document, that the current leaf in 
- *  the structure tree is a /Span.
+ *  the structure tree is a /Span or a /Link.
  */
-int docPsPrintClaimSpan(	PrintingState *		ps,
+int docPsPrintClaimInline(	PrintingState *		ps,
 				struct BufferItem *	paraNode )
     {
     if  ( paraNode->biTreeType == DOCinBODY )
 	{
 	if  ( ps->psCurrentStructItem 					&&
 	      ps->psCurrentStructItem->siIsLeaf				&&
-	      strcmp( ps->psCurrentStructItem->siStructureType,
-						    STRUCTtypeSPAN )	)
+	      ! ps->psCurrentStructItem->siIsInline			)
 	    {
 	    psPdfPopStructItem( ps );
 	    psPdfEndMarkedContent( ps );
@@ -63,14 +63,28 @@ int docPsPrintClaimSpan(	PrintingState *		ps,
 	if  ( ! ps->psCurrentStructItem 		||
 	      ! ps->psCurrentStructItem->siIsLeaf	)
 	    {
-	    const int	contentId= psNewContentId( ps );
-	    StructItem * structItem= psPdfLeafStructItem( ps, STRUCTtypeSPAN, contentId );
+	    const int		contentId= psNewContentId( ps );
+	    StructItem *	structItem;
 
-	    if  ( ! structItem || psPdfPushStructItem( ps, structItem ) )
-		{ XDEB(structItem); return -1;	}
+	    if  ( ps->psInsideLink )
+		{
+		structItem= psPdfAnnotatedStructItem( ps, STRUCTtypeLINK, 1, contentId );
 
-	    if  ( psPdfmarkAppendMarkedLeaf( ps, structItem ) )
-		{ LDEB(1); return -1;	}
+		if  ( ! structItem || psPdfPushStructItem( ps, structItem ) )
+		    { XDEB(structItem); return -1;	}
+
+		if  ( psPdfmarkAppendMarkedLink( ps, structItem ) )
+		    { LDEB(1); return -1;	}
+		}
+	    else{
+		structItem= psPdfLeafStructItem( ps, STRUCTtypeSPAN, 1, contentId );
+
+		if  ( ! structItem || psPdfPushStructItem( ps, structItem ) )
+		    { XDEB(structItem); return -1;	}
+
+		if  ( psPdfmarkAppendMarkedLeaf( ps, structItem ) )
+		    { LDEB(1); return -1;	}
+		}
 
 	    if  ( psPdfBeginMarkedContent( ps,
 		  structItem->siStructureType, structItem->siContentId ) )
@@ -85,12 +99,11 @@ int docPsPrintClaimSpan(	PrintingState *		ps,
  *  If the current StructItem on the stack is a /Span, pop it from 
  *  the stack
  */
-static int docPsPrintPopSpan(	PrintingState *		ps )
+int docPsPrintFinishInline(	PrintingState *		ps )
     {
     if  ( ps->psCurrentStructItem 					&&
 	  ps->psCurrentStructItem->siIsLeaf				&&
-	  ! strcmp( ps->psCurrentStructItem->siStructureType,
-						STRUCTtypeSPAN )	)
+	  ps->psCurrentStructItem->siIsInline				)
 	{
 	psPdfPopStructItem( ps );
 	psPdfEndMarkedContent( ps );
@@ -142,9 +155,9 @@ int docPsPrintBeginFigure(
     if  ( altText && ! utilMemoryBufferIsEmpty( altText ) )
 	{
 	const int contentId= psNewContentId( ps );
-	StructItem * structItem= psPdfLeafStructItem( ps, STRUCTtypeFIGURE, contentId );
+	StructItem * structItem= psPdfLeafStructItem( ps, STRUCTtypeFIGURE, 0, contentId );
 
-	if  ( docPsPrintPopSpan( ps ) )
+	if  ( docPsPrintFinishInline( ps ) )
 	    { LDEB(1); return -1;	}
 
 	if  ( ! structItem || psPdfPushStructItem( ps, structItem ) )
@@ -175,7 +188,7 @@ static int docPsPrintBeginTypedArtifact(
 			const char *			typeName,
 			const char *			subtypeName )
     {
-    if  ( docPsPrintPopSpan( ps ) )
+    if  ( docPsPrintFinishInline( ps ) )
 	{ LDEB(1); return -1;	}
 
     return psPdfBeginArtifact( ps, typeName, subtypeName );
@@ -189,7 +202,7 @@ static int docPsPrintBeginTypedArtifact(
 int docPsPrintBeginArtifact(
 			PrintingState *			ps )
     {
-    if  ( docPsPrintPopSpan( ps ) )
+    if  ( docPsPrintFinishInline( ps ) )
 	{ LDEB(1); return -1;	}
 
     return psPdfBeginMarkedContent( ps, "Artifact", -1 );
@@ -208,6 +221,12 @@ int docPsPrintStartTree(	void *				vps,
 				struct DocumentTree *		tree )
     {
     PrintingState *	ps= (PrintingState *)vps;
+
+    if  ( ps->psInsideLink )
+	{
+	SLDEB("####",ps->psInsideLink);
+	ps->psInsideLink= 0;
+	}
 
     switch( tree->dtRoot->biTreeType )
 	{
@@ -270,16 +289,19 @@ int docPsPrintFinishTree( void *			vps,
 
 	default:
 	    /* What about notes and text in shapes? */
-	    if  ( tree->dtRoot->biTreeType != DOCinBODY		&&
-		  docPsPrintEndArtifact( ps )		)
+	    if  ( docPsPrintEndArtifact( ps ) )
 		{ LDEB(tree->dtRoot->biTreeType); return -1;	}
+	    break;
 	}
 
     return 0;
     }
 
 /**
- *  Start printing a slice of a paragraph.
+ *  Start printing a slice of a paragraph. Currently, we make 
+ *  a /Div content item. Once we have the structural hierarchy 
+ *  in place, consider using /NonStruct: The paragraph that holds 
+ *  the lines determines the document structure.
  */
 int docPsPrintStartLines( void *			vps,
 			struct DrawingContext *		dc,
@@ -287,16 +309,22 @@ int docPsPrintStartLines( void *			vps,
     {
     PrintingState *	ps= (PrintingState *)vps;
 
+    if  ( ps->psInsideLink )
+	{
+	SLDEB("####",ps->psInsideLink);
+	ps->psInsideLink= 0;
+	}
+
     /* This would be the correct code
     if  ( docPsMarkNode( node )				&&
-	  docPsPrintBeginMarkedGroup( ps, STRUCTtypeDIV ) )
+	  docPsPrintBeginMarkedGroup( ps, STRUCTtypeP ) )
 	{ LDEB(node->biLevel); return -1;	}
     */
 
     /* Temporarily, we do this */
     if  ( node->biTreeType == DOCinBODY )
 	{
-	if  ( docPsPrintBeginMarkedGroup( ps, STRUCTtypeDIV ) )
+	if  ( docPsPrintBeginMarkedGroup( ps, STRUCTtypeP ) )
 	    { LDEB(node->biLevel); return -1;	}
 	}
 
@@ -314,7 +342,7 @@ int docPsPrintFinishLines( void *			vps,
     PrintingState *	ps= (PrintingState *)vps;
 
     if  ( node->biTreeType == DOCinBODY	&&
-	  docPsPrintPopSpan( ps )	)
+	  docPsPrintFinishInline( ps )	)
 	{ LDEB(1); return -1;	}
 
 
@@ -330,6 +358,7 @@ int docPsPrintFinishLines( void *			vps,
 	if  ( docPsPrintEndMarkedGroup( ps ) )
 	    { LDEB(node->biLevel); return -1;	}
 	}
+
     return 0;
     }
 
@@ -346,6 +375,12 @@ int docPsPrintStartNode(	void *				vps,
     {
     PrintingState *	ps= (PrintingState *)vps;
 
+    if  ( ps->psInsideLink )
+	{
+	SLDEB("####",ps->psInsideLink);
+	ps->psInsideLink= 0;
+	}
+
     switch( node->biLevel )
 	{
 	case DOClevBODY:
@@ -358,15 +393,6 @@ int docPsPrintStartNode(	void *				vps,
 	    if  ( docPsMarkNode( node )			&&
 		  docPsPrintBeginMarkedGroup( ps, STRUCTtypeSECT ) )
 		{ LDEB(node->biLevel); return -1;	}
-	    break;
-
-	case DOClevCELL:
-	    if  ( docPsMarkNode( node )			&&
-		  docIsRowNode( node->biParent )	)
-		{
-		if  ( docPsPrintBeginMarkedGroup( ps, STRUCTtypeTD ) )
-		    { LDEB(node->biLevel); return -1;	}
-		}
 	    break;
 
 	case DOClevROW:
@@ -384,11 +410,17 @@ int docPsPrintStartNode(	void *				vps,
 		}
 	    break;
 
-	case DOClevPARA:
-	    /* inserted in the reading order. */
+	case DOClevCELL:
 	    if  ( docPsMarkNode( node )			&&
-		  docPsPrintBeginMarkedGroup( ps, STRUCTtypeP ) )
-		{ LDEB(node->biLevel); return -1;	}
+		  docIsRowNode( node->biParent )	)
+		{
+		if  ( docPsPrintBeginMarkedGroup( ps, STRUCTtypeTD ) )
+		    { LDEB(node->biLevel); return -1;	}
+		}
+	    break;
+
+	case DOClevPARA:
+	    /* Do not include in hierarchy: The block of lines on one page is marked as a paragraph */
 	    break;
 
 	default:
@@ -419,27 +451,14 @@ int docPsPrintFinishNode( void *			vps,
 		{ LDEB(node->biLevel); return -1;	}
 	    break;
 
-	case DOClevPARA:
-	    if  ( docPsMarkNode( node )			&&
-		  docPsPrintEndMarkedGroup( ps )	)
-		{ LDEB(node->biLevel); return -1;	}
-	    break;
-
 	case DOClevSECT:
 	    if  ( docPsMarkNode( node )			&&
 		docPsPrintEndMarkedGroup( ps )		)
 		{ LDEB(node->biLevel); return -1;	}
 	    break;
 
-	case DOClevCELL:
-	    if  ( docPsMarkNode( node )			&&
-		  docIsRowNode( node->biParent )	&&
-		  docPsPrintEndMarkedGroup( ps )	)
-		{ LDEB(node->biLevel); return -1;	}
-	    break;
 
 	case DOClevROW:
-
 	    if  ( docPsMarkNode( node )			&&
 		  docIsRowNode( node )			)
 		{
@@ -454,6 +473,17 @@ int docPsPrintFinishNode( void *			vps,
 		    }
 		}
 
+	    break;
+
+	case DOClevCELL:
+	    if  ( docPsMarkNode( node )			&&
+		  docIsRowNode( node->biParent )	&&
+		  docPsPrintEndMarkedGroup( ps )	)
+		{ LDEB(node->biLevel); return -1;	}
+	    break;
+
+	case DOClevPARA:
+	    /* Do not include in hierarchy: The block of lines on one page is marked as a paragraph */
 	    break;
 
 	default:

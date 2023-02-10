@@ -129,17 +129,20 @@ void psPdfInitStructItem(	StructItem *	structItem )
     {
     utilInitMemoryBuffer( &(structItem->siDictionaryName) );
     utilInitMemoryBuffer( &(structItem->siChildArrayName) );
+    utilInitMemoryBuffer( &(structItem->siAnnotationDictionaryName) );
 
     structItem->siParent= (StructItem *)0;
     structItem->siStructureType= (const char *)0;
     structItem->siContentId= -1;
     structItem->siIsLeaf= 0;
+    structItem->siIsInline= 0;
     }
 
 void psPdfCleanStructItem(	StructItem *	structItem )
     {
     utilCleanMemoryBuffer( &(structItem->siDictionaryName) );
     utilCleanMemoryBuffer( &(structItem->siChildArrayName) );
+    utilCleanMemoryBuffer( &(structItem->siAnnotationDictionaryName) );
     }
 
 void psPdfPopStructItem(	PrintingState * ps )
@@ -209,6 +212,7 @@ void psInitPrintingState(	PrintingState *	ps )
     ps->psTagDocumentStructure= 0;
     ps->psDocContentMarkCount= 0;
     ps->psPageContentMarkCount= 0;
+    ps->psPageAnnotationCount= 0;
     ps->psPageFirstMarkId= 0;
 
     ps->psCurrentStructItem= (struct StructItem *)0;

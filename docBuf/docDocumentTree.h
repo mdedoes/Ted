@@ -29,22 +29,47 @@ struct DocumentField;
 
 typedef struct DocumentTree
     {
+				    /**
+				     *  The document node that is the root of
+				     *  this tree.
+				     */
     struct BufferItem *		dtRoot;
+
+				    /**
+				     *  Header and footer elements are repeated
+				     *  on multiple pages. As positions of the 
+				     *  content of the tree might depend on the
+				     *  actual page (even/odd) we keep track of the 
+				     *  page: We must reformat on a new page.
+				     */
     int				dtPageFormattedFor;
+    int				dtPageSelectedUpon;
+
+				    /**
+				     *  See comment on dtPageFormattedFor. Column
+				     *  width may vary between pages. So the (newspaper
+				     *  style) column determines the layout.
+				     */
     int				dtColumnFormattedFor;
+    int				dtColumnSelectedIn;
+
+				    /**
+				     *  The actual top and bottom positions that we find
+				     *  to be used after formatting the tree.
+				     *  (Might be copied to the Reserved equivalents if 
+				     *  we use more than reserved)
+				     */
     int				dtY0UsedTwips;
     int				dtY1UsedTwips;
-				/**
-				 *  The top position that is reserved for the 
-				 *  tree. For the page footers, this also 
-				 *  determines the page bottom for the body 
-				 *  text and the notes.
-				 */
+
+				    /**
+				     *  The top position that is reserved for the 
+				     *  tree. For the page footers, this also 
+				     *  determines the page bottom for the body 
+				     *  text and the notes.
+				     */
     int				dtY0ReservedTwips;
     int				dtY1ReservedTwips;
-
-    int				dtPageSelectedUpon;
-    int				dtColumnSelectedIn;
 
     ListNumberTrees		dtListNumberTrees;
     ListNumberTreeNode		dtOutlineTree;
@@ -66,6 +91,6 @@ extern void docCleanDocumentTree(	struct BufferDocument *	bd,
 extern void docInvalidateTreeLayout(	DocumentTree *		dt );
 
 extern int docAddRootFieldToTree(	DocumentTree *		dt,
-					struct DocumentField *	dfCh );
+					struct DocumentField *	df );
 
 #   endif

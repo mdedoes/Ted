@@ -8,6 +8,7 @@
 
 #   include	<stddef.h>
 #   include	<stdlib.h>
+#   include	<stdio.h>
 
 #   include	"docPsPrintImpl.h"
 #   include	"docDraw.h"
@@ -55,7 +56,7 @@ int docPsPrintRunUnderline(	const DrawTextLine *	dtl,
     if  ( h < 10 )
 	{ h=  10;	}
 
-    if  ( ps->psTagDocumentStructure	&&
+    if  ( ps->psTagDocumentStructure && dtl->dtlParaNode->biTreeType == DOCinBODY &&
 	  docPsPrintBeginArtifact( ps )	)
 	{ LDEB(-1); return -1;	}
 
@@ -64,7 +65,7 @@ int docPsPrintRunUnderline(	const DrawTextLine *	dtl,
     psFillRectangle( (PrintingState *)dtl->dtlThrough,
 			x0Twips+ dtl->dtlXShift, y0, x1Twips- x0Twips, h );
 
-    if  ( ps->psTagDocumentStructure			&&
+    if  ( ps->psTagDocumentStructure && dtl->dtlParaNode->biTreeType == DOCinBODY &&
 	  docPsPrintEndArtifact( ps )		)
 	{ LDEB(1); return -1;	}
 
@@ -92,7 +93,7 @@ int docPsPrintRunStrikethrough(	const DrawTextLine *	dtl,
     if  ( h < 10 )
 	{ h=  10;	}
 
-    if  ( ps->psTagDocumentStructure	&&
+    if  ( ps->psTagDocumentStructure && dtl->dtlParaNode->biTreeType == DOCinBODY &&
 	  docPsPrintBeginArtifact( ps )	)
 	{ LDEB(-1); return -1;	}
 
@@ -101,7 +102,7 @@ int docPsPrintRunStrikethrough(	const DrawTextLine *	dtl,
     psFillRectangle( (PrintingState *)dtl->dtlThrough,
 			x0Twips+ dtl->dtlXShift, y0, x1Twips- x0Twips, h );
 
-    if  ( ps->psTagDocumentStructure			&&
+    if  ( ps->psTagDocumentStructure && dtl->dtlParaNode->biTreeType == DOCinBODY &&
 	  docPsPrintEndArtifact( ps )		)
 	{ LDEB(1); return -1;	}
 
@@ -241,7 +242,8 @@ int docPsPrintTextRun(		const TextRun *		tr,
     const ParticuleData *	pd= dtl->dtlParticuleData+ tr->trPartFrom;
 
     /* Make sure that we emit text inside a /Span if needed */
-    if  ( ps->psTagDocumentStructure && docPsPrintClaimSpan( ps, tr->trParaNode ) )
+    if  ( ps->psTagDocumentStructure && dtl->dtlParaNode->biTreeType == DOCinBODY &&
+	  docPsPrintClaimInline( ps, tr->trParaNode ) )
 	{ LDEB(1); return -1;	}
 
     if  ( psMakeOutputString( &printString, &scratchString,
@@ -414,6 +416,10 @@ int docPsPrintStartField(	const DrawTextLine *		dtl,
 		{ LDEB(1); rval= -1; goto ready;	}
 	    if  ( utilCopyMemoryBuffer( &(ps->psLinkMark), &(hf.hfBookmark) ) )
 		{ LDEB(1); rval= -1; goto ready;	}
+
+	    if  ( ps->psTagDocumentStructure && dtl->dtlParaNode->biTreeType == DOCinBODY &&
+		  docPsPrintFinishInline( ps ) )
+		{ LDEB(1); rval= -1; goto ready;	}
 	    }
 
 	goto ready;
@@ -429,10 +435,21 @@ int docPsPrintStartField(	const DrawTextLine *		dtl,
     return rval;
     }
 
-# ifdef __GNUC__
-# pragma GCC diagnostic push
-# pragma GCC diagnostic ignored "-Wunused-parameter"
-# endif
+static int docPsFinishAnnotation(	PrintingState *		ps,
+					int			x1Twips,
+					int			lineTop,
+					int			lineHeight )
+    {
+    const StructItem *	structItem= ps->psCurrentStructItem;
+
+    if  ( ! structItem || utilMemoryBufferIsEmpty( &(structItem->siAnnotationDictionaryName) ) )
+	{ XDEB(structItem); return -1;	}
+
+    psSetLinkRectangle( ps, x1Twips, lineTop, lineHeight,
+					utilMemoryBufferGetString( &(structItem->siAnnotationDictionaryName) ) );
+
+    return 0;
+    }
 
 int docPsPrintFinishField(	const DrawTextLine *	dtl,
 				int			part,
@@ -446,16 +463,20 @@ int docPsPrintFinishField(	const DrawTextLine *	dtl,
 	const TextLine *	tl= dtl->dtlTextLine;
 	int			lineTop= tl->tlTopPosition.lpPageYTwips;
 
-	psFlushLink( ps, x1Twips, lineTop, dtl->dtlLineHeight );
+	if  ( ps->psTagDocumentStructure && dtl->dtlParaNode->biTreeType == DOCinBODY )
+	    {
+	    if  ( docPsFinishAnnotation( ps, x1Twips, lineTop, dtl->dtlLineHeight ) )
+		{ LDEB(1); return -1;	}
+	    }
+	else{
+	    psFlushLink( ps, x1Twips, lineTop, dtl->dtlLineHeight );
+	    }
+
 	ps->psInsideLink= 0;
 	}
 
     return 0;
     }
-
-# ifdef __GNUC__
-# pragma GCC diagnostic pop
-# endif
 
 /************************************************************************/
 /*									*/
@@ -484,7 +505,14 @@ int docPsPrintFinishTextLine(	const struct DrawTextLine *	dtl,
 	TextLine *	tl= dtl->dtlTextLine;
 	int		lineTop= tl->tlTopPosition.lpPageYTwips;
 
-	psFlushLink( ps, x1Twips, lineTop, dtl->dtlLineHeight );
+	if  ( ps->psTagDocumentStructure && dtl->dtlParaNode->biTreeType == DOCinBODY )
+	    {
+	    if  ( docPsFinishAnnotation( ps, x1Twips, lineTop, dtl->dtlLineHeight ) )
+		{ LDEB(1); return -1;	}
+	    }
+	else{
+	    psFlushLink( ps, x1Twips, lineTop, dtl->dtlLineHeight );
+	    }
 	}
 
     return 0;

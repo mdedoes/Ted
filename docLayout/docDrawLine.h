@@ -148,7 +148,6 @@ typedef struct DrawTextLine
 				 *  actual drawing code. If this flag is set, 
 				 *  we draw the particules separately.
 				 */
-
     unsigned char		dtlDrawParticulesSeparately;
 
 				/**
