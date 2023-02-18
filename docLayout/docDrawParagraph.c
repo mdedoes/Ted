@@ -30,6 +30,14 @@
 /*									*/
 /************************************************************************/
 
+static int docDrawTextLines(
+			void *				through,
+			const ParagraphDrawingStrip *	pds,
+			struct BufferItem *		paraNode,
+			const ParagraphFrame *		pf,
+			DrawingContext *		dc,
+			const BlockOrigin *		bo );
+
 /************************************************************************/
 /*									*/
 /*  Draw paragraph borders and shading.					*/
@@ -366,7 +374,8 @@ if  ( paraNode->biTreeType == DOCinSHPTXT )
 /*									*/
 /************************************************************************/
 
-int docDrawTextLines(	void *				through,
+static int docDrawTextLines(
+			void *				through,
 			const ParagraphDrawingStrip *	pds,
 			struct BufferItem *		paraNode,
 			const ParagraphFrame *		pf,

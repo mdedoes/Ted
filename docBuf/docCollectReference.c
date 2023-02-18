@@ -26,7 +26,7 @@ typedef struct CollectReference
     struct BufferDocument *	crDocument;
 
 			/**
-			 *  The collected byes in the referenced selection.
+			 *  The collected bytes in the referenced selection.
 			 */
     MemoryBuffer *	crResult;
 
@@ -61,6 +61,25 @@ typedef struct CollectReference
 			 */
     int			crPrevCountInCell;
     } CollectReference;
+
+static void docInitCollectReference(	CollectReference *	cr,
+					struct BufferDocument *	bd,
+					MemoryBuffer *		mbResult,
+					int			direction )
+    {
+    cr->crDocument= bd;
+    cr->crResult= mbResult;
+    cr->crSkipping= 0;
+    cr->crParagraphCount= 0;
+    cr->crCellCount= 0;
+    cr->crDirection= direction;
+
+    cr->crNumbers= (double *)0;
+    cr->crNumberCount= 0;
+    cr->crPrevCountInCell= 0;
+
+    return;
+    }
 
 /************************************************************************/
 
@@ -158,16 +177,7 @@ int docCollectReference( MemoryBuffer *				mbResult,
     const int			flags= 0;
     CollectReference		cr;
 
-    cr.crDocument= bd;
-    cr.crResult= mbResult;
-    cr.crSkipping= 0;
-    cr.crParagraphCount= 0;
-    cr.crCellCount= 0;
-    cr.crDirection= 0;
-
-    cr.crNumbers= (double *)0;
-    cr.crNumberCount= 0;
-    cr.crPrevCountInCell= 0;
+    docInitCollectReference( &cr, bd, mbResult, 0 );
 
     if  ( docScanSelection( bd, ds,
 		docCollectReferenceEnterNode, (NodeVisitor)0,
@@ -323,16 +333,7 @@ int docCollectNumbers(		double **			pNumbers,
 
     utilInitMemoryBuffer( &mbResult );
 
-    cr.crDocument= bd;
-    cr.crResult= &mbResult;
-    cr.crSkipping= 0;
-    cr.crParagraphCount= 0;
-    cr.crCellCount= 0;
-    cr.crDirection= direction;
-
-    cr.crNumbers= (double *)0;
-    cr.crNumberCount= 0;
-    cr.crPrevCountInCell= 0;
+    docInitCollectReference( &cr, bd, &mbResult, 0 );
 
     if  ( docScanSelection( bd, ds,
 			    docCollectNumbersEnterNode,

@@ -468,13 +468,6 @@ extern int docDrawTextLine(	struct BufferItem *		paraNode,
 				DrawingContext *		dc,
 				const struct BlockOrigin *	bo );
 
-extern int docDrawTextLines(	void *				through,
-				const struct ParagraphDrawingStrip *	pds,
-				struct BufferItem *		paraNode,
-				const struct ParagraphFrame *	pf,
-				DrawingContext *		dc,
-				const struct BlockOrigin *	bo );
-
 extern int docDrawToNextColumn(	struct BufferItem *		thisBodyNode,
 				struct BufferItem *		nextBodyNode,
 				void *				through,

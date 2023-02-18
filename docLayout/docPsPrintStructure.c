@@ -313,7 +313,7 @@ int docPsPrintStartLines( void *			vps,
 	ps->psInsideLink= 0;
 	}
 
-    /* This would be the correct code
+    /* This might be the correct code
     if  ( docPsMarkNode( node )				&&
 	  docPsPrintBeginMarkedGroup( ps, STRUCTtypeP ) )
 	{ LDEB(node->biLevel); return -1;	}
@@ -344,7 +344,7 @@ int docPsPrintFinishLines( void *			vps,
 	{ LDEB(1); return -1;	}
 
 
-    /* This would be the correct code
+    /* This might be the correct code
     if  ( docPsMarkNode( node )			&&
 	  docPsPrintEndMarkedGroup( ps )	)
 	{ LDEB(node->biLevel); return -1;	}
