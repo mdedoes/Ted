@@ -107,13 +107,12 @@ typedef struct PrintingState
 				 */
     unsigned char		psTagDocumentStructure;
 				/**
-				 * The number of marked content items in
-				 * the document as a whole. We create a
-				 * unique named dictionary for each StructElem
-				 * in the document. This is used to generate
-				 * the unique names.
+				 * The number of dictionaries that we created.
+				 * This is used to get unique dictionary names.
+				 * For the sake of understandability, the names
+				 * hold a little mode than the unique number.
 				 */
-    int				psDocContentMarkCount;
+    int				psDictionaryNameCount;
 				/**
 				 * The number of marked content items on
 				 * the current page. As we produce a content
@@ -129,13 +128,12 @@ typedef struct PrintingState
 				 * this is used to give them a sequence number.
 				 */
     int				psPageAnnotationCount;
+
 				/**
-				 * The (potential) first ID of marked content
-				 * on the current page. psPageFirstMarkId is
-				 * only meaningful if there are marks on the
-				 * page.
+				 * The number of pages/annotations in the document.
+				 * This is used to give them a sequence number.
 				 */
-    int				psPageFirstMarkId;
+    int				psDocNumberTreeItemCount;
 
 				/**
 				 * We keep a stack of StructItem's to produce
@@ -455,19 +453,15 @@ extern int psPdfmarkFinishMarkedPage(
 				PrintingState *			ps,
 				int				page );
 
-extern int psNewContentId(	PrintingState *			ps );
-
 extern struct StructItem * psPdfLeafStructItem(
 				PrintingState *		ps,
 				const char *		structureType,
-				int			inLine,
-				int			contentId );
+				int			inLine );
 
 extern struct StructItem * psPdfAnnotatedStructItem(
 				PrintingState *		ps,
 				const char *		structureType,
-				int			inLine,
-				int			contentId );
+				int			inLine );
 
 extern struct StructItem * psPdfGroupStructItem(
 				PrintingState *		ps,

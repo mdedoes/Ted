@@ -63,12 +63,11 @@ int docPsPrintClaimInline(	PrintingState *		ps,
 	if  ( ! ps->psCurrentStructItem 		||
 	      ! ps->psCurrentStructItem->siIsLeaf	)
 	    {
-	    const int		contentId= psNewContentId( ps );
 	    StructItem *	structItem;
 
 	    if  ( ps->psInsideLink )
 		{
-		structItem= psPdfAnnotatedStructItem( ps, STRUCTtypeLINK, 1, contentId );
+		structItem= psPdfAnnotatedStructItem( ps, STRUCTtypeLINK, 1 );
 
 		if  ( ! structItem || psPdfPushStructItem( ps, structItem ) )
 		    { XDEB(structItem); return -1;	}
@@ -77,7 +76,7 @@ int docPsPrintClaimInline(	PrintingState *		ps,
 		    { LDEB(1); return -1;	}
 		}
 	    else{
-		structItem= psPdfLeafStructItem( ps, STRUCTtypeSPAN, 1, contentId );
+		structItem= psPdfLeafStructItem( ps, STRUCTtypeSPAN, 1 );
 
 		if  ( ! structItem || psPdfPushStructItem( ps, structItem ) )
 		    { XDEB(structItem); return -1;	}
@@ -154,8 +153,7 @@ int docPsPrintBeginFigure(
     {
     if  ( altText && ! utilMemoryBufferIsEmpty( altText ) )
 	{
-	const int contentId= psNewContentId( ps );
-	StructItem * structItem= psPdfLeafStructItem( ps, STRUCTtypeFIGURE, 0, contentId );
+	StructItem * structItem= psPdfLeafStructItem( ps, STRUCTtypeFIGURE, 0 );
 
 	if  ( docPsPrintFinishInline( ps ) )
 	    { LDEB(1); return -1;	}

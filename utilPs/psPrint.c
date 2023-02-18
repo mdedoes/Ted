@@ -210,10 +210,10 @@ void psInitPrintingState(	PrintingState *	ps )
     ps->ps7Bits= 0;
 
     ps->psTagDocumentStructure= 0;
-    ps->psDocContentMarkCount= 0;
+    ps->psDictionaryNameCount= 0;
+    ps->psDocNumberTreeItemCount= 0;
     ps->psPageContentMarkCount= 0;
     ps->psPageAnnotationCount= 0;
-    ps->psPageFirstMarkId= 0;
 
     ps->psCurrentStructItem= (struct StructItem *)0;
 
