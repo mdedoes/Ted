@@ -182,6 +182,10 @@ static int docDelimitParagraphDrawingStrip(
 	lineUpto= line+ 1;
 	}
 
+    docTextLineSelection( &(pds->pdsStripSelection), paraNode,
+				paraNode->biParaLines+ lineFrom,
+				paraNode->biParaLines+ lineUpto- 1 );
+
     pds->pdsLineFrom= lineFrom;
     pds->pdsLineUpto= lineUpto;
     pds->pdsAtParaTop= atTop;
@@ -395,7 +399,7 @@ static int docDrawTextLines(
 	LLDEB(pds->pdsShadeTop.lpColumn,pds->pdsShadeBelow.lpColumn);
 	}
 
-    if  ( dc->dcStartLines && (*dc->dcStartLines)( through, dc, paraNode ) )
+    if  ( dc->dcStartLines && (*dc->dcStartLines)( through, dc, paraNode, &(pds->pdsStripSelection) ) )
 	{ LDEB(1); return -1;	}
 
     /*  1  */
@@ -476,7 +480,7 @@ static int docDrawTextLines(
 	    { LDEB(res); return -1; }
 	if  ( res == SCANadviceSTOP )
 	    {
-	    if  ( dc->dcFinishLines && (*dc->dcFinishLines)( through, dc, paraNode ) )
+	    if  ( dc->dcFinishLines && (*dc->dcFinishLines)( through, dc, paraNode, &(pds->pdsStripSelection) ) )
 		{ LDEB(1); return -1;	}
 
 	    return res;
@@ -485,7 +489,7 @@ static int docDrawTextLines(
 	line++; tl++;
 	}
 
-    if  ( dc->dcFinishLines && (*dc->dcFinishLines)( through, dc, paraNode ) )
+    if  ( dc->dcFinishLines && (*dc->dcFinishLines)( through, dc, paraNode, &(pds->pdsStripSelection) ) )
 	{ LDEB(1); return -1;	}
 
     return 0;

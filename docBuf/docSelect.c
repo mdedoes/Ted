@@ -509,7 +509,8 @@ int docLineTail(	DocumentPosition *	dp,
 
 void docTextLineSelection(	DocumentSelection *		dsLine,
 				const struct BufferItem *	paraNode,
-				const TextLine *		tl )
+				const TextLine *		tlFirst,
+				const TextLine *		tlLast )
     {
     DocumentPosition	dpHead;
     DocumentPosition	dpTail;
@@ -525,10 +526,10 @@ void docTextLineSelection(	DocumentSelection *		dsLine,
     docInitDocumentSelection( dsLine );
 
     dpHead.dpNode= (struct BufferItem *)paraNode;
-    dpHead.dpStroff= tl->tlStroff;
+    dpHead.dpStroff= tlFirst->tlStroff;
 
     dpTail.dpNode= (struct BufferItem *)paraNode;
-    dpTail.dpStroff= tl->tlStroff+ tl->tlStrlen;
+    dpTail.dpStroff= tlLast->tlStroff+ tlLast->tlStrlen;
 
     docSetRangeSelection( dsLine, &dpHead, &dpTail, direction );
 
@@ -545,7 +546,9 @@ void docLineSelection(	DocumentSelection *		dsLine,
     if  ( line < 0 || line >= paraNode->biParaLineCount )
 	{ LLDEB(line,paraNode->biParaLineCount); return;	}
 
-    docTextLineSelection( dsLine, paraNode, paraNode->biParaLines+ line );
+    docTextLineSelection( dsLine, paraNode,
+			paraNode->biParaLines+ line,
+			paraNode->biParaLines+ line );
     }
 
 void docIntersectLineSelection(	DocumentSelection *		dsLine,

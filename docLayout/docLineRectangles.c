@@ -350,7 +350,7 @@ void docSetLineRectangles(	LineRectangles *		lr,
 	{ lr->lrIntersectsSelection= 0; return;	}
 
     /*  1  */
-    docTextLineSelection( &(lr->lrDsThisLine), paraNode, tl );
+    docTextLineSelection( &(lr->lrDsThisLine), paraNode, tl, tl );
     lr->lrDrThisLineFrame= drLineFrame;
 
     lr->lrCmp_StLh=

@@ -21,6 +21,8 @@
 
 void docInitDrawingContext(	DrawingContext *	dc )
     {
+    dc->dcDocument= (struct BufferDocument *)0;
+
     dc->dcCurrentTextAttributeSet= 0;
     textInitTextAttribute( &(dc->dcCurrentTextAttribute) );
 

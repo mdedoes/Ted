@@ -7,14 +7,13 @@
 
 #   include	"docLayoutConfig.h"
 
-#   include	<stddef.h>
-#   include	<string.h>
-
 #   include	"docPsPrintImpl.h"
+#   include	"docDraw.h"
 #   include	<docTreeNode.h>
 #   include	<docTreeNode.h>
 #   include	<docTreeType.h>
 #   include	<docBuf.h>
+#   include	<docSelect.h>
 #   include	<psPrint.h>
 
 #   include	<appDebugon.h>
@@ -36,7 +35,7 @@ static const char STRUCTtypeLINK[]= "Link";
 
 /************************************************************************/
 
-static int docPsMarkNode(	struct BufferItem *		node )
+static int docPsMarkNode(	const struct BufferItem *		node )
     {
     return 0 && node->biTreeType == DOCinBODY &&
 	    node->biTopPosition.lpPage == node->biBelowPosition.lpPage;
@@ -303,7 +302,8 @@ int docPsPrintFinishTree( void *			vps,
  */
 int docPsPrintStartLines( void *			vps,
 			struct DrawingContext *		dc,
-			struct BufferItem *		node )
+			const struct BufferItem *	node,
+			const struct DocumentSelection * ds )
     {
     PrintingState *	ps= (PrintingState *)vps;
 
@@ -335,29 +335,52 @@ int docPsPrintStartLines( void *			vps,
  */
 int docPsPrintFinishLines( void *			vps,
 			struct DrawingContext *		dc,
-			struct BufferItem *		node )
+			const struct BufferItem *	node,
+			const struct DocumentSelection * ds )
     {
+    int			res= 0;
     PrintingState *	ps= (PrintingState *)vps;
+
+    MemoryBuffer	mbActualText;
+
+    utilInitMemoryBuffer( &mbActualText );
 
     if  ( node->biTreeType == DOCinBODY	&&
 	  docPsPrintFinishInline( ps )	)
-	{ LDEB(1); return -1;	}
+	{ LDEB(1); res= -1; goto ready;	}
 
 
     /* This might be the correct code
-    if  ( docPsMarkNode( node )			&&
-	  docPsPrintEndMarkedGroup( ps )	)
-	{ LDEB(node->biLevel); return -1;	}
+    if  ( docPsMarkNode( node ) )
+	{
+	if  ( docPsPrintEndMarkedGroup( ps )	)
+	    { LDEB(node->biLevel); res= -1; goto ready;	}
+	}
     */
 
     /* Temporarily, we do this */
     if  ( node->biTreeType == DOCinBODY )
 	{
+	StructItem *	currentStructItem= ps->psCurrentStructItem;
+
+	if  ( currentStructItem )
+	    {
+	    if  ( docCollectReference( &mbActualText, ds, dc->dcDocument ) )
+		{ LDEB(1); return -1;	}
+
+	    if  ( psPdfMarkSetActualText( ps, currentStructItem, &mbActualText ) )
+		{ LDEB(1); return -1;	}
+	    }
+
 	if  ( docPsPrintEndMarkedGroup( ps ) )
-	    { LDEB(node->biLevel); return -1;	}
+	    { LDEB(node->biLevel); res= -1; goto ready;	}
 	}
 
-    return 0;
+  ready:
+
+    utilCleanMemoryBuffer( &mbActualText );
+
+    return res;
     }
 
 /************************************************************************/

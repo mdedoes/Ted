@@ -2,6 +2,7 @@
 #   define	DOC_DRAW_PARA_H
 
 #   include	<docLayoutPosition.h>
+#   include	<docSelect.h>
 
 typedef struct ParagraphDrawingStrip
     {
@@ -15,6 +16,8 @@ typedef struct ParagraphDrawingStrip
 
     LayoutPosition	pdsShadeTop;
     LayoutPosition	pdsShadeBelow;
+
+    DocumentSelection	pdsStripSelection;
     } ParagraphDrawingStrip;
 
 /************************************************************************/

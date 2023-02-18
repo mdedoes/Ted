@@ -230,7 +230,8 @@ extern void docLineSelection(	struct DocumentSelection *	dsLine,
 
 extern void docTextLineSelection( struct DocumentSelection *	dsLine,
 				const struct BufferItem *	node,
-				const struct TextLine *		tl );
+				const struct TextLine *		tlFirst,
+				const struct TextLine *		tlLast );
 
 extern void docIntersectLineSelection(
 				struct DocumentSelection *	dsLine,

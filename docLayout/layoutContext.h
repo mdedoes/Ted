@@ -15,9 +15,16 @@ typedef struct LayoutContext
     struct DrawingSurface *		lcDrawingSurface;
     struct IndexMapping *		lcAttributeToScreenFont;
     const struct PostScriptFontList *	lcPostScriptFontList;
+					/**
+					 *  The document that we are currently 
+					 *  formatting
+					 */
     struct BufferDocument *		lcDocument;
     int					lcHonourSpecialSectBreaks;
 
+					/**
+					 *  Offsets for screen drawing.
+					 */
     int					lcOx;
     int					lcOy;
 

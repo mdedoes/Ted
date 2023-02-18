@@ -1923,7 +1923,6 @@ docPsPrintShapes.o: \
     docPsPrintShapes.c
 
 docPsPrintStructure.o: \
-    ../appUtil/sioGeneral.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -1942,6 +1941,7 @@ docPsPrintStructure.o: \
     ../docBuf/docParaNode.h \
     ../docBuf/docRowNode.h \
     ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
     ../docBuf/docTreeNode.h \
     docDraw.h \
     ../docField/docChildFields.h \

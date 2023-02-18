@@ -236,6 +236,7 @@ static void tedSetDrawingContext( LayoutContext *		lc,
     tedSetScreenLayoutContext( lc, ed );
     docScreenDrawSetFunctions( dc );
 
+    dc->dcDocument= bd;
     dc->dcLayoutContext= lc;
 
     dc->dcDrawTableGrid= ( td->tdDrawTableGrid >= 0 );

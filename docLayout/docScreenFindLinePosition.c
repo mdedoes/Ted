@@ -658,6 +658,8 @@ void docSetFindPositionJob(	PositionFindJob *		pfj,
 
     docInitDrawingContext( dc );
 
+    dc->dcDocument= lc->lcDocument;
+
     pfj->pfjPage= docGetPageForYPixels( lc, docYPixels );
     docGetPageRectPixels( &(pfj->pfjPageRectPixels), lc, pfj->pfjPage );
 

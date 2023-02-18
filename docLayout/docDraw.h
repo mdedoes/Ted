@@ -22,6 +22,7 @@ struct DocumentGeometry;
 struct TextRun;
 struct TextLine;
 struct LayoutContext;
+struct DocumentSelection;
 
 /************************************************************************/
 /*									*/
@@ -172,11 +173,13 @@ typedef int (*FINISH_NODE)(	void *				through,
 			 */
 typedef int (*START_LINES)(	void *				through,
 				struct DrawingContext *		dc,
-				struct BufferItem *		node );
+				const struct BufferItem *	node,
+				const struct DocumentSelection * ds );
 
 typedef int (*FINISH_LINES)(	void *				through,
 				struct DrawingContext *		dc,
-				struct BufferItem *		node );
+				const struct BufferItem *	node,
+				const struct DocumentSelection * ds );
 
 			/**
 			 *  Keep track of the document hierarchy while 
@@ -197,6 +200,11 @@ typedef int (*FINISH_TREE)(	void *				through,
 typedef struct DrawingContext
     {
 				/**
+				 *  The document that we are currently drawing
+				 */
+    struct BufferDocument *	dcDocument;
+
+				/**
 				 *  Is the current text attribute set to a value that 
 				 *  we can rely upon? (Font, Size)
 				 */
@@ -207,6 +215,7 @@ typedef struct DrawingContext
 				 *  again.
 				 */
     TextAttribute		dcCurrentTextAttribute;
+
 				/**
 				 *  Is the current color set to a value that 
 				 *  we can rely upon?

@@ -25,6 +25,7 @@ struct PrintingState;
 struct AffineTransform2D;
 struct DocumentTree;
 struct BufferItem;
+struct DocumentSelection;
 
 /************************************************************************/
 /*									*/
@@ -156,11 +157,13 @@ extern int docPsPrintFinishTree( void *				vps,
 
 extern int docPsPrintStartLines( void *				vps,
 				struct DrawingContext *		dc,
-				struct BufferItem *		node );
+				const struct BufferItem *	node,
+				const struct DocumentSelection * ds );
 
 extern int docPsPrintFinishLines( void *			vps,
 				struct DrawingContext *		dc,
-				struct BufferItem *		node );
+				const struct BufferItem *	node,
+				const struct DocumentSelection * ds );
 
 extern int docPsPrintStartNode( void *				vps,
 				struct DrawingContext *		dc,

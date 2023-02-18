@@ -8,7 +8,6 @@
 
 #   include	<stddef.h>
 #   include	<stdlib.h>
-#   include	<stdio.h>
 
 #   include	"docPsPrintImpl.h"
 #   include	"docDraw.h"

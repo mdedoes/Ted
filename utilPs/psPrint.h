@@ -468,4 +468,9 @@ extern struct StructItem * psPdfGroupStructItem(
 				const char *		structureType,
 				int			contentId );
 
+extern int psPdfMarkSetActualText(
+				PrintingState *		ps,
+				struct StructItem *	structItem,
+				const struct MemoryBuffer * mbActualText );
+
 #   endif	/*  UTIL_PS_H  */

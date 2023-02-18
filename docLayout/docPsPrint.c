@@ -406,6 +406,8 @@ int docPsPrintDocument(	struct SimpleOutputStream *	sos,
     docInitDrawingContext( &dc );
     psInitPrintingState( &ps );
 
+    dc.dcDocument= lc->lcDocument;
+
     dc.dcSetColorRgb= docPsSetColorRgb;
     dc.dcSetFont= docPsSetFont;
     dc.dcDrawShape= docPsPrintDrawDrawingShape;

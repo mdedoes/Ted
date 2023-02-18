@@ -669,3 +669,18 @@ int psPdfmarkMarkedDocumentTrailer( PrintingState *		ps )
     return 0;
     }
 
+
+int psPdfMarkSetActualText(	PrintingState *		ps,
+				struct StructItem *	structItem,
+				const struct MemoryBuffer * mbActualText )
+    {
+    sioOutPrintf( ps->psSos,
+	    "[ {%s} <</ActualText ",
+	    utilMemoryBufferGetString( &(structItem->siDictionaryName) ) );
+
+    psPrintPdfMarkStringValue( ps, mbActualText );
+
+    sioOutPrintf( ps->psSos, ">> /PUT pdfmark\n" );
+
+    return 0;
+    }

@@ -519,6 +519,8 @@ static void docSvgSetDrawingContext(	DrawingContext *	dc,
     {
     START_TREE_LAYOUT	startTreeLayout= (START_TREE_LAYOUT)0;
 
+    dc->dcDocument= lc->lcDocument;
+
     dc->dcSetColorRgb= docSvgSetColorRgb;
     dc->dcSetFont= docSvgSetFont;
     dc->dcDrawShape= docSvgDrawDrawDrawingShape;

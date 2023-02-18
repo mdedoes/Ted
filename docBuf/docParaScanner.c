@@ -829,7 +829,7 @@ int docScanLineLogicalOrder(
     if  ( ds &&
 	  ( ds->dsHead.dpNode == paraNode || ds->dsTail.dpNode == paraNode ) )
 	{ docIntersectLineSelection( &dsLine, paraNode, tl, ds );	}
-    else{ docTextLineSelection( &dsLine, paraNode, tl );	}
+    else{ docTextLineSelection( &dsLine, paraNode, tl, tl );	}
 
     ps.psSelection= &dsLine;
     ps.psDocument= bd;
@@ -911,7 +911,7 @@ int docScanLineDisplayOrder(
     if  ( ds &&
 	  ( ds->dsHead.dpNode == paraNode || ds->dsTail.dpNode == paraNode ) )
 	{ docIntersectLineSelection( &dsLine, paraNode, tl, ds );	}
-    else{ docTextLineSelection( &dsLine, paraNode, tl );	}
+    else{ docTextLineSelection( &dsLine, paraNode, tl, tl );	}
 
     ps.psSelection= &dsLine;
     ps.psDocument= bd;
