@@ -83,6 +83,8 @@ static struct BufferDocument *	tedMakeDocument(
     TextAttribute		ta;
     time_t			now;
 
+    int				lcId;
+
     if  ( ea->eaPreferBase35FontsInt <= 0 )
 	{ psfl= &(ea->eaPostScriptFontList);	}
 
@@ -105,14 +107,11 @@ static struct BufferDocument *	tedMakeDocument(
     dp->dpCreatim= *localtime( &now );
     dp->dpRevtim= dp->dpCreatim;
 
-    if  ( ea->eaLocaleTag )
+    lcId= textMatchConfiguredLocaleTag( ea->eaLocaleTag );
+    if  ( lcId >= 0 )
 	{
-	int	lcId;
-
-	lcId= textGetMsLocaleIdByTag( ea->eaLocaleTag );
-	if  ( lcId < 0 )
-	    { SLDEB(ea->eaLocaleTag,lcId);	}
-	else{ bd->bdLocaleId= lcId;		}
+	bd->bdLocaleId= lcId;
+	dp->dpDefaultLocaleId= lcId;
 	}
 
     rval= bd; bd= (struct BufferDocument *)0; /* steal */
@@ -873,7 +872,7 @@ int tedNewDocument(	EditDocument *		ed,
     int				rval= 0;
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
     EditTrace *			et= &(td->tdEditTrace);
-    struct BufferDocument *		bd= (struct BufferDocument *)0;
+    struct BufferDocument *	bd= (struct BufferDocument *)0;
 
     EditApplication *		ea= ed->edApplication;
     TedAppResources *		tar= (TedAppResources *)ea->eaResourceData;

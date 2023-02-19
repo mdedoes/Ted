@@ -8,7 +8,7 @@
 
 #   include	"textAttributeAdmin.h"
 #   include	"textAttribute.h"
-#   include	"utilNumberedPropertiesAdmin.h"
+#   include	<utilNumberedPropertiesAdmin.h>
 
 #   include	<appDebugon.h>
 

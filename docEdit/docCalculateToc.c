@@ -469,6 +469,7 @@ static int docTocSetStyleBookmarks(	CalculateToc *		ct )
 
     if  ( docHeadPosition( &dp, bd->bdBody.dtRoot ) )
 	{ LDEB(1); return 0;	}
+
     while( dp.dpNode )
 	{
 	int	dpStyleNumber= dp.dpNode->biParaProperties->ppStyleNumber;

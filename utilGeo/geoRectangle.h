@@ -8,6 +8,7 @@
 #   define		GEO_RECTANGLE_H
 
 struct RectangleOffsets;
+struct AffineTransform2D;
 
 typedef struct DocumentRectangle
     {
@@ -93,5 +94,10 @@ extern void geoLogRectangles(	const char *			label1,
 				const DocumentRectangle *	dr1,
 				const char *			label2,
 				const DocumentRectangle *	dr2 );
+
+extern void geoTransformRectangle(
+			    DocumentRectangle *			drTo,
+			    const DocumentRectangle *		drFrom,
+			    const struct AffineTransform2D *	at );
 
 #   endif	/*	GEO_RECTANGLE_H */

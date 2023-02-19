@@ -42,6 +42,10 @@ static int docRtfSetAnsicpg(	struct TextConverter *	tc,
 
     switch( ansicpg )
 	{
+	case 0:
+	    textConverterSetNativeEncodingName( tc, DOC_RTF_AnsiCharsetName );
+	    return 0;
+
 	case 437: case 819: case 850: case 852:
 	case 460: case 862: case 863: case 864:
 	case 465: case 866: case 874: case 932:

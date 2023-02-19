@@ -26,19 +26,19 @@ typedef struct CollectReference
     struct BufferDocument *	crDocument;
 
 			/**
-			 *  The collected byes in the referenced selection.
+			 *  The collected bytes in the referenced selection.
 			 */
     MemoryBuffer *	crResult;
 
 			/**
-			 *  Thrue if and only if we are immediately after 
+			 *  True if and only if we are immediately after
 			 *  one or more special particules.
 			 */
     int			crSkipping;
 
 			/**
 			 *  The number of paragraphs that we have collected
-			 *  content from. (Used to insert a space between 
+			 *  content from. (Used to insert a space between
 			 *  paragraphs.)
 			 */
     int			crParagraphCount;
@@ -49,18 +49,37 @@ typedef struct CollectReference
     int			crNumberCount;
 
 			/**
-			 *  Used to implement MS-Words strange behavior 
+			 *  Used to implement MS-Words strange behavior
 			 *  where the numbers inside a cell are summed.
 			 *
-			 *  In the direction away from the cell that 
-			 *  holds the formula, the range of cells to 
-			 *  include in the aggregate stops if a cell 
+			 *  In the direction away from the cell that
+			 *  holds the formula, the range of cells to
+			 *  include in the aggregate stops if a cell
 			 *  holds a number of numbers different from 1.
-			 *  But it only stops if the cell(s) that it traversed 
+			 *  But it only stops if the cell(s) that it traversed
 			 *  previously held exactly one number.
 			 */
     int			crPrevCountInCell;
     } CollectReference;
+
+static void docInitCollectReference(	CollectReference *	cr,
+					struct BufferDocument *	bd,
+					MemoryBuffer *		mbResult,
+					int			direction )
+    {
+    cr->crDocument= bd;
+    cr->crResult= mbResult;
+    cr->crSkipping= 0;
+    cr->crParagraphCount= 0;
+    cr->crCellCount= 0;
+    cr->crDirection= direction;
+
+    cr->crNumbers= (double *)0;
+    cr->crNumberCount= 0;
+    cr->crPrevCountInCell= 0;
+
+    return;
+    }
 
 /************************************************************************/
 
@@ -93,6 +112,15 @@ static int docCollectReferencedRun(
     return SCANadviceOK;
     }
 
+/* Ignore field to prevent the particules from producing spaces */
+static int docCollectReferenceField(
+			const struct VisitParticule *		vp,
+			struct DocumentField *			df,
+			void *					through )
+    {
+    return SCANadviceOK;
+    }
+
 /************************************************************************/
 
 static int docCollectParaReference(
@@ -108,7 +136,7 @@ static int docCollectParaReference(
 
     if  ( docScanParagraphLogicalOrder( cr->crDocument, node, ds, flags,
 					docCollectReferencedParticule,
-					(ParaFieldVisitor)0,
+					docCollectReferenceField,
 					docCollectReferencedRun,
 					(ObjectVisitor)0,
 					(TabVisitor)0,
@@ -158,20 +186,11 @@ int docCollectReference( MemoryBuffer *				mbResult,
     const int			flags= 0;
     CollectReference		cr;
 
-    cr.crDocument= bd;
-    cr.crResult= mbResult;
-    cr.crSkipping= 0;
-    cr.crParagraphCount= 0;
-    cr.crCellCount= 0;
-    cr.crDirection= 0;
-
-    cr.crNumbers= (double *)0;
-    cr.crNumberCount= 0;
-    cr.crPrevCountInCell= 0;
+    docInitCollectReference( &cr, bd, mbResult, 0 );
 
     if  ( docScanSelection( bd, ds,
 		docCollectReferenceEnterNode, (NodeVisitor)0,
-		(TreeVisitor)0, (TreeVisitor)0, 
+		(TreeVisitor)0, (TreeVisitor)0,
 		flags, &cr ) < 0 )
 	{ LDEB(1); return -1;	}
 
@@ -323,21 +342,12 @@ int docCollectNumbers(		double **			pNumbers,
 
     utilInitMemoryBuffer( &mbResult );
 
-    cr.crDocument= bd;
-    cr.crResult= &mbResult;
-    cr.crSkipping= 0;
-    cr.crParagraphCount= 0;
-    cr.crCellCount= 0;
-    cr.crDirection= direction;
-
-    cr.crNumbers= (double *)0;
-    cr.crNumberCount= 0;
-    cr.crPrevCountInCell= 0;
+    docInitCollectReference( &cr, bd, &mbResult, 0 );
 
     if  ( docScanSelection( bd, ds,
 			    docCollectNumbersEnterNode,
 			    docCollectNumbersLeaveNode,
-			    (TreeVisitor)0, (TreeVisitor)0, 
+			    (TreeVisitor)0, (TreeVisitor)0,
 			    flags, &cr ) < 0 )
 	{ LDEB(1); rval= -1; goto ready;	}
 
