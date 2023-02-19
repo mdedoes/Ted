@@ -112,6 +112,15 @@ static int docCollectReferencedRun(
     return SCANadviceOK;
     }
 
+/* Ignore field to prevent the particules from producing spaces */
+static int docCollectReferenceField(
+			const struct VisitParticule *		vp,
+			struct DocumentField *			df,
+			void *					through )
+    {
+    return SCANadviceOK;
+    }
+
 /************************************************************************/
 
 static int docCollectParaReference(
@@ -127,7 +136,7 @@ static int docCollectParaReference(
 
     if  ( docScanParagraphLogicalOrder( cr->crDocument, node, ds, flags,
 					docCollectReferencedParticule,
-					(ParaFieldVisitor)0,
+					docCollectReferenceField,
 					docCollectReferencedRun,
 					(ObjectVisitor)0,
 					(TabVisitor)0,

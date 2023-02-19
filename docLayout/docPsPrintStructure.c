@@ -307,12 +307,6 @@ int docPsPrintStartLines( void *			vps,
     {
     PrintingState *	ps= (PrintingState *)vps;
 
-    if  ( ps->psInsideLink )
-	{
-	SLDEB("####",ps->psInsideLink);
-	ps->psInsideLink= 0;
-	}
-
     /* This might be the correct code
     if  ( docPsMarkNode( node )				&&
 	  docPsPrintBeginMarkedGroup( ps, STRUCTtypeP ) )

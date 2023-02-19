@@ -305,7 +305,6 @@ int psPdfmarkDefineAnnotationDictionary(
     if  ( psPdfmarkWriteSourceProperties( ps, fileName, markName ) )
 	{ LDEB(1); return -1;	}
 
-    /* Sure about that? */
     if  ( fileName )
 	{
 	if  ( sioOutPrintf( ps->psSos, " /Contents " ) < 0 )
@@ -319,7 +318,7 @@ int psPdfmarkDefineAnnotationDictionary(
 	}
 
     pageAnnotationReference= ps->psPageAnnotationCount++;
-    sioOutPrintf( ps->psSos, " /StructParent %d", pageAnnotationReference );
+    sioOutPrintf( ps->psSos, " /StructParent %d", ps->psDocNumberTreeItemCount );
 
     sioOutPrintf( ps->psSos, " >> /PUT pdfmark\n" );
 
