@@ -340,15 +340,9 @@ int tedOpenDocumentFile( unsigned char *		digest,
     if  ( bd->bdProperties->dpDefaultLocaleId >= 0 )
 	{ bd->bdLocaleId= bd->bdProperties->dpDefaultLocaleId;	}
     else{
-	if  ( ea->eaLocaleTag )
-	    {
-	    int	lcId;
-
-	    lcId= textGetMsLocaleIdByTag( ea->eaLocaleTag );
-	    if  ( lcId < 0 )
-		{ SLDEB(ea->eaLocaleTag,lcId);	}
-	    else{ bd->bdLocaleId= lcId;		}
-	    }
+	int lcId= textMatchConfiguredLocaleTag( ea->eaLocaleTag );
+	if  ( lcId >= 0 )
+	    { bd->bdLocaleId= lcId;	}
 	}
 
     *pBd= bd; *pFormat= format;

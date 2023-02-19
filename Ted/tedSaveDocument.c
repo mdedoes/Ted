@@ -165,7 +165,7 @@ int tedPrintDocument(	SimpleOutputStream *		sos,
 				    ea->eaApplicationName,
 				    ea->eaReference,
 				    &fontDir,
-				    shadingMesh, emitOutline, markContent,
+				    shadingMesh, emitOutline,
 				    &lc, pg ) )
 	{ LDEB(1); rval= -1;	}
 

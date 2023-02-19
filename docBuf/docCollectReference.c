@@ -31,14 +31,14 @@ typedef struct CollectReference
     MemoryBuffer *	crResult;
 
 			/**
-			 *  Thrue if and only if we are immediately after 
+			 *  True if and only if we are immediately after
 			 *  one or more special particules.
 			 */
     int			crSkipping;
 
 			/**
 			 *  The number of paragraphs that we have collected
-			 *  content from. (Used to insert a space between 
+			 *  content from. (Used to insert a space between
 			 *  paragraphs.)
 			 */
     int			crParagraphCount;
@@ -49,14 +49,14 @@ typedef struct CollectReference
     int			crNumberCount;
 
 			/**
-			 *  Used to implement MS-Words strange behavior 
+			 *  Used to implement MS-Words strange behavior
 			 *  where the numbers inside a cell are summed.
 			 *
-			 *  In the direction away from the cell that 
-			 *  holds the formula, the range of cells to 
-			 *  include in the aggregate stops if a cell 
+			 *  In the direction away from the cell that
+			 *  holds the formula, the range of cells to
+			 *  include in the aggregate stops if a cell
 			 *  holds a number of numbers different from 1.
-			 *  But it only stops if the cell(s) that it traversed 
+			 *  But it only stops if the cell(s) that it traversed
 			 *  previously held exactly one number.
 			 */
     int			crPrevCountInCell;
@@ -190,7 +190,7 @@ int docCollectReference( MemoryBuffer *				mbResult,
 
     if  ( docScanSelection( bd, ds,
 		docCollectReferenceEnterNode, (NodeVisitor)0,
-		(TreeVisitor)0, (TreeVisitor)0, 
+		(TreeVisitor)0, (TreeVisitor)0,
 		flags, &cr ) < 0 )
 	{ LDEB(1); return -1;	}
 
@@ -347,7 +347,7 @@ int docCollectNumbers(		double **			pNumbers,
     if  ( docScanSelection( bd, ds,
 			    docCollectNumbersEnterNode,
 			    docCollectNumbersLeaveNode,
-			    (TreeVisitor)0, (TreeVisitor)0, 
+			    (TreeVisitor)0, (TreeVisitor)0,
 			    flags, &cr ) < 0 )
 	{ LDEB(1); rval= -1; goto ready;	}
 
