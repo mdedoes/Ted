@@ -15,6 +15,7 @@
 void docInitSymbolField(	SymbolField *	sf )
     {
     utilInitMemoryBuffer( &(sf->sfFontName) );
+    utilInitMemoryBuffer( &(sf->sfActualText) );
     sf->sfEncoding= SYMBOLencANSI;
     sf->sfSymbol= -1;
     sf->sfSizePoints= -1;
@@ -26,6 +27,7 @@ void docInitSymbolField(	SymbolField *	sf )
 void docCleanSymbolField(	SymbolField *	sf )
     {
     utilCleanMemoryBuffer( &(sf->sfFontName) );
+    utilCleanMemoryBuffer( &(sf->sfActualText) );
     }
 
 /************************************************************************/
@@ -55,6 +57,16 @@ int docFieldGetSymbol(	SymbolField *		sf,
 	    ic++; comp++;
 
 	    if  ( utilCopyMemoryBuffer( &(sf->sfFontName), &(ic->icBuffer) ) )
+		{ LDEB(1); return -1;	}
+
+	    continue;
+	    }
+
+	if  ( docComponentIsArgFlag( fi, comp, 't' ) )
+	    {
+	    ic++; comp++;
+
+	    if  ( utilCopyMemoryBuffer( &(sf->sfActualText), &(ic->icBuffer) ) )
 		{ LDEB(1); return -1;	}
 
 	    continue;

@@ -6,6 +6,8 @@
 
 #   include	"docBufConfig.h"
 
+#   include	<stdlib.h>
+
 #   include	<docSymbolField.h>
 #   include	<uniLegacyEncoding.h>
 #   include	<uniUtf8.h>
@@ -93,9 +95,48 @@ int docCalculateSymbolFieldString(
 
 /************************************************************************/
 /*									*/
-/*  Evaluate Footnote number fields.					*/
+/*  Evaluate Symbol fields.						*/
 /*									*/
 /************************************************************************/
+
+static int docSymbolFieldGetTextAttribute(
+				TextAttribute *			taSet,
+				PropertyMask *			taSetMask,
+				SymbolField *			sf,
+				const RecalculateFields *	rf )
+    {
+    int		res= 0;
+    char *	allocated= (char *)0;
+
+    if  ( ! utilMemoryBufferIsEmpty( &(sf->sfFontName) ) )
+	{
+	int				fontNumber;
+
+	allocated= utilMemoryStrdup( &(sf->sfFontName) );
+	if  ( ! allocated )
+	    { XDEB(allocated); res= -1; goto ready;	}
+
+	fontNumber= docGetFontByName( rf->rfDocument, allocated );
+	if  ( fontNumber < 0 )
+	    { SLDEB(allocated,fontNumber);	}
+	else{
+	    taSet->taFontNumber= fontNumber;
+	    PROPmaskADD( taSetMask, TApropFONT_NUMBER );
+	    }
+	}
+
+	if  ( sf->sfSizePoints > 0 )
+	    {
+	    taSet->taFontSizeHalfPoints= 2* sf->sfSizePoints;
+	    PROPmaskADD( taSetMask, TApropFONTSIZE );
+	    }
+
+  ready:
+    if  ( allocated )
+	{ free(allocated);	}
+
+    return res;
+    }
 
 int docRecalculateParaSymbolTextParticules(
 				int *				pCalculated,
@@ -107,8 +148,6 @@ int docRecalculateParaSymbolTextParticules(
 				int				partCount )
     {
     int			partTail= partHead+ partCount;
-
-    char *		allocated= (char *)0;
     SymbolField		sf;
 
     docInitSymbolField( &sf );
@@ -130,34 +169,14 @@ int docRecalculateParaSymbolTextParticules(
 	utilPropMaskClear( &taSetMask );
 	textInitTextAttribute( &taSet );
 
-	if  ( ! utilMemoryBufferIsEmpty( &(sf.sfFontName) ) )
-	    {
-	    int				fontNumber;
-
-	    allocated= utilMemoryStrdup( &(sf.sfFontName) );
-	    if  ( ! allocated )
-		{ XDEB(allocated); partTail= -1; goto ready;	}
-
-	    fontNumber= docGetFontByName( rf->rfDocument, allocated );
-	    if  ( fontNumber < 0 )
-		{ SLDEB(allocated,fontNumber);	}
-	    else{
-		taSet.taFontNumber= fontNumber;
-		PROPmaskADD( &taSetMask, TApropFONT_NUMBER );
-		}
-	    }
-
-	if  ( sf.sfSizePoints > 0 )
-	    {
-	    taSet.taFontSizeHalfPoints= 2* sf.sfSizePoints;
-	    PROPmaskADD( &taSetMask, TApropFONTSIZE );
-	    }
+	if  ( docSymbolFieldGetTextAttribute( &taSet, &taSetMask, &sf, rf ) )
+	    { LDEB(1); partTail= -1; goto ready;	}
 
 	if  ( ! utilPropMaskIsEmpty( &taSetMask ) )
 	    {
 	    if  ( docChangeParticuleAttributes( (int *)0, (PropertyMask *)0,
 				    rf->rfDocument, pb->pbParaNode,
-				    partHead+ 1, partTail,
+				    partHead+ 1, partTail+ 1,
 				    &taSet, &taSetMask ) )
 		{ LLDEB(partHead,partTail); partTail= -1; goto ready;	}
 	    }

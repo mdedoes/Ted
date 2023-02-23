@@ -675,6 +675,7 @@ docHtmlWriteParaNode.o: \
     ../docBuf/docDocumentTree.h \
     ../docBuf/docDrawingShapeList.h \
     ../docBuf/docParaNode.h \
+    ../docBuf/docParaParticules.h \
     ../docBuf/docRowNode.h \
     ../docBuf/docSectNode.h \
     ../docBuf/docSelect.h \

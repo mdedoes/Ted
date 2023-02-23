@@ -1939,6 +1939,7 @@ docPsPrintStructure.o: \
     ../docBuf/docDocumentTree.h \
     ../docBuf/docDrawingShapeList.h \
     ../docBuf/docParaNode.h \
+    ../docBuf/docParaParticules.h \
     ../docBuf/docRowNode.h \
     ../docBuf/docSectNode.h \
     ../docBuf/docSelect.h \
@@ -2008,6 +2009,7 @@ docPsPrintTextLine.o: \
     ../docField/docFieldInstructions.h \
     ../docField/docFieldKind.h \
     ../docField/docHyperlinkField.h \
+    ../docField/docSymbolField.h \
     docLayoutConfig.h \
     docLayoutDocumentTree.h \
     docParticuleData.h \

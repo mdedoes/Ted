@@ -6,7 +6,6 @@
 
 #   include	"docBufConfig.h"
 
-#   include	"docBuf.h"
 #   include	"docEvalField.h"
 #   include	"docRecalculateFields.h"
 #   include	<docDocPropertyField.h>

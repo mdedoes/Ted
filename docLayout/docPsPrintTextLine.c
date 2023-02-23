@@ -16,6 +16,7 @@
 #   include	<docTreeNode.h>
 #   include	<docTextLine.h>
 #   include	<docHyperlinkField.h>
+#   include	<docSymbolField.h>
 #   include	<docBookmarkField.h>
 #   include	<docNotes.h>
 #   include	<docDocumentField.h>
@@ -25,6 +26,7 @@
 #   include	<psPrint.h>
 #   include	<docFields.h>
 #   include	<docTreeType.h>
+#   include	<docSelect.h>
 
 #   include	<docDebug.h>
 #   include	<appDebugon.h>
@@ -343,8 +345,10 @@ int docPsPrintStartField(	const DrawTextLine *		dtl,
     MemoryBuffer		mbTarget;
 
     HyperlinkField		hf;
+    SymbolField			sf;
 
     docInitHyperlinkField( &hf );
+    docInitSymbolField( &sf );
 
     utilInitMemoryBuffer( &mbSource );
     utilInitMemoryBuffer( &mbTarget );
@@ -424,12 +428,26 @@ int docPsPrintStartField(	const DrawTextLine *		dtl,
 	goto ready;
 	}
 
+    if  ( df->dfKind == DOCfkSYMBOL )
+	{
+	if  ( ! docFieldGetSymbol( &sf, df ) )
+	    {
+	    /* Make sure the field result gets its own span */
+	    if  ( ps->psTagDocumentStructure && dtl->dtlParaNode->biTreeType == DOCinBODY &&
+		  docPsPrintFinishInline( ps ) )
+		{ LDEB(1); rval= -1; goto ready;	}
+	    }
+
+	goto ready;
+	}
+
   ready:
 
     utilCleanMemoryBuffer( &mbSource );
     utilCleanMemoryBuffer( &mbTarget );
 
     docCleanHyperlinkField( &hf );
+    docCleanSymbolField( &sf );
 
     return rval;
     }
@@ -455,7 +473,12 @@ int docPsPrintFinishField(	const DrawTextLine *	dtl,
 				int			x1Twips,
 				const DocumentField *	df )
     {
+    int				rval= 0;
     PrintingState *		ps= (PrintingState *)dtl->dtlThrough;
+
+    SymbolField			sf;
+
+    docInitSymbolField( &sf );
 
     if  ( ps->psInsideLink )
 	{
@@ -465,7 +488,7 @@ int docPsPrintFinishField(	const DrawTextLine *	dtl,
 	if  ( ps->psTagDocumentStructure && dtl->dtlParaNode->biTreeType == DOCinBODY )
 	    {
 	    if  ( docPsFinishAnnotation( ps, x1Twips, lineTop, dtl->dtlLineHeight ) )
-		{ LDEB(1); return -1;	}
+		{ LDEB(1); rval= -1; goto ready;	}
 	    }
 	else{
 	    psFlushLink( ps, x1Twips, lineTop, dtl->dtlLineHeight );
@@ -474,7 +497,30 @@ int docPsPrintFinishField(	const DrawTextLine *	dtl,
 	ps->psInsideLink= 0;
 	}
 
-    return 0;
+    if  ( df->dfKind == DOCfkSYMBOL )
+	{
+	if  ( ! docFieldGetSymbol( &sf, df )			&&
+	      ! utilMemoryBufferIsEmpty( &(sf.sfActualText) )	)
+	    {
+	    if  ( ! ps->psCurrentStructItem 		||
+		  ! ps->psCurrentStructItem->siIsLeaf	)
+		{ XDEB(ps->psCurrentStructItem); rval= -1; goto ready;	}
+
+    	    if  ( psPdfMarkSetActualText( ps, ps->psCurrentStructItem, &(sf.sfActualText) ) )
+    		{ LDEB(1); return -1;	}
+
+	    /* Make sure the field result gets its own span */
+	    if  ( ps->psTagDocumentStructure && dtl->dtlParaNode->biTreeType == DOCinBODY &&
+		  docPsPrintFinishInline( ps ) )
+		{ LDEB(1); rval= -1; goto ready;	}
+	    }
+	}
+
+  ready:
+
+    docCleanSymbolField( &sf );
+
+    return rval;
     }
 
 /************************************************************************/
@@ -516,4 +562,3 @@ int docPsPrintFinishTextLine(	const struct DrawTextLine *	dtl,
 
     return 0;
     }
-

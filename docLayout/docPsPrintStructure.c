@@ -14,6 +14,7 @@
 #   include	<docTreeType.h>
 #   include	<docBuf.h>
 #   include	<docSelect.h>
+#   include	<docParaParticules.h>
 #   include	<psPrint.h>
 
 #   include	<appDebugon.h>
@@ -164,8 +165,9 @@ int docPsPrintBeginFigure(
 				ps, structItem, drTwips, altText ) )
 	    { LDEB(1); return -1;	}
 
-	if  ( psPdfBeginMarkedContent( ps,
-	      structItem->siStructureType, structItem->siContentId ) )
+	if  ( psPdfBeginMarkedFigure( ps,
+	      structItem->siStructureType, structItem->siContentId,
+	      drTwips, altText ) )
 	    { LDEB(1); return -1;	}
 
 	return 0;
@@ -314,7 +316,7 @@ int docPsPrintStartLines( void *			vps,
     */
 
     /* Temporarily, we do this */
-    if  ( node->biTreeType == DOCinBODY )
+    if  ( node->biTreeType == DOCinBODY && ! docParagraphIsEmpty( node ) )
 	{
 	if  ( docPsPrintBeginMarkedGroup( ps, STRUCTtypeP ) )
 	    { LDEB(node->biLevel); return -1;	}
@@ -353,19 +355,8 @@ int docPsPrintFinishLines( void *			vps,
     */
 
     /* Temporarily, we do this */
-    if  ( node->biTreeType == DOCinBODY )
+    if  ( node->biTreeType == DOCinBODY && ! docParagraphIsEmpty( node ) )
 	{
-	StructItem *	currentStructItem= ps->psCurrentStructItem;
-
-	if  ( currentStructItem )
-	    {
-	    if  ( docCollectReference( &mbActualText, ds, dc->dcDocument ) )
-		{ LDEB(1); return -1;	}
-
-	    if  ( psPdfMarkSetActualText( ps, currentStructItem, &mbActualText ) )
-		{ LDEB(1); return -1;	}
-	    }
-
 	if  ( docPsPrintEndMarkedGroup( ps ) )
 	    { LDEB(node->biLevel); res= -1; goto ready;	}
 	}

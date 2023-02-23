@@ -25,6 +25,7 @@
 #   include	<docBuf.h>
 #   include	<docDocumentProperties.h>
 #   include	<docTreeType.h>
+#   include	<docParaParticules.h>
 
 #   include	<docDebug.h>
 #   include	<appDebugon.h>
@@ -376,8 +377,7 @@ int docHtmlSaveParaNode( HtmlWritingContext *			hwc,
     docInitDocumentSelection( &(hpw.hpwBodySelection) );
     hpw.hpwParagraphSelection= ds;
 
-    if  ( paraNode->biParaParticuleCount == 0		||
-	  docParaStrlen( paraNode ) == 0		)
+    if  ( docParagraphIsEmpty( paraNode ) )
 	{
 	docHtmlPutString( "<div>&#160;</div>", hwc );
 	docHtmlNewLine( hwc );

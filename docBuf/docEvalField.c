@@ -216,27 +216,6 @@ int docRecalculateFieldParticulesFromString(
     if  ( partsMade < 0 )
 	{ LDEB(partsMade); return -1;	}
 
-# if 0
-    if  ( docParaStringReplace( &stroffShift, paraNode, stroff, past,
-				(char *)mbResult->mbBytes, mbResult->mbSize ) )
-	{ LDEB(mbResult->mbSize); return -1;	}
-
-    pb->pbSubstitutionHeadParticule= partHead+ 1;
-    pb->pbSubstitutionCurrParticule= partHead+ 1;
-    pb->pbSubstitutionTailParticule= partHead+ 1+ partCount;
-
-    pb->pbSubstitutionTextAttrNr= textAttrNr;
-    pb->pbSubstitutionHeadStroff= docParaStrlen( paraNode );  /* = stroff */
-			/* Temprarily prevent bidi tree actions: */
-    pb->pbSubstitutionPartStroff= stroff;
-    pb->pbSubstitutionCurrStroff= stroff;
-    pb->pbSubstitutionTailStroff= stroff+ mbResult->mbSize;
-
-    partsMade= docRedivideStringInParticules( pb );
-    if  ( partsMade < 0 )
-	{ LDEB(partsMade); return -1;	}
-# endif
-
     *pCalculated= 1;
     *pStroffShift= stroffShift;
 

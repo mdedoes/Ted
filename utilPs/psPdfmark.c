@@ -276,13 +276,17 @@ static int psPdfmarkWriteSourceProperties(
 	psFileLinkDestMark( ps->psSos, fileName, markName );
 	}
 
-    sioOutPrintf( ps->psSos, "  /F 4 " ); /* for PDF/A compatibility */
+    sioOutPrintf( ps->psSos, "  /F 4 " ); /* NoZoom: for PDF/A compatibility. See table 1.6.5 */
     sioOutPrintf( ps->psSos, "  /Type /Annot " );
     sioOutPrintf( ps->psSos, "  /Subtype /Link " );
 
     return 0;
     }
 
+/**
+ *  Populate an annotation dictionary See Table 164 in 12.5.2
+ *  For Link annotations see 12.5.6.5
+ */
 int psPdfmarkDefineAnnotationDictionary(
 				PrintingState *			ps,
 				const MemoryBuffer *		fileName,
@@ -317,6 +321,7 @@ int psPdfmarkDefineAnnotationDictionary(
 	    { XDEB(fileName); return -1;	}
 	}
 
+    /* See 14.7.4.4 */
     pageAnnotationReference= ps->psPageAnnotationCount++;
     sioOutPrintf( ps->psSos, " /StructParent %d", ps->psDocNumberTreeItemCount );
 

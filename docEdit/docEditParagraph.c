@@ -150,9 +150,7 @@ int docParaReplaceText(	EditOperation *			eo,
 	stroffRedivideTail= stroffReplaceTail;
 	}
 
-    if  ( dpHead->dpNode->biParaParticuleCount == 1			&&
-	  dpHead->dpNode->biParaParticules[0].tpKind == TPkindSPAN	&&
-	  dpHead->dpNode->biParaParticules[0].tpStrlen == 0		)
+    if  ( docParagraphIsEmpty( dpHead->dpNode ) )
 	{ partHead= 0;	}
 
     /*  F  */

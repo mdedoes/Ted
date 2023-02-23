@@ -120,3 +120,11 @@ void docInitParaNode(	struct BufferItem *		paraNode )
     paraNode->BIU.biuPara.btProperties= (const struct ParagraphProperties *)0;
     paraNode->BIU.biuPara.btParaPropertyNumber= 0;
     }
+
+int docParagraphIsEmpty(	const struct BufferItem *	paraNode )
+    {
+    return paraNode->biParaParticuleCount == 0			||
+	  (   paraNode->biParaParticuleCount == 1			&&
+	      paraNode->biParaParticules[0].tpKind == TPkindSPAN	&&
+	      paraNode->biParaParticules[0].tpStrlen == 0		);
+    }

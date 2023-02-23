@@ -106,6 +106,8 @@ extern void docCleanParaNode(	struct BufferDocument *		bd,
 				struct DocumentTree *		dt,
 				struct BufferItem *		paraNode );
 
+extern int docParagraphIsEmpty(	const struct BufferItem *	paraNode );
+
 extern struct TextLine * docInsertTextLine(
 				struct BufferItem *		paraNode,
 				int				line );

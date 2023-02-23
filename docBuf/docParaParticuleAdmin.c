@@ -211,9 +211,7 @@ void docDeleteParticules(	struct BufferItem *	paraNode,
 
 int docDeleteEmptySpan(		struct BufferItem *		paraNode )
     {
-    if  ( paraNode->biParaParticuleCount == 1			&&
-	  paraNode->biParaParticules[0].tpKind == TPkindSPAN	&&
-	  paraNode->biParaParticules[0].tpStrlen == 0		)
+    if  ( docParagraphIsEmpty( paraNode ) )
 	{
 	docDeleteParticules( paraNode, 0, 1 );
 	return 0;

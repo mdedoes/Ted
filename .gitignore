@@ -10,6 +10,7 @@ autom4te.cache
 lib/
 configure~
 /.idea/
+/*.iml
 
 Ted/makefile
 Ted/tedConfig.h

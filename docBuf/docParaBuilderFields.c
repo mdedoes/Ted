@@ -230,14 +230,12 @@ int docParagraphBuilderInsertListtextField(
 
     int			textAttrNr= 0;
 
-#   if 1
     if  ( paraNode->biParaParticuleCount > 0 )
 	{
 	const TextParticule *		tp= paraNode->biParaParticules;
 
 	textAttrNr= tp->tpTextAttrNr;
 	}
-#   endif
 
     if  ( docInsertParaHeadField( pField, dsInsideField, dsAroundField,
 			    pPartBegin, pPartEnd,

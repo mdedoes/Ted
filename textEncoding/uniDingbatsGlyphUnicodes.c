@@ -257,5 +257,5 @@ const int uniDingbatsGlyphUnicodes[256]=
     0x27BC,		/*  252= 0xfc: a189		*/
     0x27BD,		/*  253= 0xfd: a190		*/
     0x27BE,		/*  254= 0xfe: a191		*/
-    -1,			/*  25f= 0xff			*/
+    -1,			/*  255= 0xff			*/
     };

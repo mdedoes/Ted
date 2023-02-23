@@ -194,6 +194,27 @@ int psPdfMarkPosition(		PrintingState *		ps,
     }
 
 /************************************************************************/
+
+static int psPdfmarkSetAltText(
+			PrintingState *			ps,
+			const MemoryBuffer *		altText )
+    {
+    if  ( altText && ! utilMemoryBufferIsEmpty( altText ) )
+	{
+	if  ( sioOutPrintf( ps->psSos, " /Alt " ) < 0 )
+	    { XDEB(altText); return -1;	}
+
+	if  ( psPrintPdfMarkStringValue( ps, altText ) < 0 )
+	    { XDEB(altText); return -1;	}
+
+	if  ( sioOutPrintf( ps->psSos, " " ) < 0 )
+	    { XDEB(altText); return -1;	}
+	}
+
+    return 0;
+    }
+
+/************************************************************************/
 /*									*/
 /*  Begin/End a piece of marked content.				*/
 /*									*/
@@ -215,6 +236,42 @@ int psPdfBeginMarkedContent(	PrintingState *		ps,
 			structureType, contentId ) < 0 )
 	    { LDEB(1); return -1;	}
 	}
+
+    return 0;
+    }
+
+int psPdfBeginMarkedFigure(
+			PrintingState *				ps,
+			const char *				structureType,
+			int					contentId,
+			const struct DocumentRectangle *	drTwips,
+			const struct MemoryBuffer *		altText )
+    {
+    if  ( sioOutPrintf( ps->psSos,
+		    "[ /%s << /MCID %d ",
+		    structureType, contentId ) < 0 )
+	{ LDEB(1); return -1;	}
+
+    /* Studioform extension. Does no harm for others */
+    if  ( psPdfmarkSetAltText( ps, altText ) )
+	{ LDEB(1); return -1;	}
+
+    /* Studioform extension. Does no harm for others */
+    if  ( drTwips )
+	{
+	DocumentRectangle	dr;
+
+	geoTransformRectangle( &dr, drTwips, &(ps->psCurrentTransform) );
+
+	if  ( sioOutPrintf( ps->psSos,
+		"/BBox [%d %d %d %d] ",
+		dr.drX0, dr.drY0, dr.drX1, dr.drY1 ) < 0 )
+	    { XDEB(drTwips); return -1;	}
+	}
+
+    if  ( sioOutPrintf( ps->psSos,
+		    " >> /BDC pdfmark\n" ) < 0 )
+	{ LDEB(1); return -1;	}
 
     return 0;
     }
@@ -527,17 +584,8 @@ int psPdfmarkAppendMarkedIllustration(
     if  ( psPdfmarkOpenLeafStructItem( ps, structItem ) )
 	{ SLDEB(structItem->siStructureType,structItem->siContentId); return -1;	}
 
-    if  ( altText && ! utilMemoryBufferIsEmpty( altText ) )
-	{
-	if  ( sioOutPrintf( ps->psSos, " /Alt " ) < 0 )
-	    { XDEB(altText); return -1;	}
-
-	if  ( psPrintPdfMarkStringValue( ps, altText ) < 0 )
-	    { XDEB(altText); return -1;	}
-
-	if  ( sioOutPrintf( ps->psSos, " " ) < 0 )
-	    { XDEB(altText); return -1;	}
-	}
+    if  ( psPdfmarkSetAltText( ps, altText ) )
+	{ LDEB(1); return -1;	}
 
     if  ( drTwips )
 	{
