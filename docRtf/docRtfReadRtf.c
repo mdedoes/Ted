@@ -208,6 +208,22 @@ int docRtfApplyControlWord(	const RtfControlWord *	rcw,
     }
 
 /************************************************************************/
+
+static int docRtfReadHexBytes(	SimpleInputStream *	sis )
+    {
+    char		hex[3];
+    unsigned int	unicode;
+
+    hex[0]= sioInGetByte( sis );
+    hex[1]= sioInGetByte( sis );
+    hex[2]= '\0';
+
+    sscanf( hex, "%x", &unicode );
+
+    return unicode;
+    }
+
+/************************************************************************/
 /*									*/
 /*  Find out what to do.						*/
 /*									*/
@@ -279,16 +295,7 @@ int docRtfFindControl(		RtfReader *		rr,
 
 			case '\'':
 			    if  ( res == 1 )
-				{
-				char		b[3];
-				unsigned int	uc;
-
-				b[0]= sioInGetByte( sis );
-				b[1]= sioInGetByte( sis );
-				b[2]= '\0';
-
-				sscanf( b, "%x", &uc ); c= uc;
-				}
+				{ c= docRtfReadHexBytes( sis );	}
 			    goto defaultCase;
 
 			default:
@@ -324,16 +331,7 @@ int docRtfFindControl(		RtfReader *		rr,
 			    }
 
 			if  ( c=='\'' )
-			    {
-			    char		b[3];
-			    unsigned int	uc;
-
-			    b[0]= sioInGetByte( sis );
-			    b[1]= sioInGetByte( sis );
-			    b[2]= '\0';
-
-			    sscanf( b, "%x", &uc ); c= uc;
-			    }
+			    { c= docRtfReadHexBytes( sis );	}
 
 			if  ( rrs && rrs->rrsUnicodeBytesToSkip > 0 )
 			    { rrs->rrsUnicodeBytesToSkip= 0;	}

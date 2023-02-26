@@ -13,9 +13,29 @@ struct DocumentField;
 
 typedef enum SymbolFieldEncoding
     {
-    SYMBOLencANSI= 0,	/* \a: default */
-    SYMBOLencUNICODE,	/* \u */
+	    /**
+	     *  \a: The symbol (number) is a code point in the ANSI 
+	     *  encoding. This is the default. (ANSI=CP1252)
+	     */
+    SYMBOLencANSI= 0,
+
+	    /**
+	     *  \u: The symbol (number) is a unicode character number.
+	     */
+    SYMBOLencUNICODE,
+
+	    /**
+	     *  \j: The symbol (number) is a code point in the Shift-Jis
+	     *  encoding.
+	     */
     SYMBOLencSHIFT_JIS,	/* \j */
+
+	    /**
+	     *  \l: (Ted extension) The symbol actually is a string value.
+	     *  Unless \u0000 unicode escapes encode other values, The symbol 
+	     *  actually is a string.
+	     */
+    SYMBOLencLITERAL,	/* \l */
 
     SYMBOLenc_COUNT
     } SymbolFieldEncoding;
@@ -40,8 +60,8 @@ typedef struct SymbolField
     int			sfSizePoints;
 
 			/**
-			 *  \a, \u, \j: The font encoding to use to resolve the 
-			 *  symbol value.
+			 *  \a, \u, \j \l: The font encoding to use to resolve the 
+			 *  symbol value. (\l) is a Ted extension.
 			 */
     int			sfEncoding;
 
@@ -62,6 +82,12 @@ typedef struct SymbolField
 			 */
     MemoryBuffer	sfActualText;
 
+			/**
+			 *  The literal text of the field. (Ted extension).
+			 *  This holds the literal text of the field that 
+			 *  is used wilt LITERAL (\l) encoding.
+			 */
+    MemoryBuffer	sfLiteral;
     } SymbolField;
 
 /************************************************************************/

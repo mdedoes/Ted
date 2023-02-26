@@ -192,6 +192,12 @@ struct RtfWriter
 				 */
     struct TextConverter *	rwTextTextConverter;
 
+				/**
+				 *  The number of unicode substitute charactes that
+				 *  come after a \u unicode value.
+				 */
+    int				rwUnicodeSubstituteCount;
+
     const struct PropertyMask *	rwPpExtraMask;
     const struct PropertyMask *	rwCpExtraMask;
     const struct PropertyMask *	rwRpExtraMask;

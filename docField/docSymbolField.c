@@ -16,6 +16,7 @@ void docInitSymbolField(	SymbolField *	sf )
     {
     utilInitMemoryBuffer( &(sf->sfFontName) );
     utilInitMemoryBuffer( &(sf->sfActualText) );
+    utilInitMemoryBuffer( &(sf->sfLiteral) );
     sf->sfEncoding= SYMBOLencANSI;
     sf->sfSymbol= -1;
     sf->sfSizePoints= -1;
@@ -28,6 +29,7 @@ void docCleanSymbolField(	SymbolField *	sf )
     {
     utilCleanMemoryBuffer( &(sf->sfFontName) );
     utilCleanMemoryBuffer( &(sf->sfActualText) );
+    utilCleanMemoryBuffer( &(sf->sfLiteral) );
     }
 
 /************************************************************************/
@@ -40,8 +42,9 @@ int docFieldGetSymbol(	SymbolField *		sf,
 			const DocumentField *	df )
     {
     const FieldInstructions *		fi= &(df->dfInstructions);
-    const InstructionsComponent *	ic;
     int					comp;
+    const InstructionsComponent *	ic;
+    const InstructionsComponent *	icSymbol= (const InstructionsComponent *)0;
 
     if  ( df->dfKind != DOCfkSYMBOL )
 	{ return 1;	}
@@ -78,6 +81,9 @@ int docFieldGetSymbol(	SymbolField *		sf,
 	if  ( docComponentIsFlag( fi, comp, 'j' ) )
 	    { sf->sfEncoding= SYMBOLencSHIFT_JIS; continue;	}
 
+	if  ( docComponentIsFlag( fi, comp, 'l' ) )
+	    { sf->sfEncoding= SYMBOLencLITERAL; continue;	}
+
 	if  ( docComponentIsArgFlag( fi, comp, 's' ) )
 	    {
 	    ic++, comp++;
@@ -93,8 +99,10 @@ int docFieldGetSymbol(	SymbolField *		sf,
 
 	if  ( ic->icType != INSTRtypeFLAG )
 	    {
-	    if  ( docFieldComponentInt( &(sf->sfSymbol), ic ) )
-		{ LLDEB(comp,fi->fiComponentCount);	}
+	    icSymbol= ic;
+
+	    if  ( utilCopyMemoryBuffer( &(sf->sfLiteral), &(ic->icBuffer) ) )
+		{ LDEB(1); return -1;	}
 
 	    continue;
 	    }
@@ -102,8 +110,20 @@ int docFieldGetSymbol(	SymbolField *		sf,
 	LDEB(comp);
 	}
 
-    if  ( sf->sfSymbol < 0 )
-	{ LDEB(sf->sfSymbol); return -1;	}
+    if  ( ! icSymbol )
+	{ XDEB(icSymbol); return -1;	}
+
+    if  ( utilMemoryBufferIsEmpty( &(sf->sfLiteral) ) )
+	{ LDEB(1); return -1;	}
+
+    if  ( sf->sfEncoding != SYMBOLencLITERAL )
+	{
+	if  ( docFieldComponentInt( &(sf->sfSymbol), icSymbol ) )
+	    { LLDEB(comp,fi->fiComponentCount);	}
+
+	if  ( sf->sfSymbol < 0 )
+	    { LLDEB(sf->sfEncoding,sf->sfSymbol); return -1;	}
+	}
 
     return 0;
     }

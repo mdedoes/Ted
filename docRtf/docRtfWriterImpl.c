@@ -56,6 +56,8 @@ static void docRtfInitWritingContext(	RtfWriter *	rw )
     rw->rwCol= 0;
     rw->rwSosOut= (struct SimpleOutputStream *)0;
 
+    rw->rwUnicodeSubstituteCount= 0;
+
     rw->rwRtfTextConverter= (struct TextConverter *)0;
     rw->rwTextTextConverter= (struct TextConverter *)0;
 

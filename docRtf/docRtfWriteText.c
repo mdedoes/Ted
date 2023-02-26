@@ -131,7 +131,24 @@ static int docRtfEmitUnicode(		RtfWriter *		rw,
 	{ symbol -= 65536;	}
 
     docRtfWriteArgTag( rw, "u", symbol );
-    docRtfEscapeString( (void *)rw, 0, "?", 1 );
+
+    if  ( rw->rwUnicodeSubstituteCount > 0 )
+	{
+	if  ( symbol >= 0 && symbol < 255 )
+	    {
+	    char	s[2];
+
+	    s[0]= symbol & 0xff; s[1]= '\0';
+
+	    docRtfEscapeString( (void *)rw, 0, s, 1 );
+	    }
+	else{
+	    docRtfEscapeString( (void *)rw, 0, "?", 1 );
+	    }
+
+	for ( int i= 1; i < rw->rwUnicodeSubstituteCount; i++ )
+	    { docRtfEscapeString( (void *)rw, 0, "?", 1 );	}
+	}
 
     return 0;
     }

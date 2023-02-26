@@ -129,7 +129,7 @@ int docRtfSaveDocumentProperties( RtfWriter *			rw,
 	}
 
     /* Strictly spoken, this is not a document property */
-    docRtfWriteArgTag( rw, "uc", 1 );
+    docRtfWriteArgTag( rw, "uc", rw->rwUnicodeSubstituteCount );
 
     if  ( PROPmaskISSET( dpSetMask, DPpropFONTTABLE ) )
 	{

@@ -32,6 +32,23 @@
 # pragma GCC diagnostic ignored "-Wunused-parameter"
 # endif
 
+static int docCalculateSymbolAppendUnicode(
+				MemoryBuffer *			mbResult,
+				int				symbol )
+    {
+    int			step;
+    char		scratch[20];
+
+    step= uniPutUtf8( scratch, symbol );
+    if  ( step < 1 )
+	{ LLDEB(symbol,step); return -1;	}
+
+    if  ( utilMemoryBufferAppendBytes( mbResult, (unsigned char *)scratch, step ) )
+	{ LDEB(step); return -1;	}
+
+    return 0;
+    }
+
 int docCalculateSymbolFieldString(
 				int *				pCalculated,
 				MemoryBuffer *			mbResult,
@@ -40,9 +57,6 @@ int docCalculateSymbolFieldString(
     {
     int			rval= 0;
 
-    int			step;
-
-    char		scratch[20];
     const int *		unicodes= uniWinCp1252GlyphUnicodes;
 
     SymbolField		sf;
@@ -66,10 +80,24 @@ int docCalculateSymbolFieldString(
 	    if  ( sf.sfSymbol >= 0		&&
 		  sf.sfSymbol < 256		&&
 		  unicodes[sf.sfSymbol] >= 0	)
-		{ sf.sfSymbol= unicodes[sf.sfSymbol];	}
+		{
+		if  ( docCalculateSymbolAppendUnicode( mbResult, unicodes[sf.sfSymbol] ) )
+		    { LXDEB(sf.sfSymbol,unicodes[sf.sfSymbol]); *pCalculated= 0; goto ready;	}
+		*pCalculated= 1;
+		break;
+		}
 	    else{ LDEB(sf.sfSymbol); *pCalculated= 0; goto ready;	}
-	    break;
+
 	case SYMBOLencUNICODE:
+	    if  ( docCalculateSymbolAppendUnicode( mbResult, sf.sfSymbol ) )
+		{ LXDEB(sf.sfSymbol,unicodes[sf.sfSymbol]); *pCalculated= 0; goto ready;	}
+	    *pCalculated= 1;
+	    break;
+
+	case SYMBOLencLITERAL:
+	    if  ( utilMemoryAppendBuffer( mbResult, &(sf.sfLiteral) ) )
+		{ LDEB(sf.sfEncoding); *pCalculated= 0; goto ready;	}
+	    *pCalculated= 1;
 	    break;
 
 	case SYMBOLencSHIFT_JIS:
@@ -77,13 +105,8 @@ int docCalculateSymbolFieldString(
 	    LDEB(sf.sfEncoding); *pCalculated= 0; goto ready;
 	}
 
-    step= uniPutUtf8( scratch, sf.sfSymbol );
-    if  ( step < 1 )
-	{ LLDEB(sf.sfSymbol,step); *pCalculated= 0; goto ready;	}
-    utilMemoryBufferAppendBytes( mbResult, (unsigned char *)scratch, step );
-    *pCalculated= 1;
-
   ready:
+
     docCleanSymbolField( &sf );
 
     return rval;
