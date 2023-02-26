@@ -316,7 +316,9 @@ int docPsPrintOrnaments(	const BlockOrnaments *		bo,
 
     int				done= 0;
 
-    if  ( ps->psTagDocumentStructure			&&
+    const int			asArtifact= ps->psTagDocumentStructure && ! ps->psInArtifact;
+
+    if  ( asArtifact					&&
 	  ! utilPropMaskIsEmpty( &(bo->boPropMask) )	&&
 	  docPsPrintBeginArtifact( ps )			)
 	{ LDEB(-1); return -1;	}
@@ -437,7 +439,7 @@ int docPsPrintOrnaments(	const BlockOrnaments *		bo,
     if  ( done )
 	{ sioOutPrintf( ps->psSos, "\n" ); }
 
-    if  ( ps->psTagDocumentStructure			&&
+    if  ( asArtifact					&&
 	  ! utilPropMaskIsEmpty( &(bo->boPropMask) )	&&
 	  docPsPrintEndArtifact( ps )			)
 	{ LDEB(1); return -1;	}

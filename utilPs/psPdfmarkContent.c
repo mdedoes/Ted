@@ -8,12 +8,10 @@
 
 #   include	<stddef.h>
 #   include	<stdio.h>
-#   include	<stdlib.h>
 
 #   include	"psPrint.h"
 #   include	<geoRectangle.h>
 #   include	<sioGeneral.h>
-#   include	<utilMemoryBufferPrintf.h>
 
 #   include	<appDebugon.h>
 
@@ -85,90 +83,6 @@ static const char PS_PAGE_ANNOTATION_ARRAY_NAME[]= "PANN%d";
 
 /************************************************************************/
 /*									*/
-/*  Pdfmark functionality around marked content.			*/
-/*									*/
-/************************************************************************/
-
-/**
- * Return a new contentId. ISO 32000-1:2008, 14.7.4.2 requires this to
- * be unique in the content stream. As we have one content stream per
- * page, we distribute unique numbers per page.
- */
-static int psNewContentId(	PrintingState *		ps )
-    {
-    return ps->psPageContentMarkCount++;
-    }
-
-StructItem * psPdfLeafStructItem(
-				PrintingState *		ps,
-				const char *		structureType,
-				int			inLine )
-    {
-    StructItem *	structItem= malloc( sizeof(StructItem) );
-    const int		contentId= psNewContentId( ps );
-
-    if  ( ! structItem )
-	{ XDEB(structItem); return structItem;	}
-
-    psPdfInitStructItem( structItem );
-
-    utilMemoryBufferPrintf( &(structItem->siDictionaryName), "TedRo%d", ps->psDictionaryNameCount++ );
-    structItem->siStructureType= structureType;
-    structItem->siContentId= contentId;
-    structItem->siIsLeaf= 1;
-    structItem->siIsInline= inLine;
-
-    return structItem;
-    }
-
-StructItem * psPdfAnnotatedStructItem(
-				PrintingState *		ps,
-				const char *		structureType,
-				int			inLine )
-    {
-    StructItem *	structItem= malloc( sizeof(StructItem) );
-    const int		contentId= psNewContentId( ps );
-
-    if  ( ! structItem )
-	{ XDEB(structItem); return structItem;	}
-
-    psPdfInitStructItem( structItem );
-
-    utilMemoryBufferPrintf( &(structItem->siDictionaryName), "TedRo%d", ps->psDictionaryNameCount++ );
-    utilMemoryBufferPrintf( &(structItem->siAnnotationDictionaryName), "TedAn%d", ps->psDictionaryNameCount++ );
-    structItem->siStructureType= structureType;
-    structItem->siContentId= contentId;
-    structItem->siIsLeaf= 1;
-    structItem->siIsInline= inLine;
-
-    return structItem;
-    }
-
-StructItem * psPdfGroupStructItem(
-				PrintingState *		ps,
-				const char *		structureType,
-				int			contentId )
-    {
-    const int		uniqueDictId= ps->psDictionaryNameCount++;
-    StructItem *	structItem= malloc( sizeof(StructItem) );
-
-    if  ( ! structItem )
-	{ XDEB(structItem); return structItem;	}
-
-    psPdfInitStructItem( structItem );
-
-    utilMemoryBufferPrintf( &(structItem->siDictionaryName), "TedGr%d", uniqueDictId );
-    utilMemoryBufferPrintf( &(structItem->siChildArrayName), "TedGr%dK", uniqueDictId );
-    structItem->siStructureType= structureType;
-    structItem->siContentId= contentId;
-    structItem->siIsLeaf= 0;
-    structItem->siIsInline= 0;
-
-    return structItem;
-    }
-
-/************************************************************************/
-/*									*/
 /*  Mark a position in the document.					*/
 /*									*/
 /************************************************************************/
@@ -177,6 +91,9 @@ int psPdfMarkPosition(		PrintingState *		ps,
 				const char *		structureType,
 				int			contentId )
     {
+    if  ( ps->psInArtifact )
+	{ LDEB(ps->psInArtifact); return -1;	}
+
     if  ( contentId < 0 )
 	{
 	if  ( sioOutPrintf( ps->psSos,
@@ -199,6 +116,9 @@ static int psPdfmarkSetAltText(
 			PrintingState *			ps,
 			const MemoryBuffer *		altText )
     {
+    if  ( ps->psInArtifact )
+	{ LDEB(ps->psInArtifact); return -1;	}
+
     if  ( altText && ! utilMemoryBufferIsEmpty( altText ) )
 	{
 	if  ( sioOutPrintf( ps->psSos, " /Alt " ) < 0 )
@@ -224,6 +144,9 @@ int psPdfBeginMarkedContent(	PrintingState *		ps,
 				const char *		structureType,
 				int			contentId )
     {
+    if  ( ps->psInArtifact )
+	{ LDEB(ps->psInArtifact); return -1;	}
+
     if  ( contentId < 0 )
 	{
 	if  ( sioOutPrintf( ps->psSos,
@@ -247,6 +170,9 @@ int psPdfBeginMarkedFigure(
 			const struct DocumentRectangle *	drTwips,
 			const struct MemoryBuffer *		altText )
     {
+    if  ( ps->psInArtifact )
+	{ LDEB(ps->psInArtifact); return -1;	}
+
     if  ( sioOutPrintf( ps->psSos,
 		    "[ /%s << /MCID %d ",
 		    structureType, contentId ) < 0 )
@@ -276,13 +202,19 @@ int psPdfBeginMarkedFigure(
     return 0;
     }
 
-int psPdfBeginArtifact( PrintingState *			ps,
+/**
+ * Begin an artifact.
+ * The propertList in ISO 32000-1:2008, 14.8.2.2.2 is a dictionary. See 14.6.2
+ */
+int psPdfBeginTypedArtifact(
+			PrintingState *			ps,
 			const char *			typeName,
 			const char *			subtypeName )
     {
     const char * const	structureType= "Artifact";
 
-    /* The propertList in ISO 32000-1:2008, 14.8.2.2.2 is a dictionary. See 14.6.2 */
+    if  ( ps->psInArtifact )
+	{ LDEB(ps->psInArtifact); return -1;	}
 
     if  ( sioOutPrintf( ps->psSos, "[ /%s << ", structureType ) < 0 )
 	{ LDEB(1); return -1;	}
@@ -307,6 +239,9 @@ int psPdfBeginArtifact( PrintingState *			ps,
 
 int psPdfEndMarkedContent(		PrintingState *		ps )
     {
+    if  ( ps->psInArtifact )
+	{ LDEB(ps->psInArtifact); return -1;	}
+
     if  ( sioOutPrintf( ps->psSos, "[ /EMC pdfmark\n" ) < 0 )
 	{ LDEB(1); return -1;	}
 
@@ -467,7 +402,6 @@ int psPdfmarkMarkedDocumentSetup( PrintingState *		ps,
     if  ( localeTag && psSetCatalogProperty( ps, "Lang", localeTag ) )
 	{ SDEB(localeTag);	}
 
-
     sioOutPrintf( ps->psSos,
 	"[ /_objdef {%s} /type /array /OBJ pdfmark\n", PS_DOC_STRUCT_ITEM_KIDS );
     sioOutPrintf( ps->psSos,
@@ -554,6 +488,9 @@ static int psPdfmarkAppendDefinedItem(
 int psPdfmarkAppendMarkedLeaf(	PrintingState *		ps,
 				StructItem *		structItem )
     {
+    if  ( ps->psInArtifact )
+	{ LDEB(ps->psInArtifact); return -1;	}
+
     psPdfmarkDefineLeafStructItem( ps, structItem );
 
     return psPdfmarkAppendDefinedItem( ps, structItem );
@@ -566,6 +503,9 @@ int psPdfmarkAppendMarkedLeaf(	PrintingState *		ps,
 int psPdfmarkAppendMarkedGroup(	PrintingState *		ps,
 				StructItem *		structItem )
     {
+    if  ( ps->psInArtifact )
+	{ LDEB(ps->psInArtifact); return -1;	}
+
     psPdfmarkDefineGroupStructItem( ps, structItem );
 
     return psPdfmarkAppendDefinedItem( ps, structItem );
@@ -581,6 +521,9 @@ int psPdfmarkAppendMarkedIllustration(
 			const DocumentRectangle *	drTwips,
 			const MemoryBuffer *		altText )
     {
+    if  ( ps->psInArtifact )
+	{ LDEB(ps->psInArtifact); return -1;	}
+
     if  ( psPdfmarkOpenLeafStructItem( ps, structItem ) )
 	{ SLDEB(structItem->siStructureType,structItem->siContentId); return -1;	}
 
@@ -633,6 +576,9 @@ int psPdfmarkAppendMarkedLink(	PrintingState *		ps,
     char		pageAnnotationArrayName[50];
     int 		pageAnnotationReference;
 
+    if  ( ps->psInArtifact )
+	{ LDEB(ps->psInArtifact); return -1;	}
+
     pageAnnotationReference= psPdfmarkDefineAnnotationDictionary( ps,
 				    &(ps->psLinkFile), &(ps->psLinkMark),
 				    annotationDictionaryName );
@@ -676,6 +622,9 @@ int psPdfmarkFinishMarkedPage(	PrintingState *		ps,
     char	pageAnnotationArrayName[50];
 
     const int	numberTreeItemCount= ps->psDocNumberTreeItemCount++;
+
+    if  ( ps->psInArtifact )
+	{ LDEB(ps->psInArtifact); return -1;	}
 
     sprintf( pageParentTreeName, PS_PAGE_LEAF_ARRAY_NAME, page );
     sprintf( pageAnnotationArrayName, PS_PAGE_ANNOTATION_ARRAY_NAME, page );
@@ -722,6 +671,9 @@ int psPdfMarkSetActualText(	PrintingState *		ps,
 				struct StructItem *	structItem,
 				const struct MemoryBuffer * mbActualText )
     {
+    if  ( ps->psInArtifact )
+	{ LDEB(ps->psInArtifact); return -1;	}
+
     sioOutPrintf( ps->psSos,
 	    "[ {%s} <</ActualText ",
 	    utilMemoryBufferGetString( &(structItem->siDictionaryName) ) );

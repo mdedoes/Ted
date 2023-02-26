@@ -31,9 +31,9 @@ typedef enum SymbolFieldEncoding
     SYMBOLencSHIFT_JIS,	/* \j */
 
 	    /**
-	     *  \l: (Ted extension) The symbol actually is a string value.
+	     *  \l: (Ted extension) The symbol actually is a literal string value.
 	     *  Unless \u0000 unicode escapes encode other values, The symbol 
-	     *  actually is a string.
+	     *  actually is a string in ANSI=CP1252 encoding.
 	     */
     SYMBOLencLITERAL,	/* \l */
 
@@ -73,6 +73,16 @@ typedef struct SymbolField
 			 * other lines of text.)
 			 */
     unsigned char	sfIsHigh;
+
+			/**
+			 * \d: (Ted extension) The output of the field is 
+			 * not part of the regular document text. It is a 
+			 * decoration. E.G. The result is tagged as an /Artifact
+			 * when we emit tagged PDF.
+			 * This name and the abbreviated flag value are chosen
+			 * because \a is occupied by the encoding flag.
+			 */
+    unsigned char	sfIsDecoration;
 
 			/**
 			 *  \t: (Ted extension) A text to describe the symbol.

@@ -21,6 +21,7 @@ void docInitSymbolField(	SymbolField *	sf )
     sf->sfSymbol= -1;
     sf->sfSizePoints= -1;
     sf->sfIsHigh= 0;
+    sf->sfIsDecoration= 0;
 
     return;
     }
@@ -77,6 +78,9 @@ int docFieldGetSymbol(	SymbolField *		sf,
 
 	if  ( docComponentIsFlag( fi, comp, 'h' ) )
 	    { sf->sfIsHigh= 1; continue;	}
+
+	if  ( docComponentIsFlag( fi, comp, 'd' ) )
+	    { sf->sfIsDecoration= 1; continue;	}
 
 	if  ( docComponentIsFlag( fi, comp, 'j' ) )
 	    { sf->sfEncoding= SYMBOLencSHIFT_JIS; continue;	}

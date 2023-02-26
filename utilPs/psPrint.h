@@ -106,6 +106,18 @@ typedef struct PrintingState
 				 * to be compliant with ISO 14289-1 (PDF/UA).
 				 */
     unsigned char		psTagDocumentStructure;
+
+				/**
+				 *  Keep track of whether we are in an /Artifact in the
+				 *  creation of a PDF structure. Only relevant in combination
+				 *  with psTagDocumentStructure != 0.
+				 *  psInArtifact is managed by incrementing/decrementing. So
+				 *  it behaves like a stack. We try not to bother code that 
+				 *  is unrelated with the details of this. So usually, we 
+				 *  simply simply check for psInArtifact != 0.
+				 */
+    int				psInArtifact;
+
 				/**
 				 * The number of dictionaries that we created.
 				 * This is used to get unique dictionary names.
@@ -113,6 +125,7 @@ typedef struct PrintingState
 				 * hold a little mode than the unique number.
 				 */
     int				psDictionaryNameCount;
+
 				/**
 				 * The number of marked content items on
 				 * the current page. As we produce a content
@@ -421,7 +434,8 @@ extern int psPdfBeginMarkedFigure(
 			const struct DocumentRectangle *	drTwips,
 			const struct MemoryBuffer *		altText );
 
-extern int psPdfBeginArtifact(	PrintingState *			ps,
+extern int psPdfBeginTypedArtifact(
+				PrintingState *			ps,
 				const char *			typeName,
 				const char *			subtypeName );
 

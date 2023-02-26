@@ -8,7 +8,6 @@
 
 #   include	<stddef.h>
 #   include	<stdio.h>
-#   include	<stdlib.h>
 
 #   include	"psPrint.h"
 #   include	"psTextExtents.h"
@@ -121,55 +120,6 @@ int psSetFont(	PrintingState *			ps,
 
 /************************************************************************/
 /*									*/
-/*  Manage the stack of StructItems for marked PDF only. (PDF-UA )	*/
-/*									*/
-/************************************************************************/
-
-void psPdfInitStructItem(	StructItem *	structItem )
-    {
-    utilInitMemoryBuffer( &(structItem->siDictionaryName) );
-    utilInitMemoryBuffer( &(structItem->siChildArrayName) );
-    utilInitMemoryBuffer( &(structItem->siAnnotationDictionaryName) );
-
-    structItem->siParent= (StructItem *)0;
-    structItem->siStructureType= (const char *)0;
-    structItem->siContentId= -1;
-    structItem->siIsLeaf= 0;
-    structItem->siIsInline= 0;
-    }
-
-void psPdfCleanStructItem(	StructItem *	structItem )
-    {
-    utilCleanMemoryBuffer( &(structItem->siDictionaryName) );
-    utilCleanMemoryBuffer( &(structItem->siChildArrayName) );
-    utilCleanMemoryBuffer( &(structItem->siAnnotationDictionaryName) );
-    }
-
-void psPdfPopStructItem(	PrintingState * ps )
-    {
-    if  ( ! ps->psCurrentStructItem )
-	{ XDEB(ps->psCurrentStructItem);	}
-    else{
-	StructItem *	structItem= ps->psCurrentStructItem;
-
-	ps->psCurrentStructItem= structItem->siParent;
-
-	psPdfCleanStructItem( structItem );
-	free( structItem );
-	}
-    }
-
-int psPdfPushStructItem(	PrintingState *	ps,
-				StructItem *	structItem )
-    {
-    structItem->siParent= ps->psCurrentStructItem;
-    ps->psCurrentStructItem= structItem;
-
-    return 0;
-    }
-
-/************************************************************************/
-/*									*/
 /*  Initialise a printing session.					*/
 /*									*/
 /************************************************************************/
@@ -211,6 +161,7 @@ void psInitPrintingState(	PrintingState *	ps )
 
     ps->psTagDocumentStructure= 0;
     ps->psDictionaryNameCount= 0;
+    ps->psInArtifact= 0;
     ps->psDocNumberTreeItemCount= 0;
     ps->psPageContentMarkCount= 0;
     ps->psPageAnnotationCount= 0;

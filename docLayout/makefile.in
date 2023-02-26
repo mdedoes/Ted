@@ -42,7 +42,7 @@ CFLAGS=	\
 
 #CFLAGS= -g -O2 $(WFLAGS) $(INCLUDES)
 
-# 74!!obs
+# 76!!obs
 OBS	=	\
 		layoutContext.o\
 		docValignCells.o\
@@ -61,6 +61,7 @@ OBS	=	\
 		docScreenDrawOrnaments.o\
 		docScreenDrawObject.o\
 		docScreenDraw.o\
+		docPsPrintTextOrnaments.o\
 		docPsPrintTextLine.o\
 		docPsPrintTabs.o\
 		docPsPrintStructure.o\
@@ -68,6 +69,7 @@ OBS	=	\
 		docPsPrintPdfmarks.o\
 		docPsPrintOrnaments.o\
 		docPsPrintImage.o\
+		docPsPrintFields.o\
 		docPsPrint.o\
 		docPsListFonts.o\
 		docParticuleData.o\
@@ -1774,6 +1776,42 @@ docPsPrint.o: \
     ../utilPs/textAttribute.h \
     docPsPrint.c
 
+docPsPrintFields.o: \
+    ../appUtil/utilMemoryBuffer.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docTextLine.h \
+    ../docBase/docTreeType.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDebug.h \
+    ../docBuf/docFields.h \
+    ../docBuf/docNotes.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docTreeNode.h \
+    docDrawLine.h \
+    ../docField/docBookmarkField.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentField.h \
+    ../docField/docFieldInstructions.h \
+    ../docField/docFieldKind.h \
+    ../docField/docHyperlinkField.h \
+    ../docField/docSymbolField.h \
+    docLayoutConfig.h \
+    docPsPrintImpl.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/psNup.h \
+    ../utilPs/psPrint.h \
+    docPsPrintFields.c
+
 docPsPrintImage.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/sioHexedMemory.h \
@@ -1927,9 +1965,13 @@ docPsPrintStructure.o: \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
+    ../appUtil/utilPalette.h \
+    ../bitmap/bitmap.h \
     ../docBase/docInsertedObjectList.h \
     ../docBase/docLayoutPosition.h \
     ../docBase/docListNumberTree.h \
+    ../docBase/docObject.h \
+    ../docBase/docPictureProperties.h \
     ../docBase/docSelectionScope.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docTreeType.h \
@@ -1942,13 +1984,10 @@ docPsPrintStructure.o: \
     ../docBuf/docParaParticules.h \
     ../docBuf/docRowNode.h \
     ../docBuf/docSectNode.h \
-    ../docBuf/docSelect.h \
     ../docBuf/docTreeNode.h \
-    docDraw.h \
     ../docField/docChildFields.h \
     ../docField/docDocumentFieldList.h \
     docLayoutConfig.h \
-    docLayoutDocumentTree.h \
     docPsPrintImpl.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
@@ -1958,7 +1997,6 @@ docPsPrintStructure.o: \
     ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psNup.h \
     ../utilPs/psPrint.h \
-    ../utilPs/textAttribute.h \
     docPsPrintStructure.c
 
 docPsPrintTabs.o: \
@@ -1986,16 +2024,12 @@ docPsPrintTabs.o: \
 docPsPrintTextLine.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
-    ../docBase/docEditPosition.h \
-    ../docBase/docEditRange.h \
     ../docBase/docLayoutPosition.h \
     ../docBase/docSelectionScope.h \
     ../docBase/docTextLine.h \
     ../docBase/docTreeType.h \
     ../docBuf/docCellNode.h \
     ../docBuf/docDebug.h \
-    ../docBuf/docFields.h \
-    ../docBuf/docNotes.h \
     ../docBuf/docParaNode.h \
     ../docBuf/docRowNode.h \
     ../docBuf/docSectNode.h \
@@ -2003,13 +2037,6 @@ docPsPrintTextLine.o: \
     ../docBuf/docTreeNode.h \
     docDraw.h \
     docDrawLine.h \
-    ../docField/docBookmarkField.h \
-    ../docField/docChildFields.h \
-    ../docField/docDocumentField.h \
-    ../docField/docFieldInstructions.h \
-    ../docField/docFieldKind.h \
-    ../docField/docHyperlinkField.h \
-    ../docField/docSymbolField.h \
     docLayoutConfig.h \
     docLayoutDocumentTree.h \
     docParticuleData.h \
@@ -2025,6 +2052,29 @@ docPsPrintTextLine.o: \
     ../utilPs/psTextExtents.h \
     ../utilPs/textAttribute.h \
     docPsPrintTextLine.c
+
+docPsPrintTextOrnaments.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBuf/docDebug.h \
+    docDraw.h \
+    docDrawLine.h \
+    docLayoutConfig.h \
+    docLayoutDocumentTree.h \
+    docParticuleData.h \
+    docPsPrintImpl.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/psNup.h \
+    ../utilPs/psPrint.h \
+    ../utilPs/psTextExtents.h \
+    ../utilPs/textAttribute.h \
+    docPsPrintTextOrnaments.c
 
 docScreenDraw.o: \
     ../appUtil/utilColor.h \

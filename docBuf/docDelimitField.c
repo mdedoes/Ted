@@ -166,7 +166,7 @@ int docBalanceFieldSelection(	DocumentField **	pLeftField,
 				int *			pTailPart,
 				DocumentPosition *	dpHead,
 				DocumentPosition *	dpTail,
-				struct DocumentTree *		dt,
+				struct DocumentTree *	dt,
 				struct BufferDocument *	bd )
     {
     int				rval= 0;

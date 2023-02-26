@@ -32,7 +32,7 @@ WFLAGS=	-Wall			\
 
 #CFLAGS= $(WFLAGS) -g -O2 $(INCLUDES)
 
-# 39!!obs
+# 40!!obs
 OBS	=	\
 		textAttributeUtil.o\
 		textAttribute.o\
@@ -52,6 +52,7 @@ OBS	=	\
 		psPrintPdf.o\
 		psPrint.o\
 		psPostScriptFontList.o\
+		psPdfStructItem.o\
 		psPdfmarkContent.o\
 		psPdfmark.o\
 		psNup.o\
@@ -361,6 +362,22 @@ psNup.o: \
     utilPsConfig.h \
     psNup.c
 
+psPdfStructItem.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilMemoryBufferPrintf.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    psNup.h \
+    psPrint.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    utilPsConfig.h \
+    psPdfStructItem.c
+
 psPdfmark.o: \
     ../appUtil/appUtilConfig.h \
     ../appUtil/sioGeneral.h \
@@ -380,6 +397,7 @@ psPdfmarkContent.o: \
     ../appUtil/appUtilConfig.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilMemoryBufferPrintf.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     psNup.h \
@@ -412,17 +430,13 @@ psPrint.o: \
     ../appUtil/appUtilConfig.h \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilColor.h \
-    ../appUtil/utilIndexMapping.h \
-    ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
-    psFontInfo.h \
     psNup.h \
     psPrint.h \
     psTextExtents.h \
     textAttribute.h \
-    ../textEncoding/uniUtf8.h \
     ../utilGeo/geoAffineTransform.h \
     ../utilGeo/geoDocumentPageSetup.h \
     ../utilGeo/geoRectangle.h \
@@ -473,7 +487,6 @@ psPrintShape.o: \
 psPrintText.o: \
     ../appUtil/appUtilConfig.h \
     ../appUtil/sioGeneral.h \
-    ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
@@ -482,8 +495,6 @@ psPrintText.o: \
     psFontInfo.h \
     psNup.h \
     psPrint.h \
-    psTextExtents.h \
-    textAttribute.h \
     ../textEncoding/uniUtf8.h \
     ../utilGeo/geoAffineTransform.h \
     ../utilGeo/geoDocumentPageSetup.h \
