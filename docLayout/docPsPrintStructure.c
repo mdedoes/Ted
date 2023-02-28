@@ -141,7 +141,12 @@ int docPsPrintEndFigure(
 		const InsertedObject *			io )
     {
     if  ( ! utilMemoryBufferIsEmpty( &(io->ioAltText) ) )
-	{ psPdfPopStructItem( ps );	}
+	{
+	psPdfPopStructItem( ps );
+	}
+    else{
+	ps->psInArtifact--;
+	}
 
     return psPdfEndMarkedContent( ps );
     }
@@ -350,17 +355,13 @@ int docPsPrintFinishLines( void *			vps,
     {
     PrintingState *	ps= (PrintingState *)vps;
 
-    if  ( ! ps->psInArtifact )
+    if  ( ! ps->psInArtifact && ! docParagraphIsEmpty( node ) )
 	{
 	if  ( docPsPrintFinishInline( ps )	)
 	    { LDEB(1); return -1;	}
 
-
-	if  ( ! docParagraphIsEmpty( node ) )
-	    {
-	    if  ( docPsPrintEndMarkedGroup( ps ) )
-		{ LDEB(node->biLevel); return -1;	}
-	    }
+	if  ( docPsPrintEndMarkedGroup( ps ) )
+	    { LDEB(node->biLevel); return -1;	}
 	}
 
     return 0;

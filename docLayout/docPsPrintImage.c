@@ -436,6 +436,8 @@ int docPsPrintInlineObject(	const DrawTextLine *		dtl,
     const struct LayoutContext * lc= dc->dcLayoutContext;
     const PictureProperties *	pip= &(io->ioPictureProperties);
 
+    const int			asFigure= ps->psTagDocumentStructure && ! ps->psInArtifact;
+
     switch( io->ioKind )
 	{
 	int		done;
@@ -444,8 +446,7 @@ int docPsPrintInlineObject(	const DrawTextLine *		dtl,
 	case DOCokPICTEMFBLIP:
 	case DOCokMACPICT:
 
-	    if  ( ps->psTagDocumentStructure			&&
-		  docPsPrintBeginFigure( ps, drTwips, io )	)
+	    if  ( asFigure && docPsPrintBeginFigure( ps, drTwips, io )	)
 		{ LDEB(1); return -1;	}
 
 	    if  ( docPsPrintMetafile( ps, pip, &(io->ioObjectData),
@@ -456,8 +457,7 @@ int docPsPrintInlineObject(	const DrawTextLine *		dtl,
 	    docResetDrawingContextState( dc );
 	    ps->psLinkParticulesDone++;
 
-	    if  ( ps->psTagDocumentStructure	&&
-		  docPsPrintEndFigure( ps, io )	)
+	    if  ( asFigure && docPsPrintEndFigure( ps, io )	)
 		{ LDEB(1); return -1;	}
 
 	    return 0;
@@ -465,8 +465,7 @@ int docPsPrintInlineObject(	const DrawTextLine *		dtl,
 	case DOCokPICTJPEGBLIP:
 	case DOCokPICTPNGBLIP:
 
-	    if  ( ps->psTagDocumentStructure			&&
-		  docPsPrintBeginFigure( ps, drTwips, io )	)
+	    if  ( asFigure && docPsPrintBeginFigure( ps, drTwips, io )	)
 		{ LDEB(1); return -1;	}
 
 	    done= docPsPrintRasterImage( ps, io,
@@ -475,7 +474,7 @@ int docPsPrintInlineObject(	const DrawTextLine *		dtl,
 	    if  ( done < 0 )
 		{ LDEB(done); return -1;	}
 
-	    if  ( ps->psTagDocumentStructure && docPsPrintEndFigure( ps, io ) )
+	    if  ( asFigure && docPsPrintEndFigure( ps, io ) )
 		{ LDEB(1); return -1;	}
 
 	    return 0;
@@ -485,8 +484,7 @@ int docPsPrintInlineObject(	const DrawTextLine *		dtl,
 		  io->ioResultKind == DOCokPICTEMFBLIP		||
 		  io->ioResultKind == DOCokMACPICT		)
 		{
-		if  ( ps->psTagDocumentStructure		&&
-		      docPsPrintBeginFigure( ps, drTwips, io )	)
+		if  ( asFigure && docPsPrintBeginFigure( ps, drTwips, io )	)
 		    { LDEB(1); return -1;	}
 
 		if  ( docPsPrintMetafile( ps, pip, &(io->ioResultData),
@@ -497,7 +495,7 @@ int docPsPrintInlineObject(	const DrawTextLine *		dtl,
 		docResetDrawingContextState( dc );
 		ps->psLinkParticulesDone++;
 
-		if  ( ps->psTagDocumentStructure && docPsPrintEndFigure( ps, io ) )
+		if  ( asFigure && docPsPrintEndFigure( ps, io ) )
 		    { LDEB(1); return -1;	}
 
 		return 0;
@@ -506,8 +504,7 @@ int docPsPrintInlineObject(	const DrawTextLine *		dtl,
 	    if  ( io->ioResultKind == DOCokPICTJPEGBLIP	||
 	    	  io->ioResultKind == DOCokPICTPNGBLIP	)
 		{
-		if  ( ps->psTagDocumentStructure		&&
-		      docPsPrintBeginFigure( ps, drTwips, io )	)
+		if  ( asFigure && docPsPrintBeginFigure( ps, drTwips, io )	)
 		    { LDEB(1); return -1;	}
 
 		done= docPsPrintRasterImage( ps, io,
@@ -516,7 +513,7 @@ int docPsPrintInlineObject(	const DrawTextLine *		dtl,
 		if  ( done < 0 )
 		    { LDEB(done); return -1;	}
 
-		if  ( ps->psTagDocumentStructure && docPsPrintEndFigure( ps, io ) )
+		if  ( asFigure && docPsPrintEndFigure( ps, io ) )
 		    { LDEB(1); return -1;	}
 
 		return 0;
@@ -525,8 +522,7 @@ int docPsPrintInlineObject(	const DrawTextLine *		dtl,
 	    break;
 
 	case DOCokEPS_FILE:
-	    if  ( ps->psTagDocumentStructure			&&
-		  docPsPrintBeginFigure( ps, drTwips, io )	)
+	    if  ( asFigure && docPsPrintBeginFigure( ps, drTwips, io )	)
 		{ LDEB(1); return -1;	}
 
 	    if  ( docPsPrintIncludeEpsObject( ps, io,
@@ -536,7 +532,7 @@ int docPsPrintInlineObject(	const DrawTextLine *		dtl,
 	    docResetDrawingContextState( dc );
 	    ps->psLinkParticulesDone++;
 
-	    if  ( ps->psTagDocumentStructure && docPsPrintEndFigure( ps, io ) )
+	    if  ( asFigure && docPsPrintEndFigure( ps, io ) )
 		{ LDEB(1); return -1;	}
 
 	    return 0;
