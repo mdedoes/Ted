@@ -143,12 +143,11 @@ int docPsPrintEndFigure(
     if  ( ! utilMemoryBufferIsEmpty( &(io->ioAltText) ) )
 	{
 	psPdfPopStructItem( ps );
+	return psPdfEndMarkedContent( ps );
 	}
     else{
-	ps->psInArtifact--;
+	return docPsPrintEndArtifact( ps );
 	}
-
-    return psPdfEndMarkedContent( ps );
     }
 
 int docPsPrintBeginFigure(

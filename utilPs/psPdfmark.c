@@ -221,8 +221,8 @@ static void psFileLinkDestMark(	SimpleOutputStream *	sos,
 	    }
 	}
 
-    /* WAS: sioOutPrintf( sos, "  /Action /Launch /File (" ); */
-    sioOutPrintf( sos, "  /S /Launch /File (" );
+    /* WAS: sioOutPrintf( sos, " /Action /Launch /File (" ); */
+    sioOutPrintf( sos, " /S /Launch /File (" );
 
     psPrintString( sos, file, size, sevenBits, utf8 );
 
@@ -231,7 +231,7 @@ static void psFileLinkDestMark(	SimpleOutputStream *	sos,
     /* Caller never passes empty bookmarks */
     if  ( markName )
 	{
-	sioOutPrintf( sos, "  /URI (" );
+	sioOutPrintf( sos, " /URI (" );
 	psUriLinkDestination( sos, file, size, markName );
 	sioOutPrintf( sos, ") " );
 	}
@@ -250,10 +250,10 @@ static void pdPdfmarkWriteClickArea(
 				SimpleOutputStream *		sos,
 				const DocumentRectangle *	drLink )
     {
-    sioOutPrintf( sos, "/Rect [ %d %d %d %d ]\n",
+    sioOutPrintf( sos, "/Rect [ %d %d %d %d ] ",
 				drLink->drX0, drLink->drY0,
 				drLink->drX1, drLink->drY1 );
-    sioOutPrintf( sos, "  /Border [ 0 0 0 ]\n" );
+    sioOutPrintf( sos, "/Border [ 0 0 0 ] " );
     }
 
 static int psPdfmarkWriteSourceProperties(
