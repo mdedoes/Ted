@@ -229,6 +229,9 @@ static int docPsPrintFinishLink( const DrawTextLine *	dtl,
 	{
 	if  ( docPsFinishAnnotation( ps, x1Twips, lineTop, dtl->dtlLineHeight ) )
 	    { LDEB(1); return -1;	}
+
+	if  ( docPsPrintFinishInline( ps ) )
+	    { LDEB(1); return -1;	}
 	}
     else{
 	psFlushLink( ps, x1Twips, lineTop, dtl->dtlLineHeight );
