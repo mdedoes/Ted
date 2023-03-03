@@ -1856,8 +1856,16 @@ docPsPrintImage.o: \
     docPsPrintImage.c
 
 docPsPrintLineStructure.o: \
+    ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPalette.h \
+    ../bitmap/bitmap.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docObject.h \
+    ../docBase/docPictureProperties.h \
+    ../docBase/docTextLine.h \
     ../docBuf/docDebug.h \
+    docDrawLine.h \
     docLayoutConfig.h \
     docPsPrintImpl.h \
     ../include/appDebug.h \
@@ -1977,17 +1985,12 @@ docPsPrintShapes.o: \
     docPsPrintShapes.c
 
 docPsPrintStructure.o: \
-    ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
-    ../appUtil/utilPalette.h \
-    ../bitmap/bitmap.h \
     ../docBase/docInsertedObjectList.h \
     ../docBase/docLayoutPosition.h \
     ../docBase/docListNumberTree.h \
-    ../docBase/docObject.h \
-    ../docBase/docPictureProperties.h \
     ../docBase/docSelectionScope.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docTreeType.h \
@@ -2001,7 +2004,6 @@ docPsPrintStructure.o: \
     ../docBuf/docRowNode.h \
     ../docBuf/docSectNode.h \
     ../docBuf/docTreeNode.h \
-    docDrawLine.h \
     ../docField/docChildFields.h \
     ../docField/docDocumentFieldList.h \
     docLayoutConfig.h \

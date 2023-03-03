@@ -7,13 +7,11 @@
 
 #   include	"docLayoutConfig.h"
 
-#   include	"docDrawLine.h"
 #   include	"docPsPrintImpl.h"
 #   include	<docTreeNode.h>
 #   include	<docTreeNode.h>
 #   include	<docTreeType.h>
 #   include	<docBuf.h>
-#   include	<docObject.h>
 #   include	<docParaParticules.h>
 #   include	<psPrint.h>
 
@@ -31,7 +29,6 @@ static const char STRUCTtypeSECT[]= "Sect";
 static const char STRUCTtypeTD[]= "TD";
 static const char STRUCTtypeTR[]= "TR";
 static const char STRUCTtypeTABLE[]= "Table";
-static const char STRUCTtypeFIGURE[]= "Figure";
 
 /************************************************************************/
 
@@ -65,53 +62,6 @@ static int docPsPrintEndMarkedGroup(
     {
     psPdfPopStructItem( ps );
     return psPdfEndMarkedContent( ps );
-    }
-
-int docPsPrintEndFigure(
-		PrintingState *				ps,
-		const InsertedObject *			io )
-    {
-    if  ( ! utilMemoryBufferIsEmpty( &(io->ioAltText) ) )
-	{
-	psPdfPopStructItem( ps );
-	return psPdfEndMarkedContent( ps );
-	}
-    else{
-	return docPsPrintEndArtifact( ps );
-	}
-    }
-
-int docPsPrintBeginFigure(
-		const DrawTextLine *			dtl,
-		const struct DocumentRectangle *	drTwips,
-		const InsertedObject *			io )
-    {
-    PrintingState *		ps= (PrintingState *)dtl->dtlThrough;
-
-    if  ( ! utilMemoryBufferIsEmpty( &(io->ioAltText) ) )
-	{
-	StructItem * structItem= psPdfLeafStructItem( ps, STRUCTtypeFIGURE, 0 );
-
-	if  ( docPsPrintFinishInline( ps ) )
-	    { LDEB(1); return -1;	}
-
-	if  ( ! structItem || psPdfPushStructItem( ps, structItem ) )
-	    { XDEB(structItem); return -1;	}
-
-	if  ( psPdfmarkAppendMarkedIllustration(
-				ps, structItem, drTwips, &(io->ioAltText) ) )
-	    { LDEB(1); return -1;	}
-
-	if  ( psPdfBeginMarkedFigure( ps,
-	      structItem->siStructureType, structItem->siContentId,
-	      drTwips, &(io->ioAltText) ) )
-	    { LDEB(1); return -1;	}
-
-	return 0;
-	}
-    else{
-	return docPsPrintBeginArtifact( ps );
-	}
     }
 
 /**

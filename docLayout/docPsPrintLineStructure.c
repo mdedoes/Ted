@@ -6,8 +6,11 @@
 
 #   include	"docLayoutConfig.h"
 
+#   include	"docDrawLine.h"
 #   include	"docPsPrintImpl.h"
 #   include	<psPrint.h>
+#   include	<docObject.h>
+#   include	<docTextLine.h>
 
 #   include	<docDebug.h>
 #   include	<appDebugon.h>
@@ -18,6 +21,7 @@
  */
 static const char STRUCTtypeSPAN[]= "Span";
 static const char STRUCTtypeLINK[]= "Link";
+static const char STRUCTtypeFIGURE[]= "Figure";
 
 /**
  *  Make sure that if we are emitting textual content that is part 
@@ -87,5 +91,75 @@ int docPsPrintFinishInline(	PrintingState *		ps )
 	}
 
     return 0;
+    }
+
+int docPsPrintBeginInlineArtifact(
+			const DrawTextLine *		dtl,
+			int				xTwips )
+    {
+    PrintingState *		ps= (PrintingState *)dtl->dtlThrough;
+
+    if  ( ps->psInsideLink						&&
+	  ps->psCurrentStructItem 					&&
+	  ps->psCurrentStructItem->siIsLeaf				&&
+	  ps->psCurrentStructItem->siIsInline				)
+	{
+	const TextLine *	tl= dtl->dtlTextLine;
+	int			lineTop= tl->tlTopPosition.lpPageYTwips;
+
+	if  ( docPsFinishAnnotation( ps, xTwips, lineTop, dtl->dtlLineHeight ) )
+	    { LDEB(1); return -1;	}
+	}
+
+    return docPsPrintBeginArtifact( ps );
+    }
+
+int docPsPrintBeginFigure(
+		const DrawTextLine *			dtl,
+		const struct DocumentRectangle *	drTwips,
+		const InsertedObject *			io )
+    {
+    PrintingState *		ps= (PrintingState *)dtl->dtlThrough;
+
+    if  ( ! utilMemoryBufferIsEmpty( &(io->ioAltText) ) )
+	{
+	StructItem * structItem= psPdfLeafStructItem( ps, STRUCTtypeFIGURE, 0 );
+
+	if  ( docPsPrintFinishInline( ps ) )
+	    { LDEB(1); return -1;	}
+
+	if  ( ! structItem || psPdfPushStructItem( ps, structItem ) )
+	    { XDEB(structItem); return -1;	}
+
+	if  ( psPdfmarkAppendMarkedIllustration(
+				ps, structItem, drTwips, &(io->ioAltText) ) )
+	    { LDEB(1); return -1;	}
+
+	if  ( psPdfBeginMarkedFigure( ps,
+	      structItem->siStructureType, structItem->siContentId,
+	      drTwips, &(io->ioAltText) ) )
+	    { LDEB(1); return -1;	}
+
+	return 0;
+	}
+    else{
+	return docPsPrintBeginInlineArtifact( dtl, dtl->dtlX );
+	}
+    }
+
+int docPsPrintEndFigure(
+		const DrawTextLine *			dtl,
+		const InsertedObject *			io )
+    {
+    PrintingState *		ps= (PrintingState *)dtl->dtlThrough;
+
+    if  ( ! utilMemoryBufferIsEmpty( &(io->ioAltText) ) )
+	{
+	psPdfPopStructItem( ps );
+	return psPdfEndMarkedContent( ps );
+	}
+    else{
+	return docPsPrintEndArtifact( ps );
+	}
     }
 

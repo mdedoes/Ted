@@ -326,22 +326,6 @@ int psPdfmarkDefineAnnotationDictionary(
     return pageAnnotationReference;
     }
 
-int psPdfmarkSetAnnotationRectangle(
-			PrintingState *			ps,
-			const DocumentRectangle *	drLink,
-			const char *			annotationDictionaryName )
-    {
-    DocumentRectangle	dr;
-
-    geoTransformRectangle( &dr, drLink, &(ps->psCurrentTransform) );
-
-    sioOutPrintf( ps->psSos, "[ {%s} << ", annotationDictionaryName );
-    pdPdfmarkWriteClickArea( ps->psSos, &dr );
-    sioOutPrintf( ps->psSos, " >> /PUT pdfmark\n" );
-
-    return 0;
-    }
-
 static int psSourcePdfmark(	PrintingState *			ps,
 				const DocumentRectangle *	drLink,
 				const MemoryBuffer *		fileName,

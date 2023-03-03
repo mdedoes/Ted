@@ -246,8 +246,8 @@ int docPsPrintFinishTextLine(	const struct DrawTextLine *	dtl,
 
     if  ( ps->psInsideLink )
 	{
-	TextLine *	tl= dtl->dtlTextLine;
-	int		lineTop= tl->tlTopPosition.lpPageYTwips;
+	const TextLine *	tl= dtl->dtlTextLine;
+	int			lineTop= tl->tlTopPosition.lpPageYTwips;
 
 	if  ( ps->psTagDocumentStructure && ! ps->psInArtifact )
 	    {

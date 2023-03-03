@@ -146,6 +146,7 @@ static int docPsPrintStartHyperlink(
 
 static int docPsPrintStartSymbol(
 		    const DrawTextLine *	dtl,
+		    int				x0Twips,
 		    const DocumentField *	df )
     {
     int				rval= 0;
@@ -164,7 +165,7 @@ static int docPsPrintStartSymbol(
 	    if  ( docPsPrintFinishInline( ps ) )
 		{ LDEB(1); rval= -1; goto ready;	}
 
-	    if  ( sf.sfIsDecoration && docPsPrintBeginArtifact( ps ) )
+	    if  ( sf.sfIsDecoration && docPsPrintBeginInlineArtifact( dtl, x0Twips ) )
 		{ LDEB(sf.sfIsDecoration); rval= -1; goto ready;	}
 	    }
 	}
@@ -210,7 +211,7 @@ int docPsPrintStartField(	const DrawTextLine *		dtl,
 
     if  ( df->dfKind == DOCfkSYMBOL )
 	{
-	if  ( docPsPrintStartSymbol( dtl, df ) )
+	if  ( docPsPrintStartSymbol( dtl, x0Twips, df ) )
 	    { LDEB(1); return -1;	}
 	}
 

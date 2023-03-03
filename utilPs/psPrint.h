@@ -406,11 +406,6 @@ extern int psOutlinePdfmark(	PrintingState *			ps,
 				const struct MemoryBuffer *	title,
 				const struct MemoryBuffer *	markName );
 
-extern int psPdfmarkSetAnnotationRectangle(
-			PrintingState *			ps,
-			const DocumentRectangle *	drLink,
-			const char *			annotationDictionaryName );
-
 extern int psSetPageProperty(	PrintingState *			ps,
 				const char *			key,
 				const char *			value );

@@ -174,7 +174,7 @@ extern int docPsPrintFinishNode( void *				vps,
 				struct BufferItem *		node );
 
 extern int docPsPrintEndFigure(
-			struct PrintingState *			ps,
+			const struct DrawTextLine *		dtl,
 			const struct InsertedObject *		io );
 
 extern int docPsPrintBeginFigure(
@@ -187,6 +187,10 @@ extern int docPsPrintBeginArtifact(
 
 extern int docPsPrintEndArtifact(
 				struct PrintingState *		ps );
+
+int docPsPrintBeginInlineArtifact(
+			const struct DrawTextLine *	dtl,
+			int				xTwips );
 
 extern int docPsPrintFinishInline( struct PrintingState *	ps );
 

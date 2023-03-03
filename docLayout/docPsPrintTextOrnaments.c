@@ -45,7 +45,7 @@ int docPsPrintRunUnderline(	const DrawTextLine *	dtl,
 	{ h=  10;	}
 
     if  ( asArtifact			&&
-	  docPsPrintBeginArtifact( ps )	)
+	  docPsPrintBeginInlineArtifact( dtl, x0Twips )	)
 	{ LDEB(-1); return -1;	}
 
     docDrawSetColorNumber( dtl->dtlDrawingContext, dtl->dtlThrough,
@@ -84,7 +84,7 @@ int docPsPrintRunStrikethrough(	const DrawTextLine *	dtl,
 	{ h=  10;	}
 
     if  ( asArtifact			&&
-	  docPsPrintBeginArtifact( ps )	)
+	  docPsPrintBeginInlineArtifact( dtl, x0Twips )	)
 	{ LDEB(-1); return -1;	}
 
     docDrawSetColorNumber( dtl->dtlDrawingContext, dtl->dtlThrough,
