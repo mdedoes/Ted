@@ -178,7 +178,7 @@ extern int docPsPrintEndFigure(
 			const struct InsertedObject *		io );
 
 extern int docPsPrintBeginFigure(
-			struct PrintingState *			ps,
+			const struct DrawTextLine *		ps,
 			const struct DocumentRectangle *	drTwips,
 			const struct InsertedObject *		io );
 
@@ -188,10 +188,11 @@ extern int docPsPrintBeginArtifact(
 extern int docPsPrintEndArtifact(
 				struct PrintingState *		ps );
 
-extern int docPsPrintClaimInline( struct PrintingState *	ps,
-				struct BufferItem *		paraNode );
-
 extern int docPsPrintFinishInline( struct PrintingState *	ps );
+
+extern int docPsPrintClaimInline(
+				struct PrintingState *		ps,
+				struct BufferItem *	paraNode );
 
 extern int docPsFinishAnnotation( struct PrintingState *	ps,
 				int				x1Twips,

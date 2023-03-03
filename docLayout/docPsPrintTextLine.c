@@ -13,12 +13,10 @@
 #   include	"docDraw.h"
 #   include	"docDrawLine.h"
 #   include	<docTextRun.h>
-#   include	<docTreeNode.h>
 #   include	<docTextLine.h>
 #   include	<psTextExtents.h>
 #   include	"docParticuleData.h"
 #   include	<psPrint.h>
-#   include	<docTreeType.h>
 
 #   include	<docDebug.h>
 #   include	<appDebugon.h>
@@ -152,7 +150,7 @@ int docPsPrintTextRun(		const TextRun *		tr,
     const ParticuleData *	pd= dtl->dtlParticuleData+ tr->trPartFrom;
 
     /* Make sure that we emit text inside a /Span if needed */
-    if  ( ps->psTagDocumentStructure && dtl->dtlParaNode->biTreeType == DOCinBODY &&
+    if  ( ps->psTagDocumentStructure && ! ps->psInArtifact &&
 	  docPsPrintClaimInline( ps, tr->trParaNode ) )
 	{ LDEB(1); return -1;	}
 
@@ -251,7 +249,7 @@ int docPsPrintFinishTextLine(	const struct DrawTextLine *	dtl,
 	TextLine *	tl= dtl->dtlTextLine;
 	int		lineTop= tl->tlTopPosition.lpPageYTwips;
 
-	if  ( ps->psTagDocumentStructure && dtl->dtlParaNode->biTreeType == DOCinBODY )
+	if  ( ps->psTagDocumentStructure && ! ps->psInArtifact )
 	    {
 	    if  ( docPsFinishAnnotation( ps, x1Twips, lineTop, dtl->dtlLineHeight ) )
 		{ LDEB(1); return -1;	}

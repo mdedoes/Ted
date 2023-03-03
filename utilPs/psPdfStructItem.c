@@ -44,7 +44,8 @@ StructItem * psPdfLeafStructItem(
 
     psPdfInitStructItem( structItem );
 
-    utilMemoryBufferPrintf( &(structItem->siDictionaryName), "TedRo%d", ps->psDictionaryNameCount++ );
+    utilMemoryBufferPrintf( &(structItem->siDictionaryName),
+			"TedRo%d", ps->psDictionaryNameCount++ );
     structItem->siStructureType= structureType;
     structItem->siContentId= contentId;
     structItem->siIsLeaf= 1;
@@ -66,8 +67,10 @@ StructItem * psPdfAnnotatedStructItem(
 
     psPdfInitStructItem( structItem );
 
-    utilMemoryBufferPrintf( &(structItem->siDictionaryName), "TedRo%d", ps->psDictionaryNameCount++ );
-    utilMemoryBufferPrintf( &(structItem->siAnnotationDictionaryName), "TedAn%d", ps->psDictionaryNameCount++ );
+    utilMemoryBufferPrintf( &(structItem->siDictionaryName),
+			"TedRo%d", ps->psDictionaryNameCount++ );
+    utilMemoryBufferPrintf( &(structItem->siAnnotationDictionaryName),
+			"TedAn%d", ps->psDictionaryNameCount++ );
     structItem->siStructureType= structureType;
     structItem->siContentId= contentId;
     structItem->siIsLeaf= 1;

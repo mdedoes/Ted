@@ -131,8 +131,9 @@ static int docPsPrintStartHyperlink(
 	if  ( utilCopyMemoryBuffer( &(ps->psLinkMark), &(hf.hfBookmark) ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 
-	if  ( ps->psTagDocumentStructure && ! ps->psInArtifact &&
-	      docPsPrintFinishInline( ps ) )
+	if  ( ps->psTagDocumentStructure	&&
+	      ! ps->psInArtifact		&&
+	      docPsPrintFinishInline( ps )	)
 	    { LDEB(1); rval= -1; goto ready;	}
 	}
 

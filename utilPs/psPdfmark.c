@@ -185,11 +185,11 @@ static void psWebLinkDestination(	SimpleOutputStream *	sos,
     {
     /* WAS: sioOutPrintf( sos, "  /Action << /Subtype /URI /URI (" ); */
 
-    sioOutPrintf( sos, "  /A << /S /URI /URI (" );
+    sioOutPrintf( sos, " /A << /S /URI /URI (" );
 
     psUriLinkDestination( sos, fileName, fileSize, markName );
 
-    sioOutPrintf( sos, ") >>\n" );
+    sioOutPrintf( sos, ") >>" );
 
     return;
     }
@@ -226,14 +226,14 @@ static void psFileLinkDestMark(	SimpleOutputStream *	sos,
 
     psPrintString( sos, file, size, sevenBits, utf8 );
 
-    sioOutPrintf( sos, ")\n" );
+    sioOutPrintf( sos, " )" );
 
     /* Caller never passes empty bookmarks */
     if  ( markName )
 	{
 	sioOutPrintf( sos, " /URI (" );
 	psUriLinkDestination( sos, file, size, markName );
-	sioOutPrintf( sos, ") " );
+	sioOutPrintf( sos, ")" );
 	}
 
     return;
@@ -266,19 +266,18 @@ static int psPdfmarkWriteSourceProperties(
 	if  ( ! markName )
 	    { XDEB(markName);	}
 	else{
-	    sioOutPrintf( ps->psSos, "  /Dest /" );
+	    sioOutPrintf( ps->psSos, " /Dest /" );
 
 	    psEmitDestination( ps->psSos, markName );
-	    sioOutPrintf( ps->psSos, " " );
 	    }
 	}
     else{
 	psFileLinkDestMark( ps->psSos, fileName, markName );
 	}
 
-    sioOutPrintf( ps->psSos, "  /F 4 " ); /* NoZoom: for PDF/A compatibility. See table 1.6.5 */
-    sioOutPrintf( ps->psSos, "  /Type /Annot " );
-    sioOutPrintf( ps->psSos, "  /Subtype /Link " );
+    sioOutPrintf( ps->psSos, " /F 4" ); /* NoZoom: for PDF/A compatibility. See table 1.6.5 */
+    sioOutPrintf( ps->psSos, " /Type /Annot" );
+    sioOutPrintf( ps->psSos, " /Subtype /Link" );
 
     return 0;
     }
@@ -304,7 +303,7 @@ int psPdfmarkDefineAnnotationDictionary(
 	"[ /_objdef {%s} /type /dict /OBJ pdfmark\n",
 	annotationDictionaryName );
 
-    sioOutPrintf( ps->psSos, "[ {%s} << ", annotationDictionaryName );
+    sioOutPrintf( ps->psSos, "[ {%s} <<", annotationDictionaryName );
 
     if  ( psPdfmarkWriteSourceProperties( ps, fileName, markName ) )
 	{ LDEB(1); return -1;	}
@@ -315,9 +314,6 @@ int psPdfmarkDefineAnnotationDictionary(
 	    { XDEB(fileName); return -1;	}
 
 	if  ( psPrintPdfMarkStringValue( ps, fileName ) < 0 )
-	    { XDEB(fileName); return -1;	}
-
-	if  ( sioOutPrintf( ps->psSos, " " ) < 0 )
 	    { XDEB(fileName); return -1;	}
 	}
 
@@ -357,13 +353,13 @@ static int psSourcePdfmark(	PrintingState *			ps,
 	{ markName= (const MemoryBuffer *)0;	}
 
     /* Start populating annotation pdfmark */
-    sioOutPrintf( ps->psSos, "[ " );
+    sioOutPrintf( ps->psSos, "[" );
     pdPdfmarkWriteClickArea( ps->psSos, drLink );
 
     if  ( psPdfmarkWriteSourceProperties( ps, fileName, markName ) )
 	{ LDEB(1); return -1;	}
 
-    sioOutPrintf( ps->psSos, "/ANN pdfmark\n" );
+    sioOutPrintf( ps->psSos, " /ANN pdfmark\n" );
 
     return 0;
     }

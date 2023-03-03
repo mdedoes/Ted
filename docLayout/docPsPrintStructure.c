@@ -7,6 +7,7 @@
 
 #   include	"docLayoutConfig.h"
 
+#   include	"docDrawLine.h"
 #   include	"docPsPrintImpl.h"
 #   include	<docTreeNode.h>
 #   include	<docTreeNode.h>
@@ -21,17 +22,16 @@
 
 /**
  * Standard structure types. See ISO 32000-1:2008, 14.8.4.
+ * These are the Block level ones
  */
 static const char STRUCTtypeP[]= "P";
 /*static const char STRUCTtypeDIV[]= "Div";*/
-static const char STRUCTtypeSPAN[]= "Span";
 static const char STRUCTtypePART[]= "Part";
 static const char STRUCTtypeSECT[]= "Sect";
 static const char STRUCTtypeTD[]= "TD";
 static const char STRUCTtypeTR[]= "TR";
 static const char STRUCTtypeTABLE[]= "Table";
 static const char STRUCTtypeFIGURE[]= "Figure";
-static const char STRUCTtypeLINK[]= "Link";
 
 /************************************************************************/
 
@@ -41,75 +41,6 @@ static const char STRUCTtypeLINK[]= "Link";
 static int docPsMarkNode(	const struct BufferItem *		node )
     {
     return 0 && node->biTopPosition.lpPage == node->biBelowPosition.lpPage;
-    }
-
-/**
- *  Make sure that if we are emitting textual content that is part 
- *  of the reading order of the document, that the current leaf in 
- *  the structure tree is a /Span or a /Link.
- */
-int docPsPrintClaimInline(	PrintingState *		ps,
-				struct BufferItem *	paraNode )
-    {
-    if  ( ! ps->psInArtifact )
-	{
-	if  ( ps->psCurrentStructItem 					&&
-	      ps->psCurrentStructItem->siIsLeaf				&&
-	      ! ps->psCurrentStructItem->siIsInline			)
-	    {
-	    psPdfPopStructItem( ps );
-	    psPdfEndMarkedContent( ps );
-	    }
-
-	if  ( ! ps->psCurrentStructItem 		||
-	      ! ps->psCurrentStructItem->siIsLeaf	)
-	    {
-	    StructItem *	structItem;
-
-	    if  ( ps->psInsideLink )
-		{
-		structItem= psPdfAnnotatedStructItem( ps, STRUCTtypeLINK, 1 );
-
-		if  ( ! structItem || psPdfPushStructItem( ps, structItem ) )
-		    { XDEB(structItem); return -1;	}
-
-		if  ( psPdfmarkAppendMarkedLink( ps, structItem ) )
-		    { LDEB(1); return -1;	}
-		}
-	    else{
-		structItem= psPdfLeafStructItem( ps, STRUCTtypeSPAN, 1 );
-
-		if  ( ! structItem || psPdfPushStructItem( ps, structItem ) )
-		    { XDEB(structItem); return -1;	}
-
-		if  ( psPdfmarkAppendMarkedLeaf( ps, structItem ) )
-		    { LDEB(1); return -1;	}
-		}
-
-	    if  ( psPdfBeginMarkedContent( ps,
-		  structItem->siStructureType, structItem->siContentId ) )
-		{ LDEB(1); return -1;	}
-	    }
-	}
-
-    return 0;
-    }
-
-/**
- *  If the current StructItem on the stack is a /Span, pop it from 
- *  the stack
- */
-int docPsPrintFinishInline(	PrintingState *		ps )
-    {
-    if  ( ps->psCurrentStructItem 					&&
-	  ps->psCurrentStructItem->siIsLeaf				&&
-	  ps->psCurrentStructItem->siIsInline				)
-	{
-	psPdfPopStructItem( ps );
-	psPdfEndMarkedContent( ps );
-	}
-
-    return 0;
     }
 
 static int docPsPrintBeginMarkedGroup(
@@ -151,10 +82,12 @@ int docPsPrintEndFigure(
     }
 
 int docPsPrintBeginFigure(
-		PrintingState *				ps,
+		const DrawTextLine *			dtl,
 		const struct DocumentRectangle *	drTwips,
 		const InsertedObject *			io )
     {
+    PrintingState *		ps= (PrintingState *)dtl->dtlThrough;
+
     if  ( ! utilMemoryBufferIsEmpty( &(io->ioAltText) ) )
 	{
 	StructItem * structItem= psPdfLeafStructItem( ps, STRUCTtypeFIGURE, 0 );

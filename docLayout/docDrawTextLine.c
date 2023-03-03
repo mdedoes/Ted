@@ -423,7 +423,10 @@ static int docDrawLineField(	const VisitParticule *		vp,
 		    if  ( res < 0 )
 			{ LLDEB(vp->vpParticule,res); return -1;	}
 		    }
-		else{
+		}
+	    else{
+		if  ( dc->dcFinishField )
+		    {
 		    res= (*dc->dcFinishField)( dtl, vp->vpParticule,
 								x1Twips, df );
 		    if  ( res < 0 )

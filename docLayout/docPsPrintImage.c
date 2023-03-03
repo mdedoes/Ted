@@ -446,7 +446,7 @@ int docPsPrintInlineObject(	const DrawTextLine *		dtl,
 	case DOCokPICTEMFBLIP:
 	case DOCokMACPICT:
 
-	    if  ( asFigure && docPsPrintBeginFigure( ps, drTwips, io )	)
+	    if  ( asFigure && docPsPrintBeginFigure( dtl, drTwips, io )	)
 		{ LDEB(1); return -1;	}
 
 	    if  ( docPsPrintMetafile( ps, pip, &(io->ioObjectData),
@@ -465,7 +465,7 @@ int docPsPrintInlineObject(	const DrawTextLine *		dtl,
 	case DOCokPICTJPEGBLIP:
 	case DOCokPICTPNGBLIP:
 
-	    if  ( asFigure && docPsPrintBeginFigure( ps, drTwips, io )	)
+	    if  ( asFigure && docPsPrintBeginFigure( dtl, drTwips, io )	)
 		{ LDEB(1); return -1;	}
 
 	    done= docPsPrintRasterImage( ps, io,
@@ -484,7 +484,7 @@ int docPsPrintInlineObject(	const DrawTextLine *		dtl,
 		  io->ioResultKind == DOCokPICTEMFBLIP		||
 		  io->ioResultKind == DOCokMACPICT		)
 		{
-		if  ( asFigure && docPsPrintBeginFigure( ps, drTwips, io )	)
+		if  ( asFigure && docPsPrintBeginFigure( dtl, drTwips, io )	)
 		    { LDEB(1); return -1;	}
 
 		if  ( docPsPrintMetafile( ps, pip, &(io->ioResultData),
@@ -504,7 +504,7 @@ int docPsPrintInlineObject(	const DrawTextLine *		dtl,
 	    if  ( io->ioResultKind == DOCokPICTJPEGBLIP	||
 	    	  io->ioResultKind == DOCokPICTPNGBLIP	)
 		{
-		if  ( asFigure && docPsPrintBeginFigure( ps, drTwips, io )	)
+		if  ( asFigure && docPsPrintBeginFigure( dtl, drTwips, io )	)
 		    { LDEB(1); return -1;	}
 
 		done= docPsPrintRasterImage( ps, io,
@@ -522,7 +522,7 @@ int docPsPrintInlineObject(	const DrawTextLine *		dtl,
 	    break;
 
 	case DOCokEPS_FILE:
-	    if  ( asFigure && docPsPrintBeginFigure( ps, drTwips, io )	)
+	    if  ( asFigure && docPsPrintBeginFigure( dtl, drTwips, io )	)
 		{ LDEB(1); return -1;	}
 
 	    if  ( docPsPrintIncludeEpsObject( ps, io,
