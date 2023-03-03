@@ -134,6 +134,28 @@ static int psPdfmarkSetAltText(
     return 0;
     }
 
+static int psPdfmarkSetActualText(
+			PrintingState *			ps,
+			const MemoryBuffer *		actualText )
+    {
+    if  ( ps->psInArtifact )
+	{ LDEB(ps->psInArtifact); return -1;	}
+
+    if  ( actualText && ! utilMemoryBufferIsEmpty( actualText ) )
+	{
+	if  ( sioOutPrintf( ps->psSos, " /ActualText " ) < 0 )
+	    { XDEB(actualText); return -1;	}
+
+	if  ( psPrintPdfMarkStringValue( ps, actualText ) < 0 )
+	    { XDEB(actualText); return -1;	}
+
+	if  ( sioOutPrintf( ps->psSos, " " ) < 0 )
+	    { XDEB(actualText); return -1;	}
+	}
+
+    return 0;
+    }
+
 /************************************************************************/
 /*									*/
 /*  Begin/End a piece of marked content.				*/
@@ -159,6 +181,31 @@ int psPdfBeginMarkedContent(	PrintingState *		ps,
 			structureType, contentId ) < 0 )
 	    { LDEB(1); return -1;	}
 	}
+
+    return 0;
+    }
+
+int psPdfBeginMarkedContentActualText(
+				PrintingState *		ps,
+				const char *		structureType,
+				int			contentId,
+				const MemoryBuffer *	actualText )
+    {
+    if  ( ps->psInArtifact )
+	{ LDEB(ps->psInArtifact); return -1;	}
+
+    if  ( sioOutPrintf( ps->psSos,
+		    "[ /%s << /MCID %d ",
+		    structureType, contentId ) < 0 )
+	{ LDEB(1); return -1;	}
+
+    /* Studioform extension. Does no harm for others */
+    if  ( psPdfmarkSetActualText( ps, actualText ) )
+	{ LDEB(1); return -1;	}
+
+    if  ( sioOutPrintf( ps->psSos,
+		    " >> /BDC pdfmark\n" ) < 0 )
+	{ LDEB(1); return -1;	}
 
     return 0;
     }

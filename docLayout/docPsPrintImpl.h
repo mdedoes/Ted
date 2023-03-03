@@ -195,8 +195,10 @@ int docPsPrintBeginInlineArtifact(
 extern int docPsPrintFinishInline( struct PrintingState *	ps );
 
 extern int docPsPrintClaimInline(
-				struct PrintingState *		ps,
-				struct BufferItem *	paraNode );
+				struct PrintingState *		ps );
+
+extern struct StructItem * docPsPrintInlineStructItem(
+				struct PrintingState *		ps );
 
 extern int docPsFinishAnnotation( struct PrintingState *	ps,
 				int				x1Twips,

@@ -150,8 +150,9 @@ int docPsPrintTextRun(		const TextRun *		tr,
     const ParticuleData *	pd= dtl->dtlParticuleData+ tr->trPartFrom;
 
     /* Make sure that we emit text inside a /Span if needed */
-    if  ( ps->psTagDocumentStructure && ! ps->psInArtifact &&
-	  docPsPrintClaimInline( ps, tr->trParaNode ) )
+    if  ( ps->psTagDocumentStructure	&&
+	  ! ps->psInArtifact		&&
+	  docPsPrintClaimInline( ps )	)
 	{ LDEB(1); return -1;	}
 
     if  ( psMakeOutputString( &printString, &scratchString,

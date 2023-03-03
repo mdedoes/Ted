@@ -23,14 +23,39 @@ static const char STRUCTtypeSPAN[]= "Span";
 static const char STRUCTtypeLINK[]= "Link";
 static const char STRUCTtypeFIGURE[]= "Figure";
 
+StructItem * docPsPrintInlineStructItem( PrintingState *	ps )
+    {
+    StructItem *	structItem;
+
+    if  ( ps->psInsideLink )
+	{
+	structItem= psPdfAnnotatedStructItem( ps, STRUCTtypeLINK, 1 );
+
+	if  ( ! structItem || psPdfPushStructItem( ps, structItem ) )
+	    { XDEB(structItem); return (StructItem *)0;	}
+
+	if  ( psPdfmarkAppendMarkedLink( ps, structItem ) )
+	    { LDEB(1); return (StructItem *)0;	}
+	}
+    else{
+	structItem= psPdfLeafStructItem( ps, STRUCTtypeSPAN, 1 );
+
+	if  ( ! structItem || psPdfPushStructItem( ps, structItem ) )
+	    { XDEB(structItem); return (StructItem *)0;	}
+
+	if  ( psPdfmarkAppendMarkedLeaf( ps, structItem ) )
+	    { LDEB(1); return (StructItem *)0;	}
+	}
+
+    return structItem;
+    }
+
 /**
  *  Make sure that if we are emitting textual content that is part 
  *  of the reading order of the document, that the current leaf in 
  *  the structure tree is a /Span or a /Link.
  */
-int docPsPrintClaimInline(
-			PrintingState *		ps,
-			struct BufferItem *	paraNode )
+int docPsPrintClaimInline( PrintingState *	ps )
     {
     if  ( ! ps->psInArtifact )
 	{
@@ -45,31 +70,15 @@ int docPsPrintClaimInline(
 	if  ( ! ps->psCurrentStructItem 		||
 	      ! ps->psCurrentStructItem->siIsLeaf	)
 	    {
-	    StructItem *	structItem;
+	    StructItem *	structItem= docPsPrintInlineStructItem( ps );
 
-	    if  ( ps->psInsideLink )
-		{
-		structItem= psPdfAnnotatedStructItem( ps, STRUCTtypeLINK, 1 );
-
-		if  ( ! structItem || psPdfPushStructItem( ps, structItem ) )
-		    { XDEB(structItem); return -1;	}
-
-		if  ( psPdfmarkAppendMarkedLink( ps, structItem ) )
-		    { LDEB(1); return -1;	}
-		}
-	    else{
-		structItem= psPdfLeafStructItem( ps, STRUCTtypeSPAN, 1 );
-
-		if  ( ! structItem || psPdfPushStructItem( ps, structItem ) )
-		    { XDEB(structItem); return -1;	}
-
-		if  ( psPdfmarkAppendMarkedLeaf( ps, structItem ) )
-		    { LDEB(1); return -1;	}
-		}
+	    if  ( ! structItem )
+		{ XDEB(structItem); return -1;	}
 
 	    if  ( psPdfBeginMarkedContent( ps,
-		  structItem->siStructureType, structItem->siContentId ) )
-		{ LDEB(1); return -1;	}
+				structItem->siStructureType,
+				structItem->siContentId ) )
+		{ LDEB(structItem->siContentId); return -1;	}
 	    }
 	}
 
