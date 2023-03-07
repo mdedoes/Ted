@@ -107,6 +107,13 @@ typedef struct PrintingState
 				 */
     unsigned char		psTagDocumentStructure;
 
+
+				/**
+				 * In combination with psTagDocumentStructure!=0,
+				 * we mark invisible text as an artifact.
+				 */
+    unsigned char		psMarkInvisibleAsArtifact;
+
 				/**
 				 *  Keep track of whether we are in an /Artifact in the
 				 *  creation of a PDF structure. Only relevant in combination

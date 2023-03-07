@@ -2043,24 +2043,29 @@ docPsPrintTabs.o: \
 docPsPrintTextLine.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
+    ../docBase/docItemShading.h \
     ../docBase/docLayoutPosition.h \
     ../docBase/docTextLine.h \
+    ../docBuf/docAttributes.h \
     ../docBuf/docDebug.h \
     ../docBuf/docTextRun.h \
     docDraw.h \
     docDrawLine.h \
+    ../docFont/fontMatchFont.h \
     docLayoutConfig.h \
     docLayoutDocumentTree.h \
     docParticuleData.h \
     docPsPrintImpl.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    layoutContext.h \
     ../utilGeo/geoAffineTransform.h \
     ../utilGeo/geoDocumentPageSetup.h \
     ../utilGeo/geoRectangle.h \
     ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psNup.h \
     ../utilPs/psPrint.h \
+    ../utilPs/psShading.h \
     ../utilPs/psTextExtents.h \
     ../utilPs/textAttribute.h \
     docPsPrintTextLine.c

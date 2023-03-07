@@ -24,6 +24,10 @@
 #   include	<docParaProperties.h>
 #   include	"docFields.h"
 #   include	"docAttributes.h"
+#   include	<psShading.h>
+#   include	<docItemShading.h>
+#   include	<docCellProperties.h>
+#   include	<docRowProperties.h>
 
 #   include	<appDebugon.h>
 
@@ -36,7 +40,7 @@
 static int docGetPositionAttributes(
 				PropertyMask *			pUpdMask,
 				TextAttribute *			pTaNew,
-				const struct BufferDocument *		bd,
+				const struct BufferDocument *	bd,
 				const TextParticule *		tp )
     {
     *pTaNew= *docGetTextAttributeByNumber( bd, tp->tpTextAttrNr );
@@ -330,3 +334,38 @@ const DocumentFont * docGetFontOfAttribute(
     return df;
     }
 
+const ItemShading * docdocGetbackgroundShading(
+			const struct BufferDocument *	bd,
+			const struct BufferItem *	paraNode,
+			const TextAttribute *		ta )
+    {
+    RGB8Color				back;
+
+    const ItemShading *			is= (ItemShading *)0;
+
+    utilRGB8SolidWhite( &back );
+
+    is= docGetItemShadingByNumber( bd, ta->taShadingNumber );
+    if  ( is && is->isPattern == DOCspSOLID )
+	{ return is;	}
+
+    is= docGetItemShadingByNumber( bd, paraNode->biParaProperties->ppShadingNumber );
+    if  ( is && is->isPattern == DOCspSOLID )
+	{ return is;	}
+
+    if  ( paraNode->biParaProperties->ppTableNesting > 0 )
+	{
+	const BufferItem *	cellNode= paraNode->biParent;
+	const BufferItem *	rowNode= cellNode->biParent;
+
+	is= docGetItemShadingByNumber( bd, cellNode->biCellProperties->cpShadingNumber );
+	if  ( is && is->isPattern == DOCspSOLID )
+	    { return is;	}
+
+	is= docGetItemShadingByNumber( bd, rowNode->biRowProperties->rpShadingNumber );
+	if  ( is && is->isPattern == DOCspSOLID )
+	    { return is;	}
+	}
+
+    return (ItemShading *)0;
+    }

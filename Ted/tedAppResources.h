@@ -49,8 +49,21 @@ typedef struct TedAppResources
     char *			tarPdfOutlineString;
     int				tarPdfOutlineInt;
 
+				/**
+				 * Use PDFmarks to make the PostScript
+				 * output close to the PDF-UA standard 
+				 * when it is converted to PDF with a 
+				 * recent version of GhostScript (10+)
+				 */
     char *			tarPdfMarkContentString;
     int				tarPdfMarkContentInt;
+
+				/**
+				 * In combination with tarPdfMarkContent=1,
+				 * we mark invisible text as an artifact.
+				 */
+    char *			tarPdfMarkInvisibleAsArtifactString;
+    int				tarPdfMarkInvisibleAsArtifactInt;
 
     char *			tarOverridePaperSizeString;
     int				tarOverridePaperSizeInt;

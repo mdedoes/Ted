@@ -83,6 +83,10 @@ void tedDetermineDefaultSettings(	TedAppResources *	tar )
 					    tar->tarPdfMarkContentString ) )
 	{ SDEB(tar->tarPdfMarkContentString);	}
 
+    if  ( appDetermineBoolean( &(tar->tarPdfMarkInvisibleAsArtifactInt),
+					    tar->tarPdfMarkInvisibleAsArtifactString ) )
+	{ SDEB(tar->tarPdfMarkInvisibleAsArtifactString);	}
+
     if  ( appDetermineBoolean( &(tar->tarOverridePaperSizeInt),
 					    tar->tarOverridePaperSizeString ) )
 	{ SDEB(tar->tarOverridePaperSizeString);	}

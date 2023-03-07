@@ -116,4 +116,9 @@ extern int docGetSelectionAttributes(
 				struct BufferDocument *		bd,
 				const struct DocumentSelection * ds );
 
+extern const struct ItemShading * docdocGetbackgroundShading(
+				const struct BufferDocument *	bd,
+				const struct BufferItem *	paraNode,
+				const struct TextAttribute *	ta );
+
 #   endif

@@ -15,8 +15,12 @@
 #   include	<docTextRun.h>
 #   include	<docTextLine.h>
 #   include	<psTextExtents.h>
+#   include	<docAttributes.h>
 #   include	"docParticuleData.h"
+#   include	"layoutContext.h"
 #   include	<psPrint.h>
+#   include	<psShading.h>
+#   include	<docItemShading.h>
 
 #   include	<docDebug.h>
 #   include	<appDebugon.h>
@@ -26,6 +30,32 @@
 /*  Print a string.							*/
 /*									*/
 /************************************************************************/
+
+static int docPsPrintFgInvisible(
+			const struct BufferDocument *	bd,
+			const struct BufferItem *	paraNode,
+			const TextAttribute *		ta )
+    {
+    RGB8Color				back;
+    RGB8Color				fore;
+
+    const ItemShading *			is;
+
+    utilRGB8SolidWhite( &back );
+
+    is= docdocGetbackgroundShading( bd, paraNode, ta );
+    if  ( is && is->isPattern == DOCspSOLID )
+	{
+	int	isFilled= 0;
+
+	if  ( docGetSolidRgbShadeOfItem( &isFilled, &back, bd, is ) )
+	    { LDEB(1);	}
+	}
+
+    docGetColorByNumber( &fore, bd, ta->taTextColorNumber );
+
+    return fore.rgb8Red == back.rgb8Red && fore.rgb8Green == back.rgb8Green && fore.rgb8Blue == back.rgb8Blue;
+    }
 
 static void docPsPrintString(	const DrawTextLine *		dtl,
 				const ParticuleData *		pd,
@@ -40,9 +70,18 @@ static void docPsPrintString(	const DrawTextLine *		dtl,
     DrawingContext *		dc= dtl->dtlDrawingContext;
     int				fontSizeTwips= TA_FONT_SIZE_TWIPS( ta );
 
+    const int			asArtifact= ps->psTagDocumentStructure &&
+					ps->psMarkInvisibleAsArtifact &&
+					! ps->psInArtifact &&
+					docPsPrintFgInvisible( dc->dcLayoutContext->lcDocument, dtl->dtlParaNode, ta );
+
     if  ( len > 0 )
 	{
 	int			y;
+
+	if  ( asArtifact					&&
+	      docPsPrintBeginArtifact( ps )			)
+	    { LDEB(-1);	}
 
 	docDrawSetFont( dc, (void *)ps, textAttrNr, ta );
 	docDrawSetColorNumber( dc, (void *)ps, ta->taTextColorNumber );
@@ -58,6 +97,10 @@ static void docPsPrintString(	const DrawTextLine *		dtl,
 	psMoveShowString( ps, s, len, x0Twips+ pd->pdLeftBorderWidth, y );
 
 	ps->psLastPageMarked= ps->psPagesPrinted;
+
+	if  ( asArtifact					&&
+	      docPsPrintEndArtifact( ps )			)
+	    { LDEB(1);	}
 	}
 
     return;

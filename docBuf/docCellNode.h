@@ -125,6 +125,8 @@ typedef struct CellNode
 #   define	biCellTailX		BIU.biuCell.bcTailX
 #   define	biCellColspan		BIU.biuCell.bcColspan
 
+# define biCellProperties	BIU.biuCell.bcProperties
+
 /************************************************************************/
 
 # define docIsMergedCell( node ) ( \

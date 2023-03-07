@@ -27,6 +27,7 @@ extern int docPsPrintDocument(
 			double				shadingMesh,
 			int				emitOutline,
 			int				markContent,
+			int				markInvisibleAsArtifact,
 			const struct LayoutContext *	lc,
 			const struct PrintGeometry *	pg );
 

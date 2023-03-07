@@ -1221,19 +1221,23 @@ docFixedNote.o: \
     docFixedNote.c
 
 docGetFont.o: \
+    ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
     docAttributes.h \
+    ../docBase/docCellProperties.h \
     ../docBase/docDocumentProperties.h \
     ../docBase/docInsertedObjectList.h \
+    ../docBase/docItemShading.h \
     ../docBase/docLayoutPosition.h \
     ../docBase/docListLevel.h \
     ../docBase/docListNumberTree.h \
     ../docBase/docNotesProperties.h \
     ../docBase/docParaProperties.h \
+    ../docBase/docRowProperties.h \
     ../docBase/docSelectionScope.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docTextParticule.h \
@@ -1261,6 +1265,7 @@ docGetFont.o: \
     ../textEncoding/textOfficeCharset.h \
     ../utilGeo/geoDocumentPageSetup.h \
     ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/psShading.h \
     ../utilPs/textAttribute.h \
     docGetFont.c
 
