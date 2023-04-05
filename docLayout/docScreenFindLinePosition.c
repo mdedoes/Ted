@@ -574,13 +574,13 @@ static int docFindPositionStartTextLine(
 							    &drInflated ) )
 	{ return SCANadviceSKIP;	}
 
-    dtl->dtlDrawParticulesSeparately= docScreenDrawParticulesSeparately(
-					dtl->dtlParaNode, dtl->dtlTextLine );
-
     {
     const DrawingContext *	dc= dtl->dtlDrawingContext;
     const LayoutContext *	lc= dc->dcLayoutContext;
     int				xPixels;
+
+    dtl->dtlDrawParticulesSeparately= dc->dcDrawParticulesSeparately ||
+	    docScreenDrawParticulesSeparately( dtl->dtlParaNode, dtl->dtlTextLine );
 
     xPixels= docLayoutXPixels( lc, x0Twips );
 

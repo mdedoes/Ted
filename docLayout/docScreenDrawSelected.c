@@ -53,8 +53,8 @@ static int docStartTextLineSelected(
 		dc->dcClipRect, &(dtl->dtlLineFrameRectanglePixels) )	)
 	{ return SCANadviceSKIP;	}
 
-    dtl->dtlDrawParticulesSeparately= docScreenDrawParticulesSeparately(
-					dtl->dtlParaNode, dtl->dtlTextLine );
+    dtl->dtlDrawParticulesSeparately= dc->dcDrawParticulesSeparately ||
+	    docScreenDrawParticulesSeparately( dtl->dtlParaNode, dtl->dtlTextLine );
 
     docSetLineRectangles( &lr, lc, dc->dcSelection,
 					dtl->dtlParaNode, dtl->dtlTextLine,

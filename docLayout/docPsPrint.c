@@ -375,6 +375,7 @@ int docPsPrintDocument(	struct SimpleOutputStream *	sos,
 			int				emitOutline,
 			int				markContent,
 			int				markInvisibleAsArtifact,
+			int				drawParticulesSeparately,
 			const LayoutContext *		lc,
 			const PrintGeometry *		pg )
     {
@@ -408,6 +409,7 @@ int docPsPrintDocument(	struct SimpleOutputStream *	sos,
     psInitPrintingState( &ps );
 
     dc.dcDocument= lc->lcDocument;
+    dc.dcDrawParticulesSeparately= drawParticulesSeparately;
 
     dc.dcSetColorRgb= docPsSetColorRgb;
     dc.dcSetFont= docPsSetFont;

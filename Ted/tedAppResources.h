@@ -65,6 +65,13 @@ typedef struct TedAppResources
     char *			tarPdfMarkInvisibleAsArtifactString;
     int				tarPdfMarkInvisibleAsArtifactInt;
 
+				/**
+				 * Draw text particules with the same attributes
+				 * separately. See docDraw.h for some more details.
+				 */
+    char *			tarDrawParticulesSeparatelyString;
+    int				tarDrawParticulesSeparatelyInt;
+
     char *			tarOverridePaperSizeString;
     int				tarOverridePaperSizeInt;
 

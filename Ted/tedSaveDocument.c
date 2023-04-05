@@ -148,6 +148,7 @@ int tedPrintDocument(	SimpleOutputStream *		sos,
     int				emitOutline= tar->tarPdfOutlineInt > 0;
     int				markContent= tar->tarPdfMarkContentInt > 0;
     int				markInvisibleAsArtifact= tar->tarPdfMarkInvisibleAsArtifactInt > 0;
+    int				drawParticulesSeparately= tar->tarDrawParticulesSeparatelyInt > 0;
 
     MemoryBuffer		fontDir;
 
@@ -168,6 +169,7 @@ int tedPrintDocument(	SimpleOutputStream *		sos,
 				    &fontDir,
 				    shadingMesh, emitOutline,
 				    markContent, markInvisibleAsArtifact,
+				    drawParticulesSeparately,
 				    &lc, pg ) )
 	{ LDEB(1); rval= -1;	}
 

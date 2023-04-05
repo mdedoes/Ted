@@ -815,8 +815,9 @@ int docDrawTextLine(	struct BufferItem *		paraNode,
 
     docSetDrawTextLine( &dtl, through, dc, tl, paraNode, bo, pf,
 							drLineFramePixels );
-    dtl.dtlDrawParticulesSeparately=
-		paraNode->biParaProperties->ppAlignment == DOCthaJUSTIFIED;
+
+    dtl.dtlDrawParticulesSeparately= dc->dcDrawParticulesSeparately ||
+		( paraNode->biParaProperties->ppAlignment == DOCthaJUSTIFIED );
 
     if  ( dc->dcDrawOrnaments				&&
 	  ( ( tl->tlFlags & TLflagSHADING )	||

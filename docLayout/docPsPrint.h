@@ -28,6 +28,7 @@ extern int docPsPrintDocument(
 			int				emitOutline,
 			int				markContent,
 			int				markInvisibleAsArtifact,
+			int				drawParticulesSeparately,
 			const struct LayoutContext *	lc,
 			const struct PrintGeometry *	pg );
 

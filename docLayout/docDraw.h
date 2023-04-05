@@ -205,6 +205,17 @@ typedef struct DrawingContext
     struct BufferDocument *	dcDocument;
 
 				/**
+				 *  Draw text particules separately: Normally,
+				 *  spans in a line with the same text attributes 
+				 *  are drawn as one string. This has the advantage, 
+				 *  that the actual implementation takes care of 
+				 *  most of the geometry calculations. However, in 
+				 *  certain cases the result is better if we draw the
+				 *  _words_ separately.
+				 */
+    int				dcDrawParticulesSeparately;
+
+				/**
 				 *  Is the current text attribute set to a value that 
 				 *  we can rely upon? (Font, Size)
 				 */

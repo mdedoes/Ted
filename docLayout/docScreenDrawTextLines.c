@@ -564,8 +564,8 @@ int docScreenDrawStartTextLine(	struct DrawTextLine *	dtl,
 	{ return 1;	}
 
     /*  1  */
-    dtl->dtlDrawParticulesSeparately= docScreenDrawParticulesSeparately(
-					dtl->dtlParaNode, dtl->dtlTextLine );
+    dtl->dtlDrawParticulesSeparately= dc->dcDrawParticulesSeparately ||
+	    docScreenDrawParticulesSeparately( dtl->dtlParaNode, dtl->dtlTextLine );
 
 #   define	DRAW_DIAGNOSTIC_BACKGROUND	0
 #   if		DRAW_DIAGNOSTIC_BACKGROUND
