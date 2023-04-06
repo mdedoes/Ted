@@ -187,8 +187,23 @@ int psMoveShowString(	PrintingState *		ps,
 
 	    while( d+ lt < len && s[d+ lt] != ' ' )
 		{ lt++;	}
+	    if  ( lt > 0 )
+		{
+		if  ( moved )
+		    {
+		    if  ( psPrintStringValue( ps, s+ d, lt, utf8 ) )
+			{ return -1;	}
+		    if  ( sioOutPrintf( ps->psSos, " %s\n", "utf8show" ) < 0 )
+			{ return -1;	}
+		    }
+		else{
+		    if  ( psMovePrintString( ps, s+ d, lt, utf8, "mvsu", x, y ) )
+			{ return -1;	}
+		    moved= 1;
+		    }
+		}
 
-	    ls= lt;
+	    ls= 0; d += lt;
 	    while( d+ ls < len && s[d+ ls] == ' ' )
 		{ ls++;	}
 	    if  ( ls > 0 )
