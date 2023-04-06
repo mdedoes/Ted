@@ -269,7 +269,8 @@ extern int psPrintPdfMarkStringValue(
 
 extern int psPrintStringValue(		PrintingState *		ps,
 					const char *		s,
-					int			len );
+					int			len,
+					int			utf8 );
 
 extern int psMoveShowString(		PrintingState *		ps,
 					const char *		s,
