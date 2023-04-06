@@ -25,8 +25,19 @@ struct TextAttribute;
 
 #   define	FACElenID	24
 
+			/**
+			 *  Unicodes per page
+			 */
 # define UPP		256
+
+			/**
+			 *  The page for unicode value u
+			 */
 # define UtoPAGE( u )	((u)/UPP)
+
+			/**
+			 *  The number of pages for a 16 bit font
+			 */
 # define UNPAGE		(UtoPAGE( 256*256- 1 )+1)
 
 typedef struct FaceReference
