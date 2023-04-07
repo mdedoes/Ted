@@ -206,19 +206,17 @@ int psMoveShowString(	PrintingState *		ps,
 	    ls= 0; d += lt;
 	    while( d+ ls < len && s[d+ ls] == ' ' )
 		{ ls++;	}
-	    if  ( ls > 0 )
+	    if  ( ls > 0 && d+ ls < len ) /* No need to print trailing spaces */
 		{
-		const int	lw= ( d+ ls < len ) ? ls : lt; /* No need to print trailing spaces */
-
 		if  ( moved )
 		    {
-		    if  ( psPrintStringValue( ps, s+ d, lw, utf8 ) )
+		    if  ( psPrintStringValue( ps, s+ d, ls, utf8 ) )
 			{ return -1;	}
 		    if  ( sioOutPrintf( ps->psSos, " %s\n", "utf8show" ) < 0 )
 			{ return -1;	}
 		    }
 		else{
-		    if  ( psMovePrintString( ps, s+ d, lw, utf8, "mvsu", x, y ) )
+		    if  ( psMovePrintString( ps, s+ d, ls, utf8, "mvsu", x, y ) )
 			{ return -1;	}
 		    moved= 1;
 		    }

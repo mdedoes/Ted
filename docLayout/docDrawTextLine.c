@@ -807,7 +807,7 @@ int docDrawTextLine(	struct BufferItem *		paraNode,
 
     ParticuleData *		pd= (ParticuleData *)0;
     int				part= tl->tlFirstParticule;
-
+    const int			isLast= tl- paraNode->biParaLines < paraNode->biParaLineCount- 1;
 
     DrawTextLine		dtl;
 
@@ -817,7 +817,7 @@ int docDrawTextLine(	struct BufferItem *		paraNode,
 							drLineFramePixels );
 
     dtl.dtlDrawParticulesSeparately= dc->dcDrawParticulesSeparately ||
-		( paraNode->biParaProperties->ppAlignment == DOCthaJUSTIFIED );
+		( paraNode->biParaProperties->ppAlignment == DOCthaJUSTIFIED && ! isLast );
 
     if  ( dc->dcDrawOrnaments				&&
 	  ( ( tl->tlFlags & TLflagSHADING )	||

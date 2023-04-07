@@ -556,8 +556,11 @@ static int docScreenLayoutLine(	TextLine *			tl,
 				LineLayoutJob *			llj )
     {
     const LayoutContext *	lc= llj->lljLayoutContext;
-    const ParagraphProperties *	pp= llj->lljParaNode->biParaProperties;
+    BufferItem *		paraNode= llj->lljParaNode;
+    const ParagraphProperties *	pp= paraNode->biParaProperties;
     const ParagraphFrame *	pf= llj->lljParagraphFrame;
+
+    const int			isLast= tl- paraNode->biParaLines < paraNode->biParaLineCount- 1;
 
     int				res;
 
@@ -579,7 +582,7 @@ static int docScreenLayoutLine(	TextLine *			tl,
     docLineTextRectangleTwips( &(lsl.lslLineRectangle),
 						&lpTop, &lpBelowLine, tl, pf );
 
-    if  ( pp->ppAlignment == DOCthaJUSTIFIED )
+    if  ( pp->ppAlignment == DOCthaJUSTIFIED && ! isLast )
 	{ lsl.lslScanFlags= FLAGpsSCAN_RUN_SEPARATELY;	}
     else{ lsl.lslScanFlags= FLAGpsSCAN_COMBINE_LINES;	}
 
@@ -587,7 +590,7 @@ static int docScreenLayoutLine(	TextLine *			tl,
     lsl.lslXPixels= docLayoutXPixels( lc, lsl.lslXTwips );
 
     res= docScanLineDisplayOrder( lc->lcDocument,
-				llj->lljParaNode, tl,
+				paraNode, tl,
 				(struct DocumentSelection *)0, lsl.lslScanFlags,
 				docPlaceLineParticule,
 				(ParaFieldVisitor)0,
