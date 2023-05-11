@@ -52,7 +52,6 @@ int docLayoutTab(	LineRun *			lrTab,
     int				textAttrNr;
     const TextAttribute *	ta;
 
-    int				tabKind;
     const int			bulletX= llj->lljBulletTabX;
 
     /* Determine the next tab stop. It might be a calculated one */
@@ -61,9 +60,10 @@ int docLayoutTab(	LineRun *			lrTab,
 	{ LDEB(dp->dpTabIntervalTwips); return -1;	}
 
     /* Does the tab derived from a negative first indent apply? */
+    /* Is it before the tab that we found?			*/
     if  ( bulletX > 0				&&
 	  lrTab->lrRectangle.drX0 < bulletX	&&
-	  bulletX < lrTab->lrRectangle.drX1	)
+	  bulletX < ts.tsOffset			)
 	{
 	docCalculatedTabStop( &ts, bulletX );
 
@@ -84,11 +84,7 @@ int docLayoutTab(	LineRun *			lrTab,
     lrTab->lrParaNode->biParaParticules[part].tpObjectNumber= tab;
     lrTab->lrTailParticule= part+ 1;
 
-    if  ( tab >= 0 )
-	{ tabKind= ts.tsAlignment;	}
-    else{ tabKind= DOCtaLEFT;	}
-
-    if  ( tabKind == DOCtaLEFT )
+    if  ( ts.tsAlignment == DOCtaLEFT )
 	{
 	lrTxt->lrRectangle.drX0= lrTab->lrRectangle.drX1;
 	lrTxt->lrRectangle.drX1= lrTxt->lrRectangle.drX0;
@@ -101,9 +97,9 @@ int docLayoutTab(	LineRun *			lrTab,
     pdTab->pdAfi= afi;
     pdTab->pdX0= lrTab->lrRectangle.drX0;
     pdTab->pdTwipsWide= lrTab->lrRectangle.drX1- lrTab->lrRectangle.drX0;
-    pdTab->pdTabKind= tabKind;
+    pdTab->pdTabKind= ts.tsAlignment;
 
-    *pTabKind= tabKind;
+    *pTabKind= ts.tsAlignment;
     return 1;
     }
 
