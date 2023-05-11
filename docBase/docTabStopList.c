@@ -195,7 +195,6 @@ int docNextTabStop(	TabStop *			pTs,
 	    {
 	    return docNextCalculatedTabStop( pTs, pX, pTab,
 						tabInterval, xPosition );
-	    return 0;
 	    }
 
 	*pTs= *ts;

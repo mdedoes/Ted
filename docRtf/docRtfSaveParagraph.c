@@ -401,7 +401,7 @@ int docRtfSaveTabStopList( 	RtfWriter *		rw,
 		{ LLLDEB(scope,TABpropLEADER,ts->tsLeader); return -1; }
 	    }
 
-	if  ( docRtfWriteProperty( rw, scope,
+	if  ( ts->tsFromStyleOrList && docRtfWriteProperty( rw, scope,
 				    TABpropFROM_STYLE, ts->tsFromStyleOrList ) )
 	    {
 	    LLLDEB(scope,TABpropFROM_STYLE,ts->tsFromStyleOrList);

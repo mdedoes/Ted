@@ -53,22 +53,22 @@ int docLayoutTab(	LineRun *			lrTab,
     const TextAttribute *	ta;
 
     int				tabKind;
-    const int			bullet= llj->lljBulletTabX;
+    const int			bulletX= llj->lljBulletTabX;
 
-    if  ( bullet > 0 && lrTab->lrRectangle.drX0 < bullet )
+    /* Determine the next tab stop. It might be a calculated one */
+    if  ( docNextTabStop( &ts, &(lrTab->lrRectangle.drX1), &tab, tsl,
+		    dp->dpTabIntervalTwips, lrTab->lrRectangle.drX0 ) )
+	{ LDEB(dp->dpTabIntervalTwips); return -1;	}
+
+    /* Does the tab derived from a negative first indent apply? */
+    if  ( bulletX > 0				&&
+	  lrTab->lrRectangle.drX0 < bulletX	&&
+	  bulletX < lrTab->lrRectangle.drX1	)
 	{
-	docCalculatedTabStop( &ts, bullet );
+	docCalculatedTabStop( &ts, bulletX );
 
 	tab= -1;
 	lrTab->lrRectangle.drX1= ts.tsOffset;
-	}
-    else{
-	if  ( docNextTabStop( &ts, &(lrTab->lrRectangle.drX1), &tab, tsl,
-			dp->dpTabIntervalTwips, lrTab->lrRectangle.drX0 ) )
-	    {
-	    LDEB(dp->dpTabIntervalTwips);
-	    lrTab->lrRectangle.drX1= lrTab->lrRectangle.drX0+ 720;
-	    }
 	}
 
     if  ( ( tab < 0 || ts.tsAlignment == DOCtaLEFT )	&&
