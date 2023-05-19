@@ -120,7 +120,7 @@ int tedFinishDocumentSetup(	EditDocument *		ed )
     /*  1  */
     if  ( ! docGotoFirstPosition( &dpFirst, bd->bdBody.dtRoot ) )
 	{ tedInitialSelect( ed, &dpFirst, &lc );	}
-    else{ docListNode( 0, bd->bdBody.dtRoot, 0 );	}
+    else{ docListNode( bd, 0, bd->bdBody.dtRoot, 0 );	}
 
     /*  2  */
     if  ( dp->dpIsDocumentTemplate )
@@ -131,8 +131,8 @@ int tedFinishDocumentSetup(	EditDocument *		ed )
 
 #   if VALIDATE_TREE
     LDEB(1);
-    if  ( docCheckNode( bodyNode ) )
-	{ LDEB(2); docListNode( 0, bodyNode ); abort();	}
+    if  ( docCheckNode( bd->bdBody.dtRoot, bd, 1 ) )
+	{ LDEB(2); docListNode( bd, 0, bd->bdBody.dtRoot, 0 ); abort();	}
 #   endif
     }
 
@@ -359,7 +359,7 @@ int tedLayoutDocument(		const EditApplication *		ea,
 					rootNode->biTopPosition.lpPage,
 					rootNode->biBelowPosition.lpPage );
 
-    /* LDEB(1); docListNode(0,rootNode,1); */
+    /* LDEB(1); docListNode(bd,0,rootNode,1); */
     /* LDEB(1); docListFieldsOfDocument(bd); */
 
   ready:

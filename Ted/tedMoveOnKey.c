@@ -154,7 +154,7 @@ static void tedMoveOnLeftKey(	struct EditDocument *		ed,
 				const SelectionGeometry *	sg )
     {
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    struct BufferDocument *		bd= td->tdDocument;
+    struct BufferDocument *	bd= td->tdDocument;
 
     const int			lastLine= 1;
     DocumentPosition		dpNew;
@@ -173,10 +173,10 @@ static void tedMoveOnLeftKey(	struct EditDocument *		ed,
 	  ! headAfterBreak		&&
 	  ! headAtLineTail		)
 	{
-	const int	lastLine= 0;
+	const int	noLastLine= 0;
 
 	/*  To same position on previous line */
-	tedInputChangeSelection( ed, state, ds, &(ds->dsHead), lastLine );
+	tedInputChangeSelection( ed, state, ds, &(ds->dsHead), noLastLine );
 	return;
 	}
 
@@ -205,9 +205,9 @@ static void tedMoveOnRightKey(	struct EditDocument *		ed,
 				const SelectionGeometry *	sg )
     {
     TedDocument *		td= (TedDocument *)ed->edPrivateData;
-    struct BufferDocument *		bd= td->tdDocument;
+    struct BufferDocument *	bd= td->tdDocument;
 
-    const int			lastLine= 0;
+    const int			noLastLine= 0;
     DocumentPosition		dpNew;
 
     int				headAtLineHead;
@@ -239,7 +239,7 @@ static void tedMoveOnRightKey(	struct EditDocument *		ed,
 	    { return;	}
 	}
 
-    tedInputChangeSelection( ed, state, ds, &dpNew, lastLine );
+    tedInputChangeSelection( ed, state, ds, &dpNew, noLastLine );
 
     return;
     }
@@ -486,13 +486,13 @@ static void tedMoveOnPageDownKey( struct EditDocument *		ed,
 	page= pg.pgTopPosition.lpPage+ 1;
 	while( page <= bodyNode->biBelowPosition.lpPage )
 	    {
-	    int		res;
+	    int		topRes;
 
-	    res= docGetTopOfColumn( &dpNew, &lineNew, &partNew,
+	    topRes= docGetTopOfColumn( &dpNew, &lineNew, &partNew,
 							bd, page, 0 );
-	    if  ( res < 0 )
-		{ LDEB(res); return;	}
-	    if  ( res == 0 )
+	    if  ( topRes < 0 )
+		{ LDEB(topRes); return;	}
+	    if  ( topRes == 0 )
 		{
 		tedInputChangeSelection( ed, state, ds,
 						    &dpNew, lastLine );

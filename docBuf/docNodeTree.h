@@ -65,7 +65,8 @@ extern int docSplitGroupNodeAtLevel(	struct BufferDocument *	bd,
 					int			n,
 					int			level );
 
-extern int docMergeGroupNodes(		struct BufferItem *	to,
+extern int docMergeGroupNodes(		struct BufferDocument *	bd,
+					struct BufferItem *	to,
 					struct BufferItem *	from );
 
 extern struct BufferItem * docNextParagraph(	struct BufferItem *	node );

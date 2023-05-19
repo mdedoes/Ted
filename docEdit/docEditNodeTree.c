@@ -6,6 +6,8 @@
 
 #   include	"docEditConfig.h"
 
+#   include	<stdlib.h>
+
 #   include	<docTreeNode.h>
 #   include	<docNodeTree.h>
 #   include	"docEdit.h"
@@ -159,8 +161,8 @@ int docRemoveSelectionTail(	EditOperation *	eo )
 LDEB(eo->eoTailDp.dpNode->biParaProperties->ppTableNesting);
 LDEB(lParaNode->biParaProperties->ppTableNesting);
 SDEB(docLevelStr(eo->eoTailDp.dpNode->biParent->biLevel));
-	    if  ( docMergeGroupNodes( eo->eoTailDp.dpNode->biParent,
-							    lastParent ) )
+	    if  ( docMergeGroupNodes( eo->eoDocument,
+			eo->eoTailDp.dpNode->biParent, lastParent ) )
 		{ LDEB(mergeTail); return -1;	}
 
 	    sectionsDeleted= 0;
@@ -388,8 +390,8 @@ int docRollNodeChildren(	EditOperation *		eo,
 	{ by= by- count;	}
 
 #   if VALIDATE_TREE
-    if  ( docCheckNode( parentNode ) )
-	{ LDEB(2); docListNode( 0, parentNode ); abort(); }
+    if  ( docCheckNode( parentNode, eo->eoDocument, 1 ) )
+	{ LDEB(2); docListNode( eo->eoDocument, 0, parentNode, 0 ); abort(); }
 #   endif
 
     if  ( docSet1DocumentCopyJob( &dcj, eo, CFH_COPY ) )
@@ -453,8 +455,8 @@ int docRollNodeChildren(	EditOperation *		eo,
 	{ docDelimitTables( parentNode, recursively );	}
 
 #   if VALIDATE_TREE
-    if  ( docCheckNode( parentNode ) )
-	{ LDEB(2); docListNode( 0, parentNode ); abort(); }
+    if  ( docCheckNode( parentNode, eo->eoDocument, 1 ) )
+	{ LDEB(2); docListNode( eo->eoDocument, 0, parentNode, 0 ); abort(); }
 #   endif
 
   ready:

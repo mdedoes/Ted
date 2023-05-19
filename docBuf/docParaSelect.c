@@ -250,7 +250,7 @@ int docParaLastStroff(	const struct BufferItem *	paraNode )
     int		part= paraNode->biParaParticuleCount- 1;
 
     if  ( part < 0 )
-	{ LDEB(part); docListNode(0,paraNode,0); return -1;	}
+	{ LDEB(part); docListNode((const struct BufferDocument *)0,0,paraNode,0); return -1;	}
 
     while( part >= 0							&&
 	   DOCisADMINISTRATIVE(paraNode->biParaParticules[part].tpKind)	)

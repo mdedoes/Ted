@@ -576,7 +576,7 @@ int docUndoUpdProps(	EditOperation *		eo,
 		    &(es->esNewDocPropMask) ) ) /* dp */
 		{
 		LDEB(1);
-		docListNode(0,es->esSourceDocument->bdBody.dtRoot,0);
+		docListNode(eo->eoDocument,0,es->esSourceDocument->bdBody.dtRoot,0);
 		rval= -1; goto ready;
 		}
 	    }

@@ -34,7 +34,7 @@ void docListParticule(	int			indent,
 		    docParaString( node, tp->tpStroff ) );
 	}
 
-    if  ( tp->tpKind == TPkindOBJECT		||
+    if  ( tp->tpKind == TPkindOBJECT	||
 	  tp->tpKind == TPkindFIELDHEAD	||
 	  tp->tpKind == TPkindFIELDTAIL	||
 	  tp->tpObjectNumber >= 0		)

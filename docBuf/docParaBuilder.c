@@ -189,7 +189,7 @@ int docParaBuilderStartExistingParagraph(
 	    if  ( bidiTreeBuilderStartExistingTree( pb->pbBidiTreeBuilder,
 					paraNode->biParaBidiRoot, stroff ) )
 		{
-		LDEB(1); docListNode(0,paraNode,0);
+		LDEB(1); docListNode(pb->pbDocument,0,paraNode,0);
 		return -1;
 		}
 	    }

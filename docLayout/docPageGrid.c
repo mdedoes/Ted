@@ -493,7 +493,12 @@ static int docRowParentFrame(	DocumentRectangle *		drRowParent,
 
     parentRow= parentNode->biParent;
     if  ( ! parentRow || ! docIsRowNode( parentRow ) )
-	{ XDEB(parentRow); return -1;	}
+	{
+	XDEB(parentRow);
+	/* Cope with strange documents: Skipped a row nesting level? */
+	*drRowParent= bf->bfContentRect;
+	return 0;
+	}
 
     if  ( docRowParentFrame( &drParentContent, parentRow, bf ) )
 	{ LDEB(1); return -1;	}

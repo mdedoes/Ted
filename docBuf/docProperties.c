@@ -81,7 +81,7 @@ static int docMergeScanParaAttributes(
 	}
 
     if  ( errors > 0 )
-	{ LDEB(errors); docListNode(0,paraNode,0);	}
+	{ LDEB(errors); docListNode(bd,0,paraNode,0);	}
 
     ls= paraNode->biParaProperties->ppListOverride;
     if  ( ls > 0 )

@@ -169,7 +169,7 @@ int docFindLineOfPosition(	int *				pLine,
 	const int checkGeometry= 0;
 
 	LLLLDEB(stroff,m,lastOne,paraNode->biParaLineCount);
-	docListNode( 0, paraNode, checkGeometry );
+	docListNode( (const struct BufferDocument *)0, 0, paraNode, checkGeometry );
 	return -1;
 	}
 

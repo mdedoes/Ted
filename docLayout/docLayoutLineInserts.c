@@ -93,7 +93,7 @@ int docPlaceLineInserts(	struct BufferDocument *		bd,
 	    {
 	    if  ( docSetPageOfField( &(bd->bdFieldList),
 					tp->tpObjectNumber,  lp->lpPage ) )
-		{ LDEB(lp->lpPage); docListNode(0,paraNode,0);	}
+		{ LDEB(lp->lpPage); docListNode(bd,0,paraNode,0);	}
 	    }
 
 	if  ( tp->tpKind == TPkindOBJECT )

@@ -25,13 +25,16 @@ WFLAGS=	-Wall			\
 	-Wnested-externs	\
 	-Wuninitialized		\
 	-Wundef			\
+	-Wshadow		\
+	-Wlogical-op		\
+	-Wnull-dereference	\
 	-Wwrite-strings		\
 	-Wold-style-definition	\
 	-Wno-missing-field-initializers	\
 	-Wredundant-decls	\
 	-Wno-unused-parameter	\
-	-fsanitize=address	\
 	-Wno-sign-compare	\
+	-fsanitize=address	\
 	-Werror
 
 #CFLAGS= $(WFLAGS) -g -O2 $(INCLUDES)

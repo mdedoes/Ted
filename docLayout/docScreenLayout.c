@@ -107,7 +107,7 @@ static int docScreenLayoutOpenParaFonts(
 	if  ( docOpenScreenFont( lc, textAttrNr0 ) < 0 )
 	    {
 	    LLDEB(part,textAttrNr0);
-	    docListNode(0,paraNode,0);
+	    docListNode(bd,0,paraNode,0);
 	    return -1;
 	    }
 	}
@@ -261,7 +261,7 @@ int docScreenLayoutDocumentBody( int *				pReachedBottom,
 				docDelimitTablesInShapeText, (void *)0 ) < 0 )
 	{ LDEB(1); return -1;	}
 
-    /* LDEB(1);docListNode(0,bd->bdBody.dtRoot); */
+    /* LDEB(1);docListNode(bd,0,bd->bdBody.dtRoot); */
 
     return 0;
     }

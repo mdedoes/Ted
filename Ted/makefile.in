@@ -26,6 +26,9 @@ WFLAGS=	-Wall			\
 	-Wnested-externs	\
 	-Wuninitialized		\
 	-Wundef			\
+	-Wshadow		\
+	-Wlogical-op		\
+	-Wnull-dereference	\
 	-Wwrite-strings		\
 	-Wold-style-definition	\
 	-Wno-missing-field-initializers	\
@@ -281,7 +284,7 @@ reconfigure:
 valgrind:
 	for m in ../*/makefile ; \
 	do \
-	    sed -i -e '/-fsanitize=address/d' $$m ; \
+	    sed -i -e '/\s-fsanitize=address/d' $$m ; \
 	done
 	rm ../*/*.[ao]
 	make refresh
@@ -1576,6 +1579,7 @@ tedEditOperation.o: \
     ../docBase/docTreeType.h \
     ../docBuf/docBuf.h \
     ../docBuf/docCellNode.h \
+    ../docBuf/docDebug.h \
     ../docBuf/docDocumentNote.h \
     ../docBuf/docDocumentTree.h \
     ../docBuf/docDrawingShapeList.h \

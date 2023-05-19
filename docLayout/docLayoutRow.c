@@ -569,7 +569,7 @@ int docLayoutRowNode(	int *				pStopCode,
     if  ( rp->rpCellCount < rowNode->biChildCount )
 	{
 	LLDEB(rp->rpCellCount,rowNode->biChildCount);
-	docListNode( 0, rowNode, 0 );
+	docListNode( lj->ljContext->lcDocument, 0, rowNode, 0 );
 	rowNode->biChildCount= rp->rpCellCount;
 	}
 

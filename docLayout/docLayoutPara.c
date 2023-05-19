@@ -352,7 +352,7 @@ int docLayoutParagraphLineExtents(
 	      tp->tpTextAttrNr >= count	)
 	    {
 	    LLLDEB(part,tp->tpTextAttrNr,count);
-	    docListNode(0,paraNode,0);
+	    docListNode(bd,0,paraNode,0);
 	    continue;
 	    }
 

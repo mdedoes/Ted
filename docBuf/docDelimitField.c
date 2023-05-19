@@ -433,7 +433,7 @@ static int docFindFieldParticules(
 	LLDEB(part0,dsField->dsHead.dpNode->biParaParticuleCount);
 	LSLDEB(tp->tpKind,docFieldKindStr(df->dfKind),TPkindFIELDHEAD);
 	LLDEB(tp->tpObjectNumber,df->dfFieldNumber);
-	docListNode(0,dsField->dsHead.dpNode,0);
+	docListNode((const struct BufferDocument *)0,0,dsField->dsHead.dpNode,0);
 	return -1;
 	}
 
@@ -467,7 +467,7 @@ static int docFindFieldParticules(
 	LLLDEB(part1,tp->tpStroff,dsField->dsTail.dpStroff);
 	LLLDEB(df->dfFieldNumber,df->dfTailPosition.epParaNr,
 						df->dfTailPosition.epStroff);
-	docListNode(0,dsField->dsTail.dpNode,0);
+	docListNode((const struct BufferDocument *)0,0,dsField->dsTail.dpNode,0);
 	return -1;
 	}
 

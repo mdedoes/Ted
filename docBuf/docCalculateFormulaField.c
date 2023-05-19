@@ -293,16 +293,16 @@ static int docCalculateFormulaFunction(
 	/*  3  */
 	if  ( fc->fcTakesRectangle )
 	    {
-	    int		step;
+	    int		rectStep;
 	    int		isBookmark= 0;
 
-	    step= docTryRectangleArgument( &dsSlice, &direction,
+	    rectStep= docTryRectangleArgument( &dsSlice, &direction,
 						&dpRelative, &isBookmark,
 						cf, formula, argc );
-	    if  ( step < 0 )
-		{ SLDEB(formula,step); done= -1; goto ready;	}
+	    if  ( rectStep < 0 )
+		{ SLDEB(formula,rectStep); done= -1; goto ready;	}
 
-	    formula += step; done += step;
+	    formula += rectStep; done += rectStep;
 
 	    if  ( isBookmark )
 		{ continue;	}
@@ -432,7 +432,8 @@ static int docCalculateFormulaOperand(
 	    if  ( ! formula[0] )
 		{ SDEB(formula); return -1;	}
 
-	    if  ( formula[1]		||
+	    /* Not at the end of the string and no double quote */
+	    if  ( formula[1]		&&
 		  formula[1] != '"'	)
 		{
 		if  ( utilMemoryBufferAppendBytes( &(fv->fvBuffer),

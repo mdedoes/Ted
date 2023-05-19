@@ -347,8 +347,8 @@ void docDeleteNodes(	struct BufferDocument *	bd,
     int		paragraphsDeleted= 0;
 
 #   if VALIDATE_TREE
-    if  ( docCheckNode( bd->bdBody.dtRoot ) )
-	{ LDEB(2); docListNode( 0, bd->bdBody.dtRoot ); abort(); }
+    if  ( docCheckNode( bd->bdBody.dtRoot, bd, 1 ) )
+	{ LDEB(2); docListNode( bd, 0, bd->bdBody.dtRoot, 0 ); abort(); }
 #   endif
 
     if  ( first > node->biChildCount )
@@ -397,8 +397,8 @@ void docDeleteNodes(	struct BufferDocument *	bd,
     docParagraphsDeleted( node, paragraphsDeleted );
 
 #   if VALIDATE_TREE
-    if  ( docCheckNode( bd->bdBody.dtRoot ) )
-	{ LDEB(2); docListNode( 0, bd->bdBody.dtRoot ); abort(); }
+    if  ( docCheckNode( bd->bdBody.dtRoot, bd, 1 ) )
+	{ LDEB(2); docListNode( bd, 0, bd->bdBody.dtRoot, 0 ); abort(); }
 #   endif
 
     return;
@@ -517,8 +517,8 @@ struct BufferItem * docInsertNode(
     int			paragraphsInserted;
 
 #   if VALIDATE_TREE
-    if  ( docCheckNode( bd->bdBody.dtRoot ) )
-	{ LDEB(2); docListNode( 0, bd->bdBody.dtRoot ); abort(); }
+    if  ( docCheckNode( bd->bdBody.dtRoot, bd, 1 ) )
+	{ LDEB(2); docListNode( bd, 0, bd->bdBody.dtRoot, 0 ); abort(); }
 #   endif
 
     if  ( ! docValidChildLevel( parent->biLevel, level ) )
@@ -579,8 +579,8 @@ struct BufferItem * docInsertNode(
 	}
 
 #   if VALIDATE_TREE
-    if  ( docCheckNode( bd->bdBody.dtRoot ) )
-	{ LDEB(2); docListNode( 0, bd->bdBody.dtRoot ); abort(); }
+    if  ( docCheckNode( bd->bdBody.dtRoot, bd, 1 ) )
+	{ LDEB(2); docListNode( bd, 0, bd->bdBody.dtRoot, 0 ); abort(); }
 #   endif
 
   ready:
@@ -817,8 +817,8 @@ int docSplitGroupNodeAtLevel(	struct BufferDocument *	bd,
 
 #   if VALIDATE_TREE
     SDEB(docLevelStr(bd->bdBody.dtRoot->biLevel));
-    if  ( docCheckNode( bd->bdBody.dtRoot ) )
-	{ LDEB(2); docListNode( 0, bd->bdBody.dtRoot ); abort(); }
+    if  ( docCheckNode( bd->bdBody.dtRoot, bd, 1 ) )
+	{ LDEB(2); docListNode( bd, 0, bd->bdBody.dtRoot, 0 ); abort(); }
 #   endif
 
     if  ( ! splitNode )
@@ -854,8 +854,8 @@ int docSplitGroupNodeAtLevel(	struct BufferDocument *	bd,
 
 #   if VALIDATE_TREE
     SDEB(docLevelStr(afterNode->biLevel));
-    if  ( docCheckNode( bd->bdBody.dtRoot ) )
-	{ LDEB(2); docListNode( 0, bd->bdBody.dtRoot ); abort(); }
+    if  ( docCheckNode( bd->bdBody.dtRoot, bd, 1 ) )
+	{ LDEB(2); docListNode( bd, 0, bd->bdBody.dtRoot, 0 ); abort(); }
 #   endif
 
     if  ( pBeforeNode )
@@ -872,7 +872,8 @@ int docSplitGroupNodeAtLevel(	struct BufferDocument *	bd,
 /*									*/
 /************************************************************************/
 
-int docMergeGroupNodes(		struct BufferItem *	to,
+int docMergeGroupNodes(		struct BufferDocument *	bd,
+				struct BufferItem *	to,
 				struct BufferItem *	from )
     {
     struct BufferItem **	freshChildren;
@@ -892,10 +893,10 @@ int docMergeGroupNodes(		struct BufferItem *	to,
 
 #   if VALIDATE_TREE
     SSDEB(docLevelStr(to->biLevel),docLevelStr(from->biLevel));
-    if  ( docCheckRootNode( to ) )
-	{ LDEB(2); docListRootNode( 0, to ); abort(); }
-    if  ( docCheckRootNode( from ) )
-	{ LDEB(2); docListRootNode( 0, from ); abort(); }
+    if  ( docCheckRootNode( to, bd, 1 ) )
+	{ LDEB(2); docListRootNode( bd, 0, to, 0 ); abort(); }
+    if  ( docCheckRootNode( from, bd, 1 ) )
+	{ LDEB(2); docListRootNode( bd, 0, from, 0 ); abort(); }
 #   endif
 
     freshChildren= (struct BufferItem **)realloc( to->biChildren,
@@ -947,10 +948,10 @@ int docMergeGroupNodes(		struct BufferItem *	to,
 
 #   if VALIDATE_TREE
     SSDEB(docLevelStr(to->biLevel),docLevelStr(from->biLevel));
-    if  ( docCheckRootNode( to ) )
-	{ LDEB(2); docListRootNode( 0, to ); abort(); }
-    if  ( docCheckRootNode( from ) )
-	{ LDEB(2); docListRootNode( 0, from ); abort(); }
+    if  ( docCheckRootNode( to, bd, 1 ) )
+	{ LDEB(2); docListRootNode( bd, 0, to, 0 ); abort(); }
+    if  ( docCheckRootNode( from, bd, 1 ) )
+	{ LDEB(2); docListRootNode( bd, 0, from, 0 ); abort(); }
 #   endif
 
     return 0;

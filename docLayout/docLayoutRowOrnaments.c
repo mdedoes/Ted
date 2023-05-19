@@ -670,7 +670,7 @@ void docLayoutCalculateRowTopInset(
 	if  ( ! cellNode->biCellProperties )
 	    {
 	    XDEB(cellNode->biCellProperties);
-	    LDEB(1);docListNode(0,rowNode,0);
+	    LDEB(1);docListNode(bd,0,rowNode,0);
 	    cellNode->biCellProperties= rowNode->biRowProperties->rpCells+ col;
 	    }
 

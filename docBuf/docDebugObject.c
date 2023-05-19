@@ -14,6 +14,8 @@
 #   include	"docDebug.h"
 #   include	<appDebugon.h>
 
+#   define	IS			2
+
 # ifdef __GNUC__
 # pragma GCC diagnostic push
 # pragma GCC diagnostic ignored "-Wunused-parameter"
@@ -79,18 +81,20 @@ void docListObjects( struct BufferDocument * bd )
 static void docListShape(	int				indent,
 				const DrawingShape *		ds )
     {
-    appDebug( "%*sSHAPE %4d\n", indent, "", ds->dsShapeNumber );
+    appDebug( "%*sSHAPE %4d\n", IS* indent, "", ds->dsShapeNumber );
 
     if  ( ds->dsChildCount > 0 )
 	{
 	int		ch;
 
-	appDebug( "%*s{\n", indent+ 4, "" );
+	indent++;
+
+	appDebug( "%*s{\n", IS* indent, "" );
 
 	for ( ch= 0; ch < ds->dsChildCount; ch++ )
-	    { docListShape( indent+ 4, ds->dsChildren[ch] ); }
+	    { docListShape( IS* indent, ds->dsChildren[ch] ); }
 
-	appDebug( "%*s}\n", indent+ 4, "" );
+	appDebug( "%*s}\n", IS* indent, "" );
 	}
     }
 
@@ -126,89 +130,84 @@ static int docFindParaObjects(	DocumentSelection *		ds,
 				const DocumentPosition *	dpFrom,
 				void *				through );
 
-static void docListShapeObjects(	DrawingShape *		dshp,
-					struct BufferDocument *	bd )
+static void docListParaObject(	int				indent,
+				const struct BufferDocument *	bd,
+				const InsertedObject *		io )
     {
-    DocumentSelection		ds;
+    switch( io->ioKind )
+	{
+	DrawingShape *	dshp;
 
-    if  ( docHeadPosition( &(ds.dsHead), dshp->dsDocumentTree.dtRoot ) )
-	{ LDEB(1); return;	}
+	case DOCokDRAWING_SHAPE:
+	    dshp= io->ioDrawingShape;
 
-    docFindFindNextInCurrentTree( &ds, &(ds.dsHead),
-					    bd, &(dshp->dsDocumentTree),
-					    docFindParaObjects, (void *)0 );
+	    appDebug( "%*s%s %4d\n",
+		    IS* indent, "",
+		    docObjectKindStr( io->ioKind ), dshp->dsShapeNumber );
+
+	    docListShape( indent+ 1, dshp );
+
+	    if  ( dshp->dsDocumentTree.dtRoot )
+		{ docListNode( bd, indent+ 1, dshp->dsDocumentTree.dtRoot, 0 );	}
+	    break;
+
+	case DOCokOLEOBJECT:
+	    switch( io->ioResultKind )
+		{
+		case DOCokDRAWING_SHAPE:
+		    dshp= io->ioDrawingShape;
+
+		    appDebug( "%*s%s -> %s %4d\n",
+			IS* indent, "",
+			docObjectKindStr( io->ioKind ),
+			docObjectKindStr( io->ioResultKind ),
+			dshp->dsShapeNumber );
+
+		    docListShape( indent+ 1, dshp );
+
+		    if  ( dshp->dsDocumentTree.dtRoot )
+			{ docListNode( bd, indent+ 1, dshp->dsDocumentTree.dtRoot, 0 );	}
+		    break;
+
+		default:
+		    appDebug( "%*s%s -> %s\n",
+			IS* indent, "",
+			docObjectKindStr( io->ioKind ),
+			docObjectKindStr( io->ioResultKind ) );
+		    break;
+		}
+	    break;
+
+	default:
+	    appDebug( "%*s%s\n",
+		IS* indent, "",
+		docObjectKindStr( io->ioKind ) );
+	    break;
+	}
     }
 
-static void docListParaObjects(	const struct BufferItem *	paraNode,
-				struct BufferDocument *	bd )
+void docListParaObjects(	int				indent,
+				const struct BufferItem *	paraNode,
+				const struct BufferDocument *	bd )
     {
     const TextParticule *	tp=  paraNode->biParaParticules;
     int				part;
 
     for ( part= 0; part < paraNode->biParaParticuleCount; tp++, part++ )
 	{
+	const char *		label= "PART";
 	const InsertedObject *	io;
 
 	if  ( tp->tpKind != TPkindOBJECT )
 	    { continue;	}
 
+	docListParticule( IS* indent+ IS, label, part, paraNode, tp );
+
 	io= docGetObject( bd, tp->tpObjectNumber );
 	if  ( ! io )
 	    { LXDEB(tp->tpObjectNumber,io); continue;	}
 
-	switch( io->ioKind )
-	    {
-	    DrawingShape *	dshp;
-
-	    case DOCokDRAWING_SHAPE:
-		dshp= io->ioDrawingShape;
-
-		appDebug( "%s - OBJECT %4d: %s %4d\n",
-			docTreeTypeStr( paraNode->biTreeType ),
-			tp->tpObjectNumber, docObjectKindStr( io->ioKind ),
-			dshp->dsShapeNumber );
-
-		docListShape( 4, dshp );
-
-		if  ( dshp->dsDocumentTree.dtRoot )
-		    { docListShapeObjects( dshp, bd );	}
-		break;
-
-	    case DOCokOLEOBJECT:
-		switch( io->ioResultKind )
-		    {
-		    case DOCokDRAWING_SHAPE:
-			dshp= io->ioDrawingShape;
-
-			appDebug( "%s - OBJECT %4d: %s -> %s %4d\n",
-			    docTreeTypeStr( paraNode->biTreeType ),
-			    tp->tpObjectNumber,
-			    docObjectKindStr( io->ioKind ),
-			    docObjectKindStr( io->ioResultKind ),
-			    dshp->dsShapeNumber );
-
-			docListShape( 4, dshp );
-
-			if  ( dshp->dsDocumentTree.dtRoot )
-			    { docListShapeObjects( dshp, bd );	}
-			break;
-
-		    default:
-			appDebug( "%s - OBJECT %4d: %s -> %s\n",
-			    docTreeTypeStr( paraNode->biTreeType ),
-			    tp->tpObjectNumber,
-			    docObjectKindStr( io->ioKind ),
-			    docObjectKindStr( io->ioResultKind ) );
-			break;
-		    }
-		break;
-
-	    default:
-		appDebug( "%s - OBJECT %4d: %s\n",
-			docTreeTypeStr( paraNode->biTreeType ),
-			tp->tpObjectNumber, docObjectKindStr( io->ioKind ) );
-		break;
-	    }
+	docListParaObject( indent+ 1, bd, io );
 	}
 
     return;
@@ -220,13 +219,13 @@ static void docListParaObjects(	const struct BufferItem *	paraNode,
 # endif
 
 static int docFindParaObjects(	DocumentSelection *		ds,
-				struct BufferItem *			paraNode,
+				struct BufferItem *		paraNode,
 				struct BufferDocument *		bd,
-				struct DocumentTree *			tree,
+				struct DocumentTree *		tree,
 				const DocumentPosition *	dpFrom,
 				void *				through )
     {
-    docListParaObjects( paraNode, bd );
+    docListParaObjects( 0, paraNode, bd );
     return 1;
     }
 

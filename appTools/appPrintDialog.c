@@ -1361,6 +1361,8 @@ void appRunPrintDialog(			EditDocument *		ed,
 
     const int				sheetSize= 0;
 
+    psInitPrintGeometry( &pg );
+
     appPrintJobForEditDocument( &pj, ed, &pg );
 
     /*  1  */

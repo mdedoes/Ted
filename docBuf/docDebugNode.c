@@ -157,7 +157,7 @@ static int docCheckChild(	const BufferItem *	parent,
 
 	if  ( tableNestingTree != tableNestingProp )
 	    {
-	    SLLDEB("#######",tableNestingTree,tableNestingProp);
+	    SLLDEB("####",tableNestingProp,tableNestingTree);
 	    if  ( tableNestingTree > 0 && tableNestingProp == 0 )
 		{
 		const BufferItem *	rowNode;
@@ -287,7 +287,7 @@ int docCheckNode(	const struct BufferItem *	node,
 	    if  ( ! docHeadPosition( &dp, (struct BufferItem *)node ) )
 		{
 		const struct BufferItem *	paraNode= dp.dpNode;
-		int			n= 1;
+		int				n= 1;
 
 		for (;;)
 		    {
@@ -331,7 +331,8 @@ int docCheckRootNode(	const struct BufferItem *		node,
     return docCheckNode( node, bd, checkGeometry );
     }
 
-static void docListChildren(	int				indent,
+static void docListChildren(	const struct BufferDocument *	bd,
+				int				indent,
 				const struct BufferItem *	node,
 				int				checkGeometry )
     {
@@ -351,7 +352,7 @@ static void docListChildren(	int				indent,
 	if  ( ! docIsRowNode( node ) )
 	    { lpHere= lpBelowChild;	}
 
-	docListNode( indent+ 1, node->biChildren[i], checkGeometry );
+	docListNode( bd, indent+ 1, node->biChildren[i], checkGeometry );
 	}
 
     if  ( node->biChildCount > 0 )
@@ -619,7 +620,8 @@ static int docGotParaBidiLevel(		void *		vps,
     return 0;
     }
 
-static void docListParaNode(	int				indent,
+static void docListParaNode(	const struct BufferDocument *	bd,
+				int				indent,
 				const struct BufferItem *	paraNode,
 				int				checkGeometry )
     {
@@ -720,6 +722,25 @@ static void docListParaNode(	int				indent,
 
     docListParaLines( indent, paraNode, checkGeometry );
 
+    if  ( bd )
+	{
+	int			part;
+	const TextParticule *	tp= paraNode->biParaParticules;
+	int			hasObject= 0;
+
+	for ( part= 0; part < paraNode->biParaParticuleCount; tp++, part++ )
+	    {
+	    if  ( tp->tpKind == TPkindOBJECT )
+		{ hasObject= 1;	}
+	    }
+
+	if  ( hasObject )
+	    {
+	    appDebug( "%*sobjects\n", IS* indent+ IS, "" );
+	    docListParaObjects( indent, paraNode, bd );
+	    }
+	}
+
     return;
     }
 
@@ -768,7 +789,8 @@ static void docListRowNodeSpecific(
 	{ SLLDEB("####", rowNode->biChildCount,rp->rpCellCount); }
     }
 
-void docListNode(	int				indent,
+void docListNode(	const struct BufferDocument *	bd,
+			int				indent,
 			const struct BufferItem *	node,
 			int				checkGeometry )
     {
@@ -797,7 +819,7 @@ void docListNode(	int				indent,
 	    appDebug( "%*s{ %4d children\n", IS* indent+ IS, "",
 						node->biChildCount );
 
-	    docListChildren( indent, node, checkGeometry );
+	    docListChildren( bd, indent, node, checkGeometry );
 
 	    break;
 
@@ -813,13 +835,13 @@ void docListNode(	int				indent,
 	    if  ( docIsRowNode( node ) )
 		{ docListRowNodeSpecific( indent, node );	}
 
-	    docListChildren( indent, node, checkGeometry );
+	    docListChildren( bd, indent, node, checkGeometry );
 	    }
 
 	    break;
 
 	case DOClevPARA:
-	    docListParaNode( indent, node, checkGeometry );
+	    docListParaNode( bd, indent, node, checkGeometry );
 	    break;
 
 	case DOClevOUT:
@@ -832,14 +854,15 @@ void docListNode(	int				indent,
     return;
     }
 
-void docListRootNode(	int				indent,
+void docListRootNode(	const struct BufferDocument *	bd,
+			int				indent,
 			const struct BufferItem *	node,
 			int				checkGeometry )
     {
     while( node->biParent )
 	{ node= node->biParent;	}
 
-    docListNode( indent, node, checkGeometry );
+    docListNode( bd, indent, node, checkGeometry );
 
     return;
     }

@@ -38,7 +38,7 @@ int docGetTreeOfNode(		struct DocumentTree **		pTree,
 	    {
 	    XXDEB(node,sectNode);
 	    if  ( node )
-		{ docListNode(0,node,0);	}
+		{ docListNode(bd,0,node,0);	}
 	    return -1;
 	    }
 

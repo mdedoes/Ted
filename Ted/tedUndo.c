@@ -66,10 +66,8 @@ static int tedStartUndoOperation( UndoOperation *	uo,
 
 #   if VALIDATE_TREE
     {
-    const struct BufferDocument *	bd= td->tdDocument;
-    LDEB(1);
-    if  ( docCheckNode( &(bd->bdItem) ) )
-	{ LDEB(2); docListNode( 0, &(bd->bdItem) ); abort(); }
+    if  ( docCheckNode( bd->bdBody.dtRoot, bd, 1 ) )
+	{ LDEB(2); docListNode( bd, 0, bd->bdBody.dtRoot, 0 ); abort(); }
     }
 #   endif
 

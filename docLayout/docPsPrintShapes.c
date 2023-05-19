@@ -522,6 +522,9 @@ int docPsPrintDrawDrawingShape(	const DocumentRectangle *	drOutside,
     int				line= 0;
     RGB8Color			rgb8Fill;
 
+    if  ( docPsPrintBeginArtifact( ps ) )
+	{ LDEB(-1); rval= -1; goto ready;	}
+
     switch( sd->sdShapeType )
 	{
 	case SHPtyGROUP:
@@ -531,12 +534,12 @@ int docPsPrintDrawDrawingShape(	const DocumentRectangle *	drOutside,
 
 	case 33:
 	    if  ( docPsPrintShapePath( ds, &SP_33, drOutside, dc, ps ) )
-		{ LDEB(1); rval= -1;	}
+		{ LDEB(sd->sdShapeType); rval= -1; goto ready;	}
 	    break;
 
 	case 34:
 	    if  ( docPsPrintShapePath( ds, &SP_34, drOutside, dc, ps ) )
-		{ LDEB(1); rval= -1;	}
+		{ LDEB(sd->sdShapeType); rval= -1; goto ready;	}
 	    break;
 
 	case SHPtyPICTURE_FRAME:
@@ -599,215 +602,215 @@ int docPsPrintDrawDrawingShape(	const DocumentRectangle *	drOutside,
 	case SHPtyACCENT_BORDER_CALLOUT_90:
 	case SHPtyTEXT_BOX:
 	    if  ( docPsPrintShapePath( ds, &SP_RECTANGLE, drOutside, dc, ps ) )
-		{ LDEB(1); rval= -1;	}
+		{ LDEB(sd->sdShapeType); rval= -1; goto ready;	}
 	    break;
 
 	case SHPtyDIAMOND:
 	case SHPtyFLOW_CHART_DECISION:
 	    if  ( docPsPrintShapePath( ds, &SP_DIAMOND, drOutside, dc, ps ) )
-		{ LDEB(1); rval= -1;	}
+		{ LDEB(sd->sdShapeType); rval= -1; goto ready;	}
 	    break;
 
 	case SHPtyISOSCELES_TRIANGLE:
 	case SHPtyFLOW_CHART_EXTRACT:
 	    if  ( docPsPrintShapePath( ds, &SP_ISOSCELES_TRIANGLE,
 							drOutside, dc, ps ) )
-		{ LDEB(1); rval= -1;	}
+		{ LDEB(sd->sdShapeType); rval= -1; goto ready;	}
 	    break;
 
 	case SHPtyFLOW_CHART_MERGE:
 	    if  ( docPsPrintShapePath( ds, &SP_FLOW_CHART_MERGE,
 							drOutside, dc, ps ) )
-		{ LDEB(1); rval= -1;	}
+		{ LDEB(sd->sdShapeType); rval= -1; goto ready;	}
 	    break;
 
 	case SHPtyRIGHT_TRIANGLE:
 	    if  ( docPsPrintShapePath( ds, &SP_RIGHT_TRIANGLE,
 							drOutside, dc, ps ) )
-		{ LDEB(1); rval= -1;	}
+		{ LDEB(sd->sdShapeType); rval= -1; goto ready;	}
 	    break;
 
 	case SHPtyPARALLELOGRAM:
 	case SHPtyFLOW_CHART_INPUT_OUTPUT:
 	    if  ( docPsPrintShapePath( ds, &SP_PARALLELOGRAM,
 							drOutside, dc, ps ) )
-		{ LDEB(1); rval= -1;	}
+		{ LDEB(sd->sdShapeType); rval= -1; goto ready;	}
 	    break;
 
 	case SHPtyTRAPEZOID:
 	case SHPtyFLOW_CHART_MANUAL_OPERATION:
 	    if  ( docPsPrintShapePath( ds, &SP_TRAPEZOID, drOutside, dc, ps ) )
-		{ LDEB(1); rval= -1;	}
+		{ LDEB(sd->sdShapeType); rval= -1; goto ready;	}
 	    break;
 
 	case SHPtyHEXAGON:
 	case SHPtyFLOW_CHART_PREPARATION:
 	    if  ( docPsPrintShapePath( ds, &SP_HEXAGON, drOutside, dc, ps ) )
-		{ LDEB(1); rval= -1;	}
+		{ LDEB(sd->sdShapeType); rval= -1; goto ready;	}
 	    break;
 
 	case SHPtyOCTAGON:
 	    if  ( docPsPrintShapePath( ds, &SP_OCTAGON, drOutside, dc, ps ) )
-		{ LDEB(1); rval= -1;	}
+		{ LDEB(sd->sdShapeType); rval= -1; goto ready;	}
 	    break;
 
 	case SHPtyPLUS_SIGN:
 	    if  ( docPsPrintShapePath( ds, &SP_PLUS_SIGN, drOutside, dc, ps ) )
-		{ LDEB(1); rval= -1;	}
+		{ LDEB(sd->sdShapeType); rval= -1; goto ready;	}
 	    break;
 
 	case SHPtyARROW:
 	    if  ( docPsPrintShapePath( ds, &SP_ARROW, drOutside, dc, ps ) )
-		{ LDEB(1); rval= -1;	}
+		{ LDEB(sd->sdShapeType); rval= -1; goto ready;	}
 	    break;
 
 	case SHPtyNOTCHED_RIGHT_ARROW:
 	    if  ( docPsPrintShapePath( ds, &SP_NOTCHED_RIGHT_ARROW,
 							drOutside, dc, ps ) )
-		{ LDEB(1); rval= -1;	}
+		{ LDEB(sd->sdShapeType); rval= -1; goto ready;	}
 	    break;
 
 	case SHPtyHOME_PLATE:
 	    if  ( docPsPrintShapePath( ds, &SP_HOME_PLATE, drOutside, dc, ps ) )
-		{ LDEB(1); rval= -1;	}
+		{ LDEB(sd->sdShapeType); rval= -1; goto ready;	}
 	    break;
 
 	case SHPtyCHEVRON:
 	    if  ( docPsPrintShapePath( ds, &SP_CHEVRON, drOutside, dc, ps ) )
-		{ LDEB(1); rval= -1;	}
+		{ LDEB(sd->sdShapeType); rval= -1; goto ready;	}
 	    break;
 
 	case SHPtyLEFT_ARROW:
 	    if  ( docPsPrintShapePath( ds, &SP_LEFT_ARROW, drOutside, dc, ps ) )
-		{ LDEB(1); rval= -1;	}
+		{ LDEB(sd->sdShapeType); rval= -1; goto ready;	}
 	    break;
 
 	case SHPtyRIGHT_ARROW_CALLOUT:
 	    if  ( docPsPrintShapePath( ds, &SP_RIGHT_ARROW_CALLOUT,
 							drOutside, dc, ps ) )
-		{ LDEB(1); rval= -1;	}
+		{ LDEB(sd->sdShapeType); rval= -1; goto ready;	}
 	    break;
 	case SHPtyLEFT_ARROW_CALLOUT:
 	    if  ( docPsPrintShapePath( ds, &SP_LEFT_ARROW_CALLOUT,
 							drOutside, dc, ps ) )
-		{ LDEB(1); rval= -1;	}
+		{ LDEB(sd->sdShapeType); rval= -1; goto ready;	}
 	    break;
 	case SHPtyUP_ARROW_CALLOUT:
 	    if  ( docPsPrintShapePath( ds, &SP_UP_ARROW_CALLOUT,
 							drOutside, dc, ps ) )
-		{ LDEB(1); rval= -1;	}
+		{ LDEB(sd->sdShapeType); rval= -1; goto ready;	}
 	    break;
 	case SHPtyDOWN_ARROW_CALLOUT:
 	    if  ( docPsPrintShapePath( ds, &SP_DOWN_ARROW_CALLOUT,
 							drOutside, dc, ps ) )
-		{ LDEB(1); rval= -1;	}
+		{ LDEB(sd->sdShapeType); rval= -1; goto ready;	}
 	    break;
 
 	case SHPtyLEFT_RIGHT_ARROW_CALLOUT:
 	    if  ( docPsPrintShapePath( ds, &SP_LEFT_RIGHT_ARROW_CALLOUT,
 							drOutside, dc, ps ) )
-		{ LDEB(1); rval= -1;	}
+		{ LDEB(sd->sdShapeType); rval= -1; goto ready;	}
 	    break;
 
 	case SHPtyUP_DOWN_ARROW_CALLOUT:
 	    if  ( docPsPrintShapePath( ds, &SP_UP_DOWN_ARROW_CALLOUT,
 							drOutside, dc, ps ) )
-		{ LDEB(1); rval= -1;	}
+		{ LDEB(sd->sdShapeType); rval= -1; goto ready;	}
 	    break;
 
 	case SHPtyQUAD_ARROW_CALLOUT:
 	    if  ( docPsPrintShapePath( ds, &SP_QUAD_ARROW_CALLOUT,
 							drOutside, dc, ps ) )
-		{ LDEB(1); rval= -1;	}
+		{ LDEB(sd->sdShapeType); rval= -1; goto ready;	}
 	    break;
 
 	case SHPtyLEFT_RIGHT_ARROW:
 	    if  ( docPsPrintShapePath( ds, &SP_LEFT_RIGHT_ARROW,
 							drOutside, dc, ps ) )
-		{ LDEB(1); rval= -1;	}
+		{ LDEB(sd->sdShapeType); rval= -1; goto ready;	}
 	    break;
 
 	case SHPtyUP_ARROW:
 	    if  ( docPsPrintShapePath( ds, &SP_UP_ARROW, drOutside, dc, ps ) )
-		{ LDEB(1); rval= -1;	}
+		{ LDEB(sd->sdShapeType); rval= -1; goto ready;	}
 	    break;
 
 	case SHPtyDOWN_ARROW:
 	    if  ( docPsPrintShapePath( ds, &SP_DOWN_ARROW, drOutside, dc, ps ) )
-		{ LDEB(1); rval= -1;	}
+		{ LDEB(sd->sdShapeType); rval= -1; goto ready;	}
 	    break;
 
 	case SHPtyUP_DOWN_ARROW:
 	    if  ( docPsPrintShapePath( ds, &SP_UP_DOWN_ARROW,
 							drOutside, dc, ps ) )
-		{ LDEB(1); rval= -1;	}
+		{ LDEB(sd->sdShapeType); rval= -1; goto ready;	}
 	    break;
 
 	case SHPtyQUAD_ARROW:
 	    if  ( docPsPrintShapePath( ds, &SP_QUAD_ARROW, drOutside, dc, ps ) )
-		{ LDEB(1); rval= -1;	}
+		{ LDEB(sd->sdShapeType); rval= -1; goto ready;	}
 	    break;
 
 	case SHPtyLEFT_RIGHT_UP_ARROW:
 	    if  ( docPsPrintShapePath( ds, &SP_LEFT_RIGHT_UP_ARROW,
 							drOutside, dc, ps ) )
-		{ LDEB(1); rval= -1;	}
+		{ LDEB(sd->sdShapeType); rval= -1; goto ready;	}
 	    break;
 
 	case SHPtyLEFT_UP_ARROW:
 	    if  ( docPsPrintShapePath( ds, &SP_LEFT_UP_ARROW,
 							drOutside, dc, ps ) )
-		{ LDEB(1); rval= -1;	}
+		{ LDEB(sd->sdShapeType); rval= -1; goto ready;	}
 	    break;
 
 	case SHPtyBENT_UP_ARROW:
 	    if  ( docPsPrintShapePath( ds, &SP_BENT_UP_ARROW,
 							drOutside, dc, ps ) )
-		{ LDEB(1); rval= -1;	}
+		{ LDEB(sd->sdShapeType); rval= -1; goto ready;	}
 	    break;
 
 	case SHPtyPENTAGON:
 	    if  ( docPsPrintShapePath( ds, &SP_PENTAGON, drOutside, dc, ps ) )
-		{ LDEB(1); rval= -1;	}
+		{ LDEB(sd->sdShapeType); rval= -1; goto ready;	}
 	    break;
 
 	case SHPtySTAR:
 	    if  ( docPsPrintShapePath( ds, &SP_STAR, drOutside, dc, ps ) )
-		{ LDEB(1); rval= -1;	}
+		{ LDEB(sd->sdShapeType); rval= -1; goto ready;	}
 	    break;
 
 	case SHPtySEAL4:
 	    if  ( docPsPrintShapePath( ds, &SP_SEAL4, drOutside, dc, ps ) )
-		{ LDEB(1); rval= -1;	}
+		{ LDEB(sd->sdShapeType); rval= -1; goto ready;	}
 	    break;
 
 	case 32:
 	case SHPtyLINE:
 	    if  ( docPsPrintShapePath( ds, &SP_LINE, drOutside, dc, ps ) )
-		{ LDEB(1); rval= -1;	}
+		{ LDEB(sd->sdShapeType); rval= -1; goto ready;	}
 	    break;
 
 	case SHPtyFLOW_CHART_MANUAL_INPUT:
 	    if  ( docPsPrintShapePath( ds, &SP_FLOW_CHART_MANUAL_INPUT,
 							drOutside, dc, ps ) )
-		{ LDEB(1); rval= -1;	}
+		{ LDEB(sd->sdShapeType); rval= -1; goto ready;	}
 	    break;
 	case SHPtyFLOW_CHART_OFF_PAGE_CONNECTOR:
 	    if  ( docPsPrintShapePath( ds, &SP_FLOW_CHART_OFF_PAGE_CONNECTOR,
 							drOutside, dc, ps ) )
-		{ LDEB(1); rval= -1;	}
+		{ LDEB(sd->sdShapeType); rval= -1; goto ready;	}
 	    break;
 
 	case SHPtyFLOW_CHART_PUNCHED_CARD:
 	    if  ( docPsPrintShapePath( ds, &SP_FLOW_CHART_PUNCHED_CARD,
 							drOutside, dc, ps ) )
-		{ LDEB(1); rval= -1;	}
+		{ LDEB(sd->sdShapeType); rval= -1; goto ready;	}
 	    break;
 
 	case SHPtyWEDGE_RECT_CALLOUT:
 	    if  ( docPsPrintShapePath( ds, &SP_WEDGE_RECT_CALLOUT,
 							drOutside, dc, ps ) )
-		{ LDEB(1); rval= -1;	}
+		{ LDEB(sd->sdShapeType); rval= -1; goto ready;	}
 	    break;
 
 	case SHPtyELLIPSE:
@@ -992,7 +995,13 @@ int docPsPrintDrawDrawingShape(	const DocumentRectangle *	drOutside,
 	{}
     */
 
+    if  ( docPsPrintEndArtifact( ps ) )
+	{ LDEB(-1); rval= -1; goto ready;	}
+
     ps->psLastPageMarked= ps->psPagesPrinted;
+
+  ready:
+
     return rval;
     }
 

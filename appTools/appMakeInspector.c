@@ -411,7 +411,7 @@ int appInspectorBuildSubjectPage(	AppInspector *		ai,
 
 AppInspector * appMakeInspectorTool( struct EditApplication *	ea,
 				    APP_WIDGET			option,
-				    const InspectorSubjectType * ist,
+				    const InspectorSubjectType * subjectTypes,
 				    int				subjectCount,
 				    int				rgbSubject,
 				    AppToolDestroy		destroy,
@@ -421,7 +421,7 @@ AppInspector * appMakeInspectorTool( struct EditApplication *	ea,
     AppInspector *		rval= (AppInspector *)0;
     AppInspector *		ai;
 
-    ai= appMakeInspector( ea, target, ist, subjectCount );
+    ai= appMakeInspector( ea, target, subjectTypes, subjectCount );
     if  ( ! ai )
 	{ LXDEB(subjectCount,ai); goto ready;	}
 

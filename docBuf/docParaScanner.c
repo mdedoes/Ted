@@ -941,7 +941,7 @@ int docScanLineDisplayOrder(
 	    LDEB(res);
 	    bidiListNode(paraNode->biParaBidiRoot,
 					    &(paraNode->biParaStringBuffer));
-	    docListNode(0,paraNode,0);
+	    docListNode(bd,0,paraNode,0);
 	    return -1;
 	    }
 

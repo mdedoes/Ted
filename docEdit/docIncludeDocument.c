@@ -594,7 +594,7 @@ static int docInsertMultipleParagraphs(
 	    if  ( mergedNode == nextRowNode )
 		{ break;	}
 
-	    if  ( docMergeGroupNodes( tcj.tcjTailNode, mergedNode ) )
+	    if  ( docMergeGroupNodes( eo->eoDocument, tcj.tcjTailNode, mergedNode ) )
 		{ LDEB(1); rval= -1; goto ready;	}
 
 	    sectionsDeleted= 0;

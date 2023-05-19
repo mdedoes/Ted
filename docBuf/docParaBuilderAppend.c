@@ -304,7 +304,7 @@ LDEB(0);
 if(1)
 bidiListNode(paraNode->biParaBidiRoot,&(paraNode->biParaStringBuffer));
 if(1)
-docListNode(0,paraNode,0);
+docListNode(bd,0,paraNode,0);
 # endif
 
     pb->pbParaNode= (BufferItem *)0;

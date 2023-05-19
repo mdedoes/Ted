@@ -131,9 +131,9 @@ static int tedDeleteRowsFromTableOperation(
 
     if  ( rowNode0->biNumberInParent == 0 )
 	{
-	struct BufferItem *	parentNode= rowNode0->biParent;
+	struct BufferItem *	topParentNode= rowNode0->biParent;
 
-	if  ( rowNode1->biNumberInParent == parentNode->biChildCount -1 )
+	if  ( rowNode1->biNumberInParent == topParentNode->biChildCount -1 )
 	    { allChildren= 1;	}
 	}
 

@@ -57,7 +57,7 @@ int docSplitTextParticule(	TextParticule **		pTpPart,
 	{
 	SLLLDEB(docKindStr(tpPart->tpKind),stroff,
 					tpPart->tpStroff,tpPart->tpStrlen);
-	docListNode(0,paraNode,0);
+	docListNode((const struct BufferDocument *)0,0,paraNode,0);
 	return -1;
 	}
 
@@ -410,7 +410,7 @@ int docShiftParagraphOffsets(	struct BufferDocument *	bd,
 	for ( part= partFrom; part < partUpto; tp++, part++ )
 	    {
 	    if  ( docShiftParticuleOffset( bd, tp, stroffShift ) )
-		{ LDEB(part); docListNode(0,paraNode,0);	}
+		{ LDEB(part); docListNode(bd,0,paraNode,0);	}
 	    }
 	}
 
@@ -420,7 +420,7 @@ int docShiftParagraphOffsets(	struct BufferDocument *	bd,
 	for ( part= partUpto- 1; part >= partFrom; tp--, part-- )
 	    {
 	    if  ( docShiftParticuleOffset( bd, tp, stroffShift ) )
-		{ LDEB(part); docListNode(0,paraNode,0);	}
+		{ LDEB(part); docListNode(bd,0,paraNode,0);	}
 	    }
 	}
 

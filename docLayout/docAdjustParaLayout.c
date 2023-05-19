@@ -227,7 +227,7 @@ int docAdjustParaLayout(	BufferItem * 		paraNode,
 
     if  ( paraNode->biParaLineCount < 1 )
 	{
-	LDEB(paraNode->biParaLineCount); docListNode(0,paraNode,0);
+	LDEB(paraNode->biParaLineCount); docListNode(bd,0,paraNode,0);
 	rval= -1; goto ready;
 	}
 

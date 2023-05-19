@@ -883,10 +883,10 @@ int bidiTreeLevelSwitchToIsolateLevel(
 
     if  ( ! btb->btbCurrentNode )
 	{
-	int	from= 0;
-	int	upto= offset;
+	int	from0= 0;
+	int	uptoOffset= offset;
 
-	rval= bidiTreeBuilderStartRoot( btb, initiator, level, from, upto );
+	rval= bidiTreeBuilderStartRoot( btb, initiator, level, from0, uptoOffset );
 	if  ( rval < 0 )
 	    { LDEB(rval); return -1;	}
 

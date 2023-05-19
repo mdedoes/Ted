@@ -166,7 +166,7 @@ int docLayoutWord(	LineLayoutJob *			llj,
 	    if  ( res )
 		{
 		LLLLDEB(part,particuleUpto,tp->tpStroff,res);
-		docListNode(0,paraNode,0);
+		docListNode(bd,0,paraNode,0);
 		if  ( res < 0 )
 		    { return -1;	}
 		direction = 0;
@@ -189,7 +189,7 @@ int docLayoutWord(	LineLayoutJob *			llj,
 	if  ( ! afi )
 	    {
 	    LXDEB(tp->tpStroff,afi);
-	    docListNode(0,paraNode,0);
+	    docListNode(bd,0,paraNode,0);
 	    return -1;
 	    }
 

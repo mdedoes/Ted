@@ -647,7 +647,7 @@ void docWordSelection(	DocumentSelection *		dsWord,
 		    { *pAfterObject= 1;	}
 		else{
 		    LLLDEB(dpAround->dpStroff,tp->tpStroff,tp->tpStrlen);
-		    docListNode(0,dpAround->dpNode,0);
+		    docListNode((const struct BufferDocument *)0,0,dpAround->dpNode,0);
 		    *pAfterObject= 0;
 		    }
 		}

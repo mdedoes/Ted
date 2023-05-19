@@ -183,7 +183,7 @@ struct BufferDocument * docRtfReadFile(	struct SimpleInputStream *	sis,
 
     rval= bd; bd= (struct BufferDocument *)0; /* steal */
 
-    /* LDEB(1); docListNode(0,rval->bdBody.dtRoot,0); */
+    /* LDEB(1); docListNode(bd,0,rval->bdBody.dtRoot,0); */
 
   ready:
 

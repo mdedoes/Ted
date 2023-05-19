@@ -60,11 +60,13 @@ extern void docListFieldsOfDocument(	const struct BufferDocument *	bd );
 
 extern void docListFontList(		const struct DocumentFontList * dfl );
 
-extern void docListNode(	int				indent,
+extern void docListNode(	const struct BufferDocument *	bd,
+				int				indent,
 				const struct BufferItem *	node,
 				int				checkGeometry );
 
-extern void docListRootNode(	int				indent,
+extern void docListRootNode(	const struct BufferDocument *	bd,
+				int				indent,
 				const struct BufferItem *	node,
 				int				checkGeometry );
 
@@ -87,8 +89,12 @@ extern void docListNotes(	const struct BufferDocument *	bd );
 extern void docListShapes(		struct BufferDocument *		bd );
 extern void docListDocumentObjects(	struct BufferDocument *		bd );
 
-extern void docListField(		int			indent,
+extern void docListField(		int				indent,
 					const struct DocumentField *	df );
+
+extern void docListParaObjects(	int				indent,
+				const struct BufferItem *	paraNode,
+				const struct BufferDocument *	bd );
 
 extern const char * docLevelStr(	int			level );
 

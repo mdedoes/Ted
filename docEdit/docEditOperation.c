@@ -441,9 +441,9 @@ int docStartEditOperation(
 				    &(eo->eoSelectionScope), eo->eoTree );
 
 #   if 0
-    LDEB(0); docListNode(0,eo->eoHeadDp.dpNode,0);
+    LDEB(0); docListNode(bd,0,eo->eoHeadDp.dpNode,0);
     if  ( eo->eoTailDp.dpNode != eo->eoHeadDp.dpNode )
-	{ LDEB(1); docListNode(0,eo->eoTailDp.dpNode,0); }
+	{ LDEB(1); docListNode(bd,0,eo->eoTailDp.dpNode,0); }
 #   endif
 
     return 0;

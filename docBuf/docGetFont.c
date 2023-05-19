@@ -227,20 +227,20 @@ int docGetSelectionAttributes(	TextAttribute *			ta,
 		PropertyMask		pm;
 		PropertyMask		pmAll;
 
-		const TextAttribute *	ta;
+		const TextAttribute *	taTp;
 
 		if  ( paraNode == ds->dsTail.dpNode			&&
 		      tp->tpStroff >= ds->dsTail.dpStroff	)
 		    { break;	}
 
-		ta= docGetTextAttributeByNumber( bd, tp->tpTextAttrNr );
+		taTp= docGetTextAttributeByNumber( bd, tp->tpTextAttrNr );
 
 		utilPropMaskClear( &pm );
 
 		utilPropMaskClear( &pmAll );
 		utilPropMaskFill( &pmAll, TAprop_COUNT );
 
-		textAttributeDifference( &pm, &taNew, &pmAll, ta );
+		textAttributeDifference( &pm, &taNew, &pmAll, taTp );
 
 		utilPropMaskOr( &updMask, &updMask, &pm );
 

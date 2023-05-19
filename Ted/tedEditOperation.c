@@ -35,6 +35,7 @@
 #   include	<docFields.h>
 
 #   include	<appDebugon.h>
+#   include	<docDebug.h>
 
 #   define	VALIDATE_TREE		0
 
@@ -718,8 +719,8 @@ int tedStartEditOperation(	TedEditOperation *	teo,
 #   if VALIDATE_TREE
     {
     LDEB(1);
-    if  ( docCheckNode( &(bd->bdItem) ) )
-	{ LDEB(2); docListNode( 0, &(bd->bdItem) ); abort(); }
+    if  ( docCheckNode( bd->bdBody.dtRoot, bd, 1 ) )
+	{ LDEB(2); docListNode( bd, 0, bd->bdBody.dtRoot, 0 ); abort(); }
     }
 #   endif
 

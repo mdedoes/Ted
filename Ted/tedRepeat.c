@@ -394,7 +394,7 @@ static int tedRepeatInsertTable(	EditDocument *		ed,
 	if  ( ! rowNode )
 	    {
 	    XDEB(rowNode);
-	    docListNode(0,bdSrc->bdBody.dtRoot,0);
+	    docListNode(bdSrc,0,bdSrc->bdBody.dtRoot,0);
 	    return -1;
 	    }
 	}

@@ -139,7 +139,7 @@ static int docDelimitParagraphDrawingStrip(
 	{
 	/*
 	LLLLDEB(lpThisFrame->lpPage,lpThisFrame->lpColumn,line,lineFrom);
-	docListNode(0,paraNode,0);
+	docListNode(bd,0,paraNode,0);
 	*/
 	return 1;
 	}

@@ -164,7 +164,7 @@ void docCheckFieldOffsets(	const struct BufferDocument *	bd,
 		    }
 		}
 	    if  ( wrong )
-		{ docListNode(0,node,0);	}
+		{ docListNode(bd,0,node,0);	}
 	    break;
 
 	case DOClevOUT:
@@ -220,7 +220,7 @@ static void docCheckNoteOfField(	int			indent,
 	    { SLLDEB("##",ssRoot->ssOwnerNumber,df->dfFieldNumber); }
 
 	/*
-	docListNode(noteIndent,dn->dnDocumentTree.dtRoot,0);
+	docListNode(bd,noteIndent,dn->dnDocumentTree.dtRoot,0);
 	*/
 
 	fp->fpPage= dn->dnReferringPage;

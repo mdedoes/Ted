@@ -66,7 +66,7 @@ static int docParaGetFirstInColumn(
 	LLDEB(page,column);
 	LDEB(paraNode->biBelowPosition.lpPage);
 	LDEB(paraNode->biBelowPosition.lpColumn);
-	/*docListNode(0,paraNode);*/
+	/*docListNode(bd,0,paraNode);*/
 	LDEB(docNumberOfParagraph(paraNode));
 	LLDEB(i,paraNode->biParaLineCount);
 	return -1;
@@ -204,7 +204,7 @@ int docGetLastInColumnForNode(	DocumentPosition *		dp,
 	LLDEB(page,column);
 	LDEB(node->biBelowPosition.lpPage);
 	LDEB(node->biBelowPosition.lpColumn);
-	/*docListNode(0,nodeIn,0);*/
+	/*docListNode(bd,0,nodeIn,0);*/
 	LDEB(docNumberOfParagraph(node));
 	LLDEB(i,node->biParaLineCount);
 	return -1;

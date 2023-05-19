@@ -356,9 +356,10 @@ void tedDrawRectangle(		EditDocument *		ed,
 	DocumentRectangle	drHair;
 	int			blackSet= 0;
 
-	const LayoutContext *	lc= dc.dcLayoutContext;
-	int			ox= lc->lcOx;
-	int			oy= lc->lcOy;
+				/* Why not use lc? */
+	const LayoutContext *	olc= dc.dcLayoutContext;
+	int			ox= olc->lcOx;
+	int			oy= olc->lcOy;
 
 	drHair= ed->edVisibleRect;
 	drHair.drX0= ed->edSelectRectangle.srSelected.drX0+

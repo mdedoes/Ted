@@ -390,7 +390,7 @@ static int docLayoutParticules( LineRun *		blr,
 	if  ( tpTab->tpKind != TPkindTAB )
 	    {
 	    LLSDEB(part,tpTab->tpKind,docKindStr(tpTab->tpKind));
-	    docListNode(0,paraNode,0);
+	    docListNode(llj->lljLayoutContext->lcDocument,0,paraNode,0);
 	    return -1;
 	    }
 
