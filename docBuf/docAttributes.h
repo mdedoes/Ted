@@ -35,7 +35,7 @@ extern int docGetDefaultFont(		const struct BufferDocument *	bd );
 extern int docGetFontByName(		const struct BufferDocument *	bd,
 					const char *			name );
 
-extern int docGetSolidRgbShadeOfItem(	int *			pIsFilled,
+extern int docGetSolidRgbShadeOfItem(	int *				pIsFilled,
 					struct RGB8Color *		rgb8,
 					const struct BufferDocument *	bd,
 					const struct ItemShading *	is );
@@ -116,7 +116,9 @@ extern int docGetSelectionAttributes(
 				struct BufferDocument *		bd,
 				const struct DocumentSelection * ds );
 
-extern const struct ItemShading * docdocGetbackgroundShading(
+extern int docGetbackgroundShading(
+				int *				pIsFilled,
+				struct RGB8Color *		rgb8,
 				const struct BufferDocument *	bd,
 				const struct BufferItem *	paraNode,
 				const struct TextAttribute *	ta );

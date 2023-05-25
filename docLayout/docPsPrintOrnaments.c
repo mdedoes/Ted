@@ -36,7 +36,7 @@
 /*									*/
 /************************************************************************/
 
-static void psSolidBorderProc(	struct SimpleOutputStream *		sos,
+static void psSolidBorderProc(	struct SimpleOutputStream *	sos,
 				const char *			name )
     {
     sioOutPrintf( sos, "%% x y w h\n" );

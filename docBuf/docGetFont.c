@@ -334,38 +334,77 @@ const DocumentFont * docGetFontOfAttribute(
     return df;
     }
 
-const ItemShading * docdocGetbackgroundShading(
+static int docTrybackgroundShading(
+			int *				pIsFilled,
+			struct RGB8Color *		rgb8,
+			const struct BufferDocument *	bd,
+			int				shadingNumber )
+    {
+    int				isFilled;
+    RGB8Color			back;
+
+    const ItemShading *	is= docGetItemShadingByNumber( bd, shadingNumber );
+    if  ( ! is || is->isPattern != DOCspSOLID )
+	{ *pIsFilled= 0; return 0;	}
+
+    if  ( docGetSolidRgbShadeOfItem( &isFilled, &back, bd, is ) )
+	{ LLLDEB(is->isPattern,is->isForeColor,is->isBackColor); return -1;	}
+
+    *pIsFilled= isFilled;
+    if  ( isFilled )
+	{ *rgb8= back;	}
+
+    return 0;
+    }
+
+int docGetbackgroundShading(
+			int *				pIsFilled,
+			struct RGB8Color *		rgb8,
 			const struct BufferDocument *	bd,
 			const struct BufferItem *	paraNode,
 			const TextAttribute *		ta )
     {
+    int					isFilled;
     RGB8Color				back;
-
-    const ItemShading *			is= (ItemShading *)0;
+    int					tableNesting= paraNode->biParaProperties->ppTableNesting;
 
     utilRGB8SolidWhite( &back );
 
-    is= docGetItemShadingByNumber( bd, ta->taShadingNumber );
-    if  ( is && is->isPattern == DOCspSOLID )
-	{ return is;	}
+    if  ( docTrybackgroundShading( &isFilled, &back, bd, ta->taShadingNumber ) )
+	{ LDEB(ta->taShadingNumber); return -1;	}
+    if  ( isFilled )
+	{ *rgb8= back; *pIsFilled= 1; return 0;	}
 
-    is= docGetItemShadingByNumber( bd, paraNode->biParaProperties->ppShadingNumber );
-    if  ( is && is->isPattern == DOCspSOLID )
-	{ return is;	}
+    if  ( docTrybackgroundShading( &isFilled, &back, bd, paraNode->biParaProperties->ppShadingNumber ) )
+	{ LDEB(paraNode->biParaProperties->ppShadingNumber); return -1;	}
+    if  ( isFilled )
+	{ *rgb8= back; *pIsFilled= 1; return 0;	}
 
-    if  ( paraNode->biParaProperties->ppTableNesting > 0 )
+    while( tableNesting > 0 )
 	{
 	const BufferItem *	cellNode= paraNode->biParent;
 	const BufferItem *	rowNode= cellNode->biParent;
 
-	is= docGetItemShadingByNumber( bd, cellNode->biCellProperties->cpShadingNumber );
-	if  ( is && is->isPattern == DOCspSOLID )
-	    { return is;	}
+	if  ( docTrybackgroundShading( &isFilled, &back, bd, cellNode->biCellProperties->cpShadingNumber ) )
+	    { LDEB(cellNode->biCellProperties->cpShadingNumber); return -1;	}
+	if  ( isFilled )
+	    { *rgb8= back; *pIsFilled= 1; return 0;	}
 
-	is= docGetItemShadingByNumber( bd, rowNode->biRowProperties->rpShadingNumber );
-	if  ( is && is->isPattern == DOCspSOLID )
-	    { return is;	}
+	if  ( docTrybackgroundShading( &isFilled, &back, bd, ta->taShadingNumber ) )
+	    { LDEB(ta->taShadingNumber); return -1;	}
+	if  ( isFilled )
+	    { *rgb8= back; *pIsFilled= 1; return 0;	}
+
+	tableNesting--;
+	if  ( tableNesting < 1 )
+	    { break;	}
+
+	cellNode= rowNode->biParent;
+	rowNode= cellNode->biParent;
+	if  ( ! rowNode || ! docIsRowNode( rowNode ) )
+	    { XDEB(rowNode); break;	}
 	}
 
-    return (ItemShading *)0;
+    *pIsFilled= 0;
+    return 0;
     }

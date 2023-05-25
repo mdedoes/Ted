@@ -36,21 +36,14 @@ static int docPsPrintFgInvisible(
 			const struct BufferItem *	paraNode,
 			const TextAttribute *		ta )
     {
+    int					isFilled;
     RGB8Color				back;
     RGB8Color				fore;
 
-    const ItemShading *			is;
-
     utilRGB8SolidWhite( &back );
 
-    is= docdocGetbackgroundShading( bd, paraNode, ta );
-    if  ( is && is->isPattern == DOCspSOLID )
-	{
-	int	isFilled= 0;
-
-	if  ( docGetSolidRgbShadeOfItem( &isFilled, &back, bd, is ) )
-	    { LDEB(1);	}
-	}
+    if  ( docGetbackgroundShading( &isFilled, &back, bd, paraNode, ta ) )
+	{ LDEB(1); return -1;	}
 
     docGetColorByNumber( &fore, bd, ta->taTextColorNumber );
 
