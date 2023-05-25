@@ -629,7 +629,7 @@ static int utilTtfWriteT42Sfnts(	struct SimpleOutputStream *	sos,
 /************************************************************************/
 
 static void psWriteFontEncoding(	struct SimpleOutputStream *	sos,
-					const AfmFontInfo *	afi )
+					const AfmFontInfo *		afi )
     {
     int		glyph;
 
@@ -648,8 +648,8 @@ static void psWriteFontEncoding(	struct SimpleOutputStream *	sos,
     }
 
 static int utilTtfWriteT42(	struct SimpleOutputStream *	sos,
-				const AfmFontInfo *	afi,
-				const TrueTypeFont *	ttf )
+				const AfmFontInfo *		afi,
+				const TrueTypeFont *		ttf )
     {
     const TrueTypeHeadTable *	ttht= &(ttf->ttfHeadTable);
 
@@ -685,7 +685,7 @@ static int utilTtfWriteT42(	struct SimpleOutputStream *	sos,
     }
 
 static int psTtfWriteT42File(	struct SimpleOutputStream *	sosPf42,
-				const TrueTypeFont *	ttf )
+				const TrueTypeFont *		ttf )
     {
     int				rval= 0;
 
@@ -732,7 +732,7 @@ int psTtfToPt42(		struct SimpleOutputStream *	sosPf42,
     }
 
 int psTtcToPt42(		struct SimpleOutputStream *	sosPf42,
-				int			fontFileIndex,
+				int				fontFileIndex,
 				struct SimpleInputStream *	sisTtf )
     {
     int				rval= 0;
