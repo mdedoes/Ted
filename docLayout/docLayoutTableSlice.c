@@ -207,14 +207,14 @@ static int docLayoutRowsInBlock( LayoutPosition *	lpBelow,
 	BufferItem *	rowNode= parentNode->biChildren[row];
 
 	const int	inNewFrame= 0;
-	const int	startInThisColumn= 0;
+	const int	doNotStartInThisColumn= 0;
 
 	LayoutPosition	lpHere= *lpTop;
 
 	docLayoutStartNodeLayout( rowNode, lj, &lpHere );
 
 	if  ( docLayoutRowNode( &found, &lpHere, &lpHere, rowNode, bf,
-					inNewFrame, startInThisColumn, lj ) )
+					inNewFrame, doNotStartInThisColumn, lj ) )
 	    { LDEB(row); return -1;	}
 
 	if  ( found == FORMATstopFRAME_FULL )

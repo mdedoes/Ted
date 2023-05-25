@@ -663,6 +663,108 @@ static int docScreenDrawRoundedRectangleShape(
     return 0;
     }
 
+static int docScreenDrawRightBrace( DrawingShape *		ds,
+				DrawingContext *		dc,
+				ScreenDrawingData *		sdd,
+				const DocumentRectangle *	drPixels )
+    {
+    int				rval= 0;
+
+    const LayoutContext *	lc= dc->dcLayoutContext;
+    DrawingSurface		drsf= lc->lcDrawingSurface;
+
+    const ShapePath *		sp= &SP_RECTANGLE;
+    int				np= sp->spVertexCount;
+    Point2DI *			xp= (Point2DI *)0;
+
+    int				line= 0;
+
+    int				pixelsWide;
+    int				wide;
+
+    xp= malloc( ( np+ 1 )* sizeof(Point2DI) );
+    if  ( ! xp )
+	{ LXDEB(np,xp); rval= -1; goto ready;	}
+
+    docScreenDrawSetShapePath( xp, ds, sp, drPixels );
+
+    wide= xp[2].x- xp[0].x;
+    /*
+    high= xp[2].y- xp[0].y;
+    */
+
+    docScreenDrawShapeGetLine( &line, &pixelsWide, (int *)0, ds, dc, sdd );
+
+# if 0
+    appDrawDrawArc( add, xp[0].x- wide/ 2,
+			    ( 8* xp[0].y+ 0* xp[2].y )/ 8,
+			    wide+ 1, ( high+ 3 )/ 4,
+			    64* 0, 64* 90 );
+# endif
+
+    drawLine( drsf,
+	    xp[0].x+ wide/ 2, ( 7* xp[0].y+ 1* xp[2].y )/ 8,
+	    xp[0].x+ wide/ 2, ( 5* xp[0].y+ 3* xp[2].y )/ 8 );
+
+# if 0
+    appDrawDrawArc( add, xp[2].x- wide/ 2,
+			    ( 6* xp[0].y+ 2* xp[2].y )/ 8,
+			    wide+ 1, ( high+ 3 )/ 4,
+			    64* 180, 64* 90 );
+
+    appDrawDrawArc( add, xp[2].x- wide/ 2,
+			    ( 4* xp[0].y+ 4* xp[2].y )/ 8,
+			    wide+ 1, ( high+ 3 )/ 4,
+			    64* 90, 64* 90 );
+# endif
+
+    drawLine( drsf,
+	    xp[0].x+ wide/ 2, ( 3* xp[0].y+ 5* xp[2].y )/ 8,
+	    xp[0].x+ wide/ 2, ( 1* xp[0].y+ 7* xp[2].y )/ 8 );
+
+# if 0
+    appDrawDrawArc( add, xp[0].x- wide/ 2,
+			    ( 2* xp[0].y+ 6* xp[2].y )/ 8,
+			    wide+ 1, ( high+ 3 )/ 4,
+			    64* 270, 64* 90 );
+# endif
+
+  ready:
+
+    if  ( xp )
+	{ free( xp );	}
+
+    return rval;
+    }
+
+static int docScreenDrawFreeForm(
+				const DocumentRectangle *	drOutside,
+				DrawingShape *			ds,
+				DrawingContext *		dc,
+				ScreenDrawingData *		sdd,
+				const DocumentRectangle *	drPixels )
+    {
+    const ShapeDrawing *	sd= &(ds->dsDrawing);
+    const LayoutContext *	lc= dc->dcLayoutContext;
+
+    int				rval= 0;
+    Point2DI *			xp= (Point2DI *)0;
+
+    const int			closed= 1;
+
+    xp= docScreenDrawGetVertices( drOutside, ds, lc, sdd );
+    if  ( ! xp )
+	{ XDEB(xp); rval= -1; goto ready;	}
+
+    docScreenDrawShapePoints( ds, xp, sd->sdVertexCount- 1,
+					closed, dc, sdd );
+  ready:
+    if  ( xp )
+	{ free( xp );	}
+
+    return rval;
+    }
+
 int docScreenDrawDrawingShape(	const DocumentRectangle *	drOutside,
 				const AffineTransform2D *	atOutside,
 				int				page,
@@ -682,8 +784,6 @@ int docScreenDrawDrawingShape(	const DocumentRectangle *	drOutside,
     int				fill= 0;
     int				line= 0;
     int				pixelsWide= 0;
-
-    Point2DI *			xp= (Point2DI *)0;
 
     docGetPixelRect( &drPixels, lc, drOutside, page );
     geoNormalizeRectangle( &drNorm, &drPixels );
@@ -1009,75 +1109,15 @@ int docScreenDrawDrawingShape(	const DocumentRectangle *	drOutside,
 	    break;
 
 	case SHPtyRIGHT_BRACE:
-	    {
-	    const ShapePath *	sp= &SP_RECTANGLE;
-	    int			np= sp->spVertexCount;
-	    Point2DI *		xp;
-
-	    int			wide;
-
-	    xp= malloc( ( np+ 1 )* sizeof(Point2DI) );
-	    if  ( ! xp )
-		{ LXDEB(np,xp); return -1;	}
-
-	    docScreenDrawSetShapePath( xp, ds, sp, &drPixels );
-
-	    wide= xp[2].x- xp[0].x;
-	    /*
-	    high= xp[2].y- xp[0].y;
-	    */
-
-	    docScreenDrawShapeGetLine( &line, &pixelsWide, (int *)0, ds, dc, sdd );
-
-# if 0
-	    appDrawDrawArc( add, xp[0].x- wide/ 2,
-				    ( 8* xp[0].y+ 0* xp[2].y )/ 8,
-				    wide+ 1, ( high+ 3 )/ 4,
-				    64* 0, 64* 90 );
-# endif
-
-	    drawLine( drsf,
-		    xp[0].x+ wide/ 2, ( 7* xp[0].y+ 1* xp[2].y )/ 8,
-		    xp[0].x+ wide/ 2, ( 5* xp[0].y+ 3* xp[2].y )/ 8 );
-
-# if 0
-	    appDrawDrawArc( add, xp[2].x- wide/ 2,
-				    ( 6* xp[0].y+ 2* xp[2].y )/ 8,
-				    wide+ 1, ( high+ 3 )/ 4,
-				    64* 180, 64* 90 );
-
-	    appDrawDrawArc( add, xp[2].x- wide/ 2,
-				    ( 4* xp[0].y+ 4* xp[2].y )/ 8,
-				    wide+ 1, ( high+ 3 )/ 4,
-				    64* 90, 64* 90 );
-# endif
-
-	    drawLine( drsf,
-		    xp[0].x+ wide/ 2, ( 3* xp[0].y+ 5* xp[2].y )/ 8,
-		    xp[0].x+ wide/ 2, ( 1* xp[0].y+ 7* xp[2].y )/ 8 );
-
-# if 0
-	    appDrawDrawArc( add, xp[0].x- wide/ 2,
-				    ( 2* xp[0].y+ 6* xp[2].y )/ 8,
-				    wide+ 1, ( high+ 3 )/ 4,
-				    64* 270, 64* 90 );
-# endif
-
-	    free( xp );
-	    }
+	    if  ( docScreenDrawRightBrace( ds, dc, sdd, &drPixels ) )
+		{ LDEB(1); rval= -1;	}
 	    break;
 
 	case SHPtyFREEFORM_OR_NON_AUTOSHAPE:
 	    if  ( sd->sdVertexCount > 1 )
 		{
-		const int	closed= 1;
-
-		xp= docScreenDrawGetVertices( drOutside, ds, lc, sdd );
-		if  ( ! xp )
-		    { XDEB(xp); rval= -1; goto ready;	}
-
-		docScreenDrawShapePoints( ds, xp, sd->sdVertexCount- 1,
-						    closed, dc, sdd );
+		if  ( docScreenDrawFreeForm( drOutside, ds, dc, sdd, &drPixels ) )
+		    { LDEB(1); rval= -1;	}
 		}
 	    break;
 
@@ -1091,10 +1131,6 @@ int docScreenDrawDrawingShape(	const DocumentRectangle *	drOutside,
     if  ( ds->dsstruct DocumentTree.dtRoot )
 	{}
     */
-
-  ready:
-    if  ( xp )
-	{ free( xp ); }
 
     return rval;
     }

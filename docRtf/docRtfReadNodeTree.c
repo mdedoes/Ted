@@ -253,6 +253,9 @@ static int docRtfHierarchyCell(	const RtfControlWord *	rcw,
 	      { paraInCell= 0;	}
 	}
 
+    if  ( ! rts->rtsNode )
+	{ SXDEB(rcw->rcwWord,rts->rtsNode); return -1;	}
+
     if  ( ! levelNode						||
 	  ( rts->rtsNode->biLevel <= DOClevCELL && paraInCell )	)
 	{
@@ -273,9 +276,6 @@ static int docRtfHierarchyCell(	const RtfControlWord *	rcw,
 		}
 	    }
 	}
-
-    if  ( ! rts->rtsNode )
-	{ SXDEB(rcw->rcwWord,rts->rtsNode); return -1;	}
 
     /* MS-Word does this: The first clue about a table is \cell */
     if  ( rts->rtsNode->biLevel == DOClevPARA			&&

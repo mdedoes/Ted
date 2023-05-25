@@ -12,6 +12,9 @@ WFLAGS=	-Wall			\
 	-Wnested-externs	\
 	-Wuninitialized		\
 	-Wundef			\
+	-Wundef			\
+	-Wshadow		\
+	-Wlogical-op		\
 	-Wwrite-strings		\
 	-Wold-style-definition	\
 	-Wno-missing-field-initializers	\

@@ -452,6 +452,9 @@ int docUpdDocumentProperties(	PropertyMask *			pDoneMask,
 					(DocumentProperties *)dpFrom, prop );
 	    struct tm *	to= docGetDocumentPropertyTime( dpTo, prop );
 
+	    if  ( ! from || ! to )
+		{ XXDEB(from,to); return -1;	}
+
 	    /* tm_isdst makes this necessary: */
 
 	    if  ( to->tm_sec != from->tm_sec )

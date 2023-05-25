@@ -22,15 +22,15 @@
 
 /************************************************************************/
 
-typedef struct bmi
+typedef struct Bmi
     {
     long	offBmi;
     long	cbBmi;
     long	offBits;
     long	cbBits;
-    } bmi;
+    } Bmi;
 
-static int appEmfReadBmi(	bmi *			pbmi,
+static int appEmfReadBmi(	Bmi *			pbmi,
 				SimpleInputStream *	sis )
     {
     int	done= 0;
@@ -291,7 +291,7 @@ static int appEmfExtCreatePen(	DeviceContext *		dc,
     int			step;
     int			done= 0;
 
-    bmi			bmi;
+    Bmi			bmi;
 
     MetaFileObject *	mfo= dc->dcObjects+ ob;
     LogicalPen *	lp= &(mfo->mfoSpecific.mfsLogicalPen);
@@ -412,7 +412,7 @@ static int appEmfReadPatternBrush(	DeviceContext *		dc,
     PatternBrush *	pb= &(mfo->mfoPatternBrush);
     int			done= 0;
 
-    bmi			bmi;
+    Bmi			bmi;
 
     int			skip= 0;
 
@@ -968,7 +968,7 @@ static int appEmfStretchBlt(	DeviceContext *		dc,
 
     AffineTransform2D		transform;
 
-    bmi				bmi;
+    Bmi				bmi;
 
     DocumentRectangle		drDest;
     DocumentRectangle		drSrc;
@@ -1875,7 +1875,7 @@ int appMetaPlayEmf(	DeviceContext *			dc,
 		DocumentRectangle	drSrc;
 		DocumentRectangle	drDest;
 
-		bmi			bmiSrc;
+		Bmi			bmiSrc;
 
 		step= bmEmfReadRectangle( &bounds, sis );
 		if  ( step < 0 )
@@ -1933,12 +1933,12 @@ int appMetaPlayEmf(	DeviceContext *			dc,
 
 	    case EMR_STRETCHDIBITS:
 		{
-		bmi			bmiSrc;
+		Bmi			bmiSrc;
 
 		DocumentRectangle	drSrc;
 		DocumentRectangle	drDest;
-		int			w;
-		int			h;
+		int			wide;
+		int			high;
 
 		/* Device Coords */
 		step= bmEmfReadRectangle( &bounds, sis );
@@ -1960,10 +1960,10 @@ int appMetaPlayEmf(	DeviceContext *			dc,
 		(void) /* BitBltRasterOperation= */
 				    sioEndianGetLeInt32( sis ); done += 4;
 
-		w= sioEndianGetLeInt32( sis ); done += 4;
-		h= sioEndianGetLeInt32( sis ); done += 4;
-		drDest.drX1= drDest.drX0+ w- 1;
-		drDest.drY1= drDest.drY0+ h- 1;
+		wide= sioEndianGetLeInt32( sis ); done += 4;
+		high= sioEndianGetLeInt32( sis ); done += 4;
+		drDest.drX1= drDest.drX0+ wide- 1;
+		drDest.drY1= drDest.drY0+ high- 1;
 
 		while ( bmiSrc.offBmi > done )
 		    { (void) sioInGetByte( sis ); done++;	}
@@ -2052,12 +2052,12 @@ int appMetaPlayEmf(	DeviceContext *			dc,
 
 	    case EMR_SMALLTEXTOUT:
 		{
-		int		count;
+		int		byteCount;
 
 		WMFDEB(appDebug("SmallTextOut(...)\n"));
 
 		step= appWmfReadSmallTextObject( dc, done, sis,
-						    &x0, &y0, &count );
+						    &x0, &y0, &byteCount );
 		if  ( step < 0 )
 		    { LDEB(step); return -1;	}
 		done += step;

@@ -530,7 +530,7 @@ int bmpHeaderToDescription(	BitmapDescription *	bd,
     /********************************************************************/
     /*  Check people that even run microsoft systems in their brain.	*/
     /********************************************************************/
-    if  ( bd->bdXResolution < 500 || bd->bdXResolution < 500 )
+    if  ( bd->bdXResolution < 500 || bd->bdYResolution < 500 )
 	{ bd->bdYResolution= bd->bdXResolution= 1; bd->bdUnit= BMunPIXEL; }
 
     return 0;

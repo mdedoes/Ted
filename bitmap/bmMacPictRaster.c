@@ -387,7 +387,7 @@ LDEB(bd->bdPixelsWide);
 	{
 	int		flags;
 	int		colorCount;
-	int		step;
+	int		paletteStep;
 
 	/*seed=*/ (void) sioEndianGetBeInt32( sis ); bytesRead += 4;
 	flags= sioEndianGetBeUint16( sis ); bytesRead += 2;
@@ -395,10 +395,10 @@ LDEB(bd->bdPixelsWide);
 
 	bd->bdColorEncoding= BMcoRGB8PALETTE;
 
-	step= bmMacPictReadPaletteColors( bd, colorCount, flags, sis );
-	if  ( step < 0 )
-	    { LLDEB(hasPalette,step); return -1;	}
-	bytesRead += step;
+	paletteStep= bmMacPictReadPaletteColors( bd, colorCount, flags, sis );
+	if  ( paletteStep < 0 )
+	    { LLDEB(hasPalette,paletteStep); return -1;	}
+	bytesRead += paletteStep;
 	}
 
     /*  7  */

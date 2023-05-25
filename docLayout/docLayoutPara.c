@@ -164,8 +164,8 @@ void docLayoutCalculateParaTopInset(
     int				topInset= 0;
     int				nrAbove= -1;
     const BorderProperties *	bpTop= (const BorderProperties *)0;
-    const struct BufferItem *	cellNode= paraNode->biParent;
-    const struct BufferItem *	rowNode= cellNode->biParent;
+    const struct BufferItem * const	cellNode= paraNode->biParent;
+    const struct BufferItem * const	rowNode= cellNode->biParent;
     const RowProperties *	rp= rowNode->biRowProperties;
 
     int				cellMargin= 0;
@@ -177,8 +177,6 @@ void docLayoutCalculateParaTopInset(
     if  ( paraNode->biParaProperties->ppTableNesting > 0	&&
 	  paraNode->biNumberInParent == 0			)
 	{
-	const struct BufferItem *	rowNode= cellNode->biParent;
-
 	const CellProperties *	cp= rp->rpCells+ cellNode->biNumberInParent;
 
 	if  ( ! docIsRowNode( rowNode ) )
@@ -221,11 +219,7 @@ void docLayoutCalculateParaTopInset(
     if  ( paraNode->biParaProperties->ppTableNesting == 0	&&
 	  paraNode->biNumberInParent == 0			&&
 	  cellNode->biNumberInParent == 0			)
-	{
-	const struct BufferItem *	rowNode= cellNode->biParent;
-
-	topInset += rowNode->biRowTopInset;
-	}
+	{ topInset += rowNode->biRowTopInset;	}
 
     /*  5  */
     if  ( docGetParaTopBorder( &bpTop, &nrAbove, &fillBefore,

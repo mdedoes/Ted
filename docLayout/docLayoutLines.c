@@ -454,11 +454,11 @@ int docLayoutParaLines(		int *				pStopCode,
 	/*  10  */
 	if  ( boxLine.tlFlags & TLflagBLOCKBREAK )
 	    {
-	    int		part;
+	    int		lastPart;
 
-	    part= boxLine.tlFirstParticule+ boxLine.tlParticuleCount- 1;
+	    lastPart= boxLine.tlFirstParticule+ boxLine.tlParticuleCount- 1;
 
-	    switch( paraNode->biParaParticules[part].tpKind )
+	    switch( paraNode->biParaParticules[lastPart].tpKind )
 		{
 		case TPkindPAGEBREAK:
 		    stopCode= FORMATstopPAGE_BREAK;
@@ -467,7 +467,7 @@ int docLayoutParaLines(		int *				pStopCode,
 		    stopCode= FORMATstopCOLUMN_BREAK;
 		    break;
 		default:
-		    LDEB(paraNode->biParaParticules[part].tpKind);
+		    LDEB(paraNode->biParaParticules[lastPart].tpKind);
 		    stopCode= FORMATstopPAGE_BREAK;
 		    break;
 		}
@@ -481,7 +481,7 @@ int docLayoutParaLines(		int *				pStopCode,
 
     /*  11  */
     if  ( part >= paraNode->biParaParticuleCount	&&
-	  paraNode->biParaLineCount > line	)
+	  paraNode->biParaLineCount > line		)
 	{ paraNode->biParaLineCount=  line; }
 
     rval= done;

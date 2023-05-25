@@ -53,11 +53,11 @@ void drawTextSegment8X11(	TextProgress *		tp,
 void drawTextSegment16X11(	TextProgress *		tp,
 				DrawScreenFont *	dsf,
 				APP_FONT *		xfs,
-				const XChar2b *		ws,
+				const XChar2b *		wideString,
 				int			wl )
     {
     gdk_draw_text( dsf->dsfDrawable, xfs, dsf->dsfGc,
-					tp->tpX, tp->tpY, (gchar *)ws, 2* wl );
+					tp->tpX, tp->tpY, (gchar *)wideString, 2* wl );
     }
 
 void drawTextSegment8LengthX11(	TextProgress *		tp,
@@ -72,10 +72,10 @@ void drawTextSegment8LengthX11(	TextProgress *		tp,
 void drawTextSegment16LengthX11(	TextProgress *		tp,
 					DrawScreenFont *	dsf,
 					APP_FONT *		xfs,
-					const XChar2b *		ws,
+					const XChar2b *		wideString,
 					int			wl )
     {
-    tp->tpX += gdk_text_width( xfs, (gchar *)ws, 2* wl );
+    tp->tpX += gdk_text_width( xfs, (gchar *)wideString, 2* wl );
     }
 
 #   endif

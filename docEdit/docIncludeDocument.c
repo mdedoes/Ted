@@ -161,7 +161,7 @@ static int docInsertSingleParagraph(
 	}
 
     if  ( ( dcjInsert->dcjCopyHeadParaProperties	||
-	    dcjInsert->dcjCopyHeadParaProperties	)		&&
+	    dcjInsert->dcjCopyTailParaProperties	)		&&
 	  docEditTransferParaProperties( eo, eo->eoTailDp.dpNode,
 				      dsSource->dsHead.dpNode, 
 				      0, &(dcjInsert->dcjAttributeMap) )	)

@@ -23,6 +23,9 @@ WFLAGS=	-Wall			\
 	-Wnested-externs	\
 	-Wuninitialized		\
 	-Wundef			\
+	-Wshadow		\
+	-Wlogical-op		\
+	-Wnull-dereference	\
 	-Wwrite-strings		\
 	-Wold-style-definition	\
 	-Wno-missing-field-initializers	\
@@ -30,8 +33,8 @@ WFLAGS=	-Wall			\
 	-Wno-unused-parameter	\
 	-Wno-sign-compare	\
 	-fsanitize=address	\
-	-Werror			\
-	-isystem /usr/include/gtk-2.0
+	-isystem /usr/include/gtk-2.0 \
+	-Werror
 
 INCLUDES=			\
 	$(FT2_CFLAGS)		\

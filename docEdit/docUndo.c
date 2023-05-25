@@ -552,10 +552,10 @@ int docUndoUpdProps(	EditOperation *		eo,
 
 	if  ( targetIsIbar )
 	    {
-	    TextAttribute	ta;
+	    TextAttribute	taIbar;
 
-	    ta= eo->eoSavedTextAttribute;
-	    textUpdateTextAttribute( (struct PropertyMask *)0, &ta,
+	    taIbar= eo->eoSavedTextAttribute;
+	    textUpdateTextAttribute( (struct PropertyMask *)0, &taIbar,
 					&(es->esNewStyle.dsTextMask),
 					&(es->esNewStyle.dsTextAttribute) );
 	    }
