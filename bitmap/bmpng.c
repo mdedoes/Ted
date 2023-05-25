@@ -468,9 +468,10 @@ static void bmPngWriteContents(	unsigned char **		pScratch,
 	if  ( bd->bdBitsPerPixel == 1 )
 	    { png_set_invert_mono( png );	}
 	else{
-	    *pScratch= (unsigned char *)realloc( *pScratch, bd->bdBytesPerRow );
-	    if  ( ! *pScratch )
-		{ LXDEB(bd->bdBytesPerRow,*pScratch);	}
+	    unsigned char *	scratch= (unsigned char *)realloc( *pScratch, bd->bdBytesPerRow );
+	    if  ( ! scratch )
+		{ LXDEB(bd->bdBytesPerRow,scratch); return;	}
+	    *pScratch= scratch;
 	    }
 	}
 
@@ -486,9 +487,10 @@ static void bmPngWriteContents(	unsigned char **		pScratch,
 	*/
 	if  ( testEndian[0] )
 	    {
-	    *pScratch= (unsigned char *)realloc( *pScratch, bd->bdBytesPerRow );
-	    if  ( ! *pScratch )
-		{ LXDEB(bd->bdBytesPerRow,*pScratch);	}
+	    unsigned char *	scratch= (unsigned char *)realloc( *pScratch, bd->bdBytesPerRow );
+	    if  ( ! scratch )
+		{ LXDEB(bd->bdBytesPerRow,scratch); return;	}
+	    *pScratch= scratch;
 	    }
 	}
 

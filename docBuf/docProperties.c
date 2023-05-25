@@ -136,58 +136,63 @@ static void docCountListFontsUsed(	struct BufferDocument *	bdFrom,
     const DocumentListTable *	dltFrom= &(laFrom->laListTable);
     const ListOverrideTable *	lotFrom= &(laFrom->laListOverrideTable);
 
-    const DocumentList *	dl;
-    ListOverride *		lo;
-
     int				from;
 
-    lo= lotFrom->lotOverrides;
-    for ( from= 0; from < lotFrom->lotOverrideCount; lo++, from++ )
+    if  ( lsUsed && listUsed ) /* set if lotFrom->lotOverrideCount > 0 */
 	{
-	int				listIndex;
+	ListOverride *		lo= lotFrom->lotOverrides;
 
-	int				level;
-	const ListOverrideLevel *	lol;
-
-	if  ( ! lsUsed[from] )
-	    { continue;	}
-
-	listIndex= docGetListOfOverride( lo, dltFrom );
-	if  ( listIndex < 0 )
-	    { LDEB(listIndex);		}
-	else{ listUsed[listIndex]= 1;	}
-
-	lol= lo->loLevels;
-	for ( level= 0; level < lo->loLevelCount; lol++, level++ )
+	for ( from= 0; from < lotFrom->lotOverrideCount; lo++, from++ )
 	    {
-	    const ListLevel *	ll= &(lol->lolListLevel);
+	    int				listIndex;
 
-	    if  ( ! lol->lolOverrideFormat )
-		{ continue;	}
-	    if  ( ! PROPmaskISSET( &(ll->llTextAttributeMask),
-						    TApropFONT_NUMBER ) )
+	    int				level;
+	    const ListOverrideLevel *	lol;
+
+	    if  ( ! lsUsed[from] )
 		{ continue;	}
 
-	    fontUsed[ll->llTextAttribute.taFontNumber]= 1;
+	    listIndex= docGetListOfOverride( lo, dltFrom );
+	    if  ( listIndex < 0 )
+		{ LDEB(listIndex);		}
+	    else{ listUsed[listIndex]= 1;	}
+
+	    lol= lo->loLevels;
+	    for ( level= 0; level < lo->loLevelCount; lol++, level++ )
+		{
+		const ListLevel *	ll= &(lol->lolListLevel);
+
+		if  ( ! lol->lolOverrideFormat )
+		    { continue;	}
+		if  ( ! PROPmaskISSET( &(ll->llTextAttributeMask),
+							TApropFONT_NUMBER ) )
+		    { continue;	}
+
+		fontUsed[ll->llTextAttribute.taFontNumber]= 1;
+		}
 	    }
 	}
 
-    dl= dltFrom->dltLists;
-    for ( from= 0; from < dltFrom->dltListCount; dl++, from++ )
+    if  ( listUsed ) /* set if dltFrom->dltListCount > 0 */
 	{
-	int			level;
-	const ListLevel *	ll= dl->dlLevels;
+	const DocumentList *	dl= dltFrom->dltLists;
 
-	if  ( ! listUsed[from] )
-	    { continue;	}
-
-	for ( level= 0; level < dl->dlLevelCount; ll++, level++ )
+	for ( from= 0; from < dltFrom->dltListCount; dl++, from++ )
 	    {
-	    if  ( ! PROPmaskISSET( &(ll->llTextAttributeMask),
-						    TApropFONT_NUMBER ) )
+	    int			level;
+	    const ListLevel *	ll= dl->dlLevels;
+
+	    if  ( ! listUsed[from] )
 		{ continue;	}
 
-	    fontUsed[ll->llTextAttribute.taFontNumber]= 1;
+	    for ( level= 0; level < dl->dlLevelCount; ll++, level++ )
+		{
+		if  ( ! PROPmaskISSET( &(ll->llTextAttributeMask),
+							TApropFONT_NUMBER ) )
+		    { continue;	}
+
+		fontUsed[ll->llTextAttribute.taFontNumber]= 1;
+		}
 	    }
 	}
 

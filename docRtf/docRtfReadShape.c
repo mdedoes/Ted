@@ -867,9 +867,10 @@ int docRtfReadDrawingObject(	const RtfControlWord *	rcw,
 
     if  ( docRtfReadShapeIntern( &ds, rcw, arg, rr, docRtfDoGroups ) )
 	{ SDEB(rcw->rcwWord);	}
-
-    if  ( docRtfDrawingObjectToShape( ds ) )
-	{ LDEB(1);	}
+    else{
+	if  ( docRtfDrawingObjectToShape( ds ) )
+	    { LDEB(1);	}
+	}
 
     return 0;
     }

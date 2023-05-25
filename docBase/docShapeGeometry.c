@@ -165,6 +165,8 @@ void docShapeRootGeometry(
     {
     RectangleOffsets	padding;
 
+    geoInitRectangleOffsets( &padding );
+
     docShapeGetPadding( &padding, drOutside, sd );
 
     if  ( drOutside->drX0 <= drOutside->drX1 )

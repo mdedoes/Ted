@@ -447,8 +447,10 @@ int textConverterConvertToUtf8(	TextConverter *		tc,
 				const char *		text,
 				int			len )
     {
-    if  ( tc				&&
-	  tc->tcNativeEncodingName	&&
+    if  ( ! tc )
+	{ XDEB(tc); return -1;	}
+
+    if  ( tc->tcNativeEncodingName	&&
 	  tc->tcNativeEncodingName[0]	)
 	{
 	if  ( tc->tcIconvToUtf8 == ICONV_NONE )

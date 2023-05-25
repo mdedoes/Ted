@@ -56,7 +56,7 @@ int docSetRangeSelection(	DocumentSelection *		ds,
 				const DocumentPosition *	dpTail,
 				int				direction )
     {
-    int			rval;
+    int			rval= 0;
     DocumentSelection	dsHere;
 
     docInitDocumentSelection( &dsHere );

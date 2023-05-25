@@ -183,10 +183,12 @@ void docInitNode(	struct BufferItem *		node,
 	    node->biSectProperties= malloc( sizeof(SectionProperties) );
 	    if  ( ! node->biSectProperties )
 		{ XDEB(node->biSectProperties);			}
-	    else{ docInitSectionProperties( node->biSectProperties ); }
+	    else{
+		docInitSectionProperties( node->biSectProperties );
 
-	    if  ( bd )
-		{ node->biSectDocumentGeometry= bd->bdProperties->dpGeometry; }
+		if  ( bd )
+		    { node->biSectDocumentGeometry= bd->bdProperties->dpGeometry; }
+		}
 
 	    docInitSelectionScope( &(node->biSectSelectionScope) );
 

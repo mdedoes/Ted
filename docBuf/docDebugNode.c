@@ -750,6 +750,9 @@ static void docListRowNodeSpecific(
     {
     const RowProperties *	rp= rowNode->biRowProperties;
 
+    if  ( ! rowNode->biParent )
+	{ XDEB(rowNode->biParent); return;	}
+
     if  ( rowNode->biRowTableFirst >= 0			||
 	  rowNode->biRowTablePast >= 0			||
 	  rowNode->biRowPastHeaderRow >= 0		)

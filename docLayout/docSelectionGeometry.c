@@ -300,7 +300,7 @@ static void docSelectionRectangle(
 
 /************************************************************************/
 /*									*/
-/*  Determine the poition on paper/screen of a certain position in the	*/
+/*  Determine the position on paper/screen of a certain position in the	*/
 /*  document.								*/
 /*									*/
 /************************************************************************/

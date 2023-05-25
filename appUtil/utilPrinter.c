@@ -127,8 +127,11 @@ static int utilPrinterGetLprPrinters(	const char *		command,
 
     pclose( f );
 
-    qsort( *pDestinations, count, sizeof(PrintDestination),
+    if  ( *pDestinations )
+	{
+	qsort( *pDestinations, count, sizeof(PrintDestination),
 						    utilPrinterCompareNames );
+	}
 
     defaultPrinterName= getenv( "PRINTER" );
     if  ( defaultPrinterName )
@@ -200,7 +203,6 @@ static int utilPrinterGetAixPrinters(	const char *		command,
     int				found= 0;
 
     int				count= *pPrinterCount;
-    const char *		defaultPrinterName;
 
     f= popen( command, "r" );
     if  ( ! f )
@@ -217,18 +219,23 @@ static int utilPrinterGetAixPrinters(	const char *		command,
 
     pclose( f );
 
-    qsort( *pDestinations, count, sizeof(PrintDestination),
+    if  ( *pDestinations )
+	{
+	const char *		defaultPrinterName;
+
+	qsort( *pDestinations, count, sizeof(PrintDestination),
 						    utilPrinterCompareNames );
 
-    defaultPrinterName= getenv( "LPDEST" );
-    if  ( defaultPrinterName )
-	{
-	PrintDestination *	pd= *pDestinations;
-
-	for ( l= count- found; l < count; pd++, l++ )
+	defaultPrinterName= getenv( "LPDEST" );
+	if  ( defaultPrinterName )
 	    {
-	    if  ( ! strcmp( defaultPrinterName, pd->pdPrinterName ) )
-		{ *pDefaultPrinter= l; break;	}
+	    PrintDestination *	pd= *pDestinations;
+
+	    for ( l= count- found; l < count; pd++, l++ )
+		{
+		if  ( ! strcmp( defaultPrinterName, pd->pdPrinterName ) )
+		    { *pDefaultPrinter= l; break;	}
+		}
 	    }
 	}
 
@@ -249,7 +256,6 @@ static int utilPrinterGetLpPrinters(	const char *		command,
     int				found= 0;
 
     int				count= *pPrinterCount;
-    const char *		defaultPrinterName;
 
     /*  2  */
     f= popen( command, "r" );
@@ -264,18 +270,22 @@ static int utilPrinterGetLpPrinters(	const char *		command,
 
     pclose( f );
 
-    qsort( *pDestinations, count, sizeof(PrintDestination),
+    if  ( *pDestinations )
+	{
+	const char *		defaultPrinterName;
+	qsort( *pDestinations, count, sizeof(PrintDestination),
 						    utilPrinterCompareNames );
 
-    defaultPrinterName= getenv( "LPDEST" );
-    if  ( defaultPrinterName )
-	{
-	PrintDestination *	pd= *pDestinations;
-
-	for ( l= count- found; l < count; pd++, l++ )
+	defaultPrinterName= getenv( "LPDEST" );
+	if  ( defaultPrinterName )
 	    {
-	    if  ( ! strcmp( defaultPrinterName, pd->pdPrinterName ) )
-		{ *pDefaultPrinter= l; break;	}
+	    PrintDestination *	pd= *pDestinations;
+
+	    for ( l= count- found; l < count; pd++, l++ )
+		{
+		if  ( ! strcmp( defaultPrinterName, pd->pdPrinterName ) )
+		    { *pDefaultPrinter= l; break;	}
+		}
 	    }
 	}
 
@@ -321,6 +331,8 @@ int utilPrinterGetPrinters(	int *			pPrinterCount,
 				const char *		customCommand2,
 				const char *		customName2 )
     {
+    int				rval= 0;
+
     PrintDestination *		pd= (PrintDestination *)0;
     int				count= 0;
     int				defaultPrinter= -1;
@@ -378,27 +390,31 @@ int utilPrinterGetPrinters(	int *			pPrinterCount,
 	fresh= (PrintDestination *)realloc( pd,
 				(count+ extra)*sizeof( PrintDestination ) );
 	if  ( ! fresh )
-	    { LLXDEB(count,extra,fresh); return -1;	}
+	    { LLXDEB(count,extra,fresh); rval= -1; goto ready;	}
 	pd= fresh;
 	}
 
     if  ( customName && customCommand )
 	{
 	if  ( utilPrinterSetCustom( pd+ count, customCommand, customName ) )
-	    { LLDEB(extra,count); return -1;		}
+	    { LLDEB(extra,count); rval= -1; goto ready;		}
 	else{ defaultPrinter= count++;			}
 	}
 
     if  ( customName2 && customCommand2 )
 	{
 	if  ( utilPrinterSetCustom( pd+ count, customCommand2, customName2 ) )
-	    { LLDEB(extra,count); return -1;		}
+	    { LLDEB(extra,count); rval= -1; goto ready;		}
 	else{ count++;					}
 	}
 
     *pPrinterCount= count;
     *pDefaultPrinter= defaultPrinter;
-    *pDestinations= pd;
+    *pDestinations= pd; pd= (PrintDestination *)0; /* steal */
 
-    return 0;
+  ready:
+    if  ( pd )
+	{ free( pd );	}
+
+    return rval;
     }

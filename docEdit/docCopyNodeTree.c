@@ -251,7 +251,7 @@ static struct BufferItem * docCopySectNode(
 			    ds );
     if  ( res < 0 )
 	{ LDEB(res); goto ready;	}
-    if  ( res > 0 )
+    if  ( res > 0 && pReady )
 	{ *pReady= 1;	}
 
     if  ( ! dcj->dcjInExternalTree && parentNodeTo )

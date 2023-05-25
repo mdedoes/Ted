@@ -63,7 +63,12 @@ IntegerValueNode * utilChildIntegerValueNode(
 
     if  ( ivn->ivnChildCount > 0 )
 	{
-if(!ivn->ivnChildren){XDEB(ivn->ivnChildren);}
+	if  ( ! ivn->ivnChildren )
+	    {
+	    XDEB(ivn->ivnChildren);
+	    return (IntegerValueNode *)0;
+	    }
+
 	while ( l < m )
 	    {
 	    if  ( ivn->ivnChildren[m].ivnValue < propval )

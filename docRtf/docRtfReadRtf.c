@@ -727,7 +727,7 @@ int docRtfConsumeGroup(	const RtfControlWord *	applyFirst,
     const RtfControlWord *	rcw;
 
     char			controlWord[TEDszRTFCONTROL+1];
-    int				c;
+    int				c= EOF;
 
     RtfGotText			savedGotText= rr->rrGotText;
 

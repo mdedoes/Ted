@@ -71,7 +71,7 @@ static int docLayoutSpanHasLeftBorder(	int *			pThick,
     if  ( tp->tpStroff == llj->lljHeadStroff )
 	{ spanHasLeftBorder= 1;		}
     else{
-	if  ( taPr->taBorderNumber != ta->taBorderNumber )
+	if  ( taPr && taPr->taBorderNumber != ta->taBorderNumber )
 	    { spanHasLeftBorder= 1;	}
 	}
 

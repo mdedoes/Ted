@@ -108,6 +108,9 @@ void docGetPixelRectangleForPages(
     if  ( sectNr < 0 )
 	{ sectNr= bodyNode->biChildCount- 1;	}
 
+    if  ( sectNr < 0 ) /* never happens, make clang happy */
+	{ LLDEB(bodyNode->biChildCount,sectNr); geoInitRectangle( drPixels );	}
+
     while( sectNr >= 0 )
 	{
 	const struct BufferItem *	sectNode= bodyNode->biChildren[sectNr];

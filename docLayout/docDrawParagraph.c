@@ -141,6 +141,7 @@ static int docDelimitParagraphDrawingStrip(
 	LLLLDEB(lpThisFrame->lpPage,lpThisFrame->lpColumn,line,lineFrom);
 	docListNode(bd,0,paraNode,0);
 	*/
+	pds->pdsLineUpto= line;
 	return 1;
 	}
 
