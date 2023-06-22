@@ -79,12 +79,28 @@ static int indScanCheckWordEnchant(
     {
     int			res;
 
+    const int		length= tail- head;
+
+    /* Do not check numbers */
+    if  ( isdigit( paraStr[head] ) ||  paraStr[head] == '-' )
+	{
+	char *	e;
+	int	matched;
+
+	(void) strtod( paraStr+ head, &e );
+
+	matched= e- ( paraStr+ head );
+
+	if  ( matched >= length )
+	    { return 0;	}
+	}
+
     res= enchant_dict_check( (EnchantDict *)sd->sdBackend,
-						paraStr+ head, tail- head );
+						paraStr+ head, length );
     if  ( res )
 	{
 	*pFoundStart= head;
-	*pFoundLength= tail- head;
+	*pFoundLength= length;
 	/*
 	appDebug( ">> \"%.*s\"\n", *pFoundLength, paraStr+ *pFoundStart );
 	*/
