@@ -440,6 +440,10 @@ static int psPdfmarkPopulateStructTreeRoot(
     }
 
 
+/**
+ *  Prepare a document to conform to be a structured PDF document.
+ *  See https://ghostscript.com/blog/zugferd.html Look for Ext_Metadata to see how to extend the XMP metadata
+ */
 int psPdfmarkMarkedDocumentSetup( PrintingState *		ps,
 				const char *			localeTag )
     {
@@ -595,7 +599,7 @@ int psPdfmarkAppendMarkedIllustration(
     return psPdfmarkAppendDefinedItem( ps, structItem );
     }
 
-static int addItemToBocumentNumberTree(	PrintingState *	ps,
+static int addItemToDocumentNumberTree(	PrintingState *	ps,
 					int		itemIndex,
 					const char *	itemName )
     {
@@ -656,7 +660,7 @@ int psPdfmarkAppendMarkedLink(	PrintingState *		ps,
     /* Add the annotation to the number tree of the document */
     /* Strangely enough, it is the structItem (itemDict), rather */
     /* than the annotation(annotationDictionaryName) */
-    if  ( addItemToBocumentNumberTree( ps, ps->psDocNumberTreeItemCount++, itemDict ) )
+    if  ( addItemToDocumentNumberTree( ps, ps->psDocNumberTreeItemCount++, itemDict ) )
 	{ LDEB(1); return -1;	}
 
     return psPdfmarkAppendDefinedItem( ps, structItem );
@@ -688,7 +692,7 @@ int psPdfmarkFinishMarkedPage(	PrintingState *		ps,
 	    "[ {ThisPage} <</Tabs /S>> /PUT pdfmark\n" );
 
     /* Add the page to the number tree of the document */
-    if  ( addItemToBocumentNumberTree( ps, numberTreeItemCount, pageParentTreeName ) )
+    if  ( addItemToDocumentNumberTree( ps, numberTreeItemCount, pageParentTreeName ) )
 	{ LDEB(numberTreeItemCount); return -1;	}
 
     return 0;
