@@ -443,6 +443,7 @@ static int psPdfmarkPopulateStructTreeRoot(
 /**
  *  Prepare a document to conform to be a structured PDF document.
  *  See https://ghostscript.com/blog/zugferd.html Look for Ext_Metadata to see how to extend the XMP metadata
+ *  See https://taggedpdf.com/xmp/pdfUA-ID.xmp For a slice to include
  */
 int psPdfmarkMarkedDocumentSetup( PrintingState *		ps,
 				const char *			localeTag )
