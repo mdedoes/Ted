@@ -163,9 +163,15 @@ struct RtfReader
     int				rrReadFlags;
 
 				/**
-				 *  The current position in the input.
+				 *  The current position (in bytes) in the input.
+				 */
+    int				rrBytesRead;
+
+				/**
+				 *  The current line in the input.
 				 */
     int				rrCurrentLine;
+
 				/**
 				 *  The current position in the document that 
 				 *  we are collecting.

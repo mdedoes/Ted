@@ -49,7 +49,7 @@ int docRtfShpProperty(		const RtfControlWord *	rcw,
     ShapeProperties *	sp;
 
     if  ( ! ds )
-	{ SLLXDEB(rcw->rcwWord,arg,rr->rrCurrentLine,ds); return 0;	}
+	{ SLLLXDEB(rcw->rcwWord,arg,rr->rrCurrentLine,rr->rrBytesRead,ds); return 0;	}
 
     sp= &(ds->dsShapeProperties);
 

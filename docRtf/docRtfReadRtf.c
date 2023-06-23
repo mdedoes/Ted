@@ -29,11 +29,13 @@ int docRtfReadByte(		RtfReader *	rr )
     int			c;
 
     c= sioInGetByte( rr->rrInputStream );
+    rr->rrBytesRead++;
     while( c == '\n' || c == '\r' )
 	{
 	if  ( c == '\n' )
 	    { rr->rrCurrentLine++;	}
 	c= sioInGetByte( rr->rrInputStream );
+	rr->rrBytesRead++;
 	}
 
     return c;
@@ -41,6 +43,7 @@ int docRtfReadByte(		RtfReader *	rr )
 
 int docRtfUngetLastRead(	RtfReader *	rr )
     {
+    rr->rrBytesRead--;
     return sioInUngetLastRead( rr->rrInputStream );
     }
 
@@ -50,10 +53,12 @@ int docRtfCheckAtEOF(		RtfReader *	rr )
 
     while( c != EOF )
 	{
+	rr->rrBytesRead++;
+
 	if  ( c != '\r' && c != '\n' && c != '\0' && c != ' ' )
 	    {
 	    const char * message= DOC_RTF_LENIENT_MESSAGE;
-	    LCSDEB(rr->rrCurrentLine,c,message); return -1;
+	    LLCSDEB(rr->rrCurrentLine,rr->rrBytesRead,c,message); return -1;
 	    }
 
 	c= sioInGetByte( rr->rrInputStream );
@@ -84,6 +89,7 @@ static int docRtfReadControlWord(	RtfReader *		rr,
 	{ CDEB(c); return -1;	}
 
     c= sioInGetByte( sis );
+    rr->rrBytesRead++;
     if  ( ! isalpha( c ) )
 	{
 	switch( c )
@@ -117,6 +123,7 @@ static int docRtfReadControlWord(	RtfReader *		rr,
     for (;;)
 	{
 	c= sioInGetByte( sis );
+	rr->rrBytesRead++;
 	if  ( ! isalpha( c ) )
 	    { controlWord[len]= '\0'; break;	}
 	if  ( len >= TEDszRTFCONTROL )
@@ -125,7 +132,11 @@ static int docRtfReadControlWord(	RtfReader *		rr,
 	}
 
     if  ( c == '-' )
-	{ sign= -1; c= sioInGetByte( sis );	}
+	{
+	sign= -1;
+	c= sioInGetByte( sis );
+	rr->rrBytesRead++;
+	}
 
     *pGotArg= ( isdigit( c ) != 0 );
     if  ( *pGotArg )
@@ -133,15 +144,20 @@ static int docRtfReadControlWord(	RtfReader *		rr,
 	int arg= c- '0';
 
 	c= sioInGetByte( sis );
+	rr->rrBytesRead++;
 
 	while( isdigit( c ) )
-	    { arg= 10* arg+ c- '0'; c= sioInGetByte( sis ); }
+	    {
+	    arg= 10* arg+ c- '0';
+	    c= sioInGetByte( sis );
+	    rr->rrBytesRead++;
+	    }
 
 	*pArg= sign* arg;
 	}
 
     if  ( c != ' ' )
-	{ sioInUngetLastRead( sis );	}
+	{ docRtfUngetLastRead( rr );	}
 
     return 0;
     }
@@ -202,21 +218,23 @@ int docRtfApplyControlWord(	const RtfControlWord *	rcw,
 	{ SLLDEB(rcw->rcwWord,rcw->rcwType,rcw->rcwEnumValue);	}
 
     if  ( (*rcw->rcwApply) ( rcw, arg, rr ) )
-	{ LSLDEB(rr->rrCurrentLine,rcw->rcwWord,arg); return -1;	}
+	{ LLSLDEB(rr->rrCurrentLine,rr->rrBytesRead,rcw->rcwWord,arg); return -1;	}
 
     return 0;
     }
 
 /************************************************************************/
 
-static int docRtfReadHexBytes(	SimpleInputStream *	sis )
+static int docRtfReadHexBytes(	RtfReader *	rr )
     {
     char		hex[3];
     unsigned int	unicode;
 
-    hex[0]= sioInGetByte( sis );
-    hex[1]= sioInGetByte( sis );
+    hex[0]= sioInGetByte( rr->rrInputStream );
+    hex[1]= sioInGetByte( rr->rrInputStream );
     hex[2]= '\0';
+
+    rr->rrBytesRead += 2;
 
     sscanf( hex, "%x", &unicode );
 
@@ -257,6 +275,7 @@ int docRtfFindControl(		RtfReader *		rr,
     for (;;)
 	{
 	c= sioInGetByte( sis );
+	rr->rrBytesRead++;
 
 	switch( c )
 	    {
@@ -272,7 +291,7 @@ int docRtfFindControl(		RtfReader *		rr,
 		else{ XDEB(c); *pC= '}'; return RTFfiCLOSE;	}
 
 	    case '\\':
-		sioInUngetLastRead( sis );
+		docRtfUngetLastRead( rr );
 		res= docRtfReadControlWord( rr, &c,
 						controlWord, pGotArg, pArg );
 
@@ -295,7 +314,7 @@ int docRtfFindControl(		RtfReader *		rr,
 
 			case '\'':
 			    if  ( res == 1 )
-				{ c= docRtfReadHexBytes( sis );	}
+				{ c= docRtfReadHexBytes( rr );	}
 			    goto defaultCase;
 
 			default:
@@ -313,7 +332,7 @@ int docRtfFindControl(		RtfReader *		rr,
 		c= docRtfReadByte( rr );
 		if  ( c == '\\' )
 		    {
-		    sioInUngetLastRead( sis );
+		    docRtfUngetLastRead( rr );
 		    res= docRtfReadControlWord( rr, &c,
 						controlWord, pGotArg, pArg );
 		    if  ( res < 0 )
@@ -331,7 +350,7 @@ int docRtfFindControl(		RtfReader *		rr,
 			    }
 
 			if  ( c=='\'' )
-			    { c= docRtfReadHexBytes( sis );	}
+			    { c= docRtfReadHexBytes( rr );	}
 
 			if  ( rrs && rrs->rrsUnicodeBytesToSkip > 0 )
 			    { rrs->rrsUnicodeBytesToSkip= 0;	}
@@ -344,7 +363,7 @@ int docRtfFindControl(		RtfReader *		rr,
 		    return RTFfiCTRLGROUP;
 		    }
 
-		sioInUngetLastRead( sis );
+		docRtfUngetLastRead( rr );
 		return RTFfiTEXTGROUP;
 
 	    case '\n':
@@ -442,6 +461,7 @@ static int docRtfReadText(	int			c,
     for (;;)
 	{
 	c= sioInGetByte( sis );
+	rr->rrBytesRead++;
 
 	switch( c )
 	    {
@@ -455,7 +475,7 @@ static int docRtfReadText(	int			c,
 		return RTFfiCLOSE;
 
 	    case '{':
-		sioInUngetLastRead( sis );
+		docRtfUngetLastRead( rr );
 		res= docRtfFindControl( rr, &c, controlWord, pGotArg, pArg );
 		if  ( res < 0 )
 		    { LDEB(res); return res;	}
@@ -472,7 +492,7 @@ static int docRtfReadText(	int			c,
 		continue;
 
 	    case '\\':
-		sioInUngetLastRead( sis );
+		docRtfUngetLastRead( rr );
 		res= docRtfFindControl( rr, &c, controlWord, pGotArg, pArg );
 		if  ( res < 0 )
 		    { LDEB(res); return res;	}

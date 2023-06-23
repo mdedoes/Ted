@@ -181,10 +181,10 @@ static int docRtfReadWordGroup(	RtfReader *		rr,
 	}
     else{
 	if  ( rr->rrComplainUnknown )
-	    { LSDEB(rr->rrCurrentLine,controlWord);	}
+	    { LLSDEB(rr->rrCurrentLine,rr->rrBytesRead,controlWord);	}
 
 	if  ( docRtfReadUnknownGroup( rr ) )
-	    { LSDEB(rr->rrCurrentLine,controlWord); return -1;	}
+	    { LLSDEB(rr->rrCurrentLine,rr->rrBytesRead,controlWord); return -1;	}
 	}
 
     return 0;

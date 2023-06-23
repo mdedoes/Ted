@@ -84,7 +84,7 @@ int docRtfRememberSectionProperty(	const RtfControlWord *	rcw,
 	}
 
     if  ( docSetSectionProperty( sp, rcw->rcwID, arg ) < 0 )
-	{ LSLDEB(rr->rrCurrentLine,rcw->rcwWord,arg); return -1;	}
+	{ LLSLDEB(rr->rrCurrentLine,rr->rrBytesRead,rcw->rcwWord,arg); return -1;	}
 
     PROPmaskADD( &(rr->rrSectionPropertyMask), rcw->rcwID );
     PROPmaskADD( &(rr->rrStyle.dsSectMask), rcw->rcwID );

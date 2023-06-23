@@ -370,7 +370,7 @@ int docRtfHierarchy(	const RtfControlWord *	rcw,
 		{ levelNode= docGetRowLevelNode( rts->rtsNode );	}
 	    /* ignore stray \row tags rather than fail */
 	    if  ( ! levelNode )
-		{ LSDEB(rr->rrCurrentLine,rcw->rcwWord); return 0;	}
+		{ LLSDEB(rr->rrCurrentLine,rr->rrBytesRead,rcw->rcwWord); return 0;	}
 	    if  ( docRtfPopNode( rr, levelNode ) )
 		{ SDEB(rcw->rcwWord); return -1;	}
 	    break;

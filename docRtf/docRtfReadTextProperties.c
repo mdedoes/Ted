@@ -35,7 +35,7 @@ static int docRtfRememberTextPropertyImpl(	TextAttribute *		ta,
 
 	case TApropFONTSIZE:
 	    if  ( arg < 1 || arg > 2000 )
-		{ LSLDEB(rr->rrCurrentLine,rcw->rcwWord,arg); arg= 20; }
+		{ LLSLDEB(rr->rrCurrentLine,rr->rrBytesRead,rcw->rcwWord,arg); arg= 20; }
 	    break;
 
 	case TApropBORDER:
@@ -49,7 +49,7 @@ static int docRtfRememberTextPropertyImpl(	TextAttribute *		ta,
 	}
 
     if  ( textSetTextProperty( ta, rcw->rcwID, arg ) < 0 )
-	{ SLDEB(rcw->rcwWord,arg); return -1;	}
+	{ LLSLDEB(rr->rrCurrentLine,rr->rrBytesRead,rcw->rcwWord,arg); return -1;	}
 
     return 0;
     }

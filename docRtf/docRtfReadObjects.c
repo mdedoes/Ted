@@ -33,7 +33,7 @@ int docRtfObjectProperty(	const RtfControlWord *	rcw,
     io= rr->rrInsertedObject;
     if  ( ! io )
 	{
-	LSXDEB(rr->rrCurrentLine,rcw->rcwWord,rr->rrInsertedObject);
+	LLSXDEB(rr->rrCurrentLine,rr->rrBytesRead,rcw->rcwWord,rr->rrInsertedObject);
 	return 0;
 	}
 
@@ -119,7 +119,7 @@ static int docRtfObjectSetData(	RtfReader *		rr,
 
     if  ( ! io )
 	{
-	LLXDEB(rr->rrCurrentLine,prop,rr->rrInsertedObject);
+	LLLXDEB(rr->rrCurrentLine,rr->rrBytesRead,prop,rr->rrInsertedObject);
 	return -1;
 	}
 

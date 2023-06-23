@@ -53,6 +53,7 @@ static void docRtfInitReader(	RtfReader *	rr )
 				/*
 				 *  The current position in the input.
 				 */
+    rr->rrBytesRead= 0;
     rr->rrCurrentLine= 1;
 
 				/*
