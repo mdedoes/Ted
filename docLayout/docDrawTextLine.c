@@ -807,7 +807,7 @@ int docDrawTextLine(	struct BufferItem *		paraNode,
 
     ParticuleData *		pd= (ParticuleData *)0;
     int				part= tl->tlFirstParticule;
-    const int			isLast= tl- paraNode->biParaLines < paraNode->biParaLineCount- 1;
+    const int			isLast= tl- paraNode->biParaLines == paraNode->biParaLineCount- 1;
 
     DrawTextLine		dtl;
 
