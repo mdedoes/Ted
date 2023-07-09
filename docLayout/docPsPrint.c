@@ -374,6 +374,8 @@ int docPsPrintDocument(	struct SimpleOutputStream *	sos,
 			double				shadingMesh,
 			int				emitOutline,
 			int				markContent,
+			int				omitContentMarks,
+			int				declareUACompliant,
 			int				markInvisibleAsArtifact,
 			int				drawParticulesSeparately,
 			const LayoutContext *		lc,
@@ -439,9 +441,11 @@ int docPsPrintDocument(	struct SimpleOutputStream *	sos,
 	dc.dcStartTree= docPsPrintStartTree;
 	dc.dcFinishTree= docPsPrintFinishTree;
 	ps.psTagDocumentStructure= 1;
-	}
 
-    ps.psMarkInvisibleAsArtifact= markInvisibleAsArtifact != 0;
+	ps.psMarkInvisibleAsArtifact= markInvisibleAsArtifact != 0;
+	ps.psOmitContentMarks= omitContentMarks != 0;
+	ps.psDeclareUACompliant= declareUACompliant != 0;
+	}
 
     dc.dcLayoutContext= lc;
 

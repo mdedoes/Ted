@@ -250,11 +250,23 @@ int psStartPage(	PrintingState *			ps,
 /************************************************************************/
 
 /*  1  */
-static void psDrawSometingInvisible(	PrintingState *	ps )
+static int psDrawSometingInvisible(	PrintingState *	ps )
     {
+    int		asArtifact= ps->psTagDocumentStructure &&
+			    ! ps->psOmitContentMarks &&
+			    ! ps->psInArtifact;
+
+    if  ( asArtifact && psPdfBeginMarkedContent( ps, "Artifact", -1 ) )
+	{ LDEB(asArtifact); return -1;	}
+
     sioOutPrintf( ps->psSos,
 	    "1 setgray 0 0 moveto 1 0 rlineto stroke"
 	    "  %% Avoid an empty page\n" );
+
+    if  ( asArtifact && psPdfEndMarkedContent( ps ) )
+	{ LDEB(asArtifact); return -1;	}
+
+    return 0;
     }
 
 int psFinishPage(	PrintingState *		ps,

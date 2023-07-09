@@ -27,6 +27,8 @@ extern int docPsPrintDocument(
 			double				shadingMesh,
 			int				emitOutline,
 			int				markContent,
+			int				omitContentMarks,
+			int				declareUACompliant,
 			int				markInvisibleAsArtifact,
 			int				drawParticulesSeparately,
 			const struct LayoutContext *	lc,

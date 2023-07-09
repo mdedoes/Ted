@@ -8,6 +8,7 @@
 
 #   include	<stddef.h>
 #   include	<stdio.h>
+#   include	<string.h>
 
 #   include	"psPrint.h"
 #   include	<geoRectangle.h>
@@ -377,11 +378,14 @@ static int psPdfmarkDefineLeafStructItem(
 				PrintingState *		ps,
 				StructItem *		structItem )
     {
-    if  ( psPdfmarkOpenLeafStructItem( ps, structItem ) )
-	{ SLDEB(structItem->siStructureType,structItem->siContentId); return -1;	}
+    if  ( ! ps->psOmitContentMarks )
+	{
+	if  ( psPdfmarkOpenLeafStructItem( ps, structItem ) )
+	    { SLDEB(structItem->siStructureType,structItem->siContentId); return -1;	}
 
-    if  ( psPdfmarkCloseStructItem( ps ) )
-	{ SLDEB(structItem->siStructureType,structItem->siContentId); return -1;	}
+	if  ( psPdfmarkCloseStructItem( ps ) )
+	    { SLDEB(structItem->siStructureType,structItem->siContentId); return -1;	}
+	}
 
     return 0;
     }
@@ -394,11 +398,14 @@ static int psPdfmarkDefineGroupStructItem(
 				PrintingState *		ps,
 				StructItem *		structItem )
     {
-    if  ( psPdfmarkOpenGroupStructItem( ps, structItem ) )
-	{ SLDEB(structItem->siStructureType,structItem->siContentId); return -1;	}
+    if  ( ! ps->psOmitContentMarks )
+	{
+	if  ( psPdfmarkOpenGroupStructItem( ps, structItem ) )
+	    { SLDEB(structItem->siStructureType,structItem->siContentId); return -1;	}
 
-    if  ( psPdfmarkCloseStructItem( ps ) )
-	{ SLDEB(structItem->siStructureType,structItem->siContentId); return -1;	}
+	if  ( psPdfmarkCloseStructItem( ps ) )
+	    { SLDEB(structItem->siStructureType,structItem->siContentId); return -1;	}
+	}
 
     return 0;
     }
@@ -448,6 +455,17 @@ static int psPdfmarkPopulateStructTreeRoot(
 int psPdfmarkMarkedDocumentSetup( PrintingState *		ps,
 				const char *			localeTag )
     {
+    if  ( ps->psDeclareUACompliant )
+	{
+	if  ( ps->psOmitContentMarks )
+	    { LLDEB(ps->psDeclareUACompliant,ps->psOmitContentMarks);	}
+
+	/* Insert metadata stating that this is a level 1 PDF-UA document */
+	sioOutPrintf( ps->psSos, "[ /XML " );
+	psPrintStringValue( ps, PS_PDF_UA_XMP, strlen( PS_PDF_UA_XMP ), 0 );
+	sioOutPrintf( ps->psSos, " /Ext_Metadata pdfmark\n" );
+	}
+
     sioOutPrintf( ps->psSos,
 	    "[ {Catalog} << /MarkInfo <</Marked true>> >> /PUT pdfmark\n" );
 
@@ -474,9 +492,12 @@ int psPdfmarkMarkedDocumentSetup( PrintingState *		ps,
     psPdfmarkPopulateStructTreeRoot( ps,
 	PS_DOC_STRUCT_TREE_ROOT, PS_DOC_NUMBER_TREE_ROOT, PS_DOC_STRUCT_ITEM );
 
-    psPdfmarkPopulateGroupStructItem( ps,
-	PS_DOC_STRUCT_ITEM, PS_DOC_STRUCT_TREE_ROOT,
-	"Document", PS_DOC_STRUCT_ITEM_KIDS );
+    if  ( ! ps->psOmitContentMarks )
+	{
+	psPdfmarkPopulateGroupStructItem( ps,
+	    PS_DOC_STRUCT_ITEM, PS_DOC_STRUCT_TREE_ROOT,
+	    "Document", PS_DOC_STRUCT_ITEM_KIDS );
+	}
 
     sioOutPrintf( ps->psSos,
 	    "[ {Catalog} <</ViewerPreferences <</DisplayDocTitle true>>>> /PUT pdfmark\n" );
@@ -540,12 +561,16 @@ static int psPdfmarkAppendDefinedItem(
 int psPdfmarkAppendMarkedLeaf(	PrintingState *		ps,
 				StructItem *		structItem )
     {
-    if  ( ps->psInArtifact )
-	{ LDEB(ps->psInArtifact); return -1;	}
+    if  ( ps->psOmitContentMarks )
+	{ return 0;	}
+    else{
+	if  ( ps->psInArtifact )
+	    { LDEB(ps->psInArtifact); return -1;	}
 
-    psPdfmarkDefineLeafStructItem( ps, structItem );
+	psPdfmarkDefineLeafStructItem( ps, structItem );
 
-    return psPdfmarkAppendDefinedItem( ps, structItem );
+	return psPdfmarkAppendDefinedItem( ps, structItem );
+	}
     }
 
 /**
@@ -555,12 +580,16 @@ int psPdfmarkAppendMarkedLeaf(	PrintingState *		ps,
 int psPdfmarkAppendMarkedGroup(	PrintingState *		ps,
 				StructItem *		structItem )
     {
-    if  ( ps->psInArtifact )
-	{ LDEB(ps->psInArtifact); return -1;	}
+    if  ( ps->psOmitContentMarks )
+	{ return 0;	}
+    else{
+	if  ( ps->psInArtifact )
+	    { LDEB(ps->psInArtifact); return -1;	}
 
-    psPdfmarkDefineGroupStructItem( ps, structItem );
+	psPdfmarkDefineGroupStructItem( ps, structItem );
 
-    return psPdfmarkAppendDefinedItem( ps, structItem );
+	return psPdfmarkAppendDefinedItem( ps, structItem );
+	}
     }
 
 /**
@@ -573,31 +602,35 @@ int psPdfmarkAppendMarkedIllustration(
 			const DocumentRectangle *	drTwips,
 			const MemoryBuffer *		altText )
     {
-    if  ( ps->psInArtifact )
-	{ LDEB(ps->psInArtifact); return -1;	}
+    if  ( ps->psOmitContentMarks )
+	{ return 0;	}
+    else{
+	if  ( ps->psInArtifact )
+	    { LDEB(ps->psInArtifact); return -1;	}
 
-    if  ( psPdfmarkOpenLeafStructItem( ps, structItem ) )
-	{ SLDEB(structItem->siStructureType,structItem->siContentId); return -1;	}
+	if  ( psPdfmarkOpenLeafStructItem( ps, structItem ) )
+	    { SLDEB(structItem->siStructureType,structItem->siContentId); return -1;	}
 
-    if  ( psPdfmarkSetAltText( ps, altText ) )
-	{ LDEB(1); return -1;	}
+	if  ( psPdfmarkSetAltText( ps, altText ) )
+	    { LDEB(1); return -1;	}
 
-    if  ( drTwips )
-	{
-	DocumentRectangle	dr;
+	if  ( drTwips )
+	    {
+	    DocumentRectangle	dr;
 
-	geoTransformRectangle( &dr, drTwips, &(ps->psCurrentTransform) );
+	    geoTransformRectangle( &dr, drTwips, &(ps->psCurrentTransform) );
 
-	if  ( sioOutPrintf( ps->psSos,
-		"/A <</BBox [%d %d %d %d] /Placement /Block /O /Layout>>",
-		dr.drX0, dr.drY0, dr.drX1, dr.drY1 ) < 0 )
-	    { XDEB(drTwips); return -1;	}
+	    if  ( sioOutPrintf( ps->psSos,
+		    "/A <</BBox [%d %d %d %d] /Placement /Block /O /Layout>>",
+		    dr.drX0, dr.drY0, dr.drX1, dr.drY1 ) < 0 )
+		{ XDEB(drTwips); return -1;	}
+	    }
+
+	if  ( psPdfmarkCloseStructItem( ps ) )
+	    { SLDEB(structItem->siStructureType,structItem->siContentId); return -1;	}
+
+	return psPdfmarkAppendDefinedItem( ps, structItem );
 	}
-
-    if  ( psPdfmarkCloseStructItem( ps ) )
-	{ SLDEB(structItem->siStructureType,structItem->siContentId); return -1;	}
-
-    return psPdfmarkAppendDefinedItem( ps, structItem );
     }
 
 static int addItemToDocumentNumberTree(	PrintingState *	ps,
@@ -637,20 +670,23 @@ int psPdfmarkAppendMarkedLink(	PrintingState *		ps,
     if  ( pageAnnotationReference < 0 )
 	{ LDEB(pageAnnotationReference); return -1;	}
 
-    sioOutPrintf( ps->psSos,
-	"[ /_objdef {%s} /type /dict /OBJ pdfmark\n",
-	itemDict );
+    if  ( ! ps->psOmitContentMarks )
+	{
+	sioOutPrintf( ps->psSos,
+	    "[ /_objdef {%s} /type /dict /OBJ pdfmark\n",
+	    itemDict );
 
-    sioOutPrintf( ps->psSos,
-	"[ {%s} <</S /%s /P {%s} /K [ <</Obj {%s} /Pg {ThisPage} /Type /OBJR>> %d ] /Pg {ThisPage} ",
-	itemDict,
-	structItem->siStructureType,
-	parentDict,
-	annotationDictionaryName,
-	structItem->siContentId );
+	sioOutPrintf( ps->psSos,
+	    "[ {%s} <</S /%s /P {%s} /K [ <</Obj {%s} /Pg {ThisPage} /Type /OBJR>> %d ] /Pg {ThisPage} ",
+	    itemDict,
+	    structItem->siStructureType,
+	    parentDict,
+	    annotationDictionaryName,
+	    structItem->siContentId );
 
-    if  ( psPdfmarkCloseStructItem( ps ) )
-	{ SLDEB(structItem->siStructureType,structItem->siContentId); return -1;	}
+	if  ( psPdfmarkCloseStructItem( ps ) )
+	    { SLDEB(structItem->siStructureType,structItem->siContentId); return -1;	}
+	}
 
     sprintf( pageAnnotationArrayName, PS_PAGE_ANNOTATION_ARRAY_NAME, page );
 
@@ -661,7 +697,8 @@ int psPdfmarkAppendMarkedLink(	PrintingState *		ps,
     /* Add the annotation to the number tree of the document */
     /* Strangely enough, it is the structItem (itemDict), rather */
     /* than the annotation(annotationDictionaryName) */
-    if  ( addItemToDocumentNumberTree( ps, ps->psDocNumberTreeItemCount++, itemDict ) )
+    if  ( ! ps->psOmitContentMarks				&&
+	  addItemToDocumentNumberTree( ps, ps->psDocNumberTreeItemCount++, itemDict ) )
 	{ LDEB(1); return -1;	}
 
     return psPdfmarkAppendDefinedItem( ps, structItem );
@@ -693,7 +730,8 @@ int psPdfmarkFinishMarkedPage(	PrintingState *		ps,
 	    "[ {ThisPage} <</Tabs /S>> /PUT pdfmark\n" );
 
     /* Add the page to the number tree of the document */
-    if  ( addItemToDocumentNumberTree( ps, numberTreeItemCount, pageParentTreeName ) )
+    if  ( ! ps->psOmitContentMarks				&&
+	  addItemToDocumentNumberTree( ps, numberTreeItemCount, pageParentTreeName ) )
 	{ LDEB(numberTreeItemCount); return -1;	}
 
     return 0;
@@ -706,14 +744,16 @@ int psPdfmarkFinishMarkedPage(	PrintingState *		ps,
  */
 int psPdfmarkMarkedDocumentTrailer( PrintingState *		ps )
     {
-
-    /* 1 */
-    sioOutPrintf( ps->psSos,
-	    "[ {%s} <</Nums {%s}>> /PUT pdfmark\n",
-	    PS_DOC_NUMBER_TREE_ROOT, PS_DOC_NUMBER_TREE_NUMS );
-    /* 2 */
-    sioOutPrintf( ps->psSos, "[ {Catalog} <</StructTreeRoot {%s}>> /PUT pdfmark\n",
-	    PS_DOC_STRUCT_TREE_ROOT );
+    if  ( ! ps->psOmitContentMarks )
+	{
+	/* 1 */
+	sioOutPrintf( ps->psSos,
+		"[ {%s} <</Nums {%s}>> /PUT pdfmark\n",
+		PS_DOC_NUMBER_TREE_ROOT, PS_DOC_NUMBER_TREE_NUMS );
+	/* 2 */
+	sioOutPrintf( ps->psSos, "[ {Catalog} <</StructTreeRoot {%s}>> /PUT pdfmark\n",
+		PS_DOC_STRUCT_TREE_ROOT );
+	}
 
     return 0;
     }

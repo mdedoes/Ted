@@ -147,8 +147,10 @@ int tedPrintDocument(	SimpleOutputStream *		sos,
     TedAppResources *		tar= (TedAppResources *)ea->eaResourceData;
     int				emitOutline= tar->tarPdfOutlineInt > 0;
     int				markContent= tar->tarPdfMarkContentInt > 0;
+    int				omitContentMarks= tar->tarPdfOmitContentMarksInt > 0;
     int				markInvisibleAsArtifact= tar->tarPdfMarkInvisibleAsArtifactInt > 0;
     int				drawParticulesSeparately= tar->tarDrawParticulesSeparatelyInt > 0;
+    int				declareUACompliant= tar->tarPdfDeclareUACompliantInt > 0;
 
     MemoryBuffer		fontDir;
 
@@ -168,7 +170,7 @@ int tedPrintDocument(	SimpleOutputStream *		sos,
 				    ea->eaReference,
 				    &fontDir,
 				    shadingMesh, emitOutline,
-				    markContent, markInvisibleAsArtifact,
+				    markContent, omitContentMarks, declareUACompliant, markInvisibleAsArtifact,
 				    drawParticulesSeparately,
 				    &lc, pg ) )
 	{ LDEB(1); rval= -1;	}

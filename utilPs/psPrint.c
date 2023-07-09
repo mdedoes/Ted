@@ -160,6 +160,9 @@ void psInitPrintingState(	PrintingState *	ps )
     ps->ps7Bits= 0;
 
     ps->psTagDocumentStructure= 0;
+    ps->psOmitContentMarks= 0;
+    ps->psDeclareUACompliant= 0;
+    ps->psMarkInvisibleAsArtifact= 0;
     ps->psDictionaryNameCount= 0;
     ps->psInArtifact= 0;
     ps->psDocNumberTreeItemCount= 0;

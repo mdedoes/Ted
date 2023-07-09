@@ -58,6 +58,20 @@ typedef struct TedAppResources
     char *			tarPdfMarkContentString;
     int				tarPdfMarkContentInt;
 
+    char *			tarPdfOmitContentMarksString;
+    int				tarPdfOmitContentMarksInt;
+
+				/**
+				 * In combination with tarPdfMarkContent=1,
+				 * modify XMP metadata to state that the 
+				 * PDF is PDF/UA compliant. This uses a GhostScript
+				 * specific pdfmark. Documents that are emitted with
+				 * pdfOmitContentMarks are NOT PDF/UA compliant.
+				 * Do not combine the two flags
+				 */
+    char *			tarPdfDeclareUACompliantString;
+    int				tarPdfDeclareUACompliantInt;
+
 				/**
 				 * In combination with tarPdfMarkContent=1,
 				 * we mark invisible text as an artifact.

@@ -54,6 +54,14 @@ typedef struct PrintingState
 
     PrintGeometry		psPrintGeometry;
     NupSchema			psNupSchema;
+
+				/**
+				 *  As shading is done in device coordinates and not in 
+				 *  user coordinate space, shading must be rotated with 
+				 *  the contents of the page.
+				 *
+				 *  The same applies for the nup schema.
+				 */
     int				psRotateSheetGrid;
 
     AffineTransform2D		psCurrentTransform;
@@ -106,6 +114,29 @@ typedef struct PrintingState
 				 * to be compliant with ISO 14289-1 (PDF/UA).
 				 */
     unsigned char		psTagDocumentStructure;
+
+				/**
+				 * Omit the marks that mark the pieces in the 
+				 * content stream. In this way, the most difficult
+				 * work in generating PostScript that can be converted 
+				 * to PDF/AU is done. Without marking the content, the 
+				 * the resulting document is NOT PDF/UA compliant however.
+				 * This is only relevant in combination with psTagDocumentStructure.
+				 * We want to retain the original name of psTagDocumentStructure.
+				 * This makes the name a bit silly.
+				 */
+
+    unsigned char		psOmitContentMarks;
+
+				/**
+				 * Insert XMP metadata that tells the document is PDF/UA compliant.
+				 * As this is done through a GhostScript specific pdfmark,
+				 * this must be explicitly enabled.
+				 *
+				 * Note that with psOmitContentMarks, the document is NOT Pdf/UA
+				 * compliant.
+				 */
+    unsigned char		psDeclareUACompliant;
 
 
 				/**
@@ -228,6 +259,8 @@ typedef struct StructItem
 /*  Routine declarations.						*/
 /*									*/
 /************************************************************************/
+
+extern const char PS_PDF_UA_XMP[];
 
 extern void psPdfInitStructItem(
 			StructItem *			si );
