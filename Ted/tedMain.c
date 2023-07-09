@@ -461,7 +461,7 @@ static EditApplication	TedApplication=
 		    /****************************************************/
     "Ted",
     TED_ConfigString,
-    "Ted 2.23ny2, May 25, 2023",
+    "Ted 2.23nz2, July 9, 2023",
     "http://www.nllgg.nl/Ted",
     MY_PLATFORM " " MY_RELEASE,
     "\"" MY_HOST_DATE "\"",
