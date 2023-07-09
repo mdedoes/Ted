@@ -19,8 +19,10 @@
 #   include	<docNotes.h>
 #   include	<docFieldKind.h>
 #   include	<docListAdmin.h>
+#   include	<docSelect.h>
 #   include	<docBuf.h>
 #   include	<docDocument.h>
+#   include	<sioGeneral.h>
 
 #   include	<appDebugon.h>
 
@@ -116,7 +118,7 @@ struct BufferDocument * docRtfReadFile(	struct SimpleInputStream *	sis,
     int				arg= -1;
     int				c;
 
-    const struct DocumentField *	dfNote;
+    const struct DocumentField * dfNote;
     struct DocumentNote *	dn;
     int				changed;
 
@@ -186,6 +188,38 @@ struct BufferDocument * docRtfReadFile(	struct SimpleInputStream *	sis,
     /* LDEB(1); docListNode(bd,0,rval->bdBody.dtRoot,0); */
 
   ready:
+
+    if  ( rr && ! rval )
+	{
+	char		remainingRtf[200+1];
+	int		done= sioInReadBytes( sis, (unsigned char *)remainingRtf, sizeof(remainingRtf)-1 );
+	RtfTreeStack *  rts= rr->rrTreeStack;
+
+	if  ( done >= 0 )
+	    {
+	    remainingRtf[done]= '\0';
+	    LLSDEB(rr->rrCurrentLine,rr->rrBytesRead,remainingRtf);
+	    }
+
+	while( rts )
+	    {
+	    if  ( rts->rtsTree && rts->rtsTree->dtRoot )
+		{
+		DocumentPosition	dpLast;
+
+		if  ( ! docTailPosition( &dpLast, rts->rtsTree->dtRoot ) )
+		    {
+		    const char * lastParagraph= docParaString(dpLast.dpNode,0);
+		    SSDEB(docTreeTypeStr(rts->rtsTree->dtRoot->biTreeType),lastParagraph);
+		    }
+		else{
+		    SSDEB(docTreeTypeStr(rts->rtsTree->dtRoot->biTreeType),"empty");
+		    }
+		}
+
+	    rts= rts->rtsPrev;
+	    }
+	}
 
     if  ( rr )
 	{ docRtfCloseReader( rr );	}

@@ -381,6 +381,7 @@ docRtfMakeLookup.o: \
     docRtfMakeLookup.c
 
 docRtfRead.o: \
+    ../appUtil/sioGeneral.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
     ../appUtil/utilIndexSet.h \
@@ -427,6 +428,7 @@ docRtfRead.o: \
     ../docBuf/docRecalculateFields.h \
     ../docBuf/docRowNode.h \
     ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
     ../docBuf/docTreeNode.h \
     ../docField/docChildFields.h \
     ../docField/docDocumentFieldList.h \

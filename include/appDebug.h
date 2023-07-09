@@ -196,7 +196,7 @@ extern void appDebugStackTrace(	const char *	file,
 			    #c2, DEBC(c2),			\
 			    #s3, DEBS(s3)			))
 
-# define LLCSDEB(l1,l2,c3,s4) APP_DEB(appDebug( "%s(%3d)"		\
+# define LLCSDEB(l1,l2,c3,s4) APP_DEB(appDebug( "%s(%3d)"	\
 			    DFML				\
 			    DFML				\
 			    DFMC				\
@@ -205,6 +205,17 @@ extern void appDebugStackTrace(	const char *	file,
 			    #l1, DEBL(l1),			\
 			    #l2, DEBL(l2),			\
 			    #c3, DEBC(c3),			\
+			    #s4, DEBS(s4)			))
+
+# define LLXSDEB(l1,l2,l3,s4) APP_DEB(appDebug( "%s(%3d)"	\
+			    DFML				\
+			    DFML				\
+			    DFMX				\
+			    DFMS				\
+			    "\n", __FILE__, __LINE__,		\
+			    #l1, DEBL(l1),			\
+			    #l2, DEBL(l2),			\
+			    #l3, DEBX(l3),			\
 			    #s4, DEBS(s4)			))
 
 # define LLCDEB(l1,l2,c3) APP_DEB(appDebug( "%s(%3d)"		\

@@ -76,7 +76,7 @@ typedef struct RtfTreeStack
 
 				/**
 				 *  The cellx value collected until now.
-				 *  initialized with the trleft value.
+				 *  Is initialized with the trleft value.
 				 */
     int				rtsRowCellX;
 
