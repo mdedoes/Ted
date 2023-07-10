@@ -701,7 +701,9 @@ int psPdfmarkAppendMarkedLink(	PrintingState *		ps,
 	  addItemToDocumentNumberTree( ps, ps->psDocNumberTreeItemCount++, itemDict ) )
 	{ LDEB(1); return -1;	}
 
-    return psPdfmarkAppendDefinedItem( ps, structItem );
+    if  ( ps->psOmitContentMarks )
+	{ return 0;						}
+    else{ return psPdfmarkAppendDefinedItem( ps, structItem );	}
     }
 
 int psPdfmarkFinishMarkedPage(	PrintingState *		ps,
@@ -766,13 +768,16 @@ int psPdfMarkSetActualText(	PrintingState *		ps,
     if  ( ps->psInArtifact )
 	{ LDEB(ps->psInArtifact); return -1;	}
 
-    sioOutPrintf( ps->psSos,
+    if  ( ! ps->psOmitContentMarks )
+	{
+	sioOutPrintf( ps->psSos,
 	    "[ {%s} <</ActualText ",
 	    utilMemoryBufferGetString( &(structItem->siDictionaryName) ) );
 
-    psPrintPdfMarkStringValue( ps, mbActualText );
+	psPrintPdfMarkStringValue( ps, mbActualText );
 
-    sioOutPrintf( ps->psSos, ">> /PUT pdfmark\n" );
+	sioOutPrintf( ps->psSos, ">> /PUT pdfmark\n" );
+	}
 
     return 0;
     }
