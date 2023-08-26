@@ -175,8 +175,9 @@ typedef struct ParagraphProperties
 
 			/**
 			 *  The outline level of the paragraph. (outlinelevel)
-			 *  Value go from 0 to 8 for actually outlined 
-			 *  text. 9 is the default and refers to body text.
+			 *  Value go from 0 to 8 for actually outlined text.
+			 *  level 9 is the default and refers to body text.
+			 *  Levels 0 .. 5 correspond to HTML headers H1..H6
 			 */
     unsigned char	ppOutlineLevel;
 

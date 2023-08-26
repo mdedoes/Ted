@@ -12,6 +12,8 @@
 #   include	<docTreeNode.h>
 #   include	<docTreeType.h>
 #   include	<docBuf.h>
+#   include	<docRowProperties.h>
+#   include	<docParaProperties.h>
 #   include	<docParaParticules.h>
 #   include	<psPrint.h>
 
@@ -27,17 +29,76 @@ static const char STRUCTtypeP[]= "P";
 static const char STRUCTtypePART[]= "Part";
 static const char STRUCTtypeSECT[]= "Sect";
 static const char STRUCTtypeTD[]= "TD";
+static const char STRUCTtypeTH[]= "TH";
 static const char STRUCTtypeTR[]= "TR";
 static const char STRUCTtypeTABLE[]= "Table";
+
+static const char STRUCTtypeH1[]= "H1";
+static const char STRUCTtypeH2[]= "H2";
+static const char STRUCTtypeH3[]= "H3";
+static const char STRUCTtypeH4[]= "H4";
+static const char STRUCTtypeH5[]= "H5";
+static const char STRUCTtypeH6[]= "H6";
 
 /************************************************************************/
 
 /**
- * Only mark nodes that intersect a single page.
+ * Only mark nodes that land on a single page.
  */
 static int docPsMarkNode(	const struct BufferItem *		node )
     {
-    return 0 && node->biTopPosition.lpPage == node->biBelowPosition.lpPage;
+    return node->biTopPosition.lpPage == node->biBelowPosition.lpPage;
+    }
+
+static const char * docPsCellNodeMark( const struct BufferItem *	cellNode )
+    {
+    const BufferItem *	rowNode= cellNode->biParent;
+    const BufferItem *	tableNode= cellNode->biParent;
+
+    if  ( ! docPsMarkNode( tableNode ) )
+	{ return (char *)0;	}
+
+    /* I could not find a cell property to decide between td and th (MdD Aug 2023) */
+    if  ( rowNode->biRowProperties->rpIsTableHeader )
+	{ return STRUCTtypeTH;	}
+    else{ return STRUCTtypeTD;	}
+    }
+
+static int docPsMarkRowNode(
+	    const struct BufferItem *	rowNode,
+	    int *			pAsTableFirst,
+	    int *			pAsTableLast )
+    {
+    const BufferItem *	tableNode= rowNode->biParent;
+
+    if  ( ! docIsRowNode( rowNode ) || ! docPsMarkNode( tableNode ) )
+	{ return 0;	}
+
+    if  ( pAsTableFirst )
+	{ *pAsTableFirst= rowNode->biNumberInParent == rowNode->biRowTableFirst;	}
+
+    if  ( pAsTableLast )
+	{ *pAsTableLast= rowNode->biNumberInParent == rowNode->biRowTablePast- 1;	}
+
+    return 1;
+    }
+
+static const char * docPsParagraphNodeMark(
+	    PrintingState *		ps,
+	    const struct BufferItem *	paraNode )
+    {
+    if  ( ps->psInArtifact || docParagraphIsEmpty( paraNode ) )
+	{ return (char *)0;	}
+
+    switch( paraNode->biParaProperties->ppOutlineLevel ) {
+	case 0: return STRUCTtypeH1;
+	case 1: return STRUCTtypeH2;
+	case 2: return STRUCTtypeH3;
+	case 3: return STRUCTtypeH4;
+	case 4: return STRUCTtypeH5;
+	case 5: return STRUCTtypeH6;
+	default: return STRUCTtypeP;
+	}
     }
 
 static int docPsPrintBeginMarkedGroup(
@@ -211,17 +272,14 @@ int docPsPrintFinishTree( void *			vps,
  */
 int docPsPrintStartLines( void *			vps,
 			struct DrawingContext *		dc,
-			const struct BufferItem *	node,
+			const struct BufferItem *	paraNode,
 			const struct DocumentSelection * ds )
     {
     PrintingState *	ps= (PrintingState *)vps;
+    const char *	mark= docPsParagraphNodeMark( ps, paraNode );
 
-    /* Temporarily, we do this */
-    if  ( ! ps->psInArtifact && ! docParagraphIsEmpty( node ) )
-	{
-	if  ( docPsPrintBeginMarkedGroup( ps, STRUCTtypeP ) )
-	    { LDEB(node->biLevel); return -1;	}
-	}
+    if  ( mark && docPsPrintBeginMarkedGroup( ps, STRUCTtypeP ) )
+	{ LSDEB(paraNode->biLevel,mark); return -1;	}
 
     return 0;
     }
@@ -232,18 +290,19 @@ int docPsPrintStartLines( void *			vps,
  */
 int docPsPrintFinishLines( void *			vps,
 			struct DrawingContext *		dc,
-			const struct BufferItem *	node,
+			const struct BufferItem *	paraNode,
 			const struct DocumentSelection * ds )
     {
     PrintingState *	ps= (PrintingState *)vps;
+    const char *	mark= docPsParagraphNodeMark( ps, paraNode );
 
-    if  ( ! ps->psInArtifact && ! docParagraphIsEmpty( node ) )
+    if  ( mark )
 	{
 	if  ( docPsPrintFinishInline( ps )	)
-	    { LDEB(1); return -1;	}
+	    { LSDEB(paraNode->biLevel,mark); return -1;	}
 
 	if  ( docPsPrintEndMarkedGroup( ps ) )
-	    { LDEB(node->biLevel); return -1;	}
+	    { LSDEB(paraNode->biLevel,mark); return -1;	}
 	}
 
     return 0;
@@ -284,29 +343,29 @@ int docPsPrintStartNode(	void *				vps,
 		    { LDEB(node->biLevel); return -1;	}
 		break;
 
-	    case DOClevROW:
-		if  ( docPsMarkNode( node )			&&
-		      docIsRowNode( node )			)
-		    {
-		    if  ( node->biNumberInParent == node->biRowTableFirst )
+	    case DOClevROW: {
+		    int		asTableFirst= 0;
+
+		    if  ( docPsMarkRowNode( node, &asTableFirst, (int *)0 ) )
 			{
-			if  ( docPsPrintBeginMarkedGroup( ps, STRUCTtypeTABLE ) )
+			if  ( asTableFirst && docPsPrintBeginMarkedGroup( ps, STRUCTtypeTABLE ) )
+			    { LLDEB(node->biLevel,asTableFirst); return -1;	}
+
+			if  ( docPsPrintBeginMarkedGroup( ps, STRUCTtypeTR ) )
 			    { LDEB(node->biLevel); return -1;	}
 			}
 
-		    if  ( docPsPrintBeginMarkedGroup( ps, STRUCTtypeTR ) )
-			{ LDEB(node->biLevel); return -1;	}
-		    }
-		break;
+		    break;
+		}
 
-	    case DOClevCELL:
-		if  ( docPsMarkNode( node )			&&
-		      docIsRowNode( node->biParent )	)
-		    {
-		    if  ( docPsPrintBeginMarkedGroup( ps, STRUCTtypeTD ) )
-			{ LDEB(node->biLevel); return -1;	}
-		    }
+	    case DOClevCELL: {
+		const char *	cellNodeMark= docPsCellNodeMark( node );
+
+		if  ( cellNodeMark && docPsPrintBeginMarkedGroup( ps, cellNodeMark ) )
+		    { LSDEB(node->biLevel,cellNodeMark);	}
+
 		break;
+		}
 
 	    case DOClevPARA:
 		/* Do not include in hierarchy: The block of lines on one page is marked as a paragraph */
@@ -350,29 +409,29 @@ int docPsPrintFinishNode( void *			vps,
 		break;
 
 
-	    case DOClevROW:
-		if  ( docPsMarkNode( node )			&&
-		      docIsRowNode( node )			)
-		    {
-		    if  ( docPsPrintEndMarkedGroup( ps ) )
-			{ LDEB(node->biLevel); return -1;	}
+	    case DOClevROW: {
+		    int		asTableLast= 0;
 
-		    if  ( node->biNumberInParent == node->biRowTablePast- 1 )
+		    if  ( docPsMarkRowNode( node, (int *)0, &asTableLast ) )
 			{
-			/* Finish table */
 			if  ( docPsPrintEndMarkedGroup( ps ) )
 			    { LDEB(node->biLevel); return -1;	}
+
+			if  ( asTableLast && docPsPrintEndMarkedGroup( ps ) )
+			    { LLDEB(node->biLevel,asTableLast); return -1;	}
 			}
-		    }
+
+		    break;
+		}
+
+	    case DOClevCELL: {
+		const char *	cellNodeMark= docPsCellNodeMark( node );
+
+		if  ( cellNodeMark && docPsPrintEndMarkedGroup( ps ) )
+		    { LSDEB(node->biLevel,cellNodeMark);	}
 
 		break;
-
-	    case DOClevCELL:
-		if  ( docPsMarkNode( node )			&&
-		      docIsRowNode( node->biParent )	&&
-		      docPsPrintEndMarkedGroup( ps )	)
-		    { LDEB(node->biLevel); return -1;	}
-		break;
+		}
 
 	    case DOClevPARA:
 		/* Do not include in hierarchy: The block of lines on one page is marked as a paragraph */
