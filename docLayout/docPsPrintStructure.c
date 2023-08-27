@@ -50,28 +50,22 @@ static int docPsMarkNode(	const struct BufferItem *		node )
     return node->biTopPosition.lpPage == node->biBelowPosition.lpPage;
     }
 
-static const char * docPsCellNodeMark( const struct BufferItem *	cellNode )
-    {
-    const BufferItem *	rowNode= cellNode->biParent;
-    const BufferItem *	tableNode= cellNode->biParent;
-
-    if  ( ! docPsMarkNode( tableNode ) )
-	{ return (char *)0;	}
-
-    /* I could not find a cell property to decide between td and th (MdD Aug 2023) */
-    if  ( rowNode->biRowProperties->rpIsTableHeader )
-	{ return STRUCTtypeTH;	}
-    else{ return STRUCTtypeTD;	}
-    }
-
 static int docPsMarkRowNode(
 	    const struct BufferItem *	rowNode,
 	    int *			pAsTableFirst,
 	    int *			pAsTableLast )
     {
-    const BufferItem *	tableNode= rowNode->biParent;
+    const BufferItem *	parentNode= rowNode->biParent;
+    const BufferItem *	headRowNode;
+    const BufferItem *	tailRowNode;
 
-    if  ( ! docIsRowNode( rowNode ) || ! docPsMarkNode( tableNode ) )
+    if  ( ! docIsRowNode( rowNode ) )
+	{ return 0;	}
+
+    headRowNode= parentNode->biChildren[rowNode->biRowTableFirst];
+    tailRowNode= parentNode->biChildren[rowNode->biRowTablePast- 1];
+
+    if  ( headRowNode->biTopPosition.lpPage != tailRowNode->biBelowPosition.lpPage )
 	{ return 0;	}
 
     if  ( pAsTableFirst )
@@ -81,6 +75,19 @@ static int docPsMarkRowNode(
 	{ *pAsTableLast= rowNode->biNumberInParent == rowNode->biRowTablePast- 1;	}
 
     return 1;
+    }
+
+static const char * docPsCellNodeMark( const struct BufferItem *	cellNode )
+    {
+    const BufferItem *	rowNode= cellNode->biParent;
+
+    if  ( ! docPsMarkRowNode( rowNode, (int *)0, (int *)0 ) )
+	{ return (char *)0;	}
+
+    /* I could not find a cell property to decide between td and th (MdD Aug 2023) */
+    if  ( rowNode->biRowProperties->rpIsTableHeader )
+	{ return STRUCTtypeTH;	}
+    else{ return STRUCTtypeTD;	}
     }
 
 static const char * docPsParagraphNodeMark(
@@ -278,7 +285,7 @@ int docPsPrintStartLines( void *			vps,
     PrintingState *	ps= (PrintingState *)vps;
     const char *	mark= docPsParagraphNodeMark( ps, paraNode );
 
-    if  ( mark && docPsPrintBeginMarkedGroup( ps, STRUCTtypeP ) )
+    if  ( mark && docPsPrintBeginMarkedGroup( ps, mark ) )
 	{ LSDEB(paraNode->biLevel,mark); return -1;	}
 
     return 0;
