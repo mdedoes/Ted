@@ -158,11 +158,11 @@ typedef int (*FINISH_TEXT_LINE)(
 			 */
 typedef int (*START_NODE)(	void *				through,
 				struct DrawingContext *		dc,
-				struct BufferItem *		node );
+				const struct BufferItem *	node );
 
 typedef int (*FINISH_NODE)(	void *				through,
 				struct DrawingContext *		dc,
-				struct BufferItem *		node );
+				const struct BufferItem *	node );
 
 			/**
 			 *  Keep track of the document hierarchy while 

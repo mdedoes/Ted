@@ -324,7 +324,7 @@ int docPsPrintFinishLines( void *			vps,
 
 int docPsPrintStartNode(	void *				vps,
 				struct DrawingContext *		dc,
-				struct BufferItem *		node )
+				const struct BufferItem *	node )
     {
     PrintingState *	ps= (PrintingState *)vps;
 
@@ -395,7 +395,7 @@ int docPsPrintStartNode(	void *				vps,
 
 int docPsPrintFinishNode( void *			vps,
 			struct DrawingContext *		dc,
-			struct BufferItem *		node )
+			const struct BufferItem *	node )
     {
     PrintingState *	ps= (PrintingState *)vps;
 

@@ -167,11 +167,11 @@ extern int docPsPrintFinishLines( void *			vps,
 
 extern int docPsPrintStartNode( void *				vps,
 				struct DrawingContext *		dc,
-				struct BufferItem *		node );
+				const struct BufferItem *	node );
 
 extern int docPsPrintFinishNode( void *				vps,
 				struct DrawingContext *		dc,
-				struct BufferItem *		node );
+				const struct BufferItem *	node );
 
 extern int docPsPrintEndFigure(
 			const struct DrawTextLine *		dtl,

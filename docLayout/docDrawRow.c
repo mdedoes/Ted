@@ -191,6 +191,10 @@ static int docDrawCellPageStrip( void *				through,
 	child++;
 	}
 
+    /* We do this for every page that the cell appears on */
+    if  ( dc->dcStartNode && (*dc->dcStartNode)( through, dc, cellNode ) )
+	{ LDEB(cellNode->biLevel); return -1; }
+
     /*  2  */
     while( child < cellNode->biChildCount )
 	{
@@ -225,6 +229,10 @@ static int docDrawCellPageStrip( void *				through,
 	lpShadeTop= lpShadeBelow;
 	child++;
 	}
+
+    /* We do this for every page that the cell appears on */
+    if  ( dc->dcFinishNode && (*dc->dcFinishNode)( through, dc, cellNode ) )
+	{ LDEB(cellNode->biLevel); return -1; }
 
     return 0;
     }

@@ -76,6 +76,13 @@ int docRtfRememberParagraphProperty(	const RtfControlWord *	rcw,
 	    if  ( arg < 0 )
 		{ SLDEB(rcw->rcwWord,arg); return -1;	}
 	    break;
+
+	/* docSetParaProperty already takes care of this
+	case PPpropOUTLINELEVEL:
+	    if  ( arg < 0 )
+		{ arg= PPoutlineBODYTEXT;	}
+	    break;
+	*/
 	}
 
     if  ( docSetParaProperty( pp, rcw->rcwID, arg ) < 0 )
