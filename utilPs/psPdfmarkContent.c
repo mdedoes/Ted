@@ -303,7 +303,8 @@ int psPdfEndMarkedContent(		PrintingState *		ps )
  */
 static int psPdfmarkOpenLeafStructItem(
 				PrintingState *		ps,
-				StructItem *		structItem )
+				StructItem *		structItem,
+				const MemoryBuffer *	structureAttributes )
     {
     const char * const	itemDict= utilMemoryBufferGetString( &(structItem->siDictionaryName) );
     const char * const	parentDict= structItem->siParent?
@@ -315,17 +316,23 @@ static int psPdfmarkOpenLeafStructItem(
 	itemDict );
 
     sioOutPrintf( ps->psSos,
-	"[ {%s} <</S /%s /P {%s} /K %d /Pg {ThisPage} ",
+	"[ {%s} <</Type /StructElem /S /%s /P {%s} /K %d /Pg {ThisPage} ",
 	itemDict,
 	structItem->siStructureType,
 	parentDict,
 	structItem->siContentId );
 
+    if  ( structureAttributes && ! utilMemoryBufferIsEmpty( structureAttributes ) )
+	{
+	sioOutPrintf( ps->psSos,
+		"/A << %s >> ", utilMemoryBufferGetString( structureAttributes ) );
+	}
+
     return 0;
     }
 
 /**
- *  Create and populate the common menbers of a StructItem that is meant
+ *  Create and populate the common members of a StructItem that is meant
  *  to receive children.  See table 323 in ISO 32000-1:2008 (14.7.4)
  *  As a group refers to multiple children, /K refers to an array that
  *  receives the children.
@@ -335,7 +342,8 @@ static int psPdfmarkOpenLeafStructItem(
  */
 static int psPdfmarkOpenGroupStructItem(
 				PrintingState *		ps,
-				StructItem *		structItem )
+				StructItem *		structItem,
+				const MemoryBuffer *	structureAttributes )
     {
     const char * const	itemDict= utilMemoryBufferGetString( &(structItem->siDictionaryName) );
     const char * const	parentDict= structItem->siParent?
@@ -351,11 +359,17 @@ static int psPdfmarkOpenGroupStructItem(
 	childArray );
 
     sioOutPrintf( ps->psSos,
-	"[ {%s} <</S /%s /P {%s} /K {%s} /Pg {ThisPage} ",
+	"[ {%s} <</Type /StructElem /S /%s /P {%s} /K {%s} /Pg {ThisPage} ",
 	itemDict,
 	structItem->siStructureType,
 	parentDict,
 	childArray );
+
+    if  ( structureAttributes && ! utilMemoryBufferIsEmpty( structureAttributes ) )
+	{
+	sioOutPrintf( ps->psSos,
+		"/A << %s >> ", utilMemoryBufferGetString( structureAttributes ) );
+	}
 
     return 0;
     }
@@ -376,11 +390,12 @@ static int psPdfmarkCloseStructItem(
  */
 static int psPdfmarkDefineLeafStructItem(
 				PrintingState *		ps,
-				StructItem *		structItem )
+				StructItem *		structItem,
+				const MemoryBuffer *	structureAttributes )
     {
     if  ( ! ps->psOmitContentMarks )
 	{
-	if  ( psPdfmarkOpenLeafStructItem( ps, structItem ) )
+	if  ( psPdfmarkOpenLeafStructItem( ps, structItem, structureAttributes ) )
 	    { SLDEB(structItem->siStructureType,structItem->siContentId); return -1;	}
 
 	if  ( psPdfmarkCloseStructItem( ps ) )
@@ -396,11 +411,12 @@ static int psPdfmarkDefineLeafStructItem(
  */
 static int psPdfmarkDefineGroupStructItem(
 				PrintingState *		ps,
-				StructItem *		structItem )
+				StructItem *		structItem,
+				const MemoryBuffer *	structureAttributes )
     {
     if  ( ! ps->psOmitContentMarks )
 	{
-	if  ( psPdfmarkOpenGroupStructItem( ps, structItem ) )
+	if  ( psPdfmarkOpenGroupStructItem( ps, structItem, structureAttributes ) )
 	    { SLDEB(structItem->siStructureType,structItem->siContentId); return -1;	}
 
 	if  ( psPdfmarkCloseStructItem( ps ) )
@@ -559,7 +575,8 @@ static int psPdfmarkAppendDefinedItem(
  *  Define and populate a simple StructItem object in the output.
  */
 int psPdfmarkAppendMarkedLeaf(	PrintingState *		ps,
-				StructItem *		structItem )
+				StructItem *		structItem,
+				const MemoryBuffer *	structureAttributes )
     {
     if  ( ps->psOmitContentMarks )
 	{ return 0;	}
@@ -567,7 +584,7 @@ int psPdfmarkAppendMarkedLeaf(	PrintingState *		ps,
 	if  ( ps->psInArtifact )
 	    { LDEB(ps->psInArtifact); return -1;	}
 
-	psPdfmarkDefineLeafStructItem( ps, structItem );
+	psPdfmarkDefineLeafStructItem( ps, structItem, structureAttributes );
 
 	return psPdfmarkAppendDefinedItem( ps, structItem );
 	}
@@ -578,7 +595,8 @@ int psPdfmarkAppendMarkedLeaf(	PrintingState *		ps,
  *  receives children in the output.
  */
 int psPdfmarkAppendMarkedGroup(	PrintingState *		ps,
-				StructItem *		structItem )
+				StructItem *		structItem,
+				const MemoryBuffer *	structureAttributes )
     {
     if  ( ps->psOmitContentMarks )
 	{ return 0;	}
@@ -586,7 +604,7 @@ int psPdfmarkAppendMarkedGroup(	PrintingState *		ps,
 	if  ( ps->psInArtifact )
 	    { LDEB(ps->psInArtifact); return -1;	}
 
-	psPdfmarkDefineGroupStructItem( ps, structItem );
+	psPdfmarkDefineGroupStructItem( ps, structItem, structureAttributes );
 
 	return psPdfmarkAppendDefinedItem( ps, structItem );
 	}
@@ -608,7 +626,7 @@ int psPdfmarkAppendMarkedIllustration(
 	if  ( ps->psInArtifact )
 	    { LDEB(ps->psInArtifact); return -1;	}
 
-	if  ( psPdfmarkOpenLeafStructItem( ps, structItem ) )
+	if  ( psPdfmarkOpenLeafStructItem( ps, structItem, (MemoryBuffer *)0 ) )
 	    { SLDEB(structItem->siStructureType,structItem->siContentId); return -1;	}
 
 	if  ( psPdfmarkSetAltText( ps, altText ) )

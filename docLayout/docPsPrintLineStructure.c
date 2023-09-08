@@ -43,7 +43,7 @@ StructItem * docPsPrintInlineStructItem( PrintingState *	ps )
 	if  ( ! structItem || psPdfPushStructItem( ps, structItem ) )
 	    { XDEB(structItem); return (StructItem *)0;	}
 
-	if  ( psPdfmarkAppendMarkedLeaf( ps, structItem ) )
+	if  ( psPdfmarkAppendMarkedLeaf( ps, structItem, (MemoryBuffer *)0 ) )
 	    { LDEB(1); return (StructItem *)0;	}
 	}
 

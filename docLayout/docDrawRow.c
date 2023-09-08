@@ -191,48 +191,51 @@ static int docDrawCellPageStrip( void *				through,
 	child++;
 	}
 
-    /* We do this for every page that the cell appears on */
-    if  ( dc->dcStartNode && (*dc->dcStartNode)( through, dc, cellNode ) )
-	{ LDEB(cellNode->biLevel); return -1; }
-
-    /*  2  */
-    while( child < cellNode->biChildCount )
+    if  ( child < cellNode->biChildCount )
 	{
-	struct BufferItem *	childNode= cellNode->biChildren[child];
-	LayoutPosition		lpChildTop;
+	/* We do this for every page that the cell appears on */
+	if  ( dc->dcStartNode && (*dc->dcStartNode)( through, dc, cellNode ) )
+	    { LDEB(cellNode->biLevel); return -1; }
 
-	docShiftPosition( &lpChildTop, bo, &(childNode->biTopPosition) );
-
-	if  ( docCompareLayoutPositionFrames( &lpChildTop, lpThisFrame ) > 0 )
-	    { break;	}
-
-	switch( childNode->biLevel )
+	/*  2  */
+	while( child < cellNode->biChildCount )
 	    {
-	    case DOClevPARA:
-		if  ( docDrawAdvanceParaInCell( through, cellNode, childNode,
-				    &lpShadeTop, &lpShadeBelow, bf, dc, bo ) )
-		    { LDEB(1); return -1;	}
-		break;
+	    struct BufferItem *	childNode= cellNode->biChildren[child];
+	    LayoutPosition	lpChildTop;
 
-	    case DOClevROW:
-		if  ( docDrawAdvanceRowInCell( through, childNode,
-				    &lpShadeTop, &lpShadeBelow, bf, dc, bo ) )
-		    { LDEB(1); return -1;	}
-		break;
+	    docShiftPosition( &lpChildTop, bo, &(childNode->biTopPosition) );
 
-	    default:
-		LDEB(childNode->biLevel);
-		break;
+	    if  ( docCompareLayoutPositionFrames( &lpChildTop, lpThisFrame ) > 0 )
+		{ break;	}
+
+	    switch( childNode->biLevel )
+		{
+		case DOClevPARA:
+		    if  ( docDrawAdvanceParaInCell( through, cellNode, childNode,
+					&lpShadeTop, &lpShadeBelow, bf, dc, bo ) )
+			{ LDEB(1); return -1;	}
+		    break;
+
+		case DOClevROW:
+		    if  ( docDrawAdvanceRowInCell( through, childNode,
+					&lpShadeTop, &lpShadeBelow, bf, dc, bo ) )
+			{ LDEB(1); return -1;	}
+		    break;
+
+		default:
+		    LDEB(childNode->biLevel);
+		    break;
+		}
+
+	    /*  Only used in same frame */
+	    lpShadeTop= lpShadeBelow;
+	    child++;
 	    }
 
-	/*  Only used in same frame */
-	lpShadeTop= lpShadeBelow;
-	child++;
+	/* We do this for every page that the cell appears on */
+	if  ( dc->dcFinishNode && (*dc->dcFinishNode)( through, dc, cellNode ) )
+	    { LDEB(cellNode->biLevel); return -1; }
 	}
-
-    /* We do this for every page that the cell appears on */
-    if  ( dc->dcFinishNode && (*dc->dcFinishNode)( through, dc, cellNode ) )
-	{ LDEB(cellNode->biLevel); return -1; }
 
     return 0;
     }
@@ -260,6 +263,10 @@ static int docDrawRowPageStrip(	const struct BufferItem *	rowNode,
     int			atRowTop= 0;
     int			atRowBottom= 0;
     int			isTableHeader;
+
+    /* We do this for every page that the row appears on */
+    if  ( dc->dcStartNode && (*dc->dcStartNode)( through, dc, rowNode ) )
+	{ LDEB(rowNode->biLevel); return -1; }
 
     isTableHeader= rowNode->biNumberInParent < rowNode->biRowPastHeaderRow;
     lpTop= *lpThisFrame;
@@ -338,6 +345,10 @@ static int docDrawRowPageStrip(	const struct BufferItem *	rowNode,
 	    { LDEB(1); return -1;	}
 	}
     }
+
+    /* We do this for every page that the row appears on */
+    if  ( dc->dcFinishNode && (*dc->dcFinishNode)( through, dc, rowNode ) )
+	{ LDEB(rowNode->biLevel); return -1; }
 
     return 0;
     }

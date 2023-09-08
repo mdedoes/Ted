@@ -48,14 +48,12 @@ int docGetListLevelOfParagraph(	int *				startPath,
 				ListOverride **			pLo,
 				DocumentList **			pDl,
 				const ListLevel **		pLl,
-				const struct BufferItem *	paraNode,
-				const struct BufferDocument *		bd )
+				const ParagraphProperties *	pp,
+				const struct BufferDocument *	bd )
     {
     ListOverride *	lo;
     DocumentList *	dl;
     const ListLevel *	ll;
-
-    const ParagraphProperties *	pp= paraNode->biParaProperties;
 
     if  ( docGetListForStyle( &lo, &dl, pp->ppListOverride,
 					    bd->bdProperties->dpListAdmin ) )
@@ -241,7 +239,7 @@ int docAdaptParagraphToListLevel(
     int * const			formatPath= (int *)0;
 
     if  ( docGetListLevelOfParagraph( startPath, formatPath,
-						&lo, &dl, &ll, paraNode, bd ) )
+			    &lo, &dl, &ll, paraNode->biParaProperties, bd ) )
 	{ LDEB(1); }
     else{
 	if  ( docParaNodeAdaptPropertiesToListLevel( &indentChanged,

@@ -100,6 +100,9 @@ int docDrawGroupNode(	LayoutPosition *		lpBelow,
 
     struct BufferItem *		prevNode= (struct BufferItem *)0;
 
+    if  ( dc->dcStartNode && (*dc->dcStartNode)( through, dc, node ) )
+	{ LDEB(node->biLevel); return -1; }
+
     if  ( node->biChildCount > 0 )
 	{ prevNode= node->biChildren[0];	}
 
@@ -157,6 +160,9 @@ int docDrawGroupNode(	LayoutPosition *		lpBelow,
 	prevNode= childNode;
 	}
 
+    if  ( dc->dcFinishNode && (*dc->dcFinishNode)( through, dc, node ) )
+	{ LDEB(node->biLevel); return -1; }
+
     return 0;
     }
 
@@ -182,6 +188,8 @@ static int docDrawDocNode(	LayoutPosition *		lpBelow,
 
     const struct BufferItem *	saveBodySectNode= dc->dcBodySectNode;
 
+    /* dc->dcStartNode ... Done by docDrawGroupNode */
+
     docInitBlockOrigin( &bo );
 
     if  ( docNode->biTreeType == DOCinBODY		&&
@@ -203,6 +211,8 @@ static int docDrawDocNode(	LayoutPosition *		lpBelow,
 	docDrawFootnotesForColumn( lpBelow->lpPage, lpBelow->lpColumn,
 								through, dc );
 	}
+
+    /* dc->dcFinishNode ... Done by docDrawGroupNode */
 
   ready:
 
@@ -233,6 +243,8 @@ static int docDrawSectNode(	LayoutPosition *		lpBelow,
 
     const struct BufferItem *	saveBodySectNode= dc->dcBodySectNode;
 
+    /* dc->dcStartNode ... Done by docDrawGroupNode */
+
     docInitBlockOrigin( &bo );
 
     if  ( sectNode->biTreeType == DOCinBODY )
@@ -248,6 +260,8 @@ static int docDrawSectNode(	LayoutPosition *		lpBelow,
 							    through, dc ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 	}
+
+    /* dc->dcFinishNode ... Done by docDrawGroupNode */
 
   ready:
 
@@ -314,9 +328,6 @@ static int docDrawNodeLow(	LayoutPosition *		lpBelow,
 	docLayoutPushBottomDown( lpBelow, &(node->biTopPosition) );
 	}
 
-    if  ( dc->dcStartNode && (*dc->dcStartNode)( through, dc, node ) )
-	{ LDEB(node->biLevel); return -1; }
-
     switch( node->biLevel )
 	{
 	case DOClevBODY:
@@ -330,17 +341,20 @@ static int docDrawNodeLow(	LayoutPosition *		lpBelow,
 	    break;
 
 	case DOClevCELL:
-	rowAsGroup:
 	    if  ( docDrawGroupNode( lpBelow, node, through, dc, bo ) )
 		{ LDEB(1); return -1;	}
 	    break;
 
 	case DOClevROW:
 	    if  ( ! docIsRowNode( node ) )
-		{ goto rowAsGroup;	}
-
-	    if  ( docDrawRowNode( node, through, dc, bo ) )
-		{ LDEB(1); return -1;	}
+		{
+		if  ( docDrawGroupNode( lpBelow, node, through, dc, bo ) )
+		    { LDEB(1); return -1;	}
+		}
+	    else{
+		if  ( docDrawRowNode( node, through, dc, bo ) )
+		    { LDEB(1); return -1;	}
+		}
 	    break;
 
 	case DOClevPARA:
@@ -351,9 +365,6 @@ static int docDrawNodeLow(	LayoutPosition *		lpBelow,
 	default:
 	    LDEB(node->biLevel); return -1;
 	}
-
-    if  ( dc->dcFinishNode && (*dc->dcFinishNode)( through, dc, node ) )
-	{ LDEB(node->biLevel); return -1; }
 
     return 0;
     }

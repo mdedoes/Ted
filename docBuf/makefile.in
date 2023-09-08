@@ -1240,7 +1240,6 @@ docGetFont.o: \
     ../docBase/docListNumberTree.h \
     ../docBase/docNotesProperties.h \
     ../docBase/docParaProperties.h \
-    ../docBase/docRowProperties.h \
     ../docBase/docSelectionScope.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docTextParticule.h \

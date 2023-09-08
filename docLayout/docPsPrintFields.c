@@ -10,9 +10,6 @@
 #   include	"docDrawLine.h"
 #   include	<docTreeNode.h>
 #   include	<docTextLine.h>
-#   include	<docHyperlinkField.h>
-#   include	<docSymbolField.h>
-#   include	<docBookmarkField.h>
 #   include	<docNotes.h>
 #   include	<docDocumentField.h>
 #   include	<docFieldKind.h>
@@ -22,23 +19,6 @@
 
 #   include	<docDebug.h>
 #   include	<appDebugon.h>
-
-static int docPsPrintStartBookmark(
-		    const DrawTextLine *	dtl,
-		    const DocumentField *	df,
-		    int				lineTop )
-    {
-    PrintingState *		ps= (PrintingState *)dtl->dtlThrough;
-
-    const MemoryBuffer *	mbBookmark;
-
-    if  ( ! docFieldGetBookmark( &mbBookmark, df ) )
-	{
-	psDestPdfmark( ps, lineTop, mbBookmark );
-	}
-
-    return 0;
-    }
 
 static int docPsPrintStartNote(
 		    const DrawTextLine *	dtl,
@@ -106,94 +86,17 @@ static int docPsPrintStartNote(
     return rval;
     }
 
-static int docPsPrintStartHyperlink(
+static int docPsPrintStartListTextField(
 		    const DrawTextLine *	dtl,
-		    int				x0Twips,
 		    const DocumentField *	df )
     {
-    int				rval= 0;
-
     PrintingState *		ps= (PrintingState *)dtl->dtlThrough;
-
-    HyperlinkField		hf;
-
-    docInitHyperlinkField( &hf );
-
-    if  ( ! docGetHyperlinkField( &hf, df ) )
-	{
-	ps->psInsideLink= 1;
-	ps->psLinkParticulesDone= 0;
-	ps->psLinkRectLeft= x0Twips;
-
-	utilEmptyMemoryBuffer( &(ps->psLinkTitle) );
-	if  ( utilCopyMemoryBuffer( &(ps->psLinkFile), &(hf.hfFile) ) )
-	    { LDEB(1); rval= -1; goto ready;	}
-	if  ( utilCopyMemoryBuffer( &(ps->psLinkMark), &(hf.hfBookmark) ) )
-	    { LDEB(1); rval= -1; goto ready;	}
-
-	if  ( ps->psTagDocumentStructure	&&
-	      ! ps->psInArtifact		&&
-	      docPsPrintFinishInline( ps )	)
-	    { LDEB(1); rval= -1; goto ready;	}
-	}
-
-  ready:
-
-    docCleanHyperlinkField( &hf );
-
-    return rval;
-    }
-
-static int docPsPrintStartSymbol(
-		    const DrawTextLine *	dtl,
-		    int				x0Twips,
-		    const DocumentField *	df )
-    {
-    int				rval= 0;
-
-    PrintingState *		ps= (PrintingState *)dtl->dtlThrough;
-
-    SymbolField			sf;
-
-    docInitSymbolField( &sf );
 
     if  ( ps->psTagDocumentStructure && ! ps->psInArtifact )
 	{
-	if  ( ! docFieldGetSymbol( &sf, df ) )
-	    {
-	    /* Make sure the field result gets its own span */
-	    if  ( docPsPrintFinishInline( ps ) )
-		{ LDEB(1); rval= -1; goto ready;	}
-
-	    if  ( sf.sfIsDecoration )
-		{
-		if  ( docPsPrintBeginInlineArtifact( dtl, x0Twips ) )
-		    { LDEB(sf.sfIsDecoration); rval= -1; goto ready;	}
-		}
-	    else{
-		/* Studioform/Beyondoc extension */
-		if  ( ! utilMemoryBufferIsEmpty( &(sf.sfActualText) ) )
-		    {
-		    StructItem *	structItem= docPsPrintInlineStructItem( ps );
-
-		    if  ( ! structItem )
-			{ XDEB(structItem); return -1;	}
-
-		    if  ( psPdfBeginMarkedContentActualText( ps,
-					    structItem->siStructureType,
-					    structItem->siContentId,
-					    &(sf.sfActualText) ) )
-			{ LDEB(structItem->siContentId); return -1;	}
-		    }
-		}
-	    }
 	}
 
-  ready:
-
-    docCleanSymbolField( &sf );
-
-    return rval;
+    return 0;
     }
 
 /************************************************************************/
@@ -234,77 +137,19 @@ int docPsPrintStartField(	const DrawTextLine *		dtl,
 	    { LDEB(1); return -1;	}
 	}
 
-    return 0;
-    }
-
-static int docPsPrintFinishLink( const DrawTextLine *	dtl,
-				int			x1Twips,
-				const DocumentField *	df )
-    {
-    PrintingState *		ps= (PrintingState *)dtl->dtlThrough;
-
-    const TextLine *	tl= dtl->dtlTextLine;
-    int			lineTop= tl->tlTopPosition.lpPageYTwips;
-
-    if  ( ps->psTagDocumentStructure && ! ps->psInArtifact )
+    if  ( df->dfKind == DOCfkLISTTEXT )
 	{
-	if  ( docPsFinishAnnotation( ps, x1Twips, lineTop, dtl->dtlLineHeight ) )
-	    { LDEB(1); return -1;	}
-
-	if  ( docPsPrintFinishInline( ps ) )
+	if  ( docPsPrintStartListTextField( dtl, df ) )
 	    { LDEB(1); return -1;	}
 	}
-    else{
-	psFlushLink( ps, x1Twips, lineTop, dtl->dtlLineHeight );
-	}
-
-    ps->psInsideLink= 0;
 
     return 0;
     }
 
-static int docPsPrintFinishSymbol( const DrawTextLine *	dtl,
+static int docPsPrintFinishListTextField( const DrawTextLine *	dtl,
 				const DocumentField *	df )
     {
-    int				rval= 0;
-    PrintingState *		ps= (PrintingState *)dtl->dtlThrough;
-
-    SymbolField			sf;
-
-    docInitSymbolField( &sf );
-
-    if  ( ps->psTagDocumentStructure )
-	{
-	if  ( ! docFieldGetSymbol( &sf, df ) )
-	    {
-	    if  ( ! ps->psInArtifact )
-		{
-		if  ( ! ps->psCurrentStructItem 		||
-		      ! ps->psCurrentStructItem->siIsLeaf	)
-		    { XDEB(ps->psCurrentStructItem); rval= -1; goto ready;	}
-
-		if  ( ! utilMemoryBufferIsEmpty( &(sf.sfActualText) )		&&
-		      psPdfMarkSetActualText( ps, ps->psCurrentStructItem, &(sf.sfActualText) ) )
-		    { LDEB(1); rval= -1; goto ready;	}
-
-		if  ( docPsPrintFinishInline( ps ) )
-		    { LDEB(1); rval= -1; goto ready;	}
-		}
-	    else{
-		/* Strictly speaking this is incorrect. It assumes that we are inside an artifact because
-		   the field is a decoration. But we could be in an artifact for a different reason.
-		   E.G. in a page header */
-		if  ( sf.sfIsDecoration && ps->psInArtifact == 1 && docPsPrintEndArtifact( ps ) )
-		    { LLDEB(sf.sfIsDecoration,ps->psInArtifact); rval= -1; goto ready;	}
-		}
-	    }
-	}
-
-  ready:
-
-    docCleanSymbolField( &sf );
-
-    return rval;
+    return 0;
     }
 
 int docPsPrintFinishField(	const DrawTextLine *	dtl,
@@ -328,6 +173,14 @@ int docPsPrintFinishField(	const DrawTextLine *	dtl,
     if  ( df->dfKind == DOCfkSYMBOL )
 	{
 	if  ( docPsPrintFinishSymbol( dtl, df ) )
+	    { LDEB(1); return -1;	}
+
+	return 0;
+	}
+
+    if  ( df->dfKind == DOCfkLISTTEXT )
+	{
+	if  ( docPsPrintFinishListTextField( dtl, df ) )
 	    { LDEB(1); return -1;	}
 
 	return 0;

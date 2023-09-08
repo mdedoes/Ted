@@ -45,12 +45,13 @@ typedef struct PrintingState
     int				psSheetsStarted;
 
     const struct PostScriptFontList *	psPostScriptFontList;
+
 				/**
 				 *  The font that is currently set.
 				 *  It is cached to avoid setting the
 				 *  same font over-and-over again.
 				 */
-    const struct AfmFontInfo *		psCurrentFontInfo;
+    const struct AfmFontInfo *	psCurrentFontInfo;
 
     PrintGeometry		psPrintGeometry;
     NupSchema			psNupSchema;
@@ -103,6 +104,16 @@ typedef struct PrintingState
 				 *  Currently, it is only used for notes.
 				 */
     MemoryBuffer		psLinkTitle;
+
+				/**
+				 *  The list override number of the paragraph that we previously emitted.
+				 */
+    int				psCurrentListOverride;
+
+				/**
+				 *  The list level of the paragraph that we previously emitted.
+				 */
+    int				psCurrentListLevel;
 
     unsigned char		psUsePostScriptFilters;
     unsigned char		psUsePostScriptIndexedImages;
@@ -485,11 +496,13 @@ extern int psPdfEndMarkedContent( PrintingState *		ps );
 
 extern int psPdfmarkAppendMarkedLeaf(
 				PrintingState *			ps,
-				StructItem *			structItem );
+				StructItem *			structItem,
+				const struct MemoryBuffer *	structureAttributes );
 
 extern int psPdfmarkAppendMarkedGroup(
 				PrintingState *			ps,
-				StructItem *			structItem );
+				StructItem *			structItem,
+				const struct MemoryBuffer *	structureAttributes );
 
 extern int psPdfmarkAppendMarkedLink(
 				PrintingState *			ps,

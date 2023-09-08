@@ -19,8 +19,6 @@
 #   include	"docParticuleData.h"
 #   include	"layoutContext.h"
 #   include	<psPrint.h>
-#   include	<psShading.h>
-#   include	<docItemShading.h>
 
 #   include	<docDebug.h>
 #   include	<appDebugon.h>

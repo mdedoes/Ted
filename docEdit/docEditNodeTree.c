@@ -6,8 +6,6 @@
 
 #   include	"docEditConfig.h"
 
-#   include	<stdlib.h>
-
 #   include	<docTreeNode.h>
 #   include	<docNodeTree.h>
 #   include	"docEdit.h"

@@ -26,6 +26,7 @@ struct AffineTransform2D;
 struct DocumentTree;
 struct BufferItem;
 struct DocumentSelection;
+struct ParagraphProperties;
 
 /************************************************************************/
 /*									*/
@@ -205,3 +206,60 @@ extern int docPsFinishAnnotation( struct PrintingState *	ps,
 				int				lineTop,
 				int				lineHeight );
 
+extern int docPsPrintStartBookmark(
+				const struct DrawTextLine *	dtl,
+				const struct DocumentField *	df,
+				int				lineTop );
+
+extern int docPsPrintStartHyperlink(
+				const struct DrawTextLine *	dtl,
+				int				x0Twips,
+				const struct DocumentField *	df );
+
+extern int docPsPrintFinishLink( const struct DrawTextLine *	dtl,
+				int				x1Twips,
+				const struct DocumentField *	df );
+
+extern int docPsPrintStartSymbol(
+				const struct DrawTextLine *	dtl,
+				int				x0Twips,
+				const struct DocumentField *	df );
+
+extern int docPsPrintFinishSymbol(
+				const struct DrawTextLine *	dtl,
+				const struct DocumentField *	df );
+
+extern const char * docPsParagraphNodeMark(
+				const struct PrintingState *	ps,
+				const struct ParagraphProperties * pp,
+				int *				pCurrentListOverride,
+				int *				pListLevelsToClose,
+				int *				pOpenListLevel );
+
+extern int docPsSaveListStructureAttributes(
+				const struct BufferDocument *	bd,
+				const struct ParagraphProperties * pp,
+				struct MemoryBuffer *		structureAttributes );
+
+extern int docPsMarkRowNode(	const struct BufferItem *	rowNode,
+				int *				pAsTableFirst,
+				int *				pAsTableLast );
+
+extern const char * docPsCellNodeMark(
+				const struct BufferItem *	cellNode,
+				struct MemoryBuffer *		structureAttributes );
+
+extern int docPsMarkNode(	const struct BufferItem *	node );
+
+extern int docPsPrintBeginMarkedGroup(
+				struct PrintingState *		ps,
+				const char *			structureType,
+				const struct MemoryBuffer *	structureAttributes );
+
+extern int docPsPrintEndMarkedGroup(
+				struct PrintingState *		ps );
+
+extern int docPsPrintBeginTypedArtifact(
+				struct PrintingState *		ps,
+				const char *			typeName,
+				const char *			subtypeName );
