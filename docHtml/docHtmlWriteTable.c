@@ -107,6 +107,16 @@ int docHtmlFinishTable(	HtmlWritingContext *		hwc )
     return 0;
     }
 
+const char * docHtmlCellElement(	const BufferItem *	cellNode )
+    {
+    const RowProperties *	rp= cellNode->biParent->biRowProperties;
+    const CellProperties *	cp= cellNode->biCellProperties;
+
+    if  ( rp->rpIsTableHeader || cp->cpIsRowHeader )
+	{ return "th";	}
+    else{ return "td";	}
+    }
+
 int docHtmlEnterCellNode( HtmlWritingContext *		hwc,
 			const struct BufferItem *	rowNode,
 			int				col,
@@ -146,7 +156,8 @@ int docHtmlEnterCellNode( HtmlWritingContext *		hwc,
     wide= TWIPS_TO_PIXELS( pf.pfCellContentRect.drX1-
 					    pf.pfCellContentRect.drX0 );
 
-    docHtmlPutString( "<td", hwc );
+    docHtmlPutString( "<", hwc );
+    docHtmlPutString( docHtmlCellElement( cellNode ), hwc );
 
     if  ( colspan > 1 )
 	{ docHtmlWriteIntAttribute( hwc, "colspan", colspan );	}

@@ -191,14 +191,11 @@ int docPsPrintFinishLines( void *			vps,
 
     if  ( ! ps->psInArtifact && ! docParagraphIsEmpty( paraNode ) )
 	{
-	if  ( paraNode->biParaProperties->ppListOverride > 0 )
-	    {
-	    if  ( docPsPrintFinishInline( ps )	)
-		{ LDEB(paraNode->biLevel); return -1;	}
+	if  ( docPsPrintFinishInline( ps )	)
+	    { LDEB(paraNode->biLevel); return -1;	}
 
-	    if  ( docPsPrintEndMarkedGroup( ps ) )
-		{ LDEB(paraNode->biLevel); return -1;	}
-	    }
+	if  ( docPsPrintEndMarkedGroup( ps ) )
+	    { LDEB(paraNode->biLevel); return -1;	}
 	}
 
     return 0;

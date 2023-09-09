@@ -33,6 +33,7 @@ static const int CellRegularProperties[]=
     CLpropBOTTOM_BORDER,
     CLpropLEFT_RIGHT_DIAGONAL,
     CLpropRIGHT_LEFT_DIAGONAL,
+    CLpropROW_HEADER,
 };
 
 static const int CellRegularPropertyCount=

@@ -125,6 +125,13 @@ typedef struct CellProperties
     unsigned char	cpValign;
 
     unsigned char	cpTextFlow;			/*  (enum)	*/
+
+			/**
+			 * In analogy with \\trhdr, \\clhdr tells that the cell
+			 * is a row header. This is an extension of the RTF file format
+			 * to support HTML and tagged PDF generation.
+			 */
+    unsigned char	cpIsRowHeader;
     } CellProperties;
 
 #   define CELL_MERGED( cp ) \
@@ -167,6 +174,7 @@ typedef enum CellProperty
     CLpropRIGHT_PADDING_UNIT,
 
     CLpropNO_SHADING,
+    CLpropROW_HEADER,
 
 # define CLprop_COUNT CLprop_NOT_SUPPORTED
     CLprop_NOT_SUPPORTED,

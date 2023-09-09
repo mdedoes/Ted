@@ -11,6 +11,7 @@
 #   include	<docTreeNode.h>
 #   include	<docNodeTree.h>
 #   include	<docRowProperties.h>
+#   include	<docCellProperties.h>
 #   include	<sioGeneral.h>
 #   include	<sioMemory.h>
 
@@ -59,9 +60,12 @@ const char * docPsCellNodeMark(
     {
     const BufferItem *	rowNode= cellNode->biParent;
     int			inHeaderRow= rowNode->biRowProperties->rpIsTableHeader;
+    int			inHeaderColumn;
 
     if  ( ! docPsMarkRowNode( rowNode, (int *)0, (int *)0 ) )
 	{ return (char *)0;	}
+
+    inHeaderColumn= cellNode->biCellProperties->cpIsRowHeader;
 
     if  ( structureAttributes )
 	{
@@ -75,6 +79,10 @@ const char * docPsCellNodeMark(
 
 	if  ( inHeaderRow )
 	    { sioOutPrintf( sosAttributes, "/Scope/Column " );	}
+	else{
+	    if  ( inHeaderColumn )
+		{ sioOutPrintf( sosAttributes, "/Scope/Row " );	}
+	    }
 
 	if  ( rowspan > 1 )
 	    { sioOutPrintf( sosAttributes, "/RowSpan %d ", rowspan );	}
@@ -86,7 +94,7 @@ const char * docPsCellNodeMark(
 	}
 
     /* I could not find a cell property to decide between td and th (MdD Aug 2023) */
-    if  ( inHeaderRow )
+    if  ( inHeaderRow || inHeaderColumn )
 	{ return STRUCTtypeTH;	}
     else{ return STRUCTtypeTD;	}
     }

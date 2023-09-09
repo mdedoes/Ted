@@ -78,7 +78,7 @@ const CellProperties * docGetCellPropertiesByNumber(
 /************************************************************************/
 
 void docForAllCellProperties(	const NumberedPropertiesList *	cpl,
-				CellPropertiesFunction	f,
+				CellPropertiesFunction		f,
 				void *				through )
     {
     int			n;
@@ -96,11 +96,11 @@ void docForAllCellProperties(	const NumberedPropertiesList *	cpl,
 
 /************************************************************************/
 /*									*/
-/*  Translate border properties to a number.				*/
+/*  Translate cell properties to a number.				*/
 /*									*/
 /************************************************************************/
 
-int docCellPropertiesNumber(	NumberedPropertiesList *		cpl,
+int docCellPropertiesNumber(	NumberedPropertiesList *	cpl,
 				const CellProperties *		cp )
     {
     const int	make= 1;

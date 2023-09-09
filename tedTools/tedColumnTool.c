@@ -53,6 +53,8 @@ typedef struct ColumnPageResources
     char *			cprLeftBorder;
     char *			cprRightBorder;
 
+    char *			cprIsRowHeader;
+
     ShadingToolResources	cprShadingResources;
     BorderToolResources		cprBorderToolResources;
     } ColumnPageResources;
@@ -92,6 +94,10 @@ typedef struct ColumnTool
     APP_WIDGET			ctWidthLabel;
     APP_WIDGET			ctWidthText;
 
+    APP_WIDGET			ctIsRowHeaderRow;
+    APP_WIDGET			ctIsRowHeaderToggle;
+    APP_WIDGET			ctIsRowHeaderLabel;
+
     APP_WIDGET			ctBordersFrame;
     APP_WIDGET			ctBordersPaned;
 
@@ -112,30 +118,7 @@ static InspectorSubjectResources	TED_ColumnSubjectResources;
 
 static void tedInitColumnTool(	ColumnTool *	ct )
     {
-    ct->ctApplication= (struct EditApplication *)0;
-    ct->ctInspector= (struct AppInspector *)0;
-    ct->ctPageResources= (const ColumnPageResources *)0;
-
-    docInitTableRectangle( &(ct->ctTableRectangle) );
-
-    ct->ctParentFrameWide= 0;
-
-    docInitCellProperties( &(ct->ctPropertiesSet) );
-    docInitCellProperties( &(ct->ctPropertiesChosen) );
-
-    ct->ctHalfGapWidthTwips= 0;
-
-    ct->ctCanChange= 0;
-
-    ct->ctColumnText= (APP_WIDGET)0;
-    ct->ctWidthText= (APP_WIDGET)0;
-
-    tedInitBorderTool( &(ct->ctLeftBorderTool) );
-    tedInitBorderTool( &(ct->ctRightBorderTool) );
-
-    tedInitShadingTool( &(ct->ctShadingTool) );
-
-    return;
+    memset( ct, 0, sizeof(ColumnTool) );
     }
 
 static void tedFreeColumnTool(	void *	vct )
@@ -187,6 +170,9 @@ static void tedFormatToolRefreshColumnPage(	ColumnTool *	ct )
     */
     guiEnableText( ct->ctWidthText, ct->ctCanChange );
 
+    guiEnableWidget( ct->ctIsRowHeaderToggle, ct->ctCanChange );
+    guiSetToggleState( ct->ctIsRowHeaderToggle, cp->cpIsRowHeader );
+
     guiEnableWidget( ct->ctBordersFrame, ct->ctCanChange );
     tedEnableBorderTool( &(ct->ctLeftBorderTool), ct->ctCanChange );
     tedEnableBorderTool( &(ct->ctRightBorderTool), ct->ctCanChange );
@@ -212,7 +198,7 @@ static void tedRefreshColumnTool( void *			vct,
     {
     ColumnTool *		ct= (ColumnTool *)vct;
 
-    const struct BufferItem *		rowNode;
+    const struct BufferItem *	rowNode;
     const RowProperties *	rp;
 
     const struct DocumentAttributeMap * const dam0= (const struct DocumentAttributeMap *)0;
@@ -338,6 +324,19 @@ static int tedColumnToolGetChosen(	ColumnTool *		ct,
 	{ LDEB(1); return -1;	}
 
     return 0;
+    }
+
+static APP_TOGGLE_CALLBACK_H( tedColumnToogleIsRowHeader, w, voidct, voidtbcs )
+    {
+    ColumnTool *			ct= (ColumnTool *)voidct;
+    CellProperties *			cp= &(ct->ctPropertiesChosen);
+    int					set;
+
+    set= guiGetToggleStateFromCallback( w, voidtbcs );
+
+    cp->cpIsRowHeader= set;
+
+    return;
     }
 
 /************************************************************************/
@@ -608,6 +607,11 @@ static void * tedFormatBuildColumnPage(
     guiSetGotValueCallbackForText( ct->ctWidthText,
 					tedColumnWidthChanged, (void *)ct );
 
+    guiToolMakeToggleAndLabelRow( &(ct->ctIsRowHeaderRow), pageWidget,
+	    &(ct->ctIsRowHeaderToggle), &(ct->ctIsRowHeaderLabel),
+	    cpr->cprIsRowHeader, "",
+	    tedColumnToogleIsRowHeader, (void *)ct );
+
     tedColumnToolMakeBorderFrame( ct, cpr, ai, subjectPage, pageWidget );
 
     /**/
@@ -676,6 +680,10 @@ static AppConfigurableResource TED_TedColumnToolResourceTable[]=
     APP_RESOURCE( "tableToolWidth",
 		offsetof(ColumnPageResources,cprWidth),
 		"Width" ),
+
+    APP_RESOURCE( "formatToolColumnIsRowHeader",
+		offsetof(ColumnPageResources,cprIsRowHeader),
+		"Is Row Header" ),
 
     /**/
     APP_RESOURCE( "tableToolColumnBorders",

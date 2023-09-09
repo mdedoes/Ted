@@ -248,6 +248,9 @@ extern int dochtmlEnterSectNode( struct BufferItem *		sectNode,
 extern int dochtmlLeaveSectNode( struct BufferItem *		sectNode,
 				struct HtmlWritingContext *	hwc );
 
+extern const char * docHtmlCellElement(
+				const struct BufferItem *	cellNode );
+
 extern int docHtmlEnterCellNode(
 			struct HtmlWritingContext *	hwc,
 			const struct BufferItem *	rowNode,

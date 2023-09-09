@@ -877,6 +877,8 @@ static RtfControlWord	docRtfPropertyWords[]=
 
     RTF_CELL_FLAG( "clNoWrap",		CLpropNO_WRAP ),
 
+    RTF_CELL_FLAG( "clhdr",		CLpropROW_HEADER ),
+
     RTF_CELL_FLAG( "clshdrawnil",	CLpropNO_SHADING ),
 
     RTF_CELL_NUMBER( "clwWidth",	CLpropCLW_WIDTH ),

@@ -67,7 +67,9 @@ static int docHtmlLeaveNode(
 
 	case DOClevCELL:
 	    if  ( docIsRowNode( node->biParent ) )
-		{ docHtmlWritelnCloseElement( "td", hwc );	}
+		{
+		docHtmlWritelnCloseElement( docHtmlCellElement( node ), hwc );
+		}
 	    break;
 
 	case DOClevROW:

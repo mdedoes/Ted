@@ -55,6 +55,8 @@ void docInitCellProperties(	CellProperties *	cp )
 
     cp->cpValign= DOCtvaTOP;
     cp->cpTextFlow= TXflowTXLRTB;
+
+    cp->cpIsRowHeader= 0;
     }
 
 /************************************************************************/
@@ -226,6 +228,15 @@ int docUpdCellProperties(	PropertyMask *			pCpDoneMask,
 	    {
 	    cpTo->cpValign= cpFrom->cpValign;
 	    PROPmaskADD( &cpDoneMask, CLpropVALIGN );
+	    }
+	}
+
+    if  ( PROPmaskISSET( cpSetMask, CLpropROW_HEADER ) )
+	{
+	if  ( cpTo->cpIsRowHeader != cpFrom->cpIsRowHeader )
+	    {
+	    cpTo->cpIsRowHeader= cpFrom->cpIsRowHeader;
+	    PROPmaskADD( &cpDoneMask, CLpropROW_HEADER );
 	    }
 	}
 
@@ -450,6 +461,12 @@ void docCellPropertyDifference(	PropertyMask *			pCpDifMask,
 	    { PROPmaskADD( &cpDifMask, CLpropVALIGN ); }
 	}
 
+    if  ( PROPmaskISSET( cpCmpMask, CLpropROW_HEADER ) )
+	{
+	if  ( cpTo->cpIsRowHeader != cpFrom->cpIsRowHeader )
+	    { PROPmaskADD( &cpDifMask, CLpropROW_HEADER );	}
+	}
+
     if  ( PROPmaskISSET( cpCmpMask, CLpropTEXT_FLOW ) )
 	{
 	if  ( cpTo->cpTextFlow != cpFrom->cpTextFlow )
@@ -614,6 +631,10 @@ int docSetCellProperty(		CellProperties *	cp,
 	    cp->cpNoShading= ( arg != 0 );
 	    break;
 
+	case CLpropROW_HEADER:
+	    cp->cpIsRowHeader= arg != 0;
+	    break;
+
 	default:
 	    LDEB(prop); return -1;
 	}
@@ -682,6 +703,9 @@ int docGetCellProperty(		const CellProperties *	cp,
 
 	case CLpropNO_SHADING:
 	    return cp->cpNoShading;
+
+	case CLpropROW_HEADER:
+	    return cp->cpIsRowHeader;
 
 	default:
 	    LDEB(prop); return -1;

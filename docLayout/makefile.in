@@ -2043,6 +2043,7 @@ docPsPrintRow.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/sioMemory.h \
     ../appUtil/utilMemoryBuffer.h \
+    ../docBase/docCellProperties.h \
     ../docBase/docLayoutPosition.h \
     ../docBase/docRowProperties.h \
     ../docBase/docSelectionScope.h \
