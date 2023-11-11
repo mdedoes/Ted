@@ -18,93 +18,93 @@ struct CellProperties;
 typedef struct CellNode
     {
 				/**
-				 *  The properties of this cell. The 
-				 *  object is owned by the row properties 
-				 *  administration and it is set when the 
+				 *  The properties of this cell. The
+				 *  object is owned by the row properties
+				 *  administration and it is set when the
 				 *  properties of the parent row are set.
-				 *  So it is NULL immediately after the node 
+				 *  So it is NULL immediately after the node
 				 *  is created.
 				 */
     const struct CellProperties * bcProperties;
 
 				/**
 				 *  Used for the vertical alignment of
-				 *  table cells: The first line of the 
-				 *  first paragraph is shifted by this 
+				 *  table cells: The first line of the
+				 *  first paragraph is shifted by this
 				 *  amount.
 				 */
     int				bcTopInset;
 
 				/**
-				 *  Set by the formatter to know whether 
-				 *  the cell is part of a rowspan. It is 
-				 *  used to know when to calculate the 
-				 *  vertical alignment of the cell and 
-				 *  to reformat the correct rows after the 
+				 *  Set by the formatter to know whether
+				 *  the cell is part of a rowspan. It is
+				 *  used to know when to calculate the
+				 *  vertical alignment of the cell and
+				 *  to reformat the correct rows after the
 				 *  height of the cell changes.
 				 */
     int				bcRowspan;
 
 				/**
-				 *  The number of the row in the table that 
-				 *  holds the top cell of a stack of cells 
+				 *  The number of the row in the table that
+				 *  holds the top cell of a stack of cells
 				 *  in a rowspan.
 				 *
 				 *  This is determined while the row is
-				 *  formatted. It is only set in the 
+				 *  formatted. It is only set in the
 				 *  bottom cell of the rowspan.
 				 */
     int				bcMergedCellTopRow;
 				/**
-				 *  The number of the column in the table that 
-				 *  holds the top cell of a stack of cells 
+				 *  The number of the column in the table that
+				 *  holds the top cell of a stack of cells
 				 *  in a rowspan.
 				 *
 				 *  This is determined while the row is
-				 *  formatted. It is only set in the 
+				 *  formatted. It is only set in the
 				 *  bottom cell of the rowspan.
 				 */
     int				bcMergedCellTopCol;
 
 				/**
 				 *  The head offset of this cell in its row.
-				 *  The  value is derived from the properties 
+				 *  The  value is derived from the properties
 				 *  of the parent row every time they change.
-				 *  This is not a geometric coordinate, but 
+				 *  This is not a geometric coordinate, but
 				 *  the offset of the cell in the frame of
 				 *  The row. Its value is independent of
-				 *  the direction of the row. In left to 
-				 *  right rows, this is the offset of the 
+				 *  the direction of the row. In left to
+				 *  right rows, this is the offset of the
 				 *  left hand side of the cell from the left
 				 *  hand side of the frame of the row.
-				 *  In right to left rows, it is the offset 
+				 *  In right to left rows, it is the offset
 				 *  of the right hand side of the cell from
-				 *  the right hand side of the frame of the 
+				 *  the right hand side of the frame of the
 				 *  row.
 				 */
     int				bcHeadX;
 
 				/**
 				 *  The tail offset of this cell in its row.
-				 *  The  value is derived from the properties 
+				 *  The  value is derived from the properties
 				 *  of the parent row every time they change.
-				 *  This is not a geometric coordinate, but 
+				 *  This is not a geometric coordinate, but
 				 *  the offset of the cell in the frame of
 				 *  The row. Its value is independent of
-				 *  the direction of the row. In left to 
-				 *  right rows, this is the offset of the 
+				 *  the direction of the row. In left to
+				 *  right rows, this is the offset of the
 				 *  right hand side of the cell from the left
 				 *  hand side of the frame of the row.
-				 *  In right to left rows, it is the offset 
+				 *  In right to left rows, it is the offset
 				 *  of the left hand side of the cell from
-				 *  the right hand side of the frame of the 
+				 *  the right hand side of the frame of the
 				 *  row.
 				 */
     int				bcTailX;
 
 				/**
-				 *  The column span of this cell. The 
-				 *  value is derived from the properties 
+				 *  The column span of this cell. The
+				 *  value is derived from the properties
 				 *  of the parent row every time they change.
 				 */
     int				bcColspan;
@@ -124,8 +124,6 @@ typedef struct CellNode
 #   define	biCellHeadX		BIU.biuCell.bcHeadX
 #   define	biCellTailX		BIU.biuCell.bcTailX
 #   define	biCellColspan		BIU.biuCell.bcColspan
-
-# define biCellProperties	BIU.biuCell.bcProperties
 
 /************************************************************************/
 

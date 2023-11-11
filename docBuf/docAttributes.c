@@ -164,7 +164,7 @@ int docBorderPropertiesNumber(	struct BufferDocument *		bd,
     }
 
 const struct BorderProperties * docGetBorderPropertiesByNumber(
-				const struct BufferDocument *		bd,
+				const struct BufferDocument *	bd,
 				int				n )
     {
     NumberedPropertiesList *	bpList= &(bd->bdPropertyLists->dplBorderPropertyList);
@@ -172,7 +172,7 @@ const struct BorderProperties * docGetBorderPropertiesByNumber(
     return docGetBorderPropertiesByNumberImpl( bpList, n );
     }
 
-int docBorderNumberIsBorder(	const struct BufferDocument *		bd,
+int docBorderNumberIsBorder(	const struct BufferDocument *	bd,
 				int				n )
     {
     NumberedPropertiesList *	bpList= &(bd->bdPropertyLists->dplBorderPropertyList);
@@ -191,7 +191,7 @@ int docFramePropertiesNumber(	struct BufferDocument *		bd,
     }
 
 const struct FrameProperties * docGetFramePropertiesByNumber(
-				const struct BufferDocument *		bd,
+				const struct BufferDocument *	bd,
 				int				n )
     {
     NumberedPropertiesList *	fpList= &(bd->bdPropertyLists->dplFramePropertyList);
