@@ -194,7 +194,7 @@ static int docDrawCellPageStrip( void *				through,
     if  ( child < cellNode->biChildCount )
 	{
 	/* We do this for every page that the cell appears on */
-	if  ( dc->dcStartNode && (*dc->dcStartNode)( through, dc, cellNode ) )
+	if  ( dc->dcStartNode && (*dc->dcStartNode)( through, dc, bo->boOverrideFrame, cellNode ) )
 	    { LDEB(cellNode->biLevel); return -1; }
 
 	/*  2  */
@@ -233,7 +233,7 @@ static int docDrawCellPageStrip( void *				through,
 	    }
 
 	/* We do this for every page that the cell appears on */
-	if  ( dc->dcFinishNode && (*dc->dcFinishNode)( through, dc, cellNode ) )
+	if  ( dc->dcFinishNode && (*dc->dcFinishNode)( through, dc, bo->boOverrideFrame, cellNode ) )
 	    { LDEB(cellNode->biLevel); return -1; }
 	}
 
@@ -263,10 +263,6 @@ static int docDrawRowPageStrip(	const struct BufferItem *	rowNode,
     int			atRowTop= 0;
     int			atRowBottom= 0;
     int			isTableHeader;
-
-    /* We do this for every page that the row appears on */
-    if  ( dc->dcStartNode && (*dc->dcStartNode)( through, dc, rowNode ) )
-	{ LDEB(rowNode->biLevel); return -1; }
 
     isTableHeader= rowNode->biNumberInParent < rowNode->biRowPastHeaderRow;
     lpTop= *lpThisFrame;
@@ -316,6 +312,10 @@ static int docDrawRowPageStrip(	const struct BufferItem *	rowNode,
 	    }
 	}
 
+    /* We do this for every page that the row appears on */
+    if  ( dc->dcStartNode && (*dc->dcStartNode)( through, dc, bo->boOverrideFrame, rowNode ) )
+	{ LDEB(rowNode->biLevel); return -1; }
+
     if  ( docDrawCellOrnamentsForRow( rowNode, bf, bo, through, dc,
 					    atRowTop, atRowBottom, &lpTop ) )
 	{ LDEB(1); return -1;	}
@@ -347,7 +347,7 @@ static int docDrawRowPageStrip(	const struct BufferItem *	rowNode,
     }
 
     /* We do this for every page that the row appears on */
-    if  ( dc->dcFinishNode && (*dc->dcFinishNode)( through, dc, rowNode ) )
+    if  ( dc->dcFinishNode && (*dc->dcFinishNode)( through, dc, bo->boOverrideFrame, rowNode ) )
 	{ LDEB(rowNode->biLevel); return -1; }
 
     return 0;

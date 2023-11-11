@@ -108,6 +108,15 @@ typedef struct RowNode
     unsigned char		brPrecededByHeader;
 
 				/**
+				 *  A flag indicating that this row, nor any cell in this
+				 *  row, has a property that makes it a real table row.
+				 *  PDF generation uses this flag to decide that a table 
+				 *  is a formatting means, rather than that the table is 
+				 *  a meaningful table.
+				 */
+    unsigned char		brIsPlain;
+
+				/**
 				 *  Is this row going to be a table row? Only 
 				 *  used while parsing rtf. In a complete 
 				 *  document the cell count in the row 
@@ -129,7 +138,9 @@ typedef struct RowNode
 #   define	biRowTablePast		BIU.biuRow.brTablePast
 #   define	biRowPastHeaderRow	BIU.biuRow.brPastHeaderRow
 #   define	biRowPrecededByHeader	BIU.biuRow.brPrecededByHeader
-#   define	biRowBelowAllCellsPosition	BIU.biuRow.brBelowAllCellsPosition
+#   define	biRowIsPlain		BIU.biuRow.brIsPlain
+#   define	biRowBelowAllCellsPosition \
+					BIU.biuRow.brBelowAllCellsPosition
 #   define	biRowAboveHeaderPosition \
 					BIU.biuRow.brAboveHeaderPosition
 #   define	biRowForTable		BIU.biuRow.brForTable

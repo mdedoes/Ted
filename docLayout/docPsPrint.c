@@ -164,7 +164,7 @@ static void docPsPageBoxes(	DrawingContext *		dc,
 /*  2)  If omitHeadersOnEmptyPages is set, dc->dcPostponeHeadersFooters	*/
 /*	is derived from it. So any header printing is covered by (1)	*/
 /*  3)  If the page is completely empty, skip it.			*/
-/*  4)  if the page is empty, but not have been so if headers and	*/
+/*  4)  if the page is empty, but had not have been so if headers and	*/
 /*	footers were printed, emit it. Otherwise skip it. This sounds a	*/
 /*	bit strange, but the customer is always right. Actually, it has	*/
 /*	a purpose: In simple documents, you do not want to waste paper.	*/

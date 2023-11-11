@@ -27,6 +27,29 @@ static const char STRUCTtypeTH[]= "TH";
 
 /************************************************************************/
 
+/**
+ * Is a row a part of a plain table? I.E. It gives no visual clue about being a row.
+ * Then probably, it is only used for formatting purposes. If this is the 
+ * case for all rows in the table, then we might not want to mark the
+ * table as a real table in the generated PDF.
+ */
+static int docTableIsPlain( 
+	    const struct BufferItem *	rowNode )
+    {
+    const BufferItem *	parentNode= rowNode->biParent;
+    int			row;
+
+    for ( row= rowNode->biRowTableFirst; row < rowNode->biRowTablePast; row++ )
+	{
+	const BufferItem *	node= parentNode->biChildren[row];
+
+	if  ( ! node->biRowIsPlain )
+	    { return 0;	}
+	}
+
+    return 1;
+    }
+
 int docPsMarkRowNode(
 	    const struct BufferItem *	rowNode,
 	    int *			pAsTableFirst,
@@ -36,7 +59,7 @@ int docPsMarkRowNode(
     const BufferItem *	headRowNode;
     const BufferItem *	tailRowNode;
 
-    if  ( ! docIsRowNode( rowNode ) )
+    if  ( ! docIsRowNode( rowNode ) || docTableIsPlain( rowNode ) )
 	{ return 0;	}
 
     headRowNode= parentNode->biChildren[rowNode->biRowTableFirst];

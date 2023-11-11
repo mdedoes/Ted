@@ -573,6 +573,8 @@ int docLayoutRowNode(	int *				pStopCode,
 	rowNode->biChildCount= rp->rpCellCount;
 	}
 
+    rowNode->biRowIsPlain= docRowPropertiesArePlain( lj->ljContext->lcDocument, rp );
+
     {
     const int		line= 0;
     const int		part= 0;

@@ -18,6 +18,7 @@ struct BlockFrame;
 struct LayoutPosition;
 struct ParagraphLayoutJob;
 struct CellProperties;
+struct RowProperties;
 
 /************************************************************************/
 /*									*/
@@ -82,5 +83,13 @@ extern void docLayoutStartCell(	struct BufferItem *		cellNode,
 extern void docCellToNextColumn( struct LayoutPosition *	lpBefore,
 				const struct BufferItem *	cellNode,
 				struct ParagraphLayoutJob *	plj );
+
+extern int docCellPropertiesArePlain(
+			const struct BufferDocument *	bd,
+			const struct CellProperties *	cp );
+
+extern int docRowPropertiesArePlain(
+			const struct BufferDocument *	bd,
+			const struct RowProperties *	rp );
 
 #   endif	/*  DOC_ROW_LAYOUT_H  */

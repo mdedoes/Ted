@@ -158,10 +158,12 @@ typedef int (*FINISH_TEXT_LINE)(
 			 */
 typedef int (*START_NODE)(	void *				through,
 				struct DrawingContext *		dc,
+				int				repeated,
 				const struct BufferItem *	node );
 
 typedef int (*FINISH_NODE)(	void *				through,
 				struct DrawingContext *		dc,
+				int				repeated,
 				const struct BufferItem *	node );
 
 			/**

@@ -214,6 +214,7 @@ void docInitNode(	struct BufferItem *		node,
 	    node->biRowTablePast= -1;
 	    node->biRowPastHeaderRow= -1;
 	    node->biRowPrecededByHeader= 0;
+	    node->biRowIsPlain= 0;
 	    node->biRowForTable= 0;
 
 	    node->biRowTopInset= 0;

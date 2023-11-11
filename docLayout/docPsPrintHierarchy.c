@@ -23,8 +23,8 @@
  * Standard structure types. See ISO 32000-1:2008, 14.8.4.
  * These are the Block level ones
  */
-static const char STRUCTtypePART[]= "Part";
-static const char STRUCTtypeSECT[]= "Sect";
+/* static const char STRUCTtypePART[]= "Part"; */
+/* static const char STRUCTtypeSECT[]= "Sect"; */
 static const char STRUCTtypeTR[]= "TR";
 static const char STRUCTtypeTABLE[]= "Table";
 
@@ -210,6 +210,7 @@ int docPsPrintFinishLines( void *			vps,
 
 int docPsPrintStartNode(	void *				vps,
 				struct DrawingContext *		dc,
+				int				repeated,
 				const struct BufferItem *	node )
     {
     int			rval= 0;
@@ -229,15 +230,19 @@ int docPsPrintStartNode(	void *				vps,
 	switch( node->biLevel )
 	    {
 	    case DOClevBODY:
+		/* Does not really help:
 		if  ( docPsMarkNode( node )			&&
 		      docPsPrintBeginMarkedGroup( ps, STRUCTtypePART, &structureAttributes ) )
 		    { LDEB(node->biLevel); rval= -1; goto ready;	}
+		*/
 		break;
 
 	    case DOClevSECT:
+		/* Does not make sense to create a section for each page: (because we split nodes that span pages)
 		if  ( docPsMarkNode( node )			&&
 		      docPsPrintBeginMarkedGroup( ps, STRUCTtypeSECT, &structureAttributes  ) )
 		    { LDEB(node->biLevel); rval= -1; goto ready;	}
+		*/
 		break;
 
 	    case DOClevROW: {
@@ -245,12 +250,19 @@ int docPsPrintStartNode(	void *				vps,
 
 		    if  ( docPsMarkRowNode( node, &asTableFirst, (int *)0 ) )
 			{
-			if  ( asTableFirst &&
-			      docPsPrintBeginMarkedGroup( ps, STRUCTtypeTABLE, (MemoryBuffer *)0 ) )
-			    { LLDEB(node->biLevel,asTableFirst); rval= -1; goto ready;	}
+			if  ( repeated && node->biNumberInParent < node->biRowPastHeaderRow )
+			    {
+			    if  ( docPsPrintBeginArtifact( ps )	)
+				{ LDEB(repeated); return -1;	}
+			    }
+			else{
+			    if  ( asTableFirst &&
+				  docPsPrintBeginMarkedGroup( ps, STRUCTtypeTABLE, (MemoryBuffer *)0 ) )
+				{ LLDEB(node->biLevel,asTableFirst); rval= -1; goto ready;	}
 
-			if  ( docPsPrintBeginMarkedGroup( ps, STRUCTtypeTR, &structureAttributes ) )
-			    { LDEB(node->biLevel); rval= -1; goto ready;	}
+			    if  ( docPsPrintBeginMarkedGroup( ps, STRUCTtypeTR, &structureAttributes ) )
+				{ LDEB(node->biLevel); rval= -1; goto ready;	}
+			    }
 			}
 
 		    break;
@@ -290,24 +302,41 @@ int docPsPrintStartNode(	void *				vps,
 
 int docPsPrintFinishNode( void *			vps,
 			struct DrawingContext *		dc,
+			int				repeated,
 			const struct BufferItem *	node )
     {
     PrintingState *	ps= (PrintingState *)vps;
 
-    if  ( ! ps->psInArtifact )
+    /* Is this the end of a repeated header row that is printed as an artifact? */
+    if  ( ps->psInArtifact )
 	{
+	if  ( ps->psInArtifact == 1 && node->biLevel == DOClevROW		&&
+	      repeated && node->biNumberInParent < node->biRowPastHeaderRow	)
+	    {
+	    if  ( docPsMarkRowNode( node, (int *)0, (int *)0 ) )
+		{
+		if  ( docPsPrintEndArtifact( ps )	)
+		    { LDEB(repeated); return -1;	}
+		}
+	    }
+	}
+    else{
 	switch( node->biLevel )
 	    {
 	    case DOClevBODY:
+		/* Does not really help:
 		if  ( docPsMarkNode( node )			&&
 		      docPsPrintEndMarkedGroup( ps )	)
 		    { LDEB(node->biLevel); return -1;	}
+		*/
 		break;
 
 	    case DOClevSECT:
+		/* Does not make sense to create a section for each page: (because we split nodes that span pages)
 		if  ( docPsMarkNode( node )			&&
 		    docPsPrintEndMarkedGroup( ps )		)
 		    { LDEB(node->biLevel); return -1;	}
+		*/
 		break;
 
 
@@ -316,11 +345,18 @@ int docPsPrintFinishNode( void *			vps,
 
 		    if  ( docPsMarkRowNode( node, (int *)0, &asTableLast ) )
 			{
-			if  ( docPsPrintEndMarkedGroup( ps ) )
-			    { LDEB(node->biLevel); return -1;	}
+			if  ( repeated && node->biNumberInParent < node->biRowPastHeaderRow )
+			    {
+			    /* Will this ever happen? */
+			    LSDEB(node->biNumberInParent,"STRAY REPEAT END");
+			    }
+			else{
+			    if  ( docPsPrintEndMarkedGroup( ps ) )
+				{ LDEB(node->biLevel); return -1;	}
 
-			if  ( asTableLast && docPsPrintEndMarkedGroup( ps ) )
-			    { LLDEB(node->biLevel,asTableLast); return -1;	}
+			    if  ( asTableLast && docPsPrintEndMarkedGroup( ps ) )
+				{ LLDEB(node->biLevel,asTableLast); return -1;	}
+			    }
 			}
 
 		    break;

@@ -100,7 +100,7 @@ int docDrawGroupNode(	LayoutPosition *		lpBelow,
 
     struct BufferItem *		prevNode= (struct BufferItem *)0;
 
-    if  ( dc->dcStartNode && (*dc->dcStartNode)( through, dc, node ) )
+    if  ( dc->dcStartNode && (*dc->dcStartNode)( through, dc, bo->boOverrideFrame, node ) )
 	{ LDEB(node->biLevel); return -1; }
 
     if  ( node->biChildCount > 0 )
@@ -160,7 +160,7 @@ int docDrawGroupNode(	LayoutPosition *		lpBelow,
 	prevNode= childNode;
 	}
 
-    if  ( dc->dcFinishNode && (*dc->dcFinishNode)( through, dc, node ) )
+    if  ( dc->dcFinishNode && (*dc->dcFinishNode)( through, dc, bo->boOverrideFrame, node ) )
 	{ LDEB(node->biLevel); return -1; }
 
     return 0;

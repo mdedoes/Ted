@@ -687,3 +687,51 @@ void docLayoutCalculateRowTopInset(
     return;
     }
 
+/**
+ * Is a cell a plain cell? I.E. It gives no visual clue about being a cell.
+ * Then probably, it is only used for formatting purposes. If this is the 
+ * case for all cells in the table, then we might not want to mark the
+ * table as a real table in the generated PDF.
+ */
+int docCellPropertiesArePlain(
+			const struct BufferDocument *	bd,
+			const CellProperties *		cp )
+    {
+    return ! cp->cpIsRowHeader &&
+	   ! docBorderNumberIsBorder( bd, cp->cpTopBorderNumber ) &&
+	   ! docBorderNumberIsBorder( bd, cp->cpLeftBorderNumber ) &&
+	   ! docBorderNumberIsBorder( bd, cp->cpRightBorderNumber ) &&
+	   ! docBorderNumberIsBorder( bd, cp->cpBottomBorderNumber ) &&
+	   ! docShadingNumberIsShading( bd, cp->cpShadingNumber ) ;
+    }
+
+/**
+ * Is a row a plain row? I.E. It gives no visual clue about being a row.
+ * Then probably, it is only used for formatting purposes. If this is the 
+ * case for all rows in the table, then we might not want to mark the
+ * table as a real table in the generated PDF.
+ */
+int docRowPropertiesArePlain(
+			const struct BufferDocument *	bd,
+			const RowProperties *		rp )
+    {
+    int		col;
+
+    if  ( rp->rpIsTableHeader ||
+	  docBorderNumberIsBorder( bd, rp->rpTopBorderNumber ) ||
+	  docBorderNumberIsBorder( bd, rp->rpLeftBorderNumber ) ||
+	  docBorderNumberIsBorder( bd, rp->rpRightBorderNumber ) ||
+	  docBorderNumberIsBorder( bd, rp->rpBottomBorderNumber ) ||
+	  docShadingNumberIsShading( bd, rp->rpShadingNumber ) )
+	{ return 0;	}
+
+    for ( col= 0; col < rp->rpCellCount; rp++ )
+	{
+	const CellProperties *	cp= rp->rpCells+ col;
+
+	if  ( ! docCellPropertiesArePlain( bd, cp ) )
+	    { return 0;	}
+	}
+
+    return 1;
+    }
