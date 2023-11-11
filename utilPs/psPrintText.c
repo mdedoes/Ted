@@ -161,6 +161,10 @@ static int psMovePrintString(	PrintingState *		ps,
  *  recognised as being unicode by some tooling, we split the string 
  *  in alternating segments. The odd ones do not hold spaces. The even 
  *  ones consist of spaces only;
+ *
+ *  To render the text, we do not need to emit trailing spaces. But, when
+ *  the emitted postscript is coverted to PDF, we want the spaces between
+ *  the words to be copied along with the visible output. So do not strip them.
  */
 int psMoveShowString(	PrintingState *		ps,
 			const char *		s,
@@ -185,6 +189,7 @@ int psMoveShowString(	PrintingState *		ps,
 	    int		lt= 0;
 	    int		ls;
 
+	    /* Emit text upto the end of the string, or upto the first space */
 	    while( d+ lt < len && s[d+ lt] != ' ' )
 		{ lt++;	}
 	    if  ( lt > 0 )
@@ -203,10 +208,11 @@ int psMoveShowString(	PrintingState *		ps,
 		    }
 		}
 
+	    /* Emit spaces upto the end, or the first non-blank */
 	    ls= 0; d += lt;
 	    while( d+ ls < len && s[d+ ls] == ' ' )
 		{ ls++;	}
-	    if  ( ls > 0 && d+ ls < len ) /* No need to print trailing spaces */
+	    if  ( ls > 0 ) /* Any spaces: Emit them. Why? See above */
 		{
 		if  ( moved )
 		    {
