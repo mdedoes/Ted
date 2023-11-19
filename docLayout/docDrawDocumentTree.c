@@ -324,7 +324,7 @@ int docDrawEndnotesForSection(		LayoutPosition *	lpBelow,
 	  tree->dtRoot->biTopPosition.lpPage > dc->dcLastPage	)
 	{ goto ready;	}
 
-    if  ( docDrawToColumnOfNode( bodySectNode, bodySectNode, tree->dtRoot,
+    if  ( docDrawToColumnOfNode( bodySectNode, bodySectNode,
 						through, &lpHere, dc, &bo ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
@@ -348,7 +348,7 @@ int docDrawEndnotesForSection(		LayoutPosition *	lpBelow,
 	      tree->dtRoot->biTopPosition.lpPage > dc->dcLastPage	)
 	    { goto ready;	}
 
-	if  ( docDrawToColumnOfNode( bodySectNode, bodySectNode, tree->dtRoot,
+	if  ( docDrawToColumnOfNode( bodySectNode, bodySectNode,
 						through, &lpHere, dc, &bo ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 

@@ -41,13 +41,14 @@ int docPsPrintBeginMarkedGroup(	PrintingState *		ps,
     if  ( psPdfmarkAppendMarkedGroup( ps, structItem, structureAttributes ) )
 	{ LDEB(1); return -1;	}
 
-    return psPdfBeginMarkedContent( ps, structureType, -1 );
+    return psPdfBeginMarkedContent( ps, structureType, -1, structureAttributes );
     }
 
-int docPsPrintEndMarkedGroup(	PrintingState *		ps )
+int docPsPrintEndMarkedGroup(	PrintingState *		ps,
+				const char *		structureType )
     {
     psPdfPopStructItem( ps );
-    return psPdfEndMarkedContent( ps );
+    return psPdfEndMarkedContent( ps, structureType );
     }
 
 /**
@@ -82,7 +83,7 @@ int docPsPrintBeginArtifact(
     if  ( docPsPrintFinishInline( ps ) )
 	{ LDEB(1); return -1;	}
 
-    if  ( psPdfBeginMarkedContent( ps, STRUCTtypeARTIFACT, -1 ) )
+    if  ( psPdfBeginMarkedContent( ps, STRUCTtypeARTIFACT, -1, (const MemoryBuffer *)0 ) )
 	{ LDEB(ps->psInArtifact); return -1;	}
 
     ps->psInArtifact++;
@@ -97,7 +98,7 @@ int docPsPrintEndArtifact(	PrintingState *		ps )
     {
     ps->psInArtifact--;
 
-    return psPdfEndMarkedContent( ps );
+    return psPdfEndMarkedContent( ps, STRUCTtypeARTIFACT );
     }
 
 int docPsFinishAnnotation(	PrintingState *		ps,

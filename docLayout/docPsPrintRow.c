@@ -55,17 +55,7 @@ int docPsMarkRowNode(
 	    int *			pAsTableFirst,
 	    int *			pAsTableLast )
     {
-    const BufferItem *	parentNode= rowNode->biParent;
-    const BufferItem *	headRowNode;
-    const BufferItem *	tailRowNode;
-
     if  ( ! docIsRowNode( rowNode ) || docTableIsPlain( rowNode ) )
-	{ return 0;	}
-
-    headRowNode= parentNode->biChildren[rowNode->biRowTableFirst];
-    tailRowNode= parentNode->biChildren[rowNode->biRowTablePast- 1];
-
-    if  ( headRowNode->biTopPosition.lpPage != tailRowNode->biBelowPosition.lpPage )
 	{ return 0;	}
 
     if  ( pAsTableFirst )
@@ -97,26 +87,28 @@ const char * docPsCellNodeMark(
 
 	docTableDetermineCellspans( &rowspan, &colspan, cellNode );
 
-	SimpleOutputStream * sosAttributes= sioOutMemoryOpen( structureAttributes );
-	sioOutPrintf( sosAttributes, "/O/Table " );
+	if  ( rowspan > 1 || colspan > 1 || inHeaderRow || inHeaderColumn )
+	    {
+	    SimpleOutputStream * sosAttributes= sioOutMemoryOpen( structureAttributes );
+	    sioOutPrintf( sosAttributes, "/O/Table " );
 
-	if  ( inHeaderRow )
-	    { sioOutPrintf( sosAttributes, "/Scope/Column " );	}
-	else{
-	    if  ( inHeaderColumn )
-		{ sioOutPrintf( sosAttributes, "/Scope/Row " );	}
+	    if  ( inHeaderRow )
+		{ sioOutPrintf( sosAttributes, "/Scope/Column " );	}
+	    else{
+		if  ( inHeaderColumn )
+		    { sioOutPrintf( sosAttributes, "/Scope/Row " );	}
+		}
+
+	    if  ( rowspan > 1 )
+		{ sioOutPrintf( sosAttributes, "/RowSpan %d ", rowspan );	}
+
+	    if  ( colspan > 1 )
+		{ sioOutPrintf( sosAttributes, "/ColSpan %d ", colspan );	}
+
+	    sioOutClose( sosAttributes );
 	    }
-
-	if  ( rowspan > 1 )
-	    { sioOutPrintf( sosAttributes, "/RowSpan %d ", rowspan );	}
-
-	if  ( colspan > 1 )
-	    { sioOutPrintf( sosAttributes, "/ColSpan %d ", colspan );	}
-
-	sioOutClose( sosAttributes );
 	}
 
-    /* I could not find a cell property to decide between td and th (MdD Aug 2023) */
     if  ( inHeaderRow || inHeaderColumn )
 	{ return STRUCTtypeTH;	}
     else{ return STRUCTtypeTD;	}

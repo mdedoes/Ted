@@ -264,7 +264,8 @@ int docDrawParaNode(		LayoutPosition *		lpBelow,
 
     int				line= 0;
 
-    if  ( dc->dcStartNode && (*dc->dcStartNode)( through, dc, bo->boOverrideFrame, paraNode ) )
+    if  ( dc->dcStartNode && (*dc->dcStartNode)( through, dc,
+					bo->boOverrideFrame, 0, paraNode ) )
 	{ LDEB(paraNode->biLevel); return -1; }
 
     docLayoutInitBlockFrame( &bf );
@@ -359,7 +360,7 @@ if  ( paraNode->biTreeType == DOCinSHPTXT )
 	docLayoutPushBottomDown( lpBelow, &lp );
 	}
 
-    if  ( dc->dcFinishNode && (*dc->dcFinishNode)( through, dc, bo->boOverrideFrame, paraNode ) )
+    if  ( dc->dcFinishNode && (*dc->dcFinishNode)( through, dc, bo->boOverrideFrame, 0, paraNode ) )
 	{ LDEB(paraNode->biLevel); return -1; }
 
   ready:

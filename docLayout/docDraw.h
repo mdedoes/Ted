@@ -154,16 +154,30 @@ typedef int (*FINISH_TEXT_LINE)(
 			 *  structural elements in the output. This is used 
 			 *  to support the ISO 14289-1 (PDF/UA) requirements.
 			 *  (We use PdfMarks for that). These two are invoked
-			 *  around the actual drawing of the document node.
+			 *  around the actual drawing of the node as a whole.
+			 *  Nodes that span multiple pages are started and finished
+			 *  for each page that they contribute to.
+			 *
+			 *  @param through The specific drawing/printing environment
+			 *  @param dc The drawing context
+			 *  @param repeated (boolean) true if and only if this is a repeated
+			 *	instance of the node. In practice: A repeated table header.
+			 *  @param pageBreak true if and only if the node is (re)started 
+			 *	because of a page break. This happens if the node spans multiple
+			 *	pages and inside tables. There the node might not be split, but 
+			 *	the table that holds the row is split.
+			 *  @param The node to start/finish.
 			 */
 typedef int (*START_NODE)(	void *				through,
 				struct DrawingContext *		dc,
 				int				repeated,
+				int				pageBreak,
 				const struct BufferItem *	node );
 
 typedef int (*FINISH_NODE)(	void *				through,
 				struct DrawingContext *		dc,
 				int				repeated,
+				int				pageBreak,
 				const struct BufferItem *	node );
 
 			/**
@@ -420,8 +434,7 @@ extern int docDrawEndnotesForDocument(	struct LayoutPosition *	lpBelow,
 					void *			through,
 					DrawingContext *	dc );
 
-extern int docDrawToColumnOfNode( struct BufferItem *		prevBodyNode,
-				struct BufferItem *		thisBodyNode,
+extern int docDrawToColumnOfNode( struct BufferItem *		prevNode,
 				struct BufferItem *		thisNode,
 				void *				through,
 				struct LayoutPosition *		lpHere,

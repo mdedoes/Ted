@@ -256,14 +256,16 @@ static int psDrawSometingInvisible(	PrintingState *	ps )
 			    ! ps->psOmitContentMarks &&
 			    ! ps->psInArtifact;
 
-    if  ( asArtifact && psPdfBeginMarkedContent( ps, "Artifact", -1 ) )
+    const char *	structureType= "Artifact";
+
+    if  ( asArtifact && psPdfBeginMarkedContent( ps, structureType, -1, (const MemoryBuffer *)0 ) )
 	{ LDEB(asArtifact); return -1;	}
 
     sioOutPrintf( ps->psSos,
 	    "1 setgray 0 0 moveto 1 0 rlineto stroke"
 	    "  %% Avoid an empty page\n" );
 
-    if  ( asArtifact && psPdfEndMarkedContent( ps ) )
+    if  ( asArtifact && psPdfEndMarkedContent( ps, structureType ) )
 	{ LDEB(asArtifact); return -1;	}
 
     return 0;

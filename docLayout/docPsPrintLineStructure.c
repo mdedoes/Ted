@@ -64,7 +64,7 @@ int docPsPrintClaimInline( PrintingState *	ps )
 	      ! ps->psCurrentStructItem->siIsInline			)
 	    {
 	    psPdfPopStructItem( ps );
-	    psPdfEndMarkedContent( ps );
+	    psPdfEndMarkedContent( ps, "ILSE" );
 	    }
 
 	if  ( ! ps->psCurrentStructItem 		||
@@ -77,7 +77,8 @@ int docPsPrintClaimInline( PrintingState *	ps )
 
 	    if  ( psPdfBeginMarkedContent( ps,
 				structItem->siStructureType,
-				structItem->siContentId ) )
+				structItem->siContentId,
+				(const MemoryBuffer *)0 ) )
 		{ LDEB(structItem->siContentId); return -1;	}
 	    }
 	}
@@ -96,7 +97,7 @@ int docPsPrintFinishInline(	PrintingState *		ps )
 	  ps->psCurrentStructItem->siIsInline				)
 	{
 	psPdfPopStructItem( ps );
-	psPdfEndMarkedContent( ps );
+	psPdfEndMarkedContent( ps, "ILSE" );
 	}
 
     return 0;
@@ -165,7 +166,7 @@ int docPsPrintEndFigure(
     if  ( ! utilMemoryBufferIsEmpty( &(io->ioAltText) ) )
 	{
 	psPdfPopStructItem( ps );
-	return psPdfEndMarkedContent( ps );
+	return psPdfEndMarkedContent( ps, STRUCTtypeFIGURE );
 	}
     else{
 	return docPsPrintEndArtifact( ps );

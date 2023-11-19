@@ -164,7 +164,9 @@ static int docDrawCellPageStrip( void *				through,
 				const LayoutPosition *		lpThisFrame,
 				BlockFrame *			bf,
 				DrawingContext *		dc,
-				const BlockOrigin *		bo )
+				const BlockOrigin *		bo,
+				int				atRowTop,
+				int				atRowBottom )
 				
     {
     int				child= 0;
@@ -191,12 +193,13 @@ static int docDrawCellPageStrip( void *				through,
 	child++;
 	}
 
+    /* We do this for every page that the row of the cell appears on */
+    if  ( dc->dcStartNode && (*dc->dcStartNode)( through, dc,
+				    bo->boOverrideFrame, ! atRowTop, cellNode ) )
+	{ LDEB(cellNode->biLevel); return -1; }
+
     if  ( child < cellNode->biChildCount )
 	{
-	/* We do this for every page that the cell appears on */
-	if  ( dc->dcStartNode && (*dc->dcStartNode)( through, dc, bo->boOverrideFrame, cellNode ) )
-	    { LDEB(cellNode->biLevel); return -1; }
-
 	/*  2  */
 	while( child < cellNode->biChildCount )
 	    {
@@ -232,12 +235,48 @@ static int docDrawCellPageStrip( void *				through,
 	    child++;
 	    }
 
-	/* We do this for every page that the cell appears on */
-	if  ( dc->dcFinishNode && (*dc->dcFinishNode)( through, dc, bo->boOverrideFrame, cellNode ) )
-	    { LDEB(cellNode->biLevel); return -1; }
 	}
 
+    /* We do this for every page that the row of the cell appears on */
+    if  ( dc->dcFinishNode && (*dc->dcFinishNode)( through, dc,
+					    bo->boOverrideFrame, ! atRowBottom, cellNode ) )
+	{ LDEB(cellNode->biLevel); return -1; }
+
     return 0;
+    }
+
+/************************************************************************/
+
+static int docNextRowNodeOnNextPage(	const BufferItem *	rowNode )
+    {
+    const int	nextRowNumber= rowNode->biNumberInParent+ 1;
+
+    if  ( nextRowNumber < rowNode->biRowTablePast )
+	{
+	const BufferItem *	nextRowNode=
+				rowNode->biParent->biChildren[nextRowNumber];
+
+	return nextRowNode->biTopPosition.lpPage > rowNode->biBelowPosition.lpPage;
+	}
+    else{
+	return 0;
+	}
+    }
+
+static int docPrevRowNodeOnPrevPage(	const BufferItem *	rowNode )
+    {
+    const int	prevRowNumber= rowNode->biNumberInParent- 1;
+
+    if  ( prevRowNumber >= rowNode->biRowTableFirst )
+	{
+	const BufferItem *	prevRowNode=
+				rowNode->biParent->biChildren[prevRowNumber];
+
+	return prevRowNode->biBelowPosition.lpPage < rowNode->biTopPosition.lpPage;
+	}
+    else{
+	return 0;
+	}
     }
 
 /************************************************************************/
@@ -249,7 +288,7 @@ static int docDrawCellPageStrip( void *				through,
 /*									*/
 /************************************************************************/
 
-static int docDrawRowPageStrip(	const struct BufferItem *	rowNode,
+static int docDrawRowPageStrip(	const BufferItem *		rowNode,
 				const LayoutPosition *		lpThisFrame,
 				BlockFrame *			bf,
 				void *				through,
@@ -263,6 +302,9 @@ static int docDrawRowPageStrip(	const struct BufferItem *	rowNode,
     int			atRowTop= 0;
     int			atRowBottom= 0;
     int			isTableHeader;
+
+    const int		nextOnNextPage= docNextRowNodeOnNextPage( rowNode );
+    const int		prevOnPrevPage= docPrevRowNodeOnPrevPage( rowNode );
 
     isTableHeader= rowNode->biNumberInParent < rowNode->biRowPastHeaderRow;
     lpTop= *lpThisFrame;
@@ -313,7 +355,8 @@ static int docDrawRowPageStrip(	const struct BufferItem *	rowNode,
 	}
 
     /* We do this for every page that the row appears on */
-    if  ( dc->dcStartNode && (*dc->dcStartNode)( through, dc, bo->boOverrideFrame, rowNode ) )
+    if  ( dc->dcStartNode && (*dc->dcStartNode)( through, dc,
+					bo->boOverrideFrame, ! atRowTop || prevOnPrevPage, rowNode ) )
 	{ LDEB(rowNode->biLevel); return -1; }
 
     if  ( docDrawCellOrnamentsForRow( rowNode, bf, bo, through, dc,
@@ -341,14 +384,18 @@ static int docDrawRowPageStrip(	const struct BufferItem *	rowNode,
 	if  ( cmp < 0 || ! selected )
 	    { continue; }
 
-	if  ( docDrawCellPageStrip( through, cellNode, &lpTop, bf, dc, bo ) )
+	if  ( docDrawCellPageStrip( through, cellNode, &lpTop, bf, dc, bo, atRowTop, atRowBottom ) )
 	    { LDEB(1); return -1;	}
 	}
     }
 
-    /* We do this for every page that the row appears on */
-    if  ( dc->dcFinishNode && (*dc->dcFinishNode)( through, dc, bo->boOverrideFrame, rowNode ) )
-	{ LDEB(rowNode->biLevel); return -1; }
+    /* The pagination code finishes the row. So, only finish at the end of the row */
+    if  ( atRowBottom && ! nextOnNextPage )
+	{
+	if  ( dc->dcFinishNode && (*dc->dcFinishNode)( through, dc,
+					bo->boOverrideFrame, ! atRowBottom || nextOnNextPage, rowNode ) )
+	    { LDEB(rowNode->biLevel); return -1; }
+	}
 
     return 0;
     }

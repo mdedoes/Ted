@@ -472,7 +472,8 @@ extern int psPdfMarkPosition(	PrintingState *			ps,
 
 extern int psPdfBeginMarkedContent( PrintingState *		ps,
 				const char *			structureType,
-				int				contentId );
+				int				contentId,
+				const MemoryBuffer *		extraProperties );
 
 extern int psPdfBeginMarkedContentActualText(
 				PrintingState *			ps,
@@ -492,7 +493,8 @@ extern int psPdfBeginTypedArtifact(
 				const char *			typeName,
 				const char *			subtypeName );
 
-extern int psPdfEndMarkedContent( PrintingState *		ps );
+extern int psPdfEndMarkedContent( PrintingState *		ps,
+				const char *			structureType );
 
 extern int psPdfmarkAppendMarkedLeaf(
 				PrintingState *			ps,

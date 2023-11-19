@@ -122,6 +122,48 @@ static int docDrawLineBeforeColumn(	struct BufferItem *	nextBodyNode,
     }
 
 /************************************************************************/
+
+/**
+ *  Finish all nodes on the current page. We close then, and then
+ *  reopen them to deal with a limitation of the way in which we build 
+ *  the structure tree for the PDF output.
+ */
+static int docPsPrintFinishNodes(
+				struct BufferItem *	node,
+				void *			through,
+				DrawingContext *	dc )
+    {
+    while( node )
+	{
+	if  ( (*dc->dcFinishNode)( through, dc, 0, 1, node ) )
+	    { LDEB(node->biLevel); return -1; }
+
+	node= node->biParent;
+	}
+
+    return 0;
+    }
+
+/**
+ *  Start all nodes on the next page. We have closed then, and now
+ *  we reopen nodes to deal with a limitation of the way in which we build 
+ *  the structure tree for the PDF output.
+ */
+static int docPsPrintStartNodes(
+				struct BufferItem *	node,
+				void *			through,
+				DrawingContext *	dc )
+    {
+    if  ( node->biParent && docPsPrintStartNodes( node->biParent, through, dc ) )
+	{ PDEB(node->biParent); return -1;	}
+
+    if  ( (*dc->dcStartNode)( through, dc, 0, 1, node ) )
+	{ LDEB(node->biLevel); return -1; }
+
+    return 0;
+    }
+
+/************************************************************************/
 /*									*/
 /*  Skip to the next page. (Actually the next newspaper style column on	*/
 /*  the page)								*/
@@ -132,8 +174,8 @@ static int docDrawLineBeforeColumn(	struct BufferItem *	nextBodyNode,
 /*									*/
 /************************************************************************/
 
-int docDrawToNextColumn(	struct BufferItem *	thisBodyNode,
-				struct BufferItem *	nextBodyNode,
+int docDrawToNextColumn(	struct BufferItem *	thisNode,
+				struct BufferItem *	nextNode,
 				void *			through,
 				LayoutPosition *	lpHere,
 				BlockFrame *		bf,
@@ -150,21 +192,21 @@ int docDrawToNextColumn(	struct BufferItem *	thisBodyNode,
     int				nextColumn;
     int				isPageBreak= 0;
 
-    thisBodyNode= docGetSectNode( thisBodyNode );
-    nextBodyNode= docGetSectNode( nextBodyNode );
+    BufferItem *		thisBodySectNode= docGetBodySectNode( thisNode, bd );
+    BufferItem *		nextBodySectNode= docGetBodySectNode( nextNode, bd );
 
     nextPage= lpHere->lpPage;
     nextColumn= lpHere->lpColumn;
 
     nextColumn++;
 
-    if  ( nextBodyNode )
+    if  ( nextBodySectNode )
 	{
-	if  ( nextColumn >= nextBodyNode->biSectColumnCount )
+	if  ( nextColumn >= nextBodySectNode->biSectColumnCount )
 	    { nextPage++; nextColumn= 0; }
 	}
     else{
-	if  ( nextColumn >= thisBodyNode->biSectColumnCount )
+	if  ( nextColumn >= thisBodySectNode->biSectColumnCount )
 	    { nextPage++; nextColumn= 0; }
 	}
 
@@ -182,11 +224,11 @@ int docDrawToNextColumn(	struct BufferItem *	thisBodyNode,
 
 	startNewPage= 1;
 
-	if  ( thisBodyNode && thisBodyNode->biTreeType != DOCinBODY )
-	    { SDEB(docTreeTypeStr(thisBodyNode->biTreeType));	}
+	if  ( thisBodySectNode && thisBodySectNode->biTreeType != DOCinBODY )
+	    { SDEB(docTreeTypeStr(thisBodySectNode->biTreeType));	}
 
-	if  ( thisBodyNode					&&
-              thisBodyNode->biTreeType == DOCinBODY		&&
+	if  ( thisBodySectNode					&&
+              thisBodySectNode->biTreeType == DOCinBODY		&&
 	      dc->dcDrawOtherTrees				)
 	    {
 	    if  ( docDrawFootnotesForColumn( lpHere->lpPage, lpHere->lpColumn,
@@ -195,7 +237,7 @@ int docDrawToNextColumn(	struct BufferItem *	thisBodyNode,
 
 	    if  ( ! dc->dcPostponeHeadersFooters			&&
 		  isPageBreak						&&
-		  docDrawPageFooter( thisBodyNode, through, dc,
+		  docDrawPageFooter( thisBodySectNode, through, dc,
 						    lpHere->lpPage )	)
 		{ LDEB(lpHere->lpPage); return -1;	}
 	    }
@@ -204,11 +246,17 @@ int docDrawToNextColumn(	struct BufferItem *	thisBodyNode,
 	if  ( docDrawShapesForPage( through, dc, belowText, lpHere->lpPage ) )
 	    { LDEB(lpHere->lpPage);	}
 
-	if  ( isPageBreak						&&
-	      dc->dcFinishPage						&&
-	      (*dc->dcFinishPage)( through, dc, thisBodyNode,
-					    lpHere->lpPage, asLast )	)
-	    { LDEB(1); return -1;	}
+	if  ( isPageBreak )
+	    {
+	    if  ( dc->dcFinishNode					&&
+		  docPsPrintFinishNodes( thisNode, through, dc )	)
+		{ LDEB(isPageBreak); return -1;	}
+
+	    if  ( dc->dcFinishPage						&&
+		  (*dc->dcFinishPage)( through, dc, thisBodySectNode,
+						lpHere->lpPage, asLast )	)
+		{ LDEB(isPageBreak); return -1;	}
+	    }
 	}
 
     if  ( dc->dcLastPage < 0		||
@@ -217,13 +265,13 @@ int docDrawToNextColumn(	struct BufferItem *	thisBodyNode,
 	lpHere->lpColumn= nextColumn;
 	lpHere->lpPage= nextPage;
 
-	if  ( nextBodyNode )
+	if  ( nextBodySectNode )
 	    {
-	    const SectionProperties *	sp= nextBodyNode->biSectProperties;
+	    const SectionProperties *	sp= nextBodySectNode->biSectProperties;
 	    const DocumentGeometry *	dg= &(sp->spDocumentGeometry);
 	    const int			belowText= 1;
 
-	    docLayoutSectColumnTop( lpHere, bf, nextBodyNode, bd );
+	    docLayoutSectColumnTop( lpHere, bf, nextBodySectNode, bd );
 
 	    if  ( isPageBreak && startNewPage )
 		{
@@ -232,13 +280,17 @@ int docDrawToNextColumn(	struct BufferItem *	thisBodyNode,
 						    lpHere->lpPage )	)
 		    { LDEB(1); return -1;	}
 
+		if  ( dc->dcStartNode					&&
+		      docPsPrintStartNodes( nextNode->biParent, through, dc )	)
+		    { LDEB(isPageBreak); return -1;	}
+
 		if  ( docDrawShapesForPage(
 				    through, dc, belowText, lpHere->lpPage ) )
 		    { LDEB(lpHere->lpPage);	}
 
 		if  ( dc->dcDrawOtherTrees				&&
 		      ! dc->dcPostponeHeadersFooters			&&
-		      docDrawPageHeader( nextBodyNode, through, dc,
+		      docDrawPageHeader( nextBodySectNode, through, dc,
 						    lpHere->lpPage )	)
 		    { LDEB(lpHere->lpPage); return -1;	}
 		}
@@ -246,7 +298,7 @@ int docDrawToNextColumn(	struct BufferItem *	thisBodyNode,
 	    if  ( lpHere->lpColumn > 0					&&
 		  sp->spLineBetweenColumns				&&
 		  dc->dcDrawOrnaments					&&
-		  docDrawLineBeforeColumn( nextBodyNode, through,
+		  docDrawLineBeforeColumn( nextBodySectNode, through,
 						    lpHere, bf, dc )	)
 		{ LDEB(sp->spLineBetweenColumns);	}
 	    }
@@ -325,6 +377,7 @@ static const char * docDrawGetBreakWhy(
 
     return "UNKNOWN";
     }
+
 /************************************************************************/
 /*									*/
 /*  Skip to the column where a document node begins.			*/
@@ -333,8 +386,7 @@ static const char * docDrawGetBreakWhy(
 /*									*/
 /************************************************************************/
 
-int docDrawToColumnOfNode(	struct BufferItem *	prevBodyNode,
-				struct BufferItem *	thisBodyNode,
+int docDrawToColumnOfNode(	struct BufferItem *	prevNode,
 				struct BufferItem *	thisNode,
 				void *			through,
 				LayoutPosition *	lpHere,
@@ -362,7 +414,7 @@ if  ( thisNode->biTreeType == DOCinSHPTXT )
 
 	while( docCompareLayoutPositionFrames( lpHere, &lpTop ) < 0 )
 	    {
-	    if  ( docDrawToNextColumn( prevBodyNode, thisBodyNode, through,
+	    if  ( docDrawToNextColumn( prevNode, thisNode, through,
 					    lpHere, &bf, dc, breakWhy )	)
 		{ SDEB(docLevelStr(thisNode->biLevel)); rval= -1; goto ready; }
 	    }

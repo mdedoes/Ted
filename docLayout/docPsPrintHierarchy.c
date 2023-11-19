@@ -150,7 +150,7 @@ int docPsPrintStartLines( void *			vps,
 	    if  ( docPsPrintFinishInline( ps )	)
 		{ LSDEB(paraNode->biLevel,mark); return -1;	}
 
-	    if  ( docPsPrintEndMarkedGroup( ps ) )
+	    if  ( docPsPrintEndMarkedGroup( ps, "TODO List" ) )
 		{ LSDEB(paraNode->biLevel,mark); return -1;	}
 	    }
 
@@ -194,7 +194,7 @@ int docPsPrintFinishLines( void *			vps,
 	if  ( docPsPrintFinishInline( ps )	)
 	    { LDEB(paraNode->biLevel); return -1;	}
 
-	if  ( docPsPrintEndMarkedGroup( ps ) )
+	if  ( docPsPrintEndMarkedGroup( ps, "BLSE" ) )
 	    { LDEB(paraNode->biLevel); return -1;	}
 	}
 
@@ -211,6 +211,7 @@ int docPsPrintFinishLines( void *			vps,
 int docPsPrintStartNode(	void *				vps,
 				struct DrawingContext *		dc,
 				int				repeated,
+				int				pageBreak,
 				const struct BufferItem *	node )
     {
     int			rval= 0;
@@ -256,7 +257,7 @@ int docPsPrintStartNode(	void *				vps,
 				{ LDEB(repeated); return -1;	}
 			    }
 			else{
-			    if  ( asTableFirst &&
+			    if  ( ( asTableFirst || pageBreak ) &&
 				  docPsPrintBeginMarkedGroup( ps, STRUCTtypeTABLE, (MemoryBuffer *)0 ) )
 				{ LLDEB(node->biLevel,asTableFirst); rval= -1; goto ready;	}
 
@@ -303,6 +304,7 @@ int docPsPrintStartNode(	void *				vps,
 int docPsPrintFinishNode( void *			vps,
 			struct DrawingContext *		dc,
 			int				repeated,
+			int				pageBreak,
 			const struct BufferItem *	node )
     {
     PrintingState *	ps= (PrintingState *)vps;
@@ -351,10 +353,10 @@ int docPsPrintFinishNode( void *			vps,
 			    LSDEB(node->biNumberInParent,"STRAY REPEAT END");
 			    }
 			else{
-			    if  ( docPsPrintEndMarkedGroup( ps ) )
+			    if  ( docPsPrintEndMarkedGroup( ps, STRUCTtypeTR ) )
 				{ LDEB(node->biLevel); return -1;	}
 
-			    if  ( asTableLast && docPsPrintEndMarkedGroup( ps ) )
+			    if  ( ( asTableLast || pageBreak ) && docPsPrintEndMarkedGroup( ps, STRUCTtypeTABLE ) )
 				{ LLDEB(node->biLevel,asTableLast); return -1;	}
 			    }
 			}
@@ -365,7 +367,7 @@ int docPsPrintFinishNode( void *			vps,
 	    case DOClevCELL: {
 		const char *	cellNodeMark= docPsCellNodeMark( node, (MemoryBuffer *)0 );
 
-		if  ( cellNodeMark && docPsPrintEndMarkedGroup( ps ) )
+		if  ( cellNodeMark && docPsPrintEndMarkedGroup( ps, cellNodeMark ) )
 		    { LSDEB(node->biLevel,cellNodeMark);	}
 
 		break;

@@ -113,49 +113,38 @@ int psPdfMarkPosition(		PrintingState *		ps,
 
 /************************************************************************/
 
-static int psPdfmarkSetAltText(
+static int psPdfmarkSetText(
 			PrintingState *			ps,
-			const MemoryBuffer *		altText )
+			const char *			key,
+			const MemoryBuffer *		text )
     {
     if  ( ps->psInArtifact )
 	{ LDEB(ps->psInArtifact); return -1;	}
 
-    if  ( altText && ! utilMemoryBufferIsEmpty( altText ) )
+    if  ( text && ! utilMemoryBufferIsEmpty( text ) )
 	{
-	if  ( sioOutPrintf( ps->psSos, " /Alt " ) < 0 )
-	    { XDEB(altText); return -1;	}
+	if  ( sioOutPrintf( ps->psSos, " /%s ", key ) < 0 )
+	    { XDEB(text); return -1;	}
 
-	if  ( psPrintPdfMarkStringValue( ps, altText ) < 0 )
-	    { XDEB(altText); return -1;	}
+	if  ( psPrintPdfMarkStringValue( ps, text ) < 0 )
+	    { XDEB(text); return -1;	}
 
 	if  ( sioOutPrintf( ps->psSos, " " ) < 0 )
-	    { XDEB(altText); return -1;	}
+	    { XDEB(text); return -1;	}
 	}
 
     return 0;
     }
+
+static int psPdfmarkSetAltText(
+			PrintingState *			ps,
+			const MemoryBuffer *		altText )
+    { return psPdfmarkSetText( ps, "Alt", altText );	}
 
 static int psPdfmarkSetActualText(
 			PrintingState *			ps,
 			const MemoryBuffer *		actualText )
-    {
-    if  ( ps->psInArtifact )
-	{ LDEB(ps->psInArtifact); return -1;	}
-
-    if  ( actualText && ! utilMemoryBufferIsEmpty( actualText ) )
-	{
-	if  ( sioOutPrintf( ps->psSos, " /ActualText " ) < 0 )
-	    { XDEB(actualText); return -1;	}
-
-	if  ( psPrintPdfMarkStringValue( ps, actualText ) < 0 )
-	    { XDEB(actualText); return -1;	}
-
-	if  ( sioOutPrintf( ps->psSos, " " ) < 0 )
-	    { XDEB(actualText); return -1;	}
-	}
-
-    return 0;
-    }
+    { return psPdfmarkSetText( ps, "ActualText", actualText );	}
 
 /************************************************************************/
 /*									*/
@@ -165,12 +154,16 @@ static int psPdfmarkSetActualText(
 
 int psPdfBeginMarkedContent(	PrintingState *		ps,
 				const char *		structureType,
-				int			contentId )
+				int			contentId,
+				const MemoryBuffer *	extraProperties )
     {
     if  ( ps->psInArtifact )
 	{ LDEB(ps->psInArtifact); return -1;	}
 
-    if  ( contentId < 0 )
+    if  ( extraProperties && utilMemoryBufferIsEmpty( extraProperties ) )
+	{ extraProperties= (MemoryBuffer *)0;	}
+
+    if  ( contentId < 0 && ! extraProperties )
 	{
 	if  ( sioOutPrintf( ps->psSos,
 			"[ /%s /BMC pdfmark\n", structureType ) < 0 )
@@ -178,8 +171,21 @@ int psPdfBeginMarkedContent(	PrintingState *		ps,
 	}
     else{
 	if  ( sioOutPrintf( ps->psSos,
-			"[ /%s << /MCID %d >> /BDC pdfmark\n",
-			structureType, contentId ) < 0 )
+			"[ /%s << ", structureType ) < 0 )
+	    { SDEB(structureType); return -1;	}
+
+	if  ( contentId >= 0 && sioOutPrintf( ps->psSos,
+			"/MCID %d ", contentId ) < 0 )
+	    { LDEB(contentId); return -1;	}
+
+	if  ( extraProperties )
+	    {
+	    sioOutPrintf( ps->psSos,
+		"%s", utilMemoryBufferGetString( extraProperties ) );
+	    }
+
+	if  ( sioOutPrintf( ps->psSos,
+			">> /BDC pdfmark\n" ) < 0 )
 	    { LDEB(1); return -1;	}
 	}
 
@@ -285,12 +291,18 @@ int psPdfBeginTypedArtifact(
     return 0;
     }
 
-int psPdfEndMarkedContent(		PrintingState *		ps )
+/**
+ *  End a piece of marked content.
+ *  @param structureType The type of structure that we end. (For debugging)
+ */
+int psPdfEndMarkedContent(
+	    PrintingState *		ps,
+	    const char *		structureType )
     {
     if  ( ps->psInArtifact )
 	{ LDEB(ps->psInArtifact); return -1;	}
 
-    if  ( sioOutPrintf( ps->psSos, "[ /EMC pdfmark\n" ) < 0 )
+    if  ( sioOutPrintf( ps->psSos, "[ /EMC pdfmark %% %s\n", structureType ) < 0 )
 	{ LDEB(1); return -1;	}
 
     return 0;
@@ -781,7 +793,7 @@ int psPdfmarkMarkedDocumentTrailer( PrintingState *		ps )
 
 int psPdfMarkSetActualText(	PrintingState *		ps,
 				struct StructItem *	structItem,
-				const struct MemoryBuffer * mbActualText )
+				const struct MemoryBuffer * actualText )
     {
     if  ( ps->psInArtifact )
 	{ LDEB(ps->psInArtifact); return -1;	}
@@ -789,10 +801,10 @@ int psPdfMarkSetActualText(	PrintingState *		ps,
     if  ( ! ps->psOmitContentMarks )
 	{
 	sioOutPrintf( ps->psSos,
-	    "[ {%s} <</ActualText ",
+	    "[ {%s} <<",
 	    utilMemoryBufferGetString( &(structItem->siDictionaryName) ) );
 
-	psPrintPdfMarkStringValue( ps, mbActualText );
+	psPdfmarkSetActualText( ps, actualText );
 
 	sioOutPrintf( ps->psSos, ">> /PUT pdfmark\n" );
 	}

@@ -100,7 +100,7 @@ int docDrawGroupNode(	LayoutPosition *		lpBelow,
 
     struct BufferItem *		prevNode= (struct BufferItem *)0;
 
-    if  ( dc->dcStartNode && (*dc->dcStartNode)( through, dc, bo->boOverrideFrame, node ) )
+    if  ( dc->dcStartNode && (*dc->dcStartNode)( through, dc, bo->boOverrideFrame, 0, node ) )
 	{ LDEB(node->biLevel); return -1; }
 
     if  ( node->biChildCount > 0 )
@@ -147,7 +147,7 @@ int docDrawGroupNode(	LayoutPosition *		lpBelow,
 	if  ( dc->dcFirstPage < 0					||
 	      childNode->biBelowPosition.lpPage >= dc->dcFirstPage	)
 	    {
-	    if  ( docDrawToColumnOfNode( prevNode, childNode, childNode,
+	    if  ( docDrawToColumnOfNode( prevNode, childNode,
 					    through, &lpHere, dc, bo ) )
 		{ SDEB(docLevelStr(childNode->biLevel)); return -1;	}
 
@@ -160,7 +160,7 @@ int docDrawGroupNode(	LayoutPosition *		lpBelow,
 	prevNode= childNode;
 	}
 
-    if  ( dc->dcFinishNode && (*dc->dcFinishNode)( through, dc, bo->boOverrideFrame, node ) )
+    if  ( dc->dcFinishNode && (*dc->dcFinishNode)( through, dc, bo->boOverrideFrame, 0, node ) )
 	{ LDEB(node->biLevel); return -1; }
 
     return 0;
