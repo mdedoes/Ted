@@ -12,6 +12,10 @@ configure~
 /.idea/
 /*.iml
 
+.project
+.cproject
+.settings/
+
 Ted/makefile
 Ted/tedConfig.h
 appFrame/appFrameConfig.h
