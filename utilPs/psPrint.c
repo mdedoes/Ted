@@ -148,6 +148,7 @@ void psInitPrintingState(	PrintingState *	ps )
     geoInitRectangle( &(ps->psSheetBoundingBox) );
 
     ps->psInsideLink= 0;
+    ps->psInsideListLabel= 0;
 
     ps->psLinkParticulesDone= 0;
     ps->psLinkRectLeft= -1;

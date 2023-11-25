@@ -42,10 +42,11 @@ int docPsPrintStartTree(	void *				vps,
     {
     PrintingState *	ps= (PrintingState *)vps;
 
-    if  ( ps->psInsideLink )
+    if  ( ps->psInsideLink || ps->psInsideListLabel )
 	{
-	SLDEB("####",ps->psInsideLink);
+	SLLDEB("####",ps->psInsideLink,ps->psInsideListLabel);
 	ps->psInsideLink= 0;
+	ps->psInsideListLabel= 0;
 	}
 
     switch( tree->dtRoot->biTreeType )
@@ -220,10 +221,11 @@ int docPsPrintStartNode(	void *				vps,
 
     utilInitMemoryBuffer( &structureAttributes );
 
-    if  ( ps->psInsideLink )
+    if  ( ps->psInsideLink || ps->psInsideListLabel )
 	{
-	SLDEB("####",ps->psInsideLink);
+	SLLDEB("####",ps->psInsideLink,ps->psInsideListLabel);
 	ps->psInsideLink= 0;
+	ps->psInsideListLabel= 0;
 	}
 
     if  ( ! ps->psInArtifact )

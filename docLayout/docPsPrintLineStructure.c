@@ -21,6 +21,7 @@
  */
 static const char STRUCTtypeSPAN[]= "Span";
 static const char STRUCTtypeLINK[]= "Link";
+static const char STRUCTtypeLBL[]= "Lbl";
 static const char STRUCTtypeFIGURE[]= "Figure";
 
 StructItem * docPsPrintInlineStructItem( PrintingState *	ps )
@@ -36,16 +37,30 @@ StructItem * docPsPrintInlineStructItem( PrintingState *	ps )
 
 	if  ( psPdfmarkAppendMarkedLink( ps, structItem ) )
 	    { LDEB(1); return (StructItem *)0;	}
+
+	return structItem;
 	}
-    else{
-	structItem= psPdfLeafStructItem( ps, STRUCTtypeSPAN, 1 );
+
+    if  ( ps->psInsideListLabel )
+	{
+	structItem= psPdfAnnotatedStructItem( ps, STRUCTtypeLBL, 1 );
 
 	if  ( ! structItem || psPdfPushStructItem( ps, structItem ) )
 	    { XDEB(structItem); return (StructItem *)0;	}
 
 	if  ( psPdfmarkAppendMarkedLeaf( ps, structItem, (MemoryBuffer *)0 ) )
 	    { LDEB(1); return (StructItem *)0;	}
+
+	return structItem;
 	}
+
+    structItem= psPdfLeafStructItem( ps, STRUCTtypeSPAN, 1 );
+
+    if  ( ! structItem || psPdfPushStructItem( ps, structItem ) )
+	{ XDEB(structItem); return (StructItem *)0;	}
+
+    if  ( psPdfmarkAppendMarkedLeaf( ps, structItem, (MemoryBuffer *)0 ) )
+	{ LDEB(1); return (StructItem *)0;	}
 
     return structItem;
     }

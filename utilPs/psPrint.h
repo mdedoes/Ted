@@ -75,6 +75,13 @@ typedef struct PrintingState
 				 *  the content of a hyperlink
 				 */
     int				psInsideLink;
+
+				/**
+				 *  Non-zero while we are emitting 
+				 *  the content of list label. (Bullet)
+				 */
+    int				psInsideListLabel;
+
 				/**
 				 *  The number of text particules that
 				 *  we emitted inside the current hyperlink.

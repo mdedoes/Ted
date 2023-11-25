@@ -94,6 +94,10 @@ static int docPsPrintStartListTextField(
 
     if  ( ps->psTagDocumentStructure && ! ps->psInArtifact )
 	{
+	ps->psInsideListLabel= 1;
+
+	if  ( docPsPrintFinishInline( ps )	)
+	    { LDEB(1); return -1;	}
 	}
 
     return 0;
@@ -146,9 +150,20 @@ int docPsPrintStartField(	const DrawTextLine *		dtl,
     return 0;
     }
 
-static int docPsPrintFinishListTextField( const DrawTextLine *	dtl,
+static int docPsPrintFinishListTextField(
+				const DrawTextLine *	dtl,
 				const DocumentField *	df )
     {
+    PrintingState *		ps= (PrintingState *)dtl->dtlThrough;
+
+    if  ( ps->psTagDocumentStructure && ! ps->psInArtifact )
+	{
+	if  ( docPsPrintFinishInline( ps ) )
+	    { LDEB(ps->psInsideListLabel); return -1;	}
+	}
+
+    ps->psInsideListLabel= 0;
+
     return 0;
     }
 
@@ -180,8 +195,11 @@ int docPsPrintFinishField(	const DrawTextLine *	dtl,
 
     if  ( df->dfKind == DOCfkLISTTEXT )
 	{
-	if  ( docPsPrintFinishListTextField( dtl, df ) )
-	    { LDEB(1); return -1;	}
+	if  ( ps->psInsideListLabel )
+	    {
+	    if  ( docPsPrintFinishListTextField( dtl, df ) )
+		{ LDEB(1); return -1;	}
+	    }
 
 	return 0;
 	}
