@@ -85,21 +85,35 @@ const char * docPsParagraphNodeMark(
 	    const PrintingState *	ps,
 	    const ParagraphProperties *	pp,
 	    int *			pCurrentListOverride,
+	    int *			pCurrentListLevel,
 	    int *			pListLevelsToClose,
-	    int *			pOpenListLevel )
+	    int *			pListLevelsToOpen )
     {
     if  ( pp->ppListOverride > 0 )
 	{
 	if  ( ps->psCurrentListOverride != pp->ppListOverride )
 	    {
-	    if  ( ps->psCurrentListOverride > 0 && pListLevelsToClose )
-		{ *pListLevelsToClose= 1;	}
-
-	    if  ( pOpenListLevel )
-		{ *pOpenListLevel= 1;	}
+	    if  ( pListLevelsToClose )
+		{ *pListLevelsToClose= ps->psCurrentListLevel+ 1;	}
+	    if  ( pListLevelsToOpen )
+		{ *pListLevelsToOpen= pp->ppListLevel+ 1;	}
 
 	    if  ( pCurrentListOverride )
 		{ *pCurrentListOverride= pp->ppListOverride;	}
+	    if  ( pCurrentListLevel )
+		{ *pCurrentListLevel= pp->ppListLevel;	}
+	    }
+	else{
+	    if  ( pp->ppListLevel != ps->psCurrentListLevel )
+		{
+		if  ( pp->ppListLevel < ps->psCurrentListLevel && pListLevelsToClose )
+		    { *pListLevelsToClose= ps->psCurrentListLevel- pp->ppListLevel;	}
+		if  ( pp->ppListLevel > ps->psCurrentListLevel && pListLevelsToOpen )
+		    { *pListLevelsToOpen= pp->ppListLevel- ps->psCurrentListLevel;	}
+
+		if  ( pCurrentListLevel )
+		    { *pCurrentListLevel= pp->ppListLevel;	}
+		}
 	    }
 
 	return STRUCTtypeLI;
@@ -108,10 +122,12 @@ const char * docPsParagraphNodeMark(
 	if  ( ps->psCurrentListOverride > 0 )
 	    {
 	    if  ( pListLevelsToClose )
-		{ *pListLevelsToClose= 1;	}
+		{ *pListLevelsToClose= ps->psCurrentListLevel+ 1;	}
 
 	    if  ( pCurrentListOverride )
 		{ *pCurrentListOverride= -1;	}
+	    if  ( pCurrentListLevel )
+		{ *pCurrentListLevel= -1;	}
 	    }
 
 	switch( pp->ppOutlineLevel ) {

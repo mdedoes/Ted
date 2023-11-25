@@ -764,6 +764,9 @@ static int docListLevelConstFromRtfStrings(
     int		c;
     int		constLen= 0;
 
+    if  ( constChars == 1 && ! *from )
+	{ return 1;	}
+
     for ( c= 0; c < constChars; c++ )
 	{
 	unsigned short	symbol;
@@ -771,7 +774,7 @@ static int docListLevelConstFromRtfStrings(
 
 	step= uniGetUtf8( &symbol, from );
 	if  ( step < 1 )
-	    { CLDEB(*from,step); return -1;	}
+	    { CLLDEB(*from,constChars,step); return -1;	}
 
 	constLen += step; from += step;
 	}

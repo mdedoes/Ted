@@ -133,7 +133,7 @@ int docPsPrintStartLines( void *			vps,
 
     PrintingState *	ps= (PrintingState *)vps;
     int			listLevelsToClose= 0;
-    int			openListLevel= 0;
+    int			listLevelsToOpen= 0;
 
     MemoryBuffer	listAttributes;
 
@@ -142,22 +142,27 @@ int docPsPrintStartLines( void *			vps,
     if  ( ! ps->psInArtifact && ! docParagraphIsEmpty( paraNode ) )
 	{
 	const char *	mark;
+	int		currentListOverride= ps->psCurrentListOverride;
+	int		currentListLevel= ps->psCurrentListLevel;
 
 	mark= docPsParagraphNodeMark( ps, paraNode->biParaProperties,
-			&(ps->psCurrentListOverride), &listLevelsToClose, &openListLevel );
+				&currentListOverride, &currentListLevel,
+				&listLevelsToClose, &listLevelsToOpen );
 
+SLDEB(mark,listLevelsToClose);
 	if  ( listLevelsToClose > 0 )
 	    {
 	    if  ( docPsPrintFinishInline( ps )	)
 		{ LSDEB(paraNode->biLevel,mark); return -1;	}
 
-	    if  ( docPsPrintEndMarkedGroup( ps, "TODO List" ) )
+	    if  ( docPsPrintEndMarkedGroup( ps, "-LI-" ) )
 		{ LSDEB(paraNode->biLevel,mark); return -1;	}
 	    }
 
 	if  ( mark )
 	    {
-	    if  ( openListLevel )
+SLDEB(mark,listLevelsToOpen);
+	    if  ( listLevelsToOpen > 0 )
 		{
 		if  ( docPsSaveListStructureAttributes(
 			    dc->dcDocument, paraNode->biParaProperties, &listAttributes ) )
@@ -170,6 +175,9 @@ int docPsPrintStartLines( void *			vps,
 	    if  ( docPsPrintBeginMarkedGroup( ps, mark, (MemoryBuffer *)0 ) )
 		{ LSDEB(paraNode->biLevel,mark); rval= -1; goto ready;	}
 	    }
+
+	ps->psCurrentListOverride= currentListOverride;
+	ps->psCurrentListLevel= currentListLevel;
 	}
 
   ready:

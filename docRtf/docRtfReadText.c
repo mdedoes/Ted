@@ -340,7 +340,7 @@ static int docRtfTextUnicodeValue(	const RtfControlWord *	rcw,
 
 	count= uniPutUtf8( bytes, arg );
 	if  ( count < 1 )
-	    { LDEB(count); return 0;	}
+	    { LLDEB(arg,count); return 0;	}
 
 	if  ( utilMemoryBufferAppendBytes( &(rrs->rrsSavedText),
 					(unsigned char *)bytes, count ) )

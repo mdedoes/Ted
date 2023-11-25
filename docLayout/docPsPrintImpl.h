@@ -237,8 +237,9 @@ extern const char * docPsParagraphNodeMark(
 				const struct PrintingState *	ps,
 				const struct ParagraphProperties * pp,
 				int *				pCurrentListOverride,
+				int *				pCurrentListLevel,
 				int *				pListLevelsToClose,
-				int *				pOpenListLevel );
+				int *				pListLevelsToOpen );
 
 extern int docPsSaveListStructureAttributes(
 				const struct BufferDocument *	bd,

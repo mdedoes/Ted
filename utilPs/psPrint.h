@@ -113,12 +113,12 @@ typedef struct PrintingState
     MemoryBuffer		psLinkTitle;
 
 				/**
-				 *  The list override number of the paragraph that we previously emitted.
+				 *  The list override number of the paragraph that we previously emitted. (-1 outside lists)
 				 */
     int				psCurrentListOverride;
 
 				/**
-				 *  The list level of the paragraph that we previously emitted.
+				 *  The list level of the paragraph that we previously emitted. (-1 outside lists)
 				 */
     int				psCurrentListLevel;
 
