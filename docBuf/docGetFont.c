@@ -89,7 +89,7 @@ int docGetEffectiveTextAttributes(
 
 	    if  ( docGetListLevelOfParagraph( (int *)0, (int *)0,
 		    (struct ListOverride **)0, (struct DocumentList **)0, &ll,
-		    paraNode->biParaProperties, bd ) )
+		    paraNode, bd ) )
 		{ LDEB(1);	}
 	    else{
 		PropertyMask		taSetMask;

@@ -315,7 +315,7 @@ void docLayoutLineJobGeometry(	LineLayoutJob *			llj,
 	    int * const			formatPath= (int *)0;
 
 	    if  ( docGetListLevelOfParagraph( startPath, formatPath,
-						&lo, &dl, &ll, paraNode->biParaProperties, bd ) )
+						&lo, &dl, &ll, paraNode, bd ) )
 		{ LLDEB(pp->ppListOverride,pp->ppListLevel);	}
 
 	    llj->lljListBulletJustification= ll->llJustification;

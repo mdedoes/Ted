@@ -72,7 +72,7 @@ static void docDescribeBulletHead(
 	    sd->sdIsListBullet= 1;
 
 	    if  ( docGetListLevelOfParagraph( startPath, formatPath,
-					&lo, &dl, &ll, dpHead->dpNode->biParaProperties, bd ) )
+					&lo, &dl, &ll, dpHead->dpNode, bd ) )
 		{ LDEB(1);	}
 	    else{
 		sd->sdTextAttributeMask= ll->llTextAttributeMask;

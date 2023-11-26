@@ -35,33 +35,34 @@
 /*									*/
 /************************************************************************/
 
-int docGetListOfParagraph(	ListOverride **		pLo,
-				DocumentList **		pDl,
-				int			ls,
+int docGetListOfParagraph(	ListOverride **			pLo,
+				DocumentList **			pDl,
+				int				listOverride,
 				const struct BufferDocument *	bd )
     {
-    return docGetListForStyle( pLo, pDl, ls, bd->bdProperties->dpListAdmin );
+    return docGetListForStyle( pLo, pDl, listOverride, bd->bdProperties->dpListAdmin );
     }
 
-int docGetListLevelOfParagraph(	int *				startPath,
-				int *				formatPath,
-				ListOverride **			pLo,
-				DocumentList **			pDl,
-				const ListLevel **		pLl,
-				const ParagraphProperties *	pp,
-				const struct BufferDocument *	bd )
+int docGetListLevel(	int *				startPath,
+			int *				formatPath,
+			ListOverride **			pLo,
+			DocumentList **			pDl,
+			const ListLevel **		pLl,
+			int				listOverride,
+			int				listLevel,
+			const struct BufferDocument *	bd )
     {
-    ListOverride *	lo;
-    DocumentList *	dl;
-    const ListLevel *	ll;
+    ListOverride *		lo;
+    DocumentList *		dl;
+    const ListLevel *		ll;
 
-    if  ( docGetListForStyle( &lo, &dl, pp->ppListOverride,
+    if  ( docGetListForStyle( &lo, &dl, listOverride,
 					    bd->bdProperties->dpListAdmin ) )
-	{ LDEB(pp->ppListOverride); return -1;	}
+	{ LDEB(listOverride); return -1;	}
 
     if  ( docListGetFormatPath( startPath, formatPath, &ll,
-						pp->ppListLevel, dl, lo ) )
-	{ LDEB(pp->ppListLevel); return -1;	}
+						listLevel, dl, lo ) )
+	{ LDEB(listLevel); return -1;	}
 
     if  ( pLo )
 	{ *pLo= lo;	}
@@ -71,6 +72,19 @@ int docGetListLevelOfParagraph(	int *				startPath,
 	{ *pLl= ll;	}
 
     return 0;
+    }
+
+int docGetListLevelOfParagraph(	int *				startPath,
+				int *				formatPath,
+				ListOverride **			pLo,
+				DocumentList **			pDl,
+				const ListLevel **		pLl,
+				const BufferItem *		paraNode,
+				const struct BufferDocument *	bd )
+    {
+    const ParagraphProperties *	pp= paraNode->biParaProperties;
+
+    return docGetListLevel( startPath, formatPath, pLo, pDl, pLl, pp->ppListOverride, pp->ppListLevel, bd );
     }
 
 /************************************************************************/
@@ -239,7 +253,7 @@ int docAdaptParagraphToListLevel(
     int * const			formatPath= (int *)0;
 
     if  ( docGetListLevelOfParagraph( startPath, formatPath,
-			    &lo, &dl, &ll, paraNode->biParaProperties, bd ) )
+			    &lo, &dl, &ll, paraNode, bd ) )
 	{ LDEB(1); }
     else{
 	if  ( docParaNodeAdaptPropertiesToListLevel( &indentChanged,

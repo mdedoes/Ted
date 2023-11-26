@@ -26,7 +26,6 @@ struct AffineTransform2D;
 struct DocumentTree;
 struct BufferItem;
 struct DocumentSelection;
-struct ParagraphProperties;
 
 /************************************************************************/
 /*									*/
@@ -233,17 +232,20 @@ extern int docPsPrintFinishSymbol(
 				const struct DrawTextLine *	dtl,
 				const struct DocumentField *	df );
 
-extern const char * docPsParagraphNodeMark(
+extern const char * docPsParagraphNodeStartMark(
 				const struct PrintingState *	ps,
-				const struct ParagraphProperties * pp,
-				int *				pCurrentListOverride,
-				int *				pCurrentListLevel,
-				int *				pListLevelsToClose,
+				const struct BufferItem * 	paraNode,
 				int *				pListLevelsToOpen );
+
+extern const char * docPsParagraphNodeEndMark(
+				const struct PrintingState *	ps,
+				const struct BufferItem * 	paraNode,
+				int *				pListLevelsToClose );
 
 extern int docPsSaveListStructureAttributes(
 				const struct BufferDocument *	bd,
-				const struct ParagraphProperties * pp,
+				int				listOverride,
+				int				listLevel,
 				struct MemoryBuffer *		structureAttributes );
 
 extern int docPsMarkRowNode(	const struct BufferItem *	rowNode,

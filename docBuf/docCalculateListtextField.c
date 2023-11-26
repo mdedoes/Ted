@@ -130,7 +130,7 @@ int docRecalculateParaListtextTextParticules(
 
     /*  1,2,3,4  */
     if  ( docGetListLevelOfParagraph( startPath, formatPath,
-				&lo, &dl, &ll, paraNode->biParaProperties, rf->rfDocument ) )
+				&lo, &dl, &ll, paraNode, rf->rfDocument ) )
 	{
 	LLDEB(pp->ppListOverride,pp->ppListLevel);
 	*pCalculated= 0; goto ready;

@@ -87,7 +87,16 @@ extern int docGetListLevelOfParagraph(
 				struct ListOverride **		pLo,
 				struct DocumentList **		pDl,
 				const struct ListLevel **	pLl,
-				const struct ParagraphProperties * pp,
+				const struct BufferItem *	paraNode,
+				const struct BufferDocument *	bd );
+
+extern int docGetListLevel(	int *				startPath,
+				int *				formatPath,
+				struct ListOverride **		pLo,
+				struct DocumentList **		pDl,
+				const struct ListLevel **	pLl,
+				int				listOverride,
+				int				listLevel,
 				const struct BufferDocument *	bd );
 
 #   endif

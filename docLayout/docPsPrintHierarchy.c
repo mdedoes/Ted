@@ -118,6 +118,32 @@ int docPsPrintFinishTree( void *			vps,
     return 0;
     }
 
+static int docPsPrintStartListLevel(
+			PrintingState *			ps,
+			struct DrawingContext *		dc,
+			int				listOverride,
+			int				listLevel )
+    {
+    int			rval= 0;
+
+    MemoryBuffer	listAttributes;
+
+    utilInitMemoryBuffer( &listAttributes );
+
+    if  ( docPsSaveListStructureAttributes( dc->dcDocument,
+			    listOverride, listLevel, &listAttributes ) )
+	{ LLDEB(listOverride,listLevel); rval= -1; goto ready;	}
+
+    if  ( docPsPrintBeginMarkedGroup( ps, "L", &listAttributes ) )
+	{ LLDEB(listOverride,listLevel); rval= -1; goto ready;	}
+
+  ready:
+
+    utilCleanMemoryBuffer( &listAttributes );
+
+    return rval;
+    }
+
 /**
  *  Start printing a slice of a paragraph. Currently, we make 
  *  a /Div content item. Once we have the structural hierarchy 
@@ -129,62 +155,39 @@ int docPsPrintStartLines( void *			vps,
 			const struct BufferItem *	paraNode,
 			const struct DocumentSelection * ds )
     {
-    int			rval= 0;
-
     PrintingState *	ps= (PrintingState *)vps;
-    int			listLevelsToClose= 0;
     int			listLevelsToOpen= 0;
-
-    MemoryBuffer	listAttributes;
-
-    utilInitMemoryBuffer( &listAttributes );
 
     if  ( ! ps->psInArtifact && ! docParagraphIsEmpty( paraNode ) )
 	{
 	const char *	mark;
-	int		currentListOverride= ps->psCurrentListOverride;
-	int		currentListLevel= ps->psCurrentListLevel;
 
-	mark= docPsParagraphNodeMark( ps, paraNode->biParaProperties,
-				&currentListOverride, &currentListLevel,
-				&listLevelsToClose, &listLevelsToOpen );
-
-SLDEB(mark,listLevelsToClose);
-	if  ( listLevelsToClose > 0 )
-	    {
-	    if  ( docPsPrintFinishInline( ps )	)
-		{ LSDEB(paraNode->biLevel,mark); return -1;	}
-
-	    if  ( docPsPrintEndMarkedGroup( ps, "-LI-" ) )
-		{ LSDEB(paraNode->biLevel,mark); return -1;	}
-	    }
+	mark= docPsParagraphNodeStartMark( ps, paraNode, &listLevelsToOpen );
 
 	if  ( mark )
 	    {
-SLDEB(mark,listLevelsToOpen);
 	    if  ( listLevelsToOpen > 0 )
 		{
-		if  ( docPsSaveListStructureAttributes(
-			    dc->dcDocument, paraNode->biParaProperties, &listAttributes ) )
-		    { LDEB(1); rval= -1; goto ready;	}
+		int				listLevel;
+		const ParagraphProperties *	pp= paraNode->biParaProperties;
 
-		if  ( docPsPrintBeginMarkedGroup( ps, "L", &listAttributes ) )
-		    { LSDEB(paraNode->biLevel,mark); rval= -1; goto ready;	}
+		/* List levels are not contiguous */
+		if  ( listLevelsToOpen > 1 )
+		    { LDEB(listLevelsToOpen);	}
+
+		for ( listLevel= pp->ppListLevel- listLevelsToOpen+ 1; listLevel <= pp->ppListLevel; listLevel++ )
+		    {
+		    if  ( docPsPrintStartListLevel( ps, dc, pp->ppListOverride, listLevel ) )
+			{ LLDEB(pp->ppListOverride,listLevel); return -1;	}
+		    }
 		}
 
 	    if  ( docPsPrintBeginMarkedGroup( ps, mark, (MemoryBuffer *)0 ) )
-		{ LSDEB(paraNode->biLevel,mark); rval= -1; goto ready;	}
+		{ LSDEB(paraNode->biLevel,mark); return -1;	}
 	    }
-
-	ps->psCurrentListOverride= currentListOverride;
-	ps->psCurrentListLevel= currentListLevel;
 	}
 
-  ready:
-
-    utilCleanMemoryBuffer( &listAttributes );
-
-    return rval;
+    return 0;
     }
 
 /**
@@ -200,11 +203,33 @@ int docPsPrintFinishLines( void *			vps,
 
     if  ( ! ps->psInArtifact && ! docParagraphIsEmpty( paraNode ) )
 	{
-	if  ( docPsPrintFinishInline( ps )	)
+	int		listLevelsToClose= 0;
+	const char *	mark;
+
+	if  ( docPsPrintFinishInline( ps ) )
 	    { LDEB(paraNode->biLevel); return -1;	}
 
-	if  ( docPsPrintEndMarkedGroup( ps, "BLSE" ) )
-	    { LDEB(paraNode->biLevel); return -1;	}
+	mark= docPsParagraphNodeEndMark( ps, paraNode, &listLevelsToClose );
+
+	if  ( mark && docPsPrintEndMarkedGroup( ps, mark ) )
+	    { SSDEB(docLevelStr(paraNode->biLevel),mark); return -1;	}
+
+	if  ( listLevelsToClose > 0 )
+	    {
+	    int				listLevel;
+	    const ParagraphProperties *	pp= paraNode->biParaProperties;
+
+	    for ( listLevel= pp->ppListLevel;
+		    listLevel > pp->ppListLevel- listLevelsToClose; listLevel-- )
+		{
+		if  ( docPsPrintEndMarkedGroup( ps, "--L--" ) )
+		    { LSDEB(paraNode->biLevel,mark); return -1;	}
+
+		/* Nested lists are embedded in the parent list item: Close the item */
+		if  ( listLevel > 0 && docPsPrintEndMarkedGroup( ps, "--LI--" ) )
+		    { LSDEB(paraNode->biLevel,mark); return -1;	}
+		}
+	    }
 	}
 
     return 0;

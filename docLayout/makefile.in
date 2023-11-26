@@ -1993,10 +1993,17 @@ docPsPrintParagraph.o: \
     ../appUtil/sioMemory.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPropMask.h \
+    ../docBase/docLayoutPosition.h \
     ../docBase/docListLevel.h \
     ../docBase/docParaProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBuf/docCellNode.h \
     ../docBuf/docDebug.h \
+    ../docBuf/docParaNode.h \
     ../docBuf/docParaNodeProperties.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docTreeNode.h \
     docLayoutConfig.h \
     docPsPrintImpl.h \
     ../include/appDebug.h \
