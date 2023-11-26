@@ -83,6 +83,39 @@ int docPsSaveListStructureAttributes(
     return 0;
     }
 
+/**
+ * Only handle members of an RTF list as a PDF/HTML list item if it has 
+ * neighbour in the same list.
+ */
+static int docPsListNodeHasListNeighbour(	const BufferItem *	paraNode )
+    {
+    const BufferItem *		parentNode= paraNode->biParent;
+    int				prev= paraNode->biNumberInParent- 1;
+    int				next= paraNode->biNumberInParent+ 1;
+
+    int				listOverride= paraNode->biParaProperties->ppListOverride;
+
+    if  ( prev >= 0 )
+	{
+	const BufferItem *	prevNode= parentNode->biChildren[prev];
+
+	if  ( prevNode->biLevel == DOClevPARA					&&
+	      prevNode->biParaProperties->ppListOverride == listOverride	)
+	    { return 1;	}
+	}
+
+    if  ( next < parentNode->biChildCount )
+	{
+	const BufferItem *	nextNode= parentNode->biChildren[next];
+
+	if  ( nextNode->biLevel == DOClevPARA					&&
+	      nextNode->biParaProperties->ppListOverride == listOverride	)
+	    { return 1;	}
+	}
+
+    return 0;
+    }
+
 static const char * docPsNoListParagraphMark( int outlineLevel )
     {
     switch( outlineLevel )
@@ -137,7 +170,7 @@ static int docPsListNodeShallower(
     return 0;
     }
 
-/* See Annex H.8.3 in the PDF 202 Spec about hierarchical lists */
+/* See Annex H.8.3 in the PDF 2020 Spec about hierarchical lists */
 const char * docPsParagraphNodeStartMark(
 	    const PrintingState *	ps,
 	    const BufferItem *		paraNode,
@@ -146,7 +179,7 @@ const char * docPsParagraphNodeStartMark(
     const ParagraphProperties *	pp= paraNode->biParaProperties;
     const BufferItem *		parentNode= paraNode->biParent;
 
-    if  ( pp->ppListOverride > 0 )
+    if  ( pp->ppListOverride > 0 && docPsListNodeHasListNeighbour( paraNode ) )
 	{
 	const int	prev= paraNode->biNumberInParent- 1;
 
@@ -164,7 +197,7 @@ const char * docPsParagraphNodeStartMark(
     }
 
 
-/* See Annex H.8.3 in the PDF 202 Spec about hierarchical lists */
+/* See Annex H.8.3 in the PDF 2020 Spec about hierarchical lists */
 const char * docPsParagraphNodeEndMark(
 	    const PrintingState *	ps,
 	    const BufferItem *		paraNode,
@@ -173,7 +206,7 @@ const char * docPsParagraphNodeEndMark(
     const ParagraphProperties *	pp= paraNode->biParaProperties;
     const BufferItem *		parentNode= paraNode->biParent;
 
-    if  ( pp->ppListOverride > 0 )
+    if  ( pp->ppListOverride > 0 && docPsListNodeHasListNeighbour( paraNode ) )
 	{
 	const int	next= paraNode->biNumberInParent+ 1;
 	int		nextDeeper= 0;

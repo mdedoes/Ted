@@ -156,9 +156,6 @@ void psInitPrintingState(	PrintingState *	ps )
     utilInitMemoryBuffer( &(ps->psLinkMark) );
     utilInitMemoryBuffer( &(ps->psLinkTitle) );
 
-    ps->psCurrentListOverride= -1;
-    ps->psCurrentListLevel= -1;
-
     ps->psUsePostScriptFilters= 1;
     ps->psUsePostScriptIndexedImages= 1;
     ps->ps7Bits= 0;

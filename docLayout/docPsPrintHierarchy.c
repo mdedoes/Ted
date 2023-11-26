@@ -222,11 +222,12 @@ int docPsPrintFinishLines( void *			vps,
 	    for ( listLevel= pp->ppListLevel;
 		    listLevel > pp->ppListLevel- listLevelsToClose; listLevel-- )
 		{
-		if  ( docPsPrintEndMarkedGroup( ps, "--L--" ) )
+		if  ( docPsPrintEndMarkedGroup( ps, "L--" ) )
 		    { LSDEB(paraNode->biLevel,mark); return -1;	}
 
-		/* Nested lists are embedded in the parent list item: Close the item */
-		if  ( listLevel > 0 && docPsPrintEndMarkedGroup( ps, "--LI--" ) )
+		/* Nested lists are embedded in the parent list item: Close the parent item.
+		   Only if there is a parent list that holds the item. */
+		if  ( listLevel > 0 && docPsPrintEndMarkedGroup( ps, "LI--" ) )
 		    { LSDEB(paraNode->biLevel,mark); return -1;	}
 		}
 	    }
