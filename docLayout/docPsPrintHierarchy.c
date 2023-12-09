@@ -7,13 +7,13 @@
 
 #   include	"docLayoutConfig.h"
 
+#   include	<string.h>
+
 #   include	"docPsPrintImpl.h"
-#   include	"docDraw.h"
 #   include	<docTreeNode.h>
 #   include	<docTreeType.h>
 #   include	<docBuf.h>
 #   include	<docParaParticules.h>
-#   include	<docParaProperties.h>
 #   include	<psPrint.h>
 
 #   include	<appDebugon.h>
@@ -21,12 +21,33 @@
 
 /**
  * Standard structure types. See ISO 32000-1:2008, 14.8.4.
- * These are the Block level ones
  */
-/* static const char STRUCTtypePART[]= "Part"; */
-/* static const char STRUCTtypeSECT[]= "Sect"; */
-static const char STRUCTtypeTR[]= "TR";
-static const char STRUCTtypeTABLE[]= "Table";
+const char STRUCTtypeL[]= "L";
+const char STRUCTtypeLI[]= "LI";
+const char STRUCTtypeLBL[]= "Lbl";
+const char STRUCTtypeLBODY[]= "Lbody";
+
+/* const char STRUCTtypePART[]= "Part"; */
+/* const char STRUCTtypeSECT[]= "Sect"; */
+const char STRUCTtypeTR[]= "TR";
+const char STRUCTtypeTABLE[]= "Table";
+
+const char STRUCTtypeSPAN[]= "Span";
+const char STRUCTtypeLINK[]= "Link";
+
+const char STRUCTtypeFIGURE[]= "Figure";
+const char STRUCTtypeP[]= "P";
+/* const char STRUCTtypeDIV[]= "Div";*/
+const char STRUCTtypeH1[]= "H1";
+const char STRUCTtypeH2[]= "H2";
+const char STRUCTtypeH3[]= "H3";
+const char STRUCTtypeH4[]= "H4";
+const char STRUCTtypeH5[]= "H5";
+const char STRUCTtypeH6[]= "H6";
+const char STRUCTtypeTD[]= "TD";
+const char STRUCTtypeTH[]= "TH";
+
+const char STRUCTtypeARTIFACT[] = "Artifact";
 
 /************************************************************************/
 /*									*/
@@ -118,32 +139,6 @@ int docPsPrintFinishTree( void *			vps,
     return 0;
     }
 
-static int docPsPrintStartListLevel(
-			PrintingState *			ps,
-			struct DrawingContext *		dc,
-			int				listOverride,
-			int				listLevel )
-    {
-    int			rval= 0;
-
-    MemoryBuffer	listAttributes;
-
-    utilInitMemoryBuffer( &listAttributes );
-
-    if  ( docPsSaveListStructureAttributes( dc->dcDocument,
-			    listOverride, listLevel, &listAttributes ) )
-	{ LLDEB(listOverride,listLevel); rval= -1; goto ready;	}
-
-    if  ( docPsPrintBeginMarkedGroup( ps, "L", &listAttributes ) )
-	{ LLDEB(listOverride,listLevel); rval= -1; goto ready;	}
-
-  ready:
-
-    utilCleanMemoryBuffer( &listAttributes );
-
-    return rval;
-    }
-
 /**
  *  Start printing a slice of a paragraph. Currently, we make 
  *  a /Div content item. Once we have the structural hierarchy 
@@ -166,21 +161,9 @@ int docPsPrintStartLines( void *			vps,
 
 	if  ( mark )
 	    {
-	    if  ( listLevelsToOpen > 0 )
-		{
-		int				listLevel;
-		const ParagraphProperties *	pp= paraNode->biParaProperties;
-
-		/* List levels are not contiguous */
-		if  ( listLevelsToOpen > 1 )
-		    { LDEB(listLevelsToOpen);	}
-
-		for ( listLevel= pp->ppListLevel- listLevelsToOpen+ 1; listLevel <= pp->ppListLevel; listLevel++ )
-		    {
-		    if  ( docPsPrintStartListLevel( ps, dc, pp->ppListOverride, listLevel ) )
-			{ LLDEB(pp->ppListOverride,listLevel); return -1;	}
-		    }
-		}
+	    if  ( listLevelsToOpen > 0 &&
+		  docPsPrintOpenListLevels( ps, dc, paraNode, listLevelsToOpen ) )
+		{ LDEB(listLevelsToOpen); return -1;	}
 
 	    if  ( docPsPrintBeginMarkedGroup( ps, mark, (MemoryBuffer *)0 ) )
 		{ LSDEB(paraNode->biLevel,mark); return -1;	}
@@ -211,26 +194,22 @@ int docPsPrintFinishLines( void *			vps,
 
 	mark= docPsParagraphNodeEndMark( ps, paraNode, &listLevelsToClose );
 
-	if  ( mark && docPsPrintEndMarkedGroup( ps, mark ) )
-	    { SSDEB(docLevelStr(paraNode->biLevel),mark); return -1;	}
-
-	if  ( listLevelsToClose > 0 )
+	if  ( mark )
 	    {
-	    int				listLevel;
-	    const ParagraphProperties *	pp= paraNode->biParaProperties;
-
-	    for ( listLevel= pp->ppListLevel;
-		    listLevel > pp->ppListLevel- listLevelsToClose; listLevel-- )
+	    if  ( ps->psCurrentStructItem		&&
+		  ! strcmp( ps->psCurrentStructItem->siStructureType, STRUCTtypeLBODY ) )
 		{
-		if  ( docPsPrintEndMarkedGroup( ps, "L--" ) )
-		    { LSDEB(paraNode->biLevel,mark); return -1;	}
-
-		/* Nested lists are embedded in the parent list item: Close the parent item.
-		   Only if there is a parent list that holds the item. */
-		if  ( listLevel > 0 && docPsPrintEndMarkedGroup( ps, "LI--" ) )
-		    { LSDEB(paraNode->biLevel,mark); return -1;	}
+		if  ( docPsPrintEndMarkedGroup( ps, STRUCTtypeLBODY ) )
+		    { SSDEB(docLevelStr(paraNode->biLevel),STRUCTtypeLBODY); return -1;	}
 		}
+
+	    if  ( docPsPrintEndMarkedGroup( ps, mark ) )
+		{ SSDEB(docLevelStr(paraNode->biLevel),mark); return -1;	}
 	    }
+
+	if  ( listLevelsToClose > 0						&&
+	      docPsPrintCloseListLevels( ps, dc, paraNode, listLevelsToClose )	)
+	    { LSDEB(listLevelsToClose,mark); return -1;	}
 	}
 
     return 0;

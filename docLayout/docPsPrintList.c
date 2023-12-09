@@ -1,0 +1,198 @@
+/************************************************************************/
+/*									*/
+/*  Print PostScript, include PDF marks to represent the document	*/
+/*  structure.								*/
+/*									*/
+/************************************************************************/
+
+#   include	"docLayoutConfig.h"
+
+#   include	<string.h>
+
+#   include	"docPsPrintImpl.h"
+#   include	"docDraw.h"
+#   include	<docTreeNode.h>
+#   include	<docParaProperties.h>
+#   include	<docParaNodeProperties.h>
+#   include	<psPrint.h>
+#   include	"docDrawLine.h"
+#   include	<docDocumentField.h>
+#   include	<docListLevel.h>
+#   include	<sioGeneral.h>
+#   include	<sioMemory.h>
+
+#   include	<appDebugon.h>
+#   include	<docDebug.h>
+
+/* See 14.8.5.5 List Attributes (p608) */
+static int docPsSaveListStructureAttributes(
+	    const struct BufferDocument *	bd,
+	    int					listOverride,
+	    int					listLevel,
+	    MemoryBuffer *			structureAttributes )
+    {
+    struct ListOverride *	lo= (struct ListOverride *)0;
+    struct DocumentList *	dl= (struct DocumentList *)0;
+    const ListLevel * 		ll= (const struct ListLevel *)0;
+
+    if  ( docGetListLevel( (int *)0, (int *)0,
+				&lo, &dl, &ll, listOverride, listLevel, bd ) )
+	{ LLDEB(listOverride,listLevel); return -1;	}
+
+    SimpleOutputStream * sosAttributes= sioOutMemoryOpen( structureAttributes );
+
+    sioOutPrintf( sosAttributes, "/O/List " );
+
+    switch( ll->llNumberStyle )
+	{
+	case DOCpnDEC:
+	    sioOutPrintf( sosAttributes, "/ListNumbering/Decimal " );
+	    break;
+	case DOCpnUCRM:
+	    sioOutPrintf( sosAttributes, "/ListNumbering/UpperRoman " );
+	    break;
+	case DOCpnLCRM:
+	    sioOutPrintf( sosAttributes, "/ListNumbering/LowerRoman " );
+	    break;
+	case DOCpnUCLTR:
+	    sioOutPrintf( sosAttributes, "/ListNumbering/UpperAlpha " );
+	    break;
+	case DOCpnLCLTR:
+	    sioOutPrintf( sosAttributes, "/ListNumbering/LowerAlpha " );
+	    break;
+	default:
+	    LDEB(ll->llNumberStyle);
+	    break;
+	}
+
+    sioOutClose( sosAttributes );
+
+    return 0;
+    }
+
+static int docPsPrintStartListLevel(
+			PrintingState *			ps,
+			struct DrawingContext *		dc,
+			int				listOverride,
+			int				listLevel )
+    {
+    int			rval= 0;
+
+    MemoryBuffer	listAttributes;
+
+    utilInitMemoryBuffer( &listAttributes );
+
+    if  ( docPsSaveListStructureAttributes( dc->dcDocument,
+			    listOverride, listLevel, &listAttributes ) )
+	{ LLDEB(listOverride,listLevel); rval= -1; goto ready;	}
+
+    if  ( docPsPrintBeginMarkedGroup( ps, STRUCTtypeL, &listAttributes ) )
+	{ LLDEB(listOverride,listLevel); rval= -1; goto ready;	}
+
+  ready:
+
+    utilCleanMemoryBuffer( &listAttributes );
+
+    return rval;
+    }
+
+int docPsPrintOpenListLevels(
+			PrintingState *			ps,
+			struct DrawingContext *		dc,
+			const struct BufferItem *	paraNode,
+			int				listLevelsToOpen )
+    {
+    int				listLevel;
+    const ParagraphProperties *	pp= paraNode->biParaProperties;
+
+    /* List levels are not contiguous */
+    if  ( listLevelsToOpen > 1 )
+	{ LDEB(listLevelsToOpen);	}
+
+    for ( listLevel= pp->ppListLevel- listLevelsToOpen+ 1; listLevel <= pp->ppListLevel; listLevel++ )
+	{
+	if  ( docPsPrintStartListLevel( ps, dc, pp->ppListOverride, listLevel ) )
+	    { LLDEB(pp->ppListOverride,listLevel); return -1;	}
+
+	if  ( listLevel < pp->ppListLevel )
+	    {
+	    if  ( docPsPrintBeginMarkedGroup( ps, STRUCTtypeLI, (const MemoryBuffer *)0 ) )
+		{ LDEB(listLevel); return -1;	}
+	    }
+	}
+
+    return 0;
+    }
+
+int docPsPrintCloseListLevels(	struct PrintingState *		ps,
+				struct DrawingContext *		dc,
+				const struct BufferItem *	paraNode,
+				int				listLevelsToClose )
+    {
+    int				listLevel;
+    const ParagraphProperties *	pp= paraNode->biParaProperties;
+
+    for ( listLevel= pp->ppListLevel;
+	    listLevel > pp->ppListLevel- listLevelsToClose; listLevel-- )
+	{
+	if  ( docPsPrintEndMarkedGroup( ps, "L--" ) )
+	    { LDEB(paraNode->biLevel); return -1;	}
+
+	/* Nested lists are embedded in the parent list item: Close the parent item.
+	   Only if there is a parent list that holds the item. */
+	if  ( listLevel > 0 )
+	    {
+	    if  ( ps->psCurrentStructItem		&&
+		  ! strcmp( ps->psCurrentStructItem->siStructureType, STRUCTtypeLBODY ) )
+		{
+		if  ( docPsPrintEndMarkedGroup( ps, STRUCTtypeLBODY ) )
+		    { SSDEB(docLevelStr(paraNode->biLevel),STRUCTtypeLBODY); return -1;	}
+		}
+
+	    if  ( listLevel > 0 && docPsPrintEndMarkedGroup( ps, "LI--" ) )
+		{ LDEB(paraNode->biLevel); return -1;	}
+	    }
+	}
+
+    return 0;
+    }
+
+int docPsPrintStartListTextField(
+		    const DrawTextLine *	dtl,
+		    const DocumentField *	df )
+    {
+    PrintingState *		ps= (PrintingState *)dtl->dtlThrough;
+
+    if  ( ps->psTagDocumentStructure && ! ps->psInArtifact )
+	{
+	if  ( docParagraphIsListItem( dtl->dtlParaNode ) )
+	    {
+	    ps->psInsideListLabel= 1;
+
+	    if  ( docPsPrintFinishInline( ps )	)
+		{ LDEB(1); return -1;	}
+	    }
+	}
+
+    return 0;
+    }
+
+int docPsPrintFinishListTextField(
+				const DrawTextLine *	dtl,
+				const DocumentField *	df )
+    {
+    PrintingState *		ps= (PrintingState *)dtl->dtlThrough;
+
+    if  ( ps->psTagDocumentStructure && ! ps->psInArtifact )
+	{
+	if  ( docPsPrintFinishInline( ps ) )
+	    { LDEB(ps->psInsideListLabel); return -1;	}
+
+	if  ( docPsPrintBeginMarkedGroup( ps, STRUCTtypeLBODY, (MemoryBuffer *)0 ) )
+	    { SDEB(STRUCTtypeLBODY); return -1;	}
+	}
+
+    ps->psInsideListLabel= 0;
+
+    return 0;
+    }

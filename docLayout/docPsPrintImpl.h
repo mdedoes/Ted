@@ -28,6 +28,31 @@ struct BufferItem;
 struct DocumentSelection;
 
 /************************************************************************/
+
+/**
+ * Standard structure types. See ISO 32000-1:2008, 14.8.4.
+ */
+
+extern const char STRUCTtypeLBODY[];
+extern const char STRUCTtypeL[];
+extern const char STRUCTtypeLI[];
+extern const char STRUCTtypeTR[];
+extern const char STRUCTtypeTABLE[];
+extern const char STRUCTtypeSPAN[];
+extern const char STRUCTtypeLINK[];
+extern const char STRUCTtypeLBL[];
+extern const char STRUCTtypeFIGURE[];
+extern const char STRUCTtypeP[];
+extern const char STRUCTtypeH1[];
+extern const char STRUCTtypeH2[];
+extern const char STRUCTtypeH3[];
+extern const char STRUCTtypeH4[];
+extern const char STRUCTtypeH5[];
+extern const char STRUCTtypeH6[];
+extern const char STRUCTtypeTD[];
+extern const char STRUCTtypeTH[];
+
+/************************************************************************/
 /*									*/
 /*  Routine declarations.						*/
 /*									*/
@@ -232,6 +257,9 @@ extern int docPsPrintFinishSymbol(
 				const struct DrawTextLine *	dtl,
 				const struct DocumentField *	df );
 
+extern int docParagraphIsListItem(
+				const struct BufferItem *	paraNode );
+
 extern const char * docPsParagraphNodeStartMark(
 				const struct PrintingState *	ps,
 				const struct BufferItem * 	paraNode,
@@ -241,12 +269,6 @@ extern const char * docPsParagraphNodeEndMark(
 				const struct PrintingState *	ps,
 				const struct BufferItem * 	paraNode,
 				int *				pListLevelsToClose );
-
-extern int docPsSaveListStructureAttributes(
-				const struct BufferDocument *	bd,
-				int				listOverride,
-				int				listLevel,
-				struct MemoryBuffer *		structureAttributes );
 
 extern int docPsMarkRowNode(	const struct BufferItem *	rowNode,
 				int *				pAsTableFirst,
@@ -271,3 +293,22 @@ extern int docPsPrintBeginTypedArtifact(
 				struct PrintingState *		ps,
 				const char *			typeName,
 				const char *			subtypeName );
+
+extern int docPsPrintOpenListLevels(
+				struct PrintingState *		ps,
+				struct DrawingContext *		dc,
+				const struct BufferItem *	paraNode,
+				int				listLevelsToOpen );
+
+extern int docPsPrintCloseListLevels( struct PrintingState *	ps,
+				struct DrawingContext *		dc,
+				const struct BufferItem *	paraNode,
+				int				listLevelsToClose );
+
+extern int docPsPrintStartListTextField(
+				const struct DrawTextLine *	dtl,
+				const struct DocumentField *	df );
+
+extern int docPsPrintFinishListTextField(
+				const struct DrawTextLine *	dtl,
+				const struct DocumentField *	df );

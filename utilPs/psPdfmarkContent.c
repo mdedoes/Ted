@@ -103,7 +103,7 @@ int psPdfMarkPosition(		PrintingState *		ps,
 	}
     else{
 	if  ( sioOutPrintf( ps->psSos,
-		"[ /%s << /DP %d >> /BDC pdfmark\n",
+		"[ /%s << /MCID %d >> /DP pdfmark\n",
 		structureType, contentId ) < 0 )
 	    { LDEB(1); return -1;	}
 	}
@@ -166,7 +166,7 @@ int psPdfBeginMarkedContent(	PrintingState *		ps,
     if  ( contentId < 0 && ! extraProperties )
 	{
 	if  ( sioOutPrintf( ps->psSos,
-			"[ /%s /BMC pdfmark\n", structureType ) < 0 )
+			"[ /%s /BMC pdfmark %% {\n", structureType ) < 0 )
 	    { LDEB(1); return -1;	}
 	}
     else{
@@ -185,7 +185,7 @@ int psPdfBeginMarkedContent(	PrintingState *		ps,
 	    }
 
 	if  ( sioOutPrintf( ps->psSos,
-			">> /BDC pdfmark\n" ) < 0 )
+			">> /BDC pdfmark %% {\n" ) < 0 )
 	    { LDEB(1); return -1;	}
 	}
 
@@ -211,7 +211,7 @@ int psPdfBeginMarkedContentActualText(
 	{ LDEB(1); return -1;	}
 
     if  ( sioOutPrintf( ps->psSos,
-		    " >> /BDC pdfmark\n" ) < 0 )
+		    " >> /BDC pdfmark %% {\n" ) < 0 )
 	{ LDEB(1); return -1;	}
 
     return 0;
@@ -250,7 +250,7 @@ int psPdfBeginMarkedFigure(
 	}
 
     if  ( sioOutPrintf( ps->psSos,
-		    " >> /BDC pdfmark\n" ) < 0 )
+		    " >> /BDC pdfmark %% {\n" ) < 0 )
 	{ LDEB(1); return -1;	}
 
     return 0;
@@ -285,7 +285,7 @@ int psPdfBeginTypedArtifact(
 	    { SDEB(subtypeName); return -1;	}
 	}
 
-    if  ( sioOutPrintf( ps->psSos, " >> /BDC pdfmark\n" ) < 0 )
+    if  ( sioOutPrintf( ps->psSos, " >> /BDC pdfmark %% {\n" ) < 0 )
 	{ LDEB(1); return -1;	}
 
     return 0;
@@ -302,7 +302,7 @@ int psPdfEndMarkedContent(
     if  ( ps->psInArtifact )
 	{ LDEB(ps->psInArtifact); return -1;	}
 
-    if  ( sioOutPrintf( ps->psSos, "[ /EMC pdfmark %% %s\n", structureType ) < 0 )
+    if  ( sioOutPrintf( ps->psSos, "[ /EMC pdfmark %% %s }\n", structureType ) < 0 )
 	{ LDEB(1); return -1;	}
 
     return 0;

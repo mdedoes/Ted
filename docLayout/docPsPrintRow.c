@@ -18,13 +18,6 @@
 #   include	<appDebugon.h>
 #   include	<docDebug.h>
 
-/**
- * Standard structure types. See ISO 32000-1:2008, 14.8.4.
- * These are the Block level ones
- */
-static const char STRUCTtypeTD[]= "TD";
-static const char STRUCTtypeTH[]= "TH";
-
 /************************************************************************/
 
 /**

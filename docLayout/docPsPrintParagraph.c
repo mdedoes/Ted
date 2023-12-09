@@ -9,79 +9,11 @@
 
 #   include	"docPsPrintImpl.h"
 #   include	<docParaProperties.h>
-#   include	<docParaNodeProperties.h>
-#   include	<docListLevel.h>
 #   include	<docTreeNode.h>
 #   include	<psPrint.h>
-#   include	<sioGeneral.h>
-#   include	<sioMemory.h>
 
 #   include	<appDebugon.h>
 #   include	<docDebug.h>
-
-/**
- * Standard structure types. See ISO 32000-1:2008, 14.8.4.
- * These are the Block level ones
- */
-static const char STRUCTtypeP[]= "P";
-/*static const char STRUCTtypeDIV[]= "Div";*/
-
-static const char STRUCTtypeH1[]= "H1";
-static const char STRUCTtypeH2[]= "H2";
-static const char STRUCTtypeH3[]= "H3";
-static const char STRUCTtypeH4[]= "H4";
-static const char STRUCTtypeH5[]= "H5";
-static const char STRUCTtypeH6[]= "H6";
-
-static const char STRUCTtypeLI[]= "LI";
-
-/************************************************************************/
-
-/* See 14.8.5.5 List Attributes (p608) */
-int docPsSaveListStructureAttributes(
-	    const struct BufferDocument *	bd,
-	    int					listOverride,
-	    int					listLevel,
-	    MemoryBuffer *			structureAttributes )
-    {
-    struct ListOverride *	lo= (struct ListOverride *)0;
-    struct DocumentList *	dl= (struct DocumentList *)0;
-    const ListLevel * 		ll= (const struct ListLevel *)0;
-
-    if  ( docGetListLevel( (int *)0, (int *)0,
-				&lo, &dl, &ll, listOverride, listLevel, bd ) )
-	{ LLDEB(listOverride,listLevel); return -1;	}
-
-    SimpleOutputStream * sosAttributes= sioOutMemoryOpen( structureAttributes );
-
-    sioOutPrintf( sosAttributes, "/O/List " );
-
-    switch( ll->llNumberStyle )
-	{
-	case DOCpnDEC:
-	    sioOutPrintf( sosAttributes, "/ListNumbering/Decimal " );
-	    break;
-	case DOCpnUCRM:
-	    sioOutPrintf( sosAttributes, "/ListNumbering/UpperRoman " );
-	    break;
-	case DOCpnLCRM:
-	    sioOutPrintf( sosAttributes, "/ListNumbering/LowerRoman " );
-	    break;
-	case DOCpnUCLTR:
-	    sioOutPrintf( sosAttributes, "/ListNumbering/UpperAlpha " );
-	    break;
-	case DOCpnLCLTR:
-	    sioOutPrintf( sosAttributes, "/ListNumbering/LowerAlpha " );
-	    break;
-	default:
-	    LDEB(ll->llNumberStyle);
-	    break;
-	}
-
-    sioOutClose( sosAttributes );
-
-    return 0;
-    }
 
 /**
  * Only handle members of an RTF list as a PDF/HTML list item if it has 
@@ -100,7 +32,8 @@ static int docPsListNodeHasListNeighbour(	const BufferItem *	paraNode )
 	const BufferItem *	prevNode= parentNode->biChildren[prev];
 
 	if  ( prevNode->biLevel == DOClevPARA					&&
-	      prevNode->biParaProperties->ppListOverride == listOverride	)
+	      prevNode->biParaProperties->ppListOverride == listOverride	&&
+	      prevNode->biBelowPosition.lpPage == paraNode->biTopPosition.lpPage )
 	    { return 1;	}
 	}
 
@@ -109,7 +42,8 @@ static int docPsListNodeHasListNeighbour(	const BufferItem *	paraNode )
 	const BufferItem *	nextNode= parentNode->biChildren[next];
 
 	if  ( nextNode->biLevel == DOClevPARA					&&
-	      nextNode->biParaProperties->ppListOverride == listOverride	)
+	      nextNode->biParaProperties->ppListOverride == listOverride	&&
+	      nextNode->biTopPosition.lpPage == paraNode->biBelowPosition.lpPage )
 	    { return 1;	}
 	}
 
@@ -137,7 +71,12 @@ static int docPsListNodeDeeper(
     const ParagraphProperties *	pp= paraNode->biParaProperties;
     const ParagraphProperties *	prevPp;
 
+    /* A nested table row: split the list */
     if  ( prevNode->biLevel != DOClevPARA )
+	{ return pp->ppListLevel+ 1;	}
+
+    /* A page split: split the list */
+    if  ( prevNode->biBelowPosition.lpPage != paraNode->biTopPosition.lpPage )
 	{ return pp->ppListLevel+ 1;	}
 
     prevPp= prevNode->biParaProperties;
@@ -157,7 +96,12 @@ static int docPsListNodeShallower(
     const ParagraphProperties *	pp= paraNode->biParaProperties;
     const ParagraphProperties *	nextPp;
 
+    /* A nested table row: split the list */
     if  ( nextNode->biLevel != DOClevPARA )
+	{ return pp->ppListLevel+ 1;	}
+
+    /* A page split: split the list */
+    if  ( nextNode->biTopPosition.lpPage != paraNode->biBelowPosition.lpPage )
 	{ return pp->ppListLevel+ 1;	}
 
     nextPp= nextNode->biParaProperties;
@@ -170,6 +114,14 @@ static int docPsListNodeShallower(
     return 0;
     }
 
+int docParagraphIsListItem(	const BufferItem *	paraNode )
+    {
+    const ParagraphProperties *	pp= paraNode->biParaProperties;
+
+    return pp->ppListOverride > 0 && docPsListNodeHasListNeighbour( paraNode );
+    }
+
+
 /* See Annex H.8.3 in the PDF 2020 Spec about hierarchical lists */
 const char * docPsParagraphNodeStartMark(
 	    const PrintingState *	ps,
@@ -179,7 +131,7 @@ const char * docPsParagraphNodeStartMark(
     const ParagraphProperties *	pp= paraNode->biParaProperties;
     const BufferItem *		parentNode= paraNode->biParent;
 
-    if  ( pp->ppListOverride > 0 && docPsListNodeHasListNeighbour( paraNode ) )
+    if  ( docParagraphIsListItem( paraNode ) )
 	{
 	const int	prev= paraNode->biNumberInParent- 1;
 
@@ -196,7 +148,6 @@ const char * docPsParagraphNodeStartMark(
 	}
     }
 
-
 /* See Annex H.8.3 in the PDF 2020 Spec about hierarchical lists */
 const char * docPsParagraphNodeEndMark(
 	    const PrintingState *	ps,
@@ -206,7 +157,7 @@ const char * docPsParagraphNodeEndMark(
     const ParagraphProperties *	pp= paraNode->biParaProperties;
     const BufferItem *		parentNode= paraNode->biParent;
 
-    if  ( pp->ppListOverride > 0 && docPsListNodeHasListNeighbour( paraNode ) )
+    if  ( docParagraphIsListItem( paraNode ) )
 	{
 	const int	next= paraNode->biNumberInParent+ 1;
 	int		nextDeeper= 0;

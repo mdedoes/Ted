@@ -45,7 +45,7 @@ CFLAGS=	\
 
 #CFLAGS= -g -O2 $(WFLAGS) $(INCLUDES)
 
-# 82!!obs
+# 83!!obs
 OBS	=	\
 		layoutContext.o\
 		docValignCells.o\
@@ -74,6 +74,7 @@ OBS	=	\
 		docPsPrintPdfmarks.o\
 		docPsPrintParagraph.o\
 		docPsPrintOrnaments.o\
+		docPsPrintList.o\
 		docPsPrintLink.o\
 		docPsPrintLineStructure.o\
 		docPsPrintImage.o\
@@ -1819,14 +1820,12 @@ docPsPrintFields.o: \
     docPsPrintFields.c
 
 docPsPrintHierarchy.o: \
-    ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
     ../docBase/docInsertedObjectList.h \
     ../docBase/docLayoutPosition.h \
     ../docBase/docListNumberTree.h \
-    ../docBase/docParaProperties.h \
     ../docBase/docSelectionScope.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docTreeType.h \
@@ -1840,11 +1839,9 @@ docPsPrintHierarchy.o: \
     ../docBuf/docRowNode.h \
     ../docBuf/docSectNode.h \
     ../docBuf/docTreeNode.h \
-    docDraw.h \
     ../docField/docChildFields.h \
     ../docField/docDocumentFieldList.h \
     docLayoutConfig.h \
-    docLayoutDocumentTree.h \
     docPsPrintImpl.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
@@ -1854,7 +1851,6 @@ docPsPrintHierarchy.o: \
     ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psNup.h \
     ../utilPs/psPrint.h \
-    ../utilPs/textAttribute.h \
     docPsPrintHierarchy.c
 
 docPsPrintImage.o: \
@@ -1948,6 +1944,44 @@ docPsPrintLink.o: \
     ../utilPs/psPrint.h \
     docPsPrintLink.c
 
+docPsPrintList.o: \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/sioMemory.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListLevel.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDebug.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docParaNodeProperties.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docTreeNode.h \
+    docDraw.h \
+    docDrawLine.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentField.h \
+    ../docField/docFieldInstructions.h \
+    docLayoutConfig.h \
+    docLayoutDocumentTree.h \
+    docPsPrintImpl.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/psNup.h \
+    ../utilPs/psPrint.h \
+    ../utilPs/textAttribute.h \
+    docPsPrintList.c
+
 docPsPrintOrnaments.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilColor.h \
@@ -1989,18 +2023,13 @@ docPsPrintOrnaments.o: \
     docPsPrintOrnaments.c
 
 docPsPrintParagraph.o: \
-    ../appUtil/sioGeneral.h \
-    ../appUtil/sioMemory.h \
     ../appUtil/utilMemoryBuffer.h \
-    ../appUtil/utilPropMask.h \
     ../docBase/docLayoutPosition.h \
-    ../docBase/docListLevel.h \
     ../docBase/docParaProperties.h \
     ../docBase/docSelectionScope.h \
     ../docBuf/docCellNode.h \
     ../docBuf/docDebug.h \
     ../docBuf/docParaNode.h \
-    ../docBuf/docParaNodeProperties.h \
     ../docBuf/docRowNode.h \
     ../docBuf/docSectNode.h \
     ../docBuf/docTreeNode.h \
@@ -2014,7 +2043,6 @@ docPsPrintParagraph.o: \
     ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psNup.h \
     ../utilPs/psPrint.h \
-    ../utilPs/textAttribute.h \
     docPsPrintParagraph.c
 
 docPsPrintPdfmarks.o: \

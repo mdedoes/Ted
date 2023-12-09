@@ -15,15 +15,6 @@
 #   include	<docDebug.h>
 #   include	<appDebugon.h>
 
-/**
- * Standard structure types. See ISO 32000-1:2008, 14.8.4.
- * These are the Inline level ones
- */
-static const char STRUCTtypeSPAN[]= "Span";
-static const char STRUCTtypeLINK[]= "Link";
-static const char STRUCTtypeLBL[]= "Lbl";
-static const char STRUCTtypeFIGURE[]= "Figure";
-
 StructItem * docPsPrintInlineStructItem( PrintingState *	ps )
     {
     StructItem *	structItem;
