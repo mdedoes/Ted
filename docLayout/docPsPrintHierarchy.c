@@ -148,6 +148,7 @@ int docPsPrintFinishTree( void *			vps,
 int docPsPrintStartLines( void *			vps,
 			struct DrawingContext *		dc,
 			const struct BufferItem *	paraNode,
+			int				firstLine,
 			const struct DocumentSelection * ds )
     {
     PrintingState *	ps= (PrintingState *)vps;
@@ -157,7 +158,7 @@ int docPsPrintStartLines( void *			vps,
 	{
 	const char *	mark;
 
-	mark= docPsParagraphNodeStartMark( ps, paraNode, &listLevelsToOpen );
+	mark= docPsParagraphNodeStartMark( ps, paraNode, firstLine, &listLevelsToOpen );
 
 	if  ( mark )
 	    {
@@ -180,6 +181,7 @@ int docPsPrintStartLines( void *			vps,
 int docPsPrintFinishLines( void *			vps,
 			struct DrawingContext *		dc,
 			const struct BufferItem *	paraNode,
+			int				lastLine,
 			const struct DocumentSelection * ds )
     {
     PrintingState *	ps= (PrintingState *)vps;
@@ -192,7 +194,7 @@ int docPsPrintFinishLines( void *			vps,
 	if  ( docPsPrintFinishInline( ps ) )
 	    { LDEB(paraNode->biLevel); return -1;	}
 
-	mark= docPsParagraphNodeEndMark( ps, paraNode, &listLevelsToClose );
+	mark= docPsParagraphNodeEndMark( ps, paraNode, lastLine, &listLevelsToClose );
 
 	if  ( mark )
 	    {
@@ -264,7 +266,7 @@ int docPsPrintStartNode(	void *				vps,
 	    case DOClevROW: {
 		    int		asTableFirst= 0;
 
-		    if  ( docPsMarkRowNode( node, &asTableFirst, (int *)0 ) )
+		    if  ( docPsMarkRowNode( ps, node, &asTableFirst, (int *)0 ) )
 			{
 			if  ( repeated && node->biNumberInParent < node->biRowPastHeaderRow )
 			    {
@@ -285,7 +287,7 @@ int docPsPrintStartNode(	void *				vps,
 		}
 
 	    case DOClevCELL: {
-		const char *	cellNodeMark= docPsCellNodeMark( node, &structureAttributes );
+		const char *	cellNodeMark= docPsCellNodeMark( ps, node, &structureAttributes );
 
 		if  ( cellNodeMark && docPsPrintBeginMarkedGroup( ps, cellNodeMark, &structureAttributes) )
 		    { LSDEB(node->biLevel,cellNodeMark);	}
@@ -330,7 +332,7 @@ int docPsPrintFinishNode( void *			vps,
 	if  ( ps->psInArtifact == 1 && node->biLevel == DOClevROW		&&
 	      repeated && node->biNumberInParent < node->biRowPastHeaderRow	)
 	    {
-	    if  ( docPsMarkRowNode( node, (int *)0, (int *)0 ) )
+	    if  ( docPsMarkRowNode( ps, node, (int *)0, (int *)0 ) )
 		{
 		if  ( docPsPrintEndArtifact( ps )	)
 		    { LDEB(repeated); return -1;	}
@@ -360,7 +362,7 @@ int docPsPrintFinishNode( void *			vps,
 	    case DOClevROW: {
 		    int		asTableLast= 0;
 
-		    if  ( docPsMarkRowNode( node, (int *)0, &asTableLast ) )
+		    if  ( docPsMarkRowNode( ps, node, (int *)0, &asTableLast ) )
 			{
 			if  ( repeated && node->biNumberInParent < node->biRowPastHeaderRow )
 			    {
@@ -380,7 +382,7 @@ int docPsPrintFinishNode( void *			vps,
 		}
 
 	    case DOClevCELL: {
-		const char *	cellNodeMark= docPsCellNodeMark( node, (MemoryBuffer *)0 );
+		const char *	cellNodeMark= docPsCellNodeMark( ps, node, (MemoryBuffer *)0 );
 
 		if  ( cellNodeMark && docPsPrintEndMarkedGroup( ps, cellNodeMark ) )
 		    { LSDEB(node->biLevel,cellNodeMark);	}

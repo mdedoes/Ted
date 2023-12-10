@@ -149,6 +149,7 @@ int tedPrintDocument(	SimpleOutputStream *		sos,
     int				markContent= tar->tarPdfMarkContentInt > 0;
     int				omitContentMarks= tar->tarPdfOmitContentMarksInt > 0;
     int				markInvisibleAsArtifact= tar->tarPdfMarkInvisibleAsArtifactInt > 0;
+    int				flattenPlainTables= tar->tarPdfFlattenPlainTablesInt > 0;
     int				drawParticulesSeparately= tar->tarDrawParticulesSeparatelyInt > 0;
     int				declareUACompliant= tar->tarPdfDeclareUACompliantInt > 0;
 
@@ -170,7 +171,7 @@ int tedPrintDocument(	SimpleOutputStream *		sos,
 				    ea->eaReference,
 				    &fontDir,
 				    shadingMesh, emitOutline,
-				    markContent, omitContentMarks, declareUACompliant, markInvisibleAsArtifact,
+				    markContent, omitContentMarks, declareUACompliant, flattenPlainTables, markInvisibleAsArtifact,
 				    drawParticulesSeparately,
 				    &lc, pg ) )
 	{ LDEB(1); rval= -1;	}

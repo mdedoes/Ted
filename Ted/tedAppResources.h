@@ -80,6 +80,14 @@ typedef struct TedAppResources
     int				tarPdfMarkInvisibleAsArtifactInt;
 
 				/**
+				 * In combination with tarPdfMarkContent=1,
+				 * Tables without any borders or shading are not marked
+				 * as tbles in the PDF output.
+				 */
+    char *			tarPdfFlattenPlainTablesString;
+    int				tarPdfFlattenPlainTablesInt;
+
+				/**
 				 * Draw text particules with the same attributes
 				 * separately. See docDraw.h for some more details.
 				 */

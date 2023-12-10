@@ -196,3 +196,90 @@ int docPsPrintFinishListTextField(
 
     return 0;
     }
+
+/**
+ * Only handle members of an RTF list as a PDF/HTML list item if it has 
+ * neighbour in the same list.
+ */
+int docPsListNodeHasSameListNeighbour(
+				const BufferItem *	paraNode )
+    {
+    const BufferItem *		parentNode= paraNode->biParent;
+    int				prev= paraNode->biNumberInParent- 1;
+    int				next= paraNode->biNumberInParent+ 1;
+
+    int				listOverride= paraNode->biParaProperties->ppListOverride;
+
+    if  ( prev >= 0 )
+	{
+	const BufferItem *	prevNode= parentNode->biChildren[prev];
+
+	if  ( prevNode->biLevel == DOClevPARA					&&
+	      prevNode->biParaProperties->ppListOverride == listOverride	&&
+	      prevNode->biBelowPosition.lpPage == paraNode->biTopPosition.lpPage )
+	    { return 1;	}
+	}
+
+    if  ( next < parentNode->biChildCount )
+	{
+	const BufferItem *	nextNode= parentNode->biChildren[next];
+
+	if  ( nextNode->biLevel == DOClevPARA					&&
+	      nextNode->biParaProperties->ppListOverride == listOverride	&&
+	      nextNode->biTopPosition.lpPage == paraNode->biBelowPosition.lpPage )
+	    { return 1;	}
+	}
+
+    return 0;
+    }
+
+int docPsListNodeDeeper(
+	    const BufferItem *		paraNode,
+	    const BufferItem *		prevNode )
+    {
+    const ParagraphProperties *	pp= paraNode->biParaProperties;
+    const ParagraphProperties *	prevPp;
+
+    /* A nested table row: split the list */
+    if  ( prevNode->biLevel != DOClevPARA )
+	{ return pp->ppListLevel+ 1;	}
+
+    /* A page split: split the list */
+    if  ( prevNode->biBelowPosition.lpPage != paraNode->biTopPosition.lpPage )
+	{ return pp->ppListLevel+ 1;	}
+
+    prevPp= prevNode->biParaProperties;
+    if  ( prevPp->ppListOverride != pp->ppListOverride )
+	{ return pp->ppListLevel+ 1;	}
+
+    if  ( pp->ppListLevel > prevPp->ppListLevel )
+	{ return pp->ppListLevel- prevPp->ppListLevel;	}
+
+    return 0;
+    }
+
+int docPsListNodeShallower(
+	    const BufferItem *		paraNode,
+	    const BufferItem *		nextNode )
+    {
+    const ParagraphProperties *	pp= paraNode->biParaProperties;
+    const ParagraphProperties *	nextPp;
+
+    /* A nested table row: split the list */
+    if  ( nextNode->biLevel != DOClevPARA )
+	{ return pp->ppListLevel+ 1;	}
+
+    /* A page split: split the list */
+    if  ( nextNode->biTopPosition.lpPage != paraNode->biBelowPosition.lpPage )
+	{ return pp->ppListLevel+ 1;	}
+
+    nextPp= nextNode->biParaProperties;
+    if  ( nextPp->ppListOverride != pp->ppListOverride )
+	{ return pp->ppListLevel+ 1;	}
+
+    if  ( pp->ppListLevel > nextPp->ppListLevel )
+	{ return pp->ppListLevel- nextPp->ppListLevel;	}
+
+    return 0;
+    }
+

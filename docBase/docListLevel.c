@@ -598,7 +598,7 @@ int docListLevelFormatParagraphNumber(	char *			to,
 	    { to += constLen; bytesDone += constLen;	}
 
 	if  ( level > ilvl )
-	    { LLDEB(ilvl,level); return -1;	}
+	    { LLCDEB(ilvl,level,level); return -1;	}
 
 	if  ( 2* field+ 1 < maxoffsets )
 	    { byteOffsets[2* field+ 1]= bytesDone;	}

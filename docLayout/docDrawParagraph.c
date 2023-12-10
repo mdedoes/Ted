@@ -309,16 +309,7 @@ if  ( paraNode->biTreeType == DOCinSHPTXT )
 								&lpTop ) > 0 )
 	    {
 	    int			ret;
-	    struct BufferItem *	bodyNode= paraNode;
 	    const char *	breakWhy;
-
-	    if  ( paraNode->biTreeType != DOCinBODY )
-		{
-		/* TODO Why not dc->dcBodySectNode? */
-		bodyNode= docGetBodySectNode( paraNode, bd );
-		if  ( ! bodyNode )
-		    { XDEB(bodyNode); return -1;	}
-		}
 
 	    switch( pds.pdsBreakKind )
 		{
@@ -336,7 +327,7 @@ if  ( paraNode->biTreeType == DOCinSHPTXT )
 		    break;
 		}
 
-	    ret= docDrawToNextColumn( bodyNode, bodyNode,
+	    ret= docDrawToNextColumn( paraNode, paraNode,
 				through, &lpTop, &bf, dc, breakWhy );
 	    if  ( ret < 0 )
 		{
@@ -407,7 +398,7 @@ static int docDrawTextLines(
 	LLDEB(pds->pdsShadeTop.lpColumn,pds->pdsShadeBelow.lpColumn);
 	}
 
-    if  ( dc->dcStartLines && (*dc->dcStartLines)( through, dc, paraNode, &(pds->pdsStripSelection) ) )
+    if  ( dc->dcStartLines && (*dc->dcStartLines)( through, dc, paraNode, line, &(pds->pdsStripSelection) ) )
 	{ LDEB(1); return -1;	}
 
     /*  1  */
@@ -485,11 +476,11 @@ static int docDrawTextLines(
 	    }
 
 	if  ( res < 0 )
-	    { LDEB(res); return -1; }
+	    { LLDEB(line,res); return -1; }
 	if  ( res == SCANadviceSTOP )
 	    {
-	    if  ( dc->dcFinishLines && (*dc->dcFinishLines)( through, dc, paraNode, &(pds->pdsStripSelection) ) )
-		{ LDEB(1); return -1;	}
+	    if  ( dc->dcFinishLines && (*dc->dcFinishLines)( through, dc, paraNode, line, &(pds->pdsStripSelection) ) )
+		{ LDEB(line); return -1;	}
 
 	    return res;
 	    }
@@ -497,7 +488,7 @@ static int docDrawTextLines(
 	line++; tl++;
 	}
 
-    if  ( dc->dcFinishLines && (*dc->dcFinishLines)( through, dc, paraNode, &(pds->pdsStripSelection) ) )
+    if  ( dc->dcFinishLines && (*dc->dcFinishLines)( through, dc, paraNode, line- 1, &(pds->pdsStripSelection) ) )
 	{ LDEB(1); return -1;	}
 
     return 0;

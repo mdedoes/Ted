@@ -164,6 +164,7 @@ void psInitPrintingState(	PrintingState *	ps )
     ps->psOmitContentMarks= 0;
     ps->psDeclareUACompliant= 0;
     ps->psMarkInvisibleAsArtifact= 0;
+    ps->psFlattenPlainTables= 0;
     ps->psDictionaryNameCount= 0;
     ps->psInArtifact= 0;
     ps->psDocNumberTreeItemCount= 0;

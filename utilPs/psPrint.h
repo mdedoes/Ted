@@ -154,6 +154,13 @@ typedef struct PrintingState
     unsigned char		psMarkInvisibleAsArtifact;
 
 				/**
+				 * In combination with psTagDocumentStructure!=0,
+				 * If this flag is set, tables without any borders or shading
+				 * will not be marked as tables. (Nor will the rows, cells or headers.)
+				 */
+    unsigned char		psFlattenPlainTables;
+
+				/**
 				 *  Keep track of whether we are in an /Artifact in the
 				 *  creation of a PDF structure. Only relevant in combination
 				 *  with psTagDocumentStructure != 0.

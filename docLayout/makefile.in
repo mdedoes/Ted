@@ -2027,6 +2027,7 @@ docPsPrintParagraph.o: \
     ../docBase/docLayoutPosition.h \
     ../docBase/docParaProperties.h \
     ../docBase/docSelectionScope.h \
+    ../docBase/docTextLine.h \
     ../docBuf/docCellNode.h \
     ../docBuf/docDebug.h \
     ../docBuf/docParaNode.h \
@@ -2093,6 +2094,12 @@ docPsPrintRow.o: \
     docPsPrintImpl.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/psNup.h \
+    ../utilPs/psPrint.h \
     docPsPrintRow.c
 
 docPsPrintShapes.o: \

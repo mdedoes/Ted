@@ -377,6 +377,7 @@ int docPsPrintDocument(	struct SimpleOutputStream *	sos,
 			int				omitContentMarks,
 			int				declareUACompliant,
 			int				markInvisibleAsArtifact,
+			int				flattenPlainTables,
 			int				drawParticulesSeparately,
 			const LayoutContext *		lc,
 			const PrintGeometry *		pg )
@@ -443,6 +444,7 @@ int docPsPrintDocument(	struct SimpleOutputStream *	sos,
 	ps.psTagDocumentStructure= 1;
 
 	ps.psMarkInvisibleAsArtifact= markInvisibleAsArtifact != 0;
+	ps.psFlattenPlainTables= flattenPlainTables != 0;
 	ps.psOmitContentMarks= omitContentMarks != 0;
 	ps.psDeclareUACompliant= declareUACompliant != 0;
 	}

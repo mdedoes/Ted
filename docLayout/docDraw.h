@@ -189,12 +189,14 @@ typedef int (*FINISH_NODE)(	void *				through,
 			 */
 typedef int (*START_LINES)(	void *				through,
 				struct DrawingContext *		dc,
-				const struct BufferItem *	node,
+				const struct BufferItem *	paraNode,
+				int				firstLine,
 				const struct DocumentSelection * ds );
 
 typedef int (*FINISH_LINES)(	void *				through,
 				struct DrawingContext *		dc,
-				const struct BufferItem *	node,
+				const struct BufferItem *	paraNode,
+				int				lastLine,
 				const struct DocumentSelection * ds );
 
 			/**

@@ -182,12 +182,14 @@ extern int docPsPrintFinishTree( void *				vps,
 
 extern int docPsPrintStartLines( void *				vps,
 				struct DrawingContext *		dc,
-				const struct BufferItem *	node,
+				const struct BufferItem *	paraNode,
+				int				firstLine,
 				const struct DocumentSelection * ds );
 
 extern int docPsPrintFinishLines( void *			vps,
 				struct DrawingContext *		dc,
-				const struct BufferItem *	node,
+				const struct BufferItem *	paraNode,
+				int				lastLine,
 				const struct DocumentSelection * ds );
 
 extern int docPsPrintStartNode( void *				vps,
@@ -263,18 +265,22 @@ extern int docParagraphIsListItem(
 extern const char * docPsParagraphNodeStartMark(
 				const struct PrintingState *	ps,
 				const struct BufferItem * 	paraNode,
+				int				firstLine,
 				int *				pListLevelsToOpen );
 
 extern const char * docPsParagraphNodeEndMark(
 				const struct PrintingState *	ps,
 				const struct BufferItem * 	paraNode,
+				int				lastLine,
 				int *				pListLevelsToClose );
 
-extern int docPsMarkRowNode(	const struct BufferItem *	rowNode,
+extern int docPsMarkRowNode(	const struct PrintingState *	ps,
+				const struct BufferItem *	rowNode,
 				int *				pAsTableFirst,
 				int *				pAsTableLast );
 
 extern const char * docPsCellNodeMark(
+				const struct PrintingState *	ps,
 				const struct BufferItem *	cellNode,
 				struct MemoryBuffer *		structureAttributes );
 
@@ -312,3 +318,12 @@ extern int docPsPrintStartListTextField(
 extern int docPsPrintFinishListTextField(
 				const struct DrawTextLine *	dtl,
 				const struct DocumentField *	df );
+
+extern int docPsListNodeHasSameListNeighbour(
+				const struct BufferItem *	paraNode );
+
+extern int docPsListNodeDeeper(	const struct BufferItem *	paraNode,
+				const struct BufferItem *	prevNode );
+
+extern int docPsListNodeShallower( const struct BufferItem *	paraNode,
+				const struct BufferItem *	prevNode );

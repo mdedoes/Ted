@@ -30,6 +30,7 @@ extern int docPsPrintDocument(
 			int				omitContentMarks,
 			int				declareUACompliant,
 			int				markInvisibleAsArtifact,
+			int				flattenPlainTables,
 			int				drawParticulesSeparately,
 			const struct LayoutContext *	lc,
 			const struct PrintGeometry *	pg );

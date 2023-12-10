@@ -14,6 +14,7 @@
 #   include	<docCellProperties.h>
 #   include	<sioGeneral.h>
 #   include	<sioMemory.h>
+#   include	<psPrint.h>
 
 #   include	<appDebugon.h>
 #   include	<docDebug.h>
@@ -44,11 +45,12 @@ static int docTableIsPlain(
     }
 
 int docPsMarkRowNode(
+	    const PrintingState *	ps,
 	    const struct BufferItem *	rowNode,
 	    int *			pAsTableFirst,
 	    int *			pAsTableLast )
     {
-    if  ( ! docIsRowNode( rowNode ) || docTableIsPlain( rowNode ) )
+    if  ( ! docIsRowNode( rowNode ) || ( ps->psFlattenPlainTables && docTableIsPlain( rowNode ) ) )
 	{ return 0;	}
 
     if  ( pAsTableFirst )
@@ -61,6 +63,7 @@ int docPsMarkRowNode(
     }
 
 const char * docPsCellNodeMark(
+		const PrintingState *		ps,
 		const struct BufferItem *	cellNode,
 		MemoryBuffer *			structureAttributes )
     {
@@ -68,7 +71,7 @@ const char * docPsCellNodeMark(
     int			inHeaderRow= rowNode->biRowProperties->rpIsTableHeader;
     int			inHeaderColumn;
 
-    if  ( ! docPsMarkRowNode( rowNode, (int *)0, (int *)0 ) )
+    if  ( ! docPsMarkRowNode( ps, rowNode, (int *)0, (int *)0 ) )
 	{ return (char *)0;	}
 
     inHeaderColumn= cellNode->biCellProperties->cpIsRowHeader;
