@@ -25,7 +25,7 @@
 const char STRUCTtypeL[]= "L";
 const char STRUCTtypeLI[]= "LI";
 const char STRUCTtypeLBL[]= "Lbl";
-const char STRUCTtypeLBODY[]= "Lbody";
+const char STRUCTtypeLBODY[]= "LBody";
 
 /* const char STRUCTtypePART[]= "Part"; */
 /* const char STRUCTtypeSECT[]= "Sect"; */
