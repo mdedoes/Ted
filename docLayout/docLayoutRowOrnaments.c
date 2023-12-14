@@ -725,7 +725,7 @@ int docRowPropertiesArePlain(
 	  docShadingNumberIsShading( bd, rp->rpShadingNumber ) )
 	{ return 0;	}
 
-    for ( col= 0; col < rp->rpCellCount; rp++ )
+    for ( col= 0; col < rp->rpCellCount; col++ )
 	{
 	const CellProperties *	cp= rp->rpCells+ col;
 
