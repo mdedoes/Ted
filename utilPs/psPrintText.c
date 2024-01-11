@@ -121,7 +121,7 @@ int psPrintStringValue(	PrintingState *		ps,
 
     if  ( sioOutPutByte( '(', sos ) < 0 )
 	{ return -1;	}
-    if  ( psPrintString( ps->psSos, s, len, ps->ps7Bits, utf8 ) < 0 )
+    if  ( psPrintString( ps->psSos, s, len, 0, utf8 ) < 0 )
 	{ return -1;	}
     if  ( sioOutPutByte( ')', sos ) < 0 )
 	{ return -1;	}
@@ -141,7 +141,7 @@ static int psMovePrintString(	PrintingState *		ps,
 
     if  ( sioOutPutByte( '(', sos ) < 0 )
 	{ return -1;	}
-    if  ( psPrintString( ps->psSos, s, len, ps->ps7Bits, utf8 ) < 0 )
+    if  ( psPrintString( ps->psSos, s, len, 0, utf8 ) < 0 )
 	{ return -1;	}
 
     sioOutPrintf( sos, ") %d %d %s\n", x, y, operator );
@@ -256,7 +256,7 @@ int psShowString(	PrintingState *		ps,
 
     if  ( sioOutPutByte( '(', sos ) < 0 )
 	{ return -1;	}
-    if  ( psPrintString( ps->psSos, s, len, ps->ps7Bits, utf8 ) < 0 )
+    if  ( psPrintString( ps->psSos, s, len, 0, utf8 ) < 0 )
 	{ return -1;	}
 
     sioOutPrintf( sos, ") %s ", operator );

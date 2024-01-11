@@ -158,7 +158,6 @@ void psInitPrintingState(	PrintingState *	ps )
 
     ps->psUsePostScriptFilters= 1;
     ps->psUsePostScriptIndexedImages= 1;
-    ps->ps7Bits= 0;
 
     ps->psTagDocumentStructure= 0;
     ps->psOmitContentMarks= 0;

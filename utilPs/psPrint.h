@@ -114,7 +114,6 @@ typedef struct PrintingState
 
     unsigned char		psUsePostScriptFilters;
     unsigned char		psUsePostScriptIndexedImages;
-    unsigned char		ps7Bits;
 
 				/**
 				 * If set, we emit PDF marks that tag

@@ -359,7 +359,6 @@ typedef struct EditApplication
 
     int				eaUsePostScriptFiltersInt;
     int				eaUsePostScriptIndexedImagesInt;
-    int				ea7BitsPostScriptInt;
     int				eaSkipEmptyPagesInt;
     int				eaSkipBlankPagesInt;
     int				eaOmitHeadersOnEmptyPagesInt;
@@ -374,7 +373,6 @@ typedef struct EditApplication
     const char *		eaMagnificationString;
     const char *		eaUsePostScriptFiltersString;
     const char *		eaUsePostScriptIndexedImagesString;
-    const char *		ea7BitsPostScriptString;
     const char *		eaSkipEmptyPagesString;
     const char *		eaSkipBlankPagesString;
     const char *		eaOmitHeadersOnEmptyPagesString;

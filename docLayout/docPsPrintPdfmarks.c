@@ -38,7 +38,7 @@ static void psSaveInfo(		const char *		tag,
 	{ return;	}
 
     sioOutPrintf( ps->psSos, "  %s (", tag );
-    psPrintString( ps->psSos, info, strlen( info ), ps->ps7Bits, utf8 );
+    psPrintString( ps->psSos, info, strlen( info ), 0, utf8 );
     sioOutPrintf( ps->psSos, ")\n" );
     }
 

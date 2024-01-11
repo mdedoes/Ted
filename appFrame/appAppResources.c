@@ -81,9 +81,6 @@ static AppConfigurableResource	APP_ApplicationResourceTable[]=
     APP_RESOURCE( "usePostScriptIndexedImages",
 		offsetof(EditApplication,eaUsePostScriptIndexedImagesString),
 		"1" ),
-    APP_RESOURCE( "sevenBitsPostScript",
-		offsetof(EditApplication,ea7BitsPostScriptString),
-		"0" ),
 
     APP_RESOURCE( "skipEmptyPages",
 		offsetof(EditApplication,eaSkipEmptyPagesString),
@@ -295,8 +292,6 @@ void appGetApplicationResourceValues(	EditApplication *	ea )
 				    ea->eaUsePostScriptFiltersString );
     appDetermineBoolean( &(ea->eaUsePostScriptIndexedImagesInt),
 				    ea->eaUsePostScriptIndexedImagesString );
-    appDetermineBoolean( &(ea->ea7BitsPostScriptInt),
-				    ea->ea7BitsPostScriptString );
     appDetermineBoolean( &(ea->eaSkipEmptyPagesInt),
 				    ea->eaSkipEmptyPagesString );
     appDetermineBoolean( &(ea->eaSkipBlankPagesInt),

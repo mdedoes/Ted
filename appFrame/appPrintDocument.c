@@ -224,7 +224,6 @@ void appApplicationSettingsToPrintGeometry(
     pg->pgUsePostScriptFilters= ea->eaUsePostScriptFiltersInt > 0;
     pg->pgUsePostScriptIndexedImages= ea->eaUsePostScriptIndexedImagesInt > 0;
     pg->pgEmbedFonts= ea->eaEmbedFontsInt > 0;
-    pg->pg7Bits= ea->ea7BitsPostScriptInt > 0;
 
     pg->pgSkipEmptyPages= ea->eaSkipEmptyPagesInt > 0;
     pg->pgSkipBlankPages= ea->eaSkipBlankPagesInt > 0;

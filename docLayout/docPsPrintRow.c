@@ -48,7 +48,9 @@ int docPsMarkRowNode(
 	    const PrintingState *	ps,
 	    const struct BufferItem *	rowNode,
 	    int *			pAsTableFirst,
-	    int *			pAsTableLast )
+	    int *			pAsTableLast,
+	    MemoryBuffer *		tableStructureAttributes,
+	    MemoryBuffer *		structureAttributes )
     {
     if  ( ! docIsRowNode( rowNode ) || ( ps->psFlattenPlainTables && docTableIsPlain( rowNode ) ) )
 	{ return 0;	}
@@ -58,6 +60,26 @@ int docPsMarkRowNode(
 
     if  ( pAsTableLast )
 	{ *pAsTableLast= rowNode->biNumberInParent == rowNode->biRowTablePast- 1;	}
+
+    if  ( tableStructureAttributes )
+	{
+	const BufferItem *	parentNode= rowNode->biParent;
+	int			row;
+
+	for ( row= rowNode->biRowTableFirst; row < rowNode->biRowTablePast; row++ )
+	    {
+	    const BufferItem *	node= parentNode->biChildren[row];
+
+	    if  ( ! utilMemoryBufferIsEmpty( &(node->biRowSummary) ) )
+		{
+		SimpleOutputStream * sosAttributes= sioOutMemoryOpen( tableStructureAttributes );
+
+		sioOutPrintf( sosAttributes, "/O/Table " );
+
+		break;
+		}
+	    }
+	}
 
     return 1;
     }
@@ -71,7 +93,7 @@ const char * docPsCellNodeMark(
     int			inHeaderRow= rowNode->biRowProperties->rpIsTableHeader;
     int			inHeaderColumn;
 
-    if  ( ! docPsMarkRowNode( ps, rowNode, (int *)0, (int *)0 ) )
+    if  ( ! docPsMarkRowNode( ps, rowNode, (int *)0, (int *)0, (MemoryBuffer *)0, (MemoryBuffer *)0 ) )
 	{ return (char *)0;	}
 
     inHeaderColumn= cellNode->biCellProperties->cpIsRowHeader;

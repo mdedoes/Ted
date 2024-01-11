@@ -277,7 +277,9 @@ extern const char * docPsParagraphNodeEndMark(
 extern int docPsMarkRowNode(	const struct PrintingState *	ps,
 				const struct BufferItem *	rowNode,
 				int *				pAsTableFirst,
-				int *				pAsTableLast );
+				int *				pAsTableLast,
+				struct MemoryBuffer *		tableStructureAttributes,
+				struct MemoryBuffer *		structureAttributes );
 
 extern const char * docPsCellNodeMark(
 				const struct PrintingState *	ps,

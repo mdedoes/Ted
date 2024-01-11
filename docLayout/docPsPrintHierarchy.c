@@ -233,8 +233,10 @@ int docPsPrintStartNode(	void *				vps,
     int			rval= 0;
     PrintingState *	ps= (PrintingState *)vps;
     MemoryBuffer	structureAttributes;
+    MemoryBuffer	tableStructureAttributes;
 
     utilInitMemoryBuffer( &structureAttributes );
+    utilInitMemoryBuffer( &tableStructureAttributes );
 
     if  ( ps->psInsideLink || ps->psInsideListLabel )
 	{
@@ -266,7 +268,7 @@ int docPsPrintStartNode(	void *				vps,
 	    case DOClevROW: {
 		    int		asTableFirst= 0;
 
-		    if  ( docPsMarkRowNode( ps, node, &asTableFirst, (int *)0 ) )
+		    if  ( docPsMarkRowNode( ps, node, &asTableFirst, (int *)0, &tableStructureAttributes, &structureAttributes ) )
 			{
 			/* Contrary to 4.2.6.2 In https://pdfa.org/resource/tagged-pdf-best-practice-guide-syntax/
 			   we do not mark repeated table headers as artifacts */
@@ -277,7 +279,7 @@ int docPsPrintStartNode(	void *				vps,
 			    }
 			else{
 			    if  ( ( asTableFirst || pageBreak ) &&
-				  docPsPrintBeginMarkedGroup( ps, STRUCTtypeTABLE, (MemoryBuffer *)0 ) )
+				  docPsPrintBeginMarkedGroup( ps, STRUCTtypeTABLE, &tableStructureAttributes ) )
 				{ LLDEB(node->biLevel,asTableFirst); rval= -1; goto ready;	}
 
 			    if  ( docPsPrintBeginMarkedGroup( ps, STRUCTtypeTR, &structureAttributes ) )
@@ -309,6 +311,7 @@ int docPsPrintStartNode(	void *				vps,
   ready:
 
     utilCleanMemoryBuffer( &structureAttributes );
+    utilCleanMemoryBuffer( &tableStructureAttributes );
 
     return rval;
     }
@@ -336,7 +339,7 @@ int docPsPrintFinishNode( void *			vps,
 	if  ( 0 && ps->psInArtifact == 1 && node->biLevel == DOClevROW		&&
 	      repeated && node->biNumberInParent < node->biRowPastHeaderRow	)
 	    {
-	    if  ( docPsMarkRowNode( ps, node, (int *)0, (int *)0 ) )
+	    if  ( docPsMarkRowNode( ps, node, (int *)0, (int *)0, (MemoryBuffer *)0, (MemoryBuffer *)0 ) )
 		{
 		if  ( docPsPrintEndArtifact( ps )	)
 		    { LDEB(repeated); return -1;	}
@@ -366,7 +369,7 @@ int docPsPrintFinishNode( void *			vps,
 	    case DOClevROW: {
 		    int		asTableLast= 0;
 
-		    if  ( docPsMarkRowNode( ps, node, (int *)0, &asTableLast ) )
+		    if  ( docPsMarkRowNode( ps, node, (int *)0, &asTableLast, (MemoryBuffer *)0, (MemoryBuffer *)0 ) )
 			{
 			if  ( repeated && node->biNumberInParent < node->biRowPastHeaderRow )
 			    {

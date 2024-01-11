@@ -462,7 +462,6 @@ int docPsPrintDocument(	struct SimpleOutputStream *	sos,
     ps.psSos= sos;
     ps.psUsePostScriptFilters= pg->pgUsePostScriptFilters;
     ps.psUsePostScriptIndexedImages= pg->pgUsePostScriptIndexedImages;
-    ps.ps7Bits= pg->pg7Bits;
 
     ps.psPrintGeometry.pgEmbedFonts= pg->pgEmbedFonts;
     ps.psPrintGeometry.pgSkipEmptyPages= pg->pgSkipEmptyPages;
