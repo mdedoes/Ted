@@ -924,4 +924,13 @@ extern int docRtfInsideShapeField(	RtfReader *		rr );
 extern void docRtfResetParagraphReadingState(
 					RtfReader *		rr );
 
+extern int docRtfStartRow(		struct RtfReader *	rr,
+					int			forTable );
+
+extern int docRtfCloseRow(		struct RtfReader *		rr,
+					struct BufferItem *		rowNode );
+
+extern int docRtfCommitRowText(		const struct RtfControlWord *	rcw,
+					struct RtfReader *		rr );
+
 #   endif	/*	RTF_READER_IMPL_H	*/

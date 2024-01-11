@@ -223,6 +223,7 @@ typedef enum RowProperty
 		 *  mask are applied.
 		 */
     RPprop_CELL_PROPS,
+    RPprop_SUBJECT,
 
     RPprop_FULL_COUNT
     } RowProperty;

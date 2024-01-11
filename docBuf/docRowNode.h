@@ -8,6 +8,7 @@
 #   define	DOC_ROW_NODE_H
 
 #   include	<docLayoutPosition.h>
+#   include	<utilMemoryBuffer.h>
 
 struct RowProperties;
 
@@ -40,6 +41,14 @@ typedef struct RowNode
 				 *  is not really a row in a table.
 				 */
     int				brRowPropertyNumber;
+
+				/**
+				 *  A text string with a summary of the table.
+				 *  The first summary on a table ends up as the
+				 *  summary of the table in the generated PDF.
+				 *  (This is an ad-hoc extension for tagged PDF.)
+				 */
+    MemoryBuffer		brSummary;
 
 				/**
 				 *  The rtf file format does not really support 
@@ -131,6 +140,7 @@ typedef struct RowNode
 /*									*/
 /************************************************************************/
 
+#   define	biRowSummary		BIU.biuRow.brSummary
 
 #   define	biRowTopInset		BIU.biuRow.brTopInset
 

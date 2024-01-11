@@ -35,40 +35,59 @@ typedef enum ListLevelFollow
     } ListLevelFollow;
 
 /*===*/
-# define	DOCpnDEC	0
-# define	DOCpnUCRM	1
-# define	DOCpnLCRM	2
-# define	DOCpnUCLTR	3
-# define	DOCpnLCLTR	4
-# define	DOCpnORD	5
-# define	DOCpnCARD	6
-# define	DOCpnORDT	7
+# define	DOCpnDEC	0	/* Arabic (1, 2, 3) */
+# define	DOCpnUCRM	1	/* Uppercase Roman numeral (I, II, III) */
+# define	DOCpnLCRM	2	/* Lowercase Roman numeral (i, ii, iii) */
+# define	DOCpnUCLTR	3	/* Uppercase letter (A, B, C) */
+# define	DOCpnLCLTR	4	/* Lowercase letter (a, b, c) */
+# define	DOCpnORD	5	/* Ordinal number (1st, 2nd, 3rd) */
+# define	DOCpnCARD	6	/* Cardinal text number (One, Two Three) */
+# define	DOCpnORDT	7	/* Ordinal text number (First, Second, Third) */
 
-# define	DOCpnDBNUM	10
-# define	DOCpnDBNUMD	11
-# define	DOCpnAIU	12
-# define	DOCpnIROHA	13
-# define	DOCpnDBNUML	16
+# define	DOCpnDBNUM	10	/* Kanji numbering without the digit character (*dbnum1) */
+# define	DOCpnDBNUMD	11	/* Kanji numbering with the digit character (*dbnum2) */
+# define	DOCpnAIU	12	/* 46 phonetic katakana characters in "aiueo" order (*aiueo) */
+# define	DOCpnIROHA	13	/* 46 phonetic katakana characters in "iroha" order (*iroha) */
+					/* 14	Double-byte character */
+					/* 15	Single-byte character */
+# define	DOCpnDBNUML	16	/* Kanji numbering 3 (*dbnum3) */
+# define	DOCpnDBNUMK	17	/* Kanji numbering 4 (*dbnum4) */
+# define	DOCpnCNUM	18	/* Circle numbering (*circlenum) */
+# define	DOCpnDECD	19	/* Double-byte Arabic numbering	*/
+# define	DOCpnAIUD	20	/* 46 phonetic double-byte katakana characters (*aiueo*dbchar) */
+# define	DOCpnIROHAD	21	/* 46 phonetic double-byte katakana characters (*iroha*dbchar) */
+# define	DOCpn_0DEC	22	/* Arabic with leading zero (01, 02, 03, ..., 10, 11) */
+# define	DOCpn_BULLET	23	/* Bullet (no number at all) */
+# define	DOCpnGANADA	24	/* Korean numbering 2 (*ganada) */
+					/* 25	Korean numbering 1 (*chosung) */
+# define	DOCpnGBNUM	26	/* Chinese numbering 1 (*gb1) */
+# define	DOCpnGBNUMD	27	/* Chinese numbering 2 (*gb2) */
+# define	DOCpnGBNUML	28	/* Chinese numbering 3 (*gb3) */
+# define	DOCpnGBNUMK	29	/* Chinese numbering 4 (*gb4) */
+# define	DOCpnZODIAC	30	/* Chinese Zodiac numbering 1 (* zodiac1) */
+# define	DOCpnZODIACD	31	/* Chinese Zodiac numbering 2 (* zodiac2) */
+# define	DOCpnZODIACL	32	/* Chinese Zodiac numbering 3 (* zodiac3) */
+					/* 33	Taiwanese double-byte numbering 1 */
+					/* 34	Taiwanese double-byte numbering 2 */
+					/* 35	Taiwanese double-byte numbering 3 */
+					/* 36	Taiwanese double-byte numbering 4 */
+					/* 37	Chinese double-byte numbering 1 */
+					/* 38	Chinese double-byte numbering 2 */
+					/* 39	Chinese double-byte numbering 3 */
+					/* 40	Chinese double-byte numbering 4 */
+					/* 41	Korean double-byte numbering 1 */
+# define	DOCpnCHOSUNG	42	/* Korean double-byte numbering 2 */
+					/* 43	Korean double-byte numbering 3 */
+					/* 44	Korean double-byte numbering 4 */
+					/* 45	Hebrew non-standard decimal  */
+# define	DOCpnBIDIA	46	/* Arabic Alif Ba Tah */
+# define	DOCpnBIDIB	48	/* 48	Arabic Abjad style */
+					/* 47	Hebrew Biblical standard */
+# define	DOCpn_NONE	48	/* No number */
+/*===*/
 # define	DOCpnDBNUMT	DOCpnDBNUML	/* ? */
-# define	DOCpnDBNUMK	17
-# define	DOCpnCNUM	18
-# define	DOCpnDECD	19
-# define	DOCpnAIUD	20
-# define	DOCpnIROHAD	21
-# define	DOCpnGANADA	24
-# define	DOCpnGBNUM	26
-# define	DOCpnGBNUMD	27
-# define	DOCpnGBNUML	28
-# define	DOCpnGBNUMK	29
-# define	DOCpnZODIAC	30
-# define	DOCpnZODIACD	31
-# define	DOCpnZODIACL	32
-# define	DOCpnCHOSUNG	42
 # define	DOCpnAIUEO	DOCpnAIU	/* ? */
 # define	DOCpnAIUEOD	DOCpnAIUD	/* ? */
-# define	DOCpnBIDIA	46
-# define	DOCpnBIDIB	48
-/*===*/
 
 /************************************************************************/
 /*									*/
@@ -94,6 +113,9 @@ typedef struct LevelNumber
 typedef struct ListLevel
     {
     int			llStartAt;
+			/**
+			 * The kind of number or bullet: A DOCpn* value
+			 */
     unsigned char	llNumberStyle;
     unsigned char	llJustification;
     unsigned char	llFollow;

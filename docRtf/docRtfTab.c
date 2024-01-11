@@ -52,6 +52,7 @@
 #	define		docRtfRememberStyleProperty		0
 #	define		docRtfRememberSectionProperty		0
 #	define		docRtfRememberRowProperty		0
+#	define		docRtfCommitRowText			0
 #	define		docRtfGotCellX				0
 #	define		docRtfRememberCellProperty		0
 #	define		docRtfRememberCellInstanceProperty	0
@@ -1144,6 +1145,9 @@ static RtfControlWord	docRtfPropertyWords[]=
     RTF_ROW_FLAG_X( "tbllknocolband",	RPprop_IGNORED ),
     RTF_ROW_NUMBER_X( "tblind",		RPprop_IGNORED ),
     RTF_ROW_NUMBER_X( "tblindtype",	RPprop_IGNORED ),
+
+    RTF_TEXT_GROUP( "trsummary",RTCscopeROW,
+				RPprop_SUBJECT, docRtfCommitRowText ),
 
 				/****************************************/
 				/*  Document formatting.		*/

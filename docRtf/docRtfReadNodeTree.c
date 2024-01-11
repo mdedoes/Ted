@@ -15,7 +15,6 @@
 #   include	<docRowNodeProperties.h>
 #   include	<docParaNodeProperties.h>
 #   include	<docTreeNode.h>
-#   include	<docAttributes.h>
 #   include	<docParaBuilder.h>
 #   include	<docSelect.h>
 #   include	<docTextParticule.h>
@@ -24,41 +23,6 @@
 
 #   include	<docDebug.h>
 #   include	<appDebugon.h>
-
-/************************************************************************/
-/*									*/
-/*  Apply the row properties that have been collected to a row.		*/
-/*									*/
-/************************************************************************/
-
-static int docRtfSetRowProperties(	RtfReader *		rr,
-					struct BufferItem *	rowNode )
-    {
-    PropertyMask	rpDoneMask;
-    PropertyMask	cpSetMask;
-
-    RowProperties *	rp= &(rr->rrTreeStack->rtsRowProperties);
-
-    rp->rpShadingNumber= docItemShadingNumber(
-				rr->rrDocument, &(rr->rrRowShading) );
-
-    rp->rpFrameNumber= docFramePropertiesNumber(
-			    rr->rrDocument, &(rr->rrRowFrameProperties) );
-
-    utilPropMaskClear( &rpDoneMask );
-    utilPropMaskClear( &cpSetMask );
-
-    utilPropMaskFill( &cpSetMask, CLprop_COUNT );
-
-    if  ( docChangeRowNodeProperties( &rpDoneMask, (PropertyMask *)0,
-	    rowNode,
-	    &(rr->rrRowPropertyMask), &cpSetMask, rp,
-	    0, rp->rpCellCount,
-	    rr->rrDocument, (DocumentAttributeMap *)0 ) )
-	{ LDEB(rp->rpCellCount); return -1;	}
-
-    return 0;
-    }
 
 /************************************************************************/
 /*									*/
@@ -88,42 +52,7 @@ static int docRtfCloseSect(	RtfReader *		rr,
     docCleanRowProperties( rp );
     docInitRowProperties( rp );
     rr->rrTreeStack->rtsRowCellX= rp->rpLeftIndentTwips;
-
-    return 0;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Finish a row in the document.					*/
-/*									*/
-/*  In this order: (1) can make that (2) is needed.			*/
-/*  1)  To avoid crashes, make sure that the row does not have more	*/
-/*	children than columns: Split it until this is the case.		*/
-/*  2)  To avoid crashes, make sure that the row does not have more	*/
-/*	columns than children: Remove the surplus.			*/
-/*									*/
-/************************************************************************/
-
-static int docRtfCloseRow(	RtfReader *		rr,
-				BufferItem *		rowNode )
-    {
-    if  ( rowNode->biRowForTable )
-	{
-	RowProperties *	rp= &(rr->rrTreeStack->rtsRowProperties);
-
-	if  ( docRtfSetRowProperties( rr, rowNode ) )
-	    { LDEB(1); return -1;	}
-
-	if  ( rp->rpCellCount != rowNode->biChildCount			&&
-	      docRowNodeFixColumnCount( rowNode, rr->rrDocument )	)
-	    {
-	    LLDEB(rp->rpCellCount,rowNode->biChildCount);
-	    return -1;
-	    }
-	}
-    else{
-	docRowNodeResetRowProperties( rowNode, rr->rrDocument );
-	}
+    utilEmptyMemoryBuffer( &(rr->rrTreeStack->rtsRowSummary) );
 
     return 0;
     }
@@ -141,20 +70,6 @@ static int docRtfCloseCell(	RtfReader *		rr,
 	{ LDEB(cellNode->biChildCount); return 0;	}
 
     return 0;
-    }
-
-/************************************************************************/
-
-void docRtfSetForRow(	struct BufferItem *	node )
-    {
-    node= docGetRowLevelNode( node );
-    while( node )
-	{
-	if  ( ! node->biRowForTable )
-	    { node->biRowForTable= 1;	}
-
-	node= docGetRowLevelNode( node->biParent );
-	}
     }
 
 /************************************************************************/
@@ -439,39 +354,6 @@ static int docRtfStartSect(	RtfReader *	rr )
 					    prevSectNode, rr->rrDocument ) )
 		{ LDEB(1); return -1;	}
 	    }
-	}
-
-    return 0;
-    }
-
-/************************************************************************/
-/*									*/
-/*  Start a row.							*/
-/*									*/
-/************************************************************************/
-
-static int docRtfStartRow(	RtfReader *	rr,
-				int		forTable )
-    {
-    struct BufferItem *		rowNode;
-    RtfTreeStack *		rts= rr->rrTreeStack;
-
-    rowNode= docInsertNode( rr->rrDocument, rts->rtsNode, -1, DOClevROW );
-    if  ( ! rowNode )
-	{ SXDEB(docLevelStr(rts->rtsLevel),rowNode); return -1; }
-    rowNode->biRowForTable= forTable;
-    rts->rtsNode= rowNode;
-
-    if  ( forTable )
-	{
-	/* Is an artifact that we only pick up if it is explicitly set */
-	PROPmaskUNSET(  &(rr->rrRowPropertyMask), RPprop_KEEPFOLLOW );
-
-	if  ( docRtfSetRowProperties( rr, rowNode ) )
-	    { LDEB(1); return -1;	}
-	}
-    else{
-	docRowNodeResetRowProperties( rowNode, rr->rrDocument );
 	}
 
     return 0;

@@ -22,10 +22,12 @@
 
 static void docRtfResetRowProperties(	RtfReader *	rr )
     {
-    docCleanRowProperties( &(rr->rrTreeStack->rtsRowProperties) );
-    docInitRowProperties(  &(rr->rrTreeStack->rtsRowProperties) );
-    rr->rrTreeStack->rtsRowCellX=
-			rr->rrTreeStack->rtsRowProperties.rpLeftIndentTwips;
+    RtfTreeStack *	rts= rr->rrTreeStack;
+
+    docCleanRowProperties( &(rts->rtsRowProperties) );
+    docInitRowProperties(  &(rts->rtsRowProperties) );
+    rts->rtsRowCellX= rts->rtsRowProperties.rpLeftIndentTwips;
+    utilEmptyMemoryBuffer( &(rts->rtsRowSummary) );
 
     utilPropMaskClear( &(rr->rrRowPropertyMask) );
     docInitItemShading(  &(rr->rrRowShading) );
@@ -119,18 +121,21 @@ int docRtfReadRowProperties(	const RtfControlWord *	rcw,
     int			rval= 0;
 
     RowProperties	savedRp;
+    MemoryBuffer	savedSummary;
     int			savedCx;
     CellProperties	savedCp;
     ItemShading		savedRowShading;
     ItemShading		savedCellShading;
 
     savedRp= rr->rrTreeStack->rtsRowProperties;
+    savedSummary= rr->rrTreeStack->rtsRowSummary;
     savedCx= rr->rrTreeStack->rtsRowCellX;
     savedCp= rr->rrCellProperties;
     savedRowShading= rr->rrRowShading;
     savedCellShading= rr->rrCellShading;
 
     docInitRowProperties( &(rr->rrTreeStack->rtsRowProperties) );
+    utilInitMemoryBuffer( &(rr->rrTreeStack->rtsRowSummary) );
     docInitCellProperties( &(rr->rrCellProperties) );
     rr->rrTreeStack->rtsRowCellX=
 			rr->rrTreeStack->rtsRowProperties.rpLeftIndentTwips;
@@ -145,9 +150,11 @@ int docRtfReadRowProperties(	const RtfControlWord *	rcw,
   ready:
 
     docCleanRowProperties( &(rr->rrTreeStack->rtsRowProperties) );
+    utilCleanMemoryBuffer( &(rr->rrTreeStack->rtsRowSummary) );
     /*docCleanCellProperties( &(rr->rrCellProperties) );*/
 
     rr->rrTreeStack->rtsRowProperties= savedRp;
+    rr->rrTreeStack->rtsRowSummary= savedSummary;
     rr->rrTreeStack->rtsRowCellX= savedCx;
     rr->rrCellProperties= savedCp;
     rr->rrRowShading= savedRowShading;
@@ -156,3 +163,15 @@ int docRtfReadRowProperties(	const RtfControlWord *	rcw,
     return rval;
     }
 
+int docRtfCommitRowText(	const RtfControlWord *	rcw,
+				RtfReader *		rr )
+    {
+    RtfTreeStack *	rts= rr->rrTreeStack;
+    const int		removeSemicolon= 1;
+
+    if  ( docRtfMemoryBufferSetText( &(rts->rtsRowSummary),
+						    rr, removeSemicolon ) )
+	{ LDEB(1); return -1;	}
+
+    return 0;
+    }

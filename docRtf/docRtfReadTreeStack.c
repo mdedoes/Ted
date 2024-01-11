@@ -33,6 +33,7 @@ void docRtfInitTreeStack(	RtfTreeStack *	rts )
 
     docInitRowProperties( &(rts->rtsRowProperties) );
     rts->rtsRowCellX= rts->rtsRowProperties.rpLeftIndentTwips;
+    utilInitMemoryBuffer( &(rts->rtsRowSummary) );
 
     rts->rtsFieldStack= (struct FieldStackLevel *)0;
     rts->rtsFieldPiece= FSpieceFLDRSLT;
@@ -52,6 +53,7 @@ void docRtfPopTreeStack(	RtfReader *	rr )
     rr->rrTreeStack= rts->rtsPrev;
 
     docCleanRowProperties( &(rts->rtsRowProperties) );
+    utilCleanMemoryBuffer( &(rts->rtsRowSummary) );
     docCleanFieldStack( rts->rtsFieldStack );
 
     if  ( rts->rtsParagraphBuilder )

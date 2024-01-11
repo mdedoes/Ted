@@ -9,6 +9,7 @@
 
 #   include	<docSelectionScope.h>
 #   include	<docRowProperties.h>
+#   include	<utilMemoryBuffer.h>
 
 struct DocumentTree;
 struct RtfReader;
@@ -73,6 +74,10 @@ typedef struct RtfTreeStack
 				 *  Row properties collected on the way.
 				 */
     RowProperties		rtsRowProperties;
+				/**
+				 *  Row summary collected on the way.
+				 */
+    MemoryBuffer		rtsRowSummary;
 
 				/**
 				 *  The cellx value collected until now.

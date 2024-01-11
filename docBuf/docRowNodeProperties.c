@@ -250,6 +250,9 @@ int docCopyRowNodeProperties(	struct BufferItem *		rowNodeTo,
     {
     const RowProperties * rpFrom= rowNodeFrom->BIU.biuRow.brProperties;
 
+    if  ( utilCopyMemoryBuffer( &(rowNodeTo->biRowSummary), &(rowNodeFrom->biRowSummary) ) )
+	{ LDEB(1); return -1;	}
+
     return docSetRowNodePropertiesX( rowNodeTo, rpFrom, bd, dam );
     }
 

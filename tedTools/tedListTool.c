@@ -176,14 +176,14 @@ static InspectorSubjectResources	TED_ListsSubjectResources;
 
 static const int TED_ListToolStyles[LISTTOOLcountSTYLES]=
     {
-    0,
-    1,
-    2,
-    3,
-    4,
-    22,
-    23,
-    255,
+    DOCpnDEC,
+    DOCpnUCRM,
+    DOCpnLCRM,
+    DOCpnUCLTR,
+    DOCpnLCLTR,
+    DOCpn_0DEC,
+    DOCpn_BULLET,
+    DOCpn_NONE,
     };
 
 static void tedListLevelRefreshFormatMenu(	ListTool *	lt );

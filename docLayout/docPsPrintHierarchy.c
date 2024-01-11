@@ -268,7 +268,9 @@ int docPsPrintStartNode(	void *				vps,
 
 		    if  ( docPsMarkRowNode( ps, node, &asTableFirst, (int *)0 ) )
 			{
-			if  ( repeated && node->biNumberInParent < node->biRowPastHeaderRow )
+			/* Contrary to 4.2.6.2 In https://pdfa.org/resource/tagged-pdf-best-practice-guide-syntax/
+			   we do not mark repeated table headers as artifacts */
+			if  ( 0 && repeated && node->biNumberInParent < node->biRowPastHeaderRow )
 			    {
 			    if  ( docPsPrintBeginArtifact( ps )	)
 				{ LDEB(repeated); return -1;	}
@@ -329,7 +331,9 @@ int docPsPrintFinishNode( void *			vps,
     /* Is this the end of a repeated header row that is printed as an artifact? */
     if  ( ps->psInArtifact )
 	{
-	if  ( ps->psInArtifact == 1 && node->biLevel == DOClevROW		&&
+	/* Contrary to 4.2.6.2 In https://pdfa.org/resource/tagged-pdf-best-practice-guide-syntax/
+	   we do not mark repeated table headers as artifacts */
+	if  ( 0 && ps->psInArtifact == 1 && node->biLevel == DOClevROW		&&
 	      repeated && node->biNumberInParent < node->biRowPastHeaderRow	)
 	    {
 	    if  ( docPsMarkRowNode( ps, node, (int *)0, (int *)0 ) )

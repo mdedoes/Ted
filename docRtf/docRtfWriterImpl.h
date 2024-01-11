@@ -491,4 +491,15 @@ extern int docRtfSaveShapeString( RtfWriter *			rw,
 				const char *			word,
 				const struct MemoryBuffer *	mb );
 
+extern int docRtfLeaveRowNode(	struct RtfWriter *		rw,
+				const struct BufferItem *	rowNode );
+
+extern int docRtfEnterRowNode(	struct RtfWriter *		rw,
+				const struct BufferItem *	rowNode );
+
+extern int docRtfPopTable(	struct RtfWriter *		rw );
+
+extern int docRtfPushTable(	struct RtfWriter *		rw,
+				const struct BufferItem *	rowNode );
+
 #   endif	/*	RTF_WRITER_IMPL_H	*/

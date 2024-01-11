@@ -24,7 +24,8 @@
 #   include	<appDebugon.h>
 #   include	<docDebug.h>
 
-/* See 14.8.5.5 List Attributes (p608) */
+/* PDF 1.7 See 14.8.5.5 List Attributes (p608) */
+/* PDF 2.0 See 14.8.5.5 Table 382 (p790) */
 static int docPsSaveListStructureAttributes(
 	    const struct BufferDocument *	bd,
 	    int					listOverride,
@@ -46,6 +47,7 @@ static int docPsSaveListStructureAttributes(
     switch( ll->llNumberStyle )
 	{
 	case DOCpnDEC:
+	case DOCpn_0DEC:
 	    sioOutPrintf( sosAttributes, "/ListNumbering/Decimal " );
 	    break;
 	case DOCpnUCRM:
@@ -59,6 +61,12 @@ static int docPsSaveListStructureAttributes(
 	    break;
 	case DOCpnLCLTR:
 	    sioOutPrintf( sosAttributes, "/ListNumbering/LowerAlpha " );
+	    break;
+	case DOCpn_BULLET:
+	    sioOutPrintf( sosAttributes, "/ListNumbering/Disk " );
+	    break;
+	case DOCpn_NONE:
+	    /* The default */
 	    break;
 	default:
 	    LDEB(ll->llNumberStyle);

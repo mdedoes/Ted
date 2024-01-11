@@ -122,6 +122,7 @@ static void docCleanNode(	struct BufferDocument *	bd,
 	    break;
 
 	case DOClevROW:
+	    utilCleanMemoryBuffer( &(node->biRowSummary) );
 	    break;
 
 	case DOClevPARA:
@@ -224,6 +225,8 @@ void docInitNode(	struct BufferItem *		node,
 
 	    docInitLayoutPosition( &(node->biRowBelowAllCellsPosition) );
 	    docInitLayoutPosition( &(node->biRowAboveHeaderPosition) );
+
+	    utilInitMemoryBuffer( &(node->biRowSummary) );
 	    break;
 
 	case DOClevPARA:
