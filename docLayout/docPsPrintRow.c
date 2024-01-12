@@ -76,6 +76,10 @@ int docPsMarkRowNode(
 
 		sioOutPrintf( sosAttributes, "/O/Table " );
 
+		if  ( psPrintPdfmarkTextEntry( sosAttributes, "Summary", &(node->biRowSummary) ) )
+		    { LDEB(1); return -1;	}
+
+		sioOutClose( sosAttributes );
 		break;
 		}
 	    }

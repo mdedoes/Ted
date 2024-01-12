@@ -50,7 +50,7 @@ static void psSaveMbInfo(	const char *		tag,
 	{ return;	}
 
     sioOutPrintf( ps->psSos, "  %s ", tag );
-    psPrintPdfMarkStringValue( ps, info );
+    psPrintPdfMarkStringValue( ps->psSos, info );
     sioOutPrintf( ps->psSos, "\n" );
     }
 
