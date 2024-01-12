@@ -310,10 +310,7 @@ int psPdfmarkDefineAnnotationDictionary(
 
     if  ( fileName )
 	{
-	if  ( sioOutPrintf( ps->psSos, " /Contents " ) < 0 )
-	    { XDEB(fileName); return -1;	}
-
-	if  ( psPrintPdfMarkStringValue( ps, fileName ) < 0 )
+	if  ( psPrintPdfmarkTextEntry( ps->psSos, "Contents", fileName ) < 0 )
 	    { XDEB(fileName); return -1;	}
 	}
 
@@ -422,8 +419,8 @@ int psOutlinePdfmark(		PrintingState *		ps,
     sioOutPrintf( ps->psSos, " /Dest /" );
     psEmitDestination( ps->psSos, markName );
 
-    sioOutPrintf( ps->psSos, " /Title " );
-    psPrintPdfMarkStringValue( ps, title );
+    if  ( psPrintPdfmarkTextEntry( ps->psSos, "Title", title ) < 0 )
+	{ XDEB(title); return -1;	}
 
     sioOutPrintf( ps->psSos, " /OUT pdfmark\n" );
 
@@ -436,7 +433,7 @@ int psSetPageProperty(		PrintingState *		ps,
     {
     sioOutPrintf( ps->psSos, "[ {ThisPage} << " );
     sioOutPrintf( ps->psSos, "/%s ", key );
-    psPrintStringValue( ps, value, strlen( value ), 0 );
+    psPrintStringValue( ps->psSos, value, strlen( value ), 0 );
     sioOutPrintf( ps->psSos, " >> /PUT pdfmark\n" );
 
     return 0;
@@ -448,7 +445,7 @@ int psSetCatalogProperty(	PrintingState *		ps,
     {
     sioOutPrintf( ps->psSos, "[ {Catalog} << " );
     sioOutPrintf( ps->psSos, "/%s ", key );
-    psPrintStringValue( ps, value, strlen( value ), 0 );
+    psPrintStringValue( ps->psSos, value, strlen( value ), 0 );
     sioOutPrintf( ps->psSos, " >> /PUT pdfmark\n" );
 
     return 0;

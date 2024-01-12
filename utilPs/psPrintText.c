@@ -112,16 +112,14 @@ int psPrintString(	SimpleOutputStream *	sos,
     return 0;
     }
 
-int psPrintStringValue(	PrintingState *		ps,
+int psPrintStringValue(	SimpleOutputStream *	sos,
 			const char *		s,
 			int			len,
 			int			utf8 )
     {
-    SimpleOutputStream *	sos= ps->psSos;
-
     if  ( sioOutPutByte( '(', sos ) < 0 )
 	{ return -1;	}
-    if  ( psPrintString( ps->psSos, s, len, 0, utf8 ) < 0 )
+    if  ( psPrintString( sos, s, len, 0, utf8 ) < 0 )
 	{ return -1;	}
     if  ( sioOutPutByte( ')', sos ) < 0 )
 	{ return -1;	}
@@ -196,7 +194,7 @@ int psMoveShowString(	PrintingState *		ps,
 		{
 		if  ( moved )
 		    {
-		    if  ( psPrintStringValue( ps, s+ d, lt, utf8 ) )
+		    if  ( psPrintStringValue( ps->psSos, s+ d, lt, utf8 ) )
 			{ return -1;	}
 		    if  ( sioOutPrintf( ps->psSos, " %s\n", "utf8show" ) < 0 )
 			{ return -1;	}
@@ -216,7 +214,7 @@ int psMoveShowString(	PrintingState *		ps,
 		{
 		if  ( moved )
 		    {
-		    if  ( psPrintStringValue( ps, s+ d, ls, utf8 ) )
+		    if  ( psPrintStringValue( ps->psSos, s+ d, ls, utf8 ) )
 			{ return -1;	}
 		    if  ( sioOutPrintf( ps->psSos, " %s\n", "utf8show" ) < 0 )
 			{ return -1;	}
@@ -266,11 +264,10 @@ int psShowString(	PrintingState *		ps,
     return 0;
     }
 
-static int psPrintUnicodeStringValue(	PrintingState *	ps,
+static int psPrintUnicodeStringValue(	SimpleOutputStream *	sos,
 					const char *	s,
 					int		len )
     {
-    SimpleOutputStream *	sos= ps->psSos;
     int				off;
 
     if  ( sioOutPutString( "<FEFF", sos ) < 0 )
@@ -296,7 +293,30 @@ static int psPrintUnicodeStringValue(	PrintingState *	ps,
     return 0;
     }
 
-int psPrintPdfMarkStringValue(	PrintingState *		ps,
+/**
+ * Set an entry in a dictionary to a textual value.
+ * The text is a user directed text. I.E. A user can see it.
+ * It is not a purely technical thing and it is not part of the
+ * document text.
+ */
+int psPrintPdfmarkTextEntry(
+			SimpleOutputStream *		sos,
+			const char *			key,
+			const MemoryBuffer *		text )
+    {
+    if  ( sioOutPrintf( sos, " /%s ", key ) < 0 )
+	{ XDEB(text); return -1;	}
+
+    if  ( psPrintPdfMarkStringValue( sos, text ) < 0 )
+	{ XDEB(text); return -1;	}
+
+    if  ( sioOutPrintf( sos, " " ) < 0 )
+	{ XDEB(text); return -1;	}
+
+    return 0;
+    }
+
+int psPrintPdfMarkStringValue(	SimpleOutputStream *	sos,
 				const MemoryBuffer *	mb )
     {
     int			i;
@@ -306,9 +326,9 @@ int psPrintPdfMarkStringValue(	PrintingState *		ps,
     for ( i= 0; i < len; i++ )
 	{
 	if  ( ( s[i] & 0xff ) >= 127 )
-	    { return psPrintUnicodeStringValue( ps, s, len ); }
+	    { return psPrintUnicodeStringValue( sos, s, len ); }
 	}
 
-    return psPrintStringValue( ps, s, len, 0 );
+    return psPrintStringValue( sos, s, len, 0 );
     }
 

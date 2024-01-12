@@ -121,17 +121,9 @@ static int psPdfmarkSetText(
     if  ( ps->psInArtifact )
 	{ LDEB(ps->psInArtifact); return -1;	}
 
-    if  ( text && ! utilMemoryBufferIsEmpty( text ) )
-	{
-	if  ( sioOutPrintf( ps->psSos, " /%s ", key ) < 0 )
-	    { XDEB(text); return -1;	}
-
-	if  ( psPrintPdfMarkStringValue( ps, text ) < 0 )
-	    { XDEB(text); return -1;	}
-
-	if  ( sioOutPrintf( ps->psSos, " " ) < 0 )
-	    { XDEB(text); return -1;	}
-	}
+    if  ( text && ! utilMemoryBufferIsEmpty( text )		&&
+	  psPrintPdfmarkTextEntry( ps->psSos, key, text )	)
+	{ SDEB(key); return -1;	}
 
     return 0;
     }
@@ -490,7 +482,7 @@ int psPdfmarkMarkedDocumentSetup( PrintingState *		ps,
 
 	/* Insert metadata stating that this is a level 1 PDF-UA document */
 	sioOutPrintf( ps->psSos, "[ /XML " );
-	psPrintStringValue( ps, PS_PDF_UA_XMP, strlen( PS_PDF_UA_XMP ), 0 );
+	psPrintStringValue( ps->psSos, PS_PDF_UA_XMP, strlen( PS_PDF_UA_XMP ), 0 );
 	sioOutPrintf( ps->psSos, " /Ext_Metadata pdfmark\n" );
 	}
 

@@ -311,13 +311,13 @@ extern int psPrintString(	struct SimpleOutputStream *	sos,
 				int				utf8 );
 
 extern int psPrintPdfMarkStringValue(
-				PrintingState *			ps,
+				struct SimpleOutputStream *	sos,
 				const struct MemoryBuffer *	mb );
 
-extern int psPrintStringValue(		PrintingState *		ps,
-					const char *		s,
-					int			len,
-					int			utf8 );
+extern int psPrintStringValue(	struct SimpleOutputStream *	sos,
+				const char *			s,
+				int				len,
+				int				utf8 );
 
 extern int psMoveShowString(		PrintingState *		ps,
 					const char *		s,
@@ -329,7 +329,7 @@ extern int psShowString(		PrintingState *		ps,
 					const char *		s,
 					int			len );
 
-extern int psSetFont(		PrintingState *		ps,
+extern int psSetFont(		PrintingState *			ps,
 				const struct AfmFontInfo *	afi,
 				const struct TextAttribute *	ta );
 
@@ -553,5 +553,10 @@ extern int psPdfMarkSetActualText(
 				PrintingState *		ps,
 				struct StructItem *	structItem,
 				const struct MemoryBuffer * mbActualText );
+
+extern int psPrintPdfmarkTextEntry(
+				struct SimpleOutputStream *	sos,
+				const char *			key,
+				const struct MemoryBuffer *	text );
 
 #   endif	/*  UTIL_PS_H  */
