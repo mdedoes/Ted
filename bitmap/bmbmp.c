@@ -494,6 +494,9 @@ int bmpHeaderToDescription(	BitmapDescription *	bd,
 	    {
 	    int		colorCount;
 
+	    if  ( ! palette )
+		{ XDEB(palette); return -1;	}
+
 	    if  ( bih->bihColorCount == 0 )
 		{
 		colorCount=
