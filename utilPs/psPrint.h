@@ -160,6 +160,12 @@ typedef struct PrintingState
     unsigned char		psFlattenPlainTables;
 
 				/**
+				 * Conform to 4.2.6.2 In https://pdfa.org/resource/tagged-pdf-best-practice-guide-syntax/
+				 * and emit repeated table headers in an artifact.
+				 */
+    unsigned char		psRepeatTableHeadersAsArtifact;
+
+				/**
 				 *  Keep track of whether we are in an /Artifact in the
 				 *  creation of a PDF structure. Only relevant in combination
 				 *  with psTagDocumentStructure != 0.

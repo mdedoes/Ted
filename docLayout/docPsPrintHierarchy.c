@@ -270,15 +270,13 @@ int docPsPrintStartNode(	void *				vps,
 
 		    if  ( docPsMarkRowNode( ps, node, &asTableFirst, (int *)0, &tableStructureAttributes, &structureAttributes ) )
 			{
-			/* Contrary to 4.2.6.2 In https://pdfa.org/resource/tagged-pdf-best-practice-guide-syntax/
-			   we do not mark repeated table headers as artifacts */
-			if  ( 0 && repeated && node->biNumberInParent < node->biRowPastHeaderRow )
+			if  ( ps->psRepeatTableHeadersAsArtifact && repeated && node->biNumberInParent < node->biRowPastHeaderRow )
 			    {
 			    if  ( docPsPrintBeginArtifact( ps )	)
 				{ LDEB(repeated); return -1;	}
 			    }
 			else{
-			    if  ( ( asTableFirst || pageBreak ) &&
+			    if  ( ( asTableFirst || ( ps->psRepeatTableHeadersAsArtifact && pageBreak ) ) &&
 				  docPsPrintBeginMarkedGroup( ps, STRUCTtypeTABLE, &tableStructureAttributes ) )
 				{ LLDEB(node->biLevel,asTableFirst); rval= -1; goto ready;	}
 
@@ -331,12 +329,10 @@ int docPsPrintFinishNode( void *			vps,
     {
     PrintingState *	ps= (PrintingState *)vps;
 
-    /* Is this the end of a repeated header row that is printed as an artifact? */
     if  ( ps->psInArtifact )
 	{
-	/* Contrary to 4.2.6.2 In https://pdfa.org/resource/tagged-pdf-best-practice-guide-syntax/
-	   we do not mark repeated table headers as artifacts */
-	if  ( 0 && ps->psInArtifact == 1 && node->biLevel == DOClevROW		&&
+	/* Is this the end of a repeated header row that is printed as an artifact? */
+	if  ( ps->psRepeatTableHeadersAsArtifact && ps->psInArtifact == 1 && node->biLevel == DOClevROW		&&
 	      repeated && node->biNumberInParent < node->biRowPastHeaderRow	)
 	    {
 	    if  ( docPsMarkRowNode( ps, node, (int *)0, (int *)0, (MemoryBuffer *)0, (MemoryBuffer *)0 ) )
@@ -371,7 +367,7 @@ int docPsPrintFinishNode( void *			vps,
 
 		    if  ( docPsMarkRowNode( ps, node, (int *)0, &asTableLast, (MemoryBuffer *)0, (MemoryBuffer *)0 ) )
 			{
-			if  ( repeated && node->biNumberInParent < node->biRowPastHeaderRow )
+			if  ( ps->psRepeatTableHeadersAsArtifact && repeated && node->biNumberInParent < node->biRowPastHeaderRow )
 			    {
 			    /* Will this ever happen? */
 			    LSDEB(node->biNumberInParent,"STRAY REPEAT END");
