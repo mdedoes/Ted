@@ -206,8 +206,22 @@ int docPsPrintFinishListTextField(
     }
 
 /**
+ * Is thatParaNode in a list and in the same list as thisParaNode?
+ * The fact that thisParaNode is in a list is a given.
+ */
+static int docPsParaInSameList( const BufferItem *	thatParaNode,
+				const BufferItem *	thisParaNode )
+    {
+    /* People do not expect the obvious:
+    return  thatParaNode->biParaProperties->ppListOverride ==
+	    thisParaNode->biParaProperties->ppListOverride;
+    */
+    return thatParaNode->biParaProperties->ppListOverride > 0;
+    }
+
+/**
  * Only handle members of an RTF list as a PDF/HTML list item if it has 
- * neighbour in the same list.
+ * a neighbour in the same list.
  */
 int docPsListNodeHasSameListNeighbour(
 				const BufferItem *	paraNode )
@@ -216,14 +230,12 @@ int docPsListNodeHasSameListNeighbour(
     int				prev= paraNode->biNumberInParent- 1;
     int				next= paraNode->biNumberInParent+ 1;
 
-    int				listOverride= paraNode->biParaProperties->ppListOverride;
-
     if  ( prev >= 0 )
 	{
 	const BufferItem *	prevNode= parentNode->biChildren[prev];
 
 	if  ( prevNode->biLevel == DOClevPARA					&&
-	      prevNode->biParaProperties->ppListOverride == listOverride	&&
+	      docPsParaInSameList( prevNode, paraNode )				&&
 	      prevNode->biBelowPosition.lpPage == paraNode->biTopPosition.lpPage )
 	    { return 1;	}
 	}
@@ -233,7 +245,7 @@ int docPsListNodeHasSameListNeighbour(
 	const BufferItem *	nextNode= parentNode->biChildren[next];
 
 	if  ( nextNode->biLevel == DOClevPARA					&&
-	      nextNode->biParaProperties->ppListOverride == listOverride	&&
+	      docPsParaInSameList( nextNode, paraNode )				&&
 	      nextNode->biTopPosition.lpPage == paraNode->biBelowPosition.lpPage )
 	    { return 1;	}
 	}
@@ -256,10 +268,10 @@ int docPsListNodeDeeper(
     if  ( prevNode->biBelowPosition.lpPage != paraNode->biTopPosition.lpPage )
 	{ return pp->ppListLevel+ 1;	}
 
-    prevPp= prevNode->biParaProperties;
-    if  ( prevPp->ppListOverride != pp->ppListOverride )
+    if  ( ! docPsParaInSameList( prevNode, paraNode ) )
 	{ return pp->ppListLevel+ 1;	}
 
+    prevPp= prevNode->biParaProperties;
     if  ( pp->ppListLevel > prevPp->ppListLevel )
 	{ return pp->ppListLevel- prevPp->ppListLevel;	}
 
@@ -281,10 +293,10 @@ int docPsListNodeShallower(
     if  ( nextNode->biTopPosition.lpPage != paraNode->biBelowPosition.lpPage )
 	{ return pp->ppListLevel+ 1;	}
 
-    nextPp= nextNode->biParaProperties;
-    if  ( nextPp->ppListOverride != pp->ppListOverride )
+    if  ( ! docPsParaInSameList( nextNode, paraNode ) )
 	{ return pp->ppListLevel+ 1;	}
 
+    nextPp= nextNode->biParaProperties;
     if  ( pp->ppListLevel > nextPp->ppListLevel )
 	{ return pp->ppListLevel- nextPp->ppListLevel;	}
 
