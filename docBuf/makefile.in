@@ -471,6 +471,7 @@ docCalculateListtextField.o: \
     ../docBase/docListDepth.h \
     ../docBase/docListLevel.h \
     ../docBase/docListNumberTree.h \
+    ../docBase/docListNumberTreeImpl.h \
     ../docBase/docParaProperties.h \
     ../docBase/docSelectionScope.h \
     ../docBase/docStyleSheet.h \
@@ -1426,6 +1427,7 @@ docListUtil.o: \
     ../docBase/docListDepth.h \
     ../docBase/docListLevel.h \
     ../docBase/docListNumberTree.h \
+    ../docBase/docListNumberTreeImpl.h \
     ../docBase/docListOverride.h \
     ../docBase/docListOverrideLevel.h \
     ../docBase/docListOverrideTable.h \
@@ -1674,6 +1676,7 @@ docParaBuilder.o: \
     ../docBase/docListAdmin.h \
     ../docBase/docListDepth.h \
     ../docBase/docListNumberTree.h \
+    ../docBase/docListNumberTreeImpl.h \
     ../docBase/docListOverrideTable.h \
     ../docBase/docListTable.h \
     ../docBase/docNotesProperties.h \

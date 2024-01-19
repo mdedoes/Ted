@@ -21,6 +21,7 @@
 #   include	<docListAdmin.h>
 #   include	<docDocumentProperties.h>
 #   include	<docParaProperties.h>
+#   include	<docListNumberTreeImpl.h>
 
 #   include	<appDebugon.h>
 
@@ -279,8 +280,8 @@ static int docApplyListRulerLevel(
 				int				level,
 				const DocumentList *		dl,
 				const ListOverride *		lo,
-				const struct BufferDocument *		bd,
-				const struct DocumentTree *		dt )
+				const struct BufferDocument *	bd,
+				const struct DocumentTree *	dt )
     {
     const ListLevel *		ll= (const ListLevel *)0;
     const ListOverrideLevel *	lol= (const ListOverrideLevel *)0;

@@ -194,6 +194,7 @@ docDebugListNumberTree.o: \
     docBaseConfig.h \
     docDebugListNumberTree.h \
     docListNumberTree.h \
+    docListNumberTreeImpl.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     docDebugListNumberTree.c
@@ -371,6 +372,7 @@ docListNumberTree.o: \
     docDebugListNumberTree.h \
     docListDepth.h \
     docListNumberTree.h \
+    docListNumberTreeImpl.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     docListNumberTree.c

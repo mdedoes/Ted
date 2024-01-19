@@ -34,6 +34,7 @@
 #   include	<guiWidgets.h>
 #   include	<docListAdmin.h>
 #   include	<docSelect.h>
+#   include	<docListNumberTreeImpl.h>
 #   include	"tedFormatToolSubject.h"
 
 #   include	<appDebugon.h>

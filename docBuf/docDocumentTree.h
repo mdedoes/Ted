@@ -72,7 +72,7 @@ typedef struct DocumentTree
     int				dtY1ReservedTwips;
 
     ListNumberTrees		dtListNumberTrees;
-    ListNumberTreeNode		dtOutlineTree;
+    ListNumberTree		dtOutlineTree;
 
     ChildFields			dtRootFields;
     } DocumentTree;

@@ -1593,7 +1593,6 @@ docSelectionDescription.o: \
     ../docBuf/docHeaderFooterScopes.h \
     ../docBuf/docNodeTree.h \
     ../docBuf/docNotes.h \
-    ../docBuf/docPageGrid.h \
     ../docBuf/docParaNode.h \
     ../docBuf/docParaNodeProperties.h \
     ../docBuf/docParaParticules.h \

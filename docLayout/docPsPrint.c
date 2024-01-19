@@ -403,9 +403,9 @@ int docPsPrintDocument(	struct SimpleOutputStream *	sos,
     if  ( utilCopyMemoryBuffer( &(pstl.pstlFontDirectory), fontDirectory ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( firstPage >= 0				||
-	  lastPage >= 0					||
-	  bd->bdBody.dtOutlineTree.lntnChildCount == 0	)
+    if  ( firstPage >= 0						||
+	  lastPage >= 0							||
+	  docListNumberTreeIsEmpty( &(bd->bdBody.dtOutlineTree) )	)
 	{ emitOutline= 0;	}
 
     docInitDrawingContext( &dc );

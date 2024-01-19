@@ -150,7 +150,7 @@ duplicates:
 includes:
 	includes.sh appFrameConfig.h $(INCLUDES)
 
-# deps -I/usr/include/freetype2 -I/usr/include/freetype2  -I/usr/include/gtk-2.0 -I/usr/lib/x86_64-linux-gnu/gtk-2.0/include -I/usr/include/atk-1.0 -I/usr/include/cairo -I/usr/include/gdk-pixbuf-2.0 -I/usr/include/pango-1.0 -I/usr/include/gio-unix-2.0/ -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/pixman-1 -I/usr/include/freetype2 -I/usr/include/libpng12   -I../guiInterface -I../guiBase -I../drawMeta -I../utilGeo -I../appUtil -I../textEncoding -I../utilPs -I../docFont -I../bitmap -I../ind -I../include
+# deps -I/usr/include/freetype2 -I/usr/include/freetype2  -I/usr/include/gtk-2.0 -I/usr/lib/x86_64-linux-gnu/gtk-2.0/include -I/usr/include/atk-1.0 -I/usr/include/cairo -I/usr/include/gdk-pixbuf-2.0 -I/usr/include/pango-1.0 -I/usr/include/harfbuzz -I/usr/include/gio-unix-2.0/ -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/pixman-1 -I/usr/include/freetype2 -I/usr/include/libpng12   -I../guiInterface -I../guiBase -I../drawMeta -I../utilGeo -I../appUtil -I../textEncoding -I../utilPs -I../docFont -I../bitmap -I../ind -I../include
 ################################# !! sh
 
 appAppFront.o: \
@@ -672,11 +672,7 @@ appOpenDocument.o: \
 appPaper.o: \
     appFrameConfig.h \
     appPaper.h \
-    ../appUtil/appSystem.h \
     ../appUtil/appUtilConfig.h \
-    ../appUtil/sioFileio.h \
-    ../appUtil/sioGeneral.h \
-    ../appUtil/utilMemoryBuffer.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../utilGeo/geoString.h \
@@ -893,7 +889,7 @@ appWinMetaX11.o: \
     ../bitmap/bmEmfIo.h \
     ../bitmap/bmWmf.h \
     ../bitmap/bmWmfIo.h \
-    ../docFont/fontDocFontList.h \
+    ../docFont/fontDocFontListImpl.h \
     ../docFont/fontMatchFont.h \
     ../drawMeta/drawMacPictImpl.h \
     ../drawMeta/drawMetafile.h \

@@ -44,7 +44,7 @@ void docInitDocumentTree(	struct DocumentTree *	dt )
     dt->dtColumnSelectedIn= -1;
 
     docInitListNumberTrees( &(dt->dtListNumberTrees) );
-    docInitListNumberTreeNode( &(dt->dtOutlineTree) );
+    docInitListNumberTree( &(dt->dtOutlineTree) );
 
     docInitChildFields( &(dt->dtRootFields) );
     return;
@@ -61,7 +61,7 @@ void docCleanDocumentTree(	struct BufferDocument *	bd,
     docDeleteChildFields( &updateFlags, bd, &(dt->dtRootFields) );
 
     docCleanListNumberTrees( &(dt->dtListNumberTrees) );
-    docCleanListNumberTreeNode( &(dt->dtOutlineTree) );
+    docCleanListNumberTree( &(dt->dtOutlineTree) );
 
     return;
     }

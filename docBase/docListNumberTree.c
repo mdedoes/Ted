@@ -37,7 +37,7 @@ other than ilvl= 0.
 
 #   include	<appDebugon.h>
 
-#   include	"docListNumberTree.h"
+#   include	"docListNumberTreeImpl.h"
 #   include	"docListDepth.h"
 #   include	"docDebugListNumberTree.h"
 
@@ -142,6 +142,11 @@ void docInitListNumberTrees(	ListNumberTrees *	lnt )
     lnt->lntTreeCount= 0;
     }
 
+void docInitListNumberTree(	ListNumberTree *	lnt )
+    {
+    lnt->lntRoot= (ListNumberTreeNode *)0;
+    }
+
 void docCleanListNumberTrees(	ListNumberTrees *	lnt )
     {
     int		i;
@@ -153,6 +158,15 @@ void docCleanListNumberTrees(	ListNumberTrees *	lnt )
 	{ free( lnt->lntTrees );	}
 
     return;
+    }
+
+void docCleanListNumberTree(	ListNumberTree *	lnt )
+    {
+    if  ( lnt->lntRoot )
+	{
+	docCleanListNumberTreeNode( lnt->lntRoot );
+	free( lnt->lntRoot );
+	}
     }
 
 /************************************************************************/
@@ -568,7 +582,7 @@ static int docListNumberTreeExtendPath(
 /*									*/
 /************************************************************************/
 
-int docListNumberTreeInsertParagraph(	ListNumberTreeNode *	root,
+int docListNumberTreeNodeInsertParagraph( ListNumberTreeNode *	root,
 					int			ilvl,
 					int			paraNr )
     {
@@ -777,7 +791,23 @@ int docListNumberTreesInsertParagraph(	ListNumberTrees *	lnt,
 	  docClaimListNumberTrees( lnt, ls+ 1 )		)
 	{ LDEB(ls); return -1;	}
 
-    return docListNumberTreeInsertParagraph( lnt->lntTrees+ ls, ilvl, paraNr );
+    return docListNumberTreeNodeInsertParagraph( lnt->lntTrees+ ls, ilvl, paraNr );
+    }
+
+int docListNumberTreeInsertParagraph(	ListNumberTree *	lnt,
+					int			ilvl,
+					int			paraNr )
+    {
+    if  ( ! lnt->lntRoot )
+	{
+	lnt->lntRoot= (ListNumberTreeNode *)malloc( sizeof( ListNumberTreeNode ) );
+	if  ( ! lnt->lntRoot )
+	    { XDEB(lnt->lntRoot); return -1;	}
+
+	docInitListNumberTreeNode( lnt->lntRoot );
+	}
+
+    return docListNumberTreeNodeInsertParagraph( lnt->lntRoot, ilvl, paraNr );
     }
 
 /************************************************************************/
@@ -839,7 +869,7 @@ static int docListNumberTreeMoveChildrenBack(	ListNumberTreeNode *	prev,
 /*									*/
 /************************************************************************/
 
-int docListNumberTreeDeleteParagraph(	ListNumberTreeNode *	root,
+int docListNumberTreeNodeDeleteParagraph( ListNumberTreeNode *	root,
 					int			paraNr )
     {
     ListNumberTreeNode *	path[DLmaxLEVELS+1];
@@ -944,7 +974,16 @@ int docListNumberTreesDeleteParagraph(	ListNumberTrees *	lnt,
     if  ( ls < 0 || ls >= lnt->lntTreeCount )
 	{ LLDEB(ls,lnt->lntTreeCount); return -1;	}
 
-    return docListNumberTreeDeleteParagraph( lnt->lntTrees+ ls, paraNr );
+    return docListNumberTreeNodeDeleteParagraph( lnt->lntTrees+ ls, paraNr );
+    }
+
+int docListNumberTreeDeleteParagraph(	ListNumberTree *	lnt,
+					int			paraNr )
+    {
+    if  ( ! lnt->lntRoot )
+	{ XDEB(lnt->lntRoot); return -1;	}
+
+    return docListNumberTreeNodeDeleteParagraph( lnt->lntRoot, paraNr );
     }
 
 /************************************************************************/
@@ -1002,7 +1041,7 @@ void docShiftListNodeReferences(	ListNumberTreeNode *	root,
     return;
     }
 
-void docShiftListTreeReferences(	ListNumberTrees *	lnt,
+void docShiftListTreesReferences(	ListNumberTrees *	lnt,
 					int			paraFrom,
 					int			paraShift )
     {
@@ -1016,13 +1055,22 @@ void docShiftListTreeReferences(	ListNumberTrees *	lnt,
     return;
     }
 
+void docShiftListTreeReferences(	ListNumberTree *	lnt,
+					int			paraFrom,
+					int			paraShift )
+    {
+    if  ( lnt->lntRoot )
+	{ docShiftListNodeReferences( lnt->lntRoot, paraFrom, paraShift );	}
+    return;
+    }
+
 /************************************************************************/
 /*									*/
 /*  Call a function for all paragraph numbers in a list level tree.	*/
 /*									*/
 /************************************************************************/
 
-int docListNumberTreeForAll(	ListNumberTreeNode *	node,
+int docListNumberNodeForAll(	ListNumberTreeNode *	node,
 				LIST_TREE_FUNC		forOne,
 				void *			through )
     {
@@ -1036,10 +1084,25 @@ int docListNumberTreeForAll(	ListNumberTreeNode *	node,
 
     for ( i= 0; i < node->lntnChildCount; i++ )
 	{
-	if  ( docListNumberTreeForAll( node->lntnChildren[i],
+	if  ( docListNumberNodeForAll( node->lntnChildren[i],
 							forOne, through ) )
 	    { LDEB(i); return -1;	}
 	}
 
     return 0;
+    }
+
+int docListNumberTreeForAll(	ListNumberTree *	lnt,
+				LIST_TREE_FUNC		forOne,
+				void *			through )
+    {
+    if  ( lnt->lntRoot && docListNumberNodeForAll( lnt->lntRoot, forOne, through ) )
+	{ LDEB(1); return -1;	}
+
+    return 0;
+    }
+
+int docListNumberTreeIsEmpty(	ListNumberTree *	lnt )
+    {
+    return ! lnt->lntRoot || lnt->lntRoot->lntnChildCount == 0;
     }

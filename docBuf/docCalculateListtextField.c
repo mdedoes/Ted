@@ -20,6 +20,7 @@
 #   include	<docParaProperties.h>
 #   include	<docTreeType.h>
 #   include	"docParaBuilder.h"
+#   include	<docListNumberTreeImpl.h>
 
 #   include	"docDebug.h"
 #   include	<appDebugon.h>

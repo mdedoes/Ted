@@ -36,6 +36,7 @@
 #   include	<ucdBidiClass.h>
 #   include	<bidiTree.h>
 #   include	"docParaParticuleAdmin.h"
+#   include	<docListNumberTreeImpl.h>
 
 #   include	"docDebug.h"
 #   include	<appDebugon.h>
@@ -173,7 +174,7 @@ int docParaBuilderStartExistingParagraph(
 
     if  ( paraNode->biParaBidiRoot )
 	{
-/*LDEB(0);*/if(0)
+	/*LDEB(0);*/if(0)
 	if  ( ! pb->pbBidiTreeBuilder )
 	    {
 	    pb->pbBidiTreeBuilder= bidiOpenTreeBuilder();
@@ -364,7 +365,6 @@ int docFinishParaNode(		ParagraphBuilder *	pb )
 
 	int				textAttrNr;
 
-	ListNumberTreeNode *		root;
 	const ListOverrideTable *	lot;
 
 	textAttrNr= paraNode->biParaParticules->tpTextAttrNr;
@@ -383,15 +383,10 @@ int docFinishParaNode(		ParagraphBuilder *	pb )
 		{ LDEB(paraListOverride); return -1;	}
 	    }
 
-	root= docGetListNumberTree( &(tree->dtListNumberTrees),
-							paraListOverride );
-	if  ( ! root )
-	    { LXDEB(paraListOverride,root); return -1;	}
-
 	paraListLevel= paraNode->biParaProperties->ppListLevel;
-	if  ( docListNumberTreeInsertParagraph( root, paraListLevel,
-							pb->pbParaNr ) )
-	    { LLDEB(pb->pbParaNr,paraListLevel);	}
+	if  ( docListNumberTreesInsertParagraph( &(tree->dtListNumberTrees),
+							paraListOverride, paraListLevel, pb->pbParaNr ) )
+	    { LLLDEB(paraListOverride,paraListLevel,pb->pbParaNr);	}
 	}
 
     /*  3  */

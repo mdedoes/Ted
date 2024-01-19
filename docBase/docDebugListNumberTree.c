@@ -5,6 +5,7 @@
 
 #   include	"docDebugListNumberTree.h"
 #   include	"docListNumberTree.h"
+#   include	"docListNumberTreeImpl.h"
 
 #   include	<appDebugon.h>
 
@@ -245,7 +246,7 @@ static int docListLevelTreeSetLevel(	ListNumberTreeNode *	root,
 	{
 	int	level;
 
-	if  ( docListNumberTreeInsertParagraph( root, ilvl, paraNr ) )
+	if  ( docListNumberTreeNodeInsertParagraph( root, ilvl, paraNr ) )
 	    {
 	    LLDEB(paraNr,ilvl); docListListNumberNode( root );
 	    return -1;
@@ -272,7 +273,7 @@ static int docListLevelTreeUnsetLevel(	ListNumberTreeNode *	root,
     {
     if  ( ilvl < PPoutlineBODYTEXT )
 	{
-	if  ( docListNumberTreeDeleteParagraph( root, paraNr ) )
+	if  ( docListNumberTreeNodeDeleteParagraph( root, paraNr ) )
 	    {
 	    LLDEB(paraNr,ilvl);
 	    return -1;
