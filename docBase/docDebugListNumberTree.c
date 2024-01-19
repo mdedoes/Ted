@@ -200,7 +200,7 @@ static int docCheckTreeLevels(		ListNumberTreeNode *		root,
 	{
 	if  ( ilvl[i] < PPoutlineBODYTEXT )
 	    {
-	    if  ( docListNumberTreeGetNumberPath( nums, root, ilvl[i], i ) )
+	    if  ( docListNumberNodeGetNumberPath( nums, root, ilvl[i], i ) )
 		{
 		SLLDEB("##MISSING (or wrong level)",i,ilvl[i]);
 		docListListNumberNode( root );
@@ -208,7 +208,7 @@ static int docCheckTreeLevels(		ListNumberTreeNode *		root,
 		}
 	    }
 	else{
-	    if  ( ! docListNumberTreeGetNumberPath( nums, root, ilvl[i], i ) )
+	    if  ( ! docListNumberNodeGetNumberPath( nums, root, ilvl[i], i ) )
 		{
 		SLLDEB("##PRESENT",i,ilvl[i]); docListListNumberNode( root );
 		return -1;

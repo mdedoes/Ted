@@ -300,7 +300,7 @@ static int docApplyListRulerLevel(
 
     for ( i= 0; i < lntn->lntnChildCount; i++ )
 	{
-	struct BufferItem *		paraNode;
+	struct BufferItem *	paraNode;
 	int			changed= 0;
 	ListNumberTreeNode *	child= lntn->lntnChildren[i];
 

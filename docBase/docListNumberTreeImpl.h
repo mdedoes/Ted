@@ -55,13 +55,14 @@ extern int docListNumberTreeNodeDeleteParagraph(
 					ListNumberTreeNode *	root,
 					int			paraNr );
 
-extern int docListNumberTreeGetNumberPath(	
+extern int docListNumberNodeGetNumberPath(	
 					int *			numberPath,
 					ListNumberTreeNode *	root,
 					int			ilvl,
 					int			paraNr );
 
-extern int docListNumberTreeGetPrevPath(int *			numberPath,
+extern int docListNumberNodePrevNumberPath(
+					int *			numberPath,
 					int *			pLevel,
 					ListNumberTreeNode *	root,
 					int			paraNr );

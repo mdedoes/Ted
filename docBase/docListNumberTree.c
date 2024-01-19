@@ -281,7 +281,7 @@ int docListNumberTreeFindParagraph(	int *			pLevel,
 /*									*/
 /************************************************************************/
 
-int docListNumberTreeGetNumberPath(	int *			nums,
+int docListNumberNodeGetNumberPath(	int *			nums,
 					ListNumberTreeNode *	root,
 					int			ilvl,
 					int			paraNr )
@@ -304,6 +304,38 @@ int docListNumberTreeGetNumberPath(	int *			nums,
 
     if  ( level != ilvl )
 	{ LLDEB(level,ilvl); return -1;	}
+
+    return 0;
+    }
+
+int docListNumberTreesGetNumberPath(	int *			numberPath,
+					ListNumberTrees *	lnt,
+					int			ls,
+					int			ilvl,
+					int			paraNr )
+    {
+    ListNumberTreeNode *	root= docGetListNumberTree( lnt, ls );
+    if  ( ! root )
+	{ LXDEB(ls,root); return -1;	}
+
+    if  ( docListNumberNodeGetNumberPath( numberPath, root, ilvl, paraNr ) )
+	{ LLLDEB(ls,ilvl,paraNr); return -1;	}
+
+    return 0;
+    }
+
+int docListNumberTreesPrevNumberPath(	int *			numberPath,
+					int *			pLevel,
+					ListNumberTrees *	lnt,
+					int			ls,
+					int			paraNr )
+    {
+    ListNumberTreeNode *	root= docGetListNumberTree( lnt, ls );
+    if  ( ! root )
+	{ LXDEB(ls,root); return -1;	}
+
+    if  ( docListNumberNodePrevNumberPath( numberPath, pLevel, root, paraNr ) )
+	{ LLDEB(ls,paraNr); return -1;	}
 
     return 0;
     }
@@ -366,7 +398,7 @@ static int docListNumberTreePrevPath(	int *			nums,
     }
 
 /*  2  */
-int docListNumberTreeGetPrevPath(	int *			nums,
+int docListNumberNodePrevNumberPath(	int *			nums,
 					int *			pLevel,
 					ListNumberTreeNode *	root,
 					int			paraNr )

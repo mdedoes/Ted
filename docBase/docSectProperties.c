@@ -65,7 +65,7 @@ static const int DocSectIntProps[]=
     SPpropNUMBER_HYPHEN,
     SPpropPAGE_RESTART,
     SPpropRTOL,
-    SPpropSTART_PAGE, /* Counts from 1! */
+    SPpropSTART_PAGE,
     SPpropCOLUMN_COUNT,
     SPpropCOLUMN_SPACING,
     SPpropLINEBETCOL,

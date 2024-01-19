@@ -112,8 +112,11 @@ typedef struct SectionProperties
 				/**
 				 *  Use per section page numbering for this 
 				 *  section. (A boolean flag.)
+				 *
+				 *  Also restart the numbering of list numbers (bullets)
 				 */
     unsigned char		spRestartPageNumbers;
+
 				/**
 				 * 0: This section will snake (newspaper style)
 				 *	columns from left to right (the default)
@@ -125,7 +128,7 @@ typedef struct SectionProperties
 				/**
 				 *  If this section uses per section page 
 				 *  numbering, use this number as the number 
-				 *  of the first page.
+				 *  of the first page. Counts from 1!
 				 */
     int				spStartPageNumber;
 
@@ -165,7 +168,7 @@ typedef enum SectionProperty
     SPpropBREAK_KIND,
     SPpropNUMBER_STYLE,
     SPpropNUMBER_HYPHEN,
-    SPpropPAGE_RESTART,
+    SPpropPAGE_RESTART, /* Counts from 1! */
     SPpropRTOL,
     SPpropSTART_PAGE,
     SPpropCOLUMN_COUNT,

@@ -34,7 +34,6 @@
 #   include	<guiWidgets.h>
 #   include	<docListAdmin.h>
 #   include	<docSelect.h>
-#   include	<docListNumberTreeImpl.h>
 #   include	"tedFormatToolSubject.h"
 
 #   include	<appDebugon.h>
@@ -1208,12 +1207,12 @@ static void tedFormatToolNoList(	ListTool *		lt,
 
 static int tedFormatToolSetList(	ListTool *			lt,
 					InspectorSubject *		is,
-					int				paraNr,
+					ListNumberTrees *		lnt,
 					int				ls,
 					int				level,
+					int				paraNr,
 					ListOverride *			lo,
-					DocumentList *			dl,
-					ListNumberTreeNode *		root )
+					DocumentList *			dl )
     {
     if  ( docCopyDocumentListSameDocument( &(lt->ltListPropertiesSet), dl ) )
 	{ LDEB(1); return -1;	}
@@ -1239,10 +1238,10 @@ static int tedFormatToolSetList(	ListTool *			lt,
 
     lt->ltCurrentParagraphNumber= paraNr;
 
-    docListNumberTreeGetNumberPath( lt->ltHerePath, root, level, paraNr );
+    docListNumberTreesGetNumberPath( lt->ltHerePath, lnt, ls, level, paraNr );
 
-    if  ( docListNumberTreeGetPrevPath( lt->ltPrevPath, &(lt->ltPrevLevel),
-							    root, paraNr ) )
+    if  ( docListNumberTreesPrevNumberPath( lt->ltPrevPath, &(lt->ltPrevLevel),
+							    lnt, ls, paraNr ) )
 	{
 	int i;
 
@@ -1314,16 +1313,12 @@ static void tedRefreshListTool(	void *				vlt,
 				    sd->sdListOverride, bd )	)
 	{ tedFormatToolNoList( lt, is );	}
     else{
+	/* Input was const. We are not going to update this. */
 	struct BufferDocument *		xbd= (struct BufferDocument *)bd;
-	ListNumberTreeNode *		root;
 
-	root= docGetListNumberTree( &(xbd->bdBody.dtListNumberTrees),
-							sd->sdListOverride );
-	if  ( ! root )
-	    { LXDEB(sd->sdListOverride,root); *pEnabled= 0; goto ready;	}
-
-	if  ( tedFormatToolSetList( lt, is, sd->sdFirstListParaNr,
-			sd->sdListOverride, sd->sdListLevel, lo, dl, root ) )
+	if  ( tedFormatToolSetList( lt, is, &(xbd->bdBody.dtListNumberTrees),
+			sd->sdListOverride, sd->sdListLevel, sd->sdFirstListParaNr,
+			lo, dl ) )
 	    { LDEB(sd->sdFirstListParaNr); goto ready;	}
 
 	lt->ltTabIntervalTwips= dp->dpTabIntervalTwips;

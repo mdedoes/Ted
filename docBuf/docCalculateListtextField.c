@@ -20,7 +20,6 @@
 #   include	<docParaProperties.h>
 #   include	<docTreeType.h>
 #   include	"docParaBuilder.h"
-#   include	<docListNumberTreeImpl.h>
 
 #   include	"docDebug.h"
 #   include	<appDebugon.h>
@@ -105,7 +104,6 @@ int docRecalculateParaListtextTextParticules(
 
     struct ListOverride *	lo;
     struct DocumentList *	dl;
-    ListNumberTreeNode *	root;
 
     int				paraNr= docNumberOfParagraph( paraNode );
 
@@ -137,13 +135,9 @@ int docRecalculateParaListtextTextParticules(
 	*pCalculated= 0; goto ready;
 	}
 
-    root= docGetListNumberTree( &(rf->rfTree->dtListNumberTrees),
-							pp->ppListOverride );
-    if  ( ! root )
-	{ LXDEB(pp->ppListOverride,root);  *pCalculated= 0; goto ready;	}
-
     /*  5  */
-    if  ( docListNumberTreeGetNumberPath( numberPath, root, ilvl, paraNr ) )
+    if  ( docListNumberTreesGetNumberPath( numberPath, &(rf->rfTree->dtListNumberTrees),
+							pp->ppListOverride, ilvl, paraNr ) )
 	{
 	LLDEB(pp->ppListOverride,ilvl);
 	SDEB(docTreeTypeStr(paraNode->biTreeType));

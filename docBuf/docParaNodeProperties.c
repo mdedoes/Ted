@@ -76,6 +76,9 @@ static int docSetNewParaNodeProperties(
     int				n;
     const ParagraphProperties *	ppN;
 
+    if  ( ! bd )
+	{ XDEB(bd); return -1;	}
+
     n= docParagraphPropertiesNumber( &(dpl->dplParaPropertyList), pp );
     if  ( n < 0 )
 	{ LDEB(n); return -1;	}

@@ -471,7 +471,6 @@ docCalculateListtextField.o: \
     ../docBase/docListDepth.h \
     ../docBase/docListLevel.h \
     ../docBase/docListNumberTree.h \
-    ../docBase/docListNumberTreeImpl.h \
     ../docBase/docParaProperties.h \
     ../docBase/docSelectionScope.h \
     ../docBase/docStyleSheet.h \

@@ -52,6 +52,20 @@ extern int docListNumberTreesDeleteParagraph(
 					int			ls,
 					int			paraNr );
 
+extern int docListNumberTreesGetNumberPath(	
+					int *			numberPath,
+					ListNumberTrees *	lnt,
+					int			ls,
+					int			ilvl,
+					int			paraNr );
+
+extern int docListNumberTreesPrevNumberPath(	
+					int *			numberPath,
+					int *			pLevel,
+					ListNumberTrees *	lnt,
+					int			ls,
+					int			paraNr );
+
 extern int docListNumberTreeInsertParagraph(
 					ListNumberTree *	lnt,
 					int			ilvl,
