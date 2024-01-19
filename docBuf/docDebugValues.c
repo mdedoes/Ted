@@ -18,19 +18,19 @@ const char * docKindStr( int kind )
 
     switch( kind )
 	{
-	case TPkindSPAN:		return "SPAN";
+	case TPkindSPAN:	return "SPAN";
 	case TPkindTAB:		return "TAB ";
-	case TPkindOBJECT:		return "OBJ ";
-	case TPkindFIELDHEAD:		return "<FLD";
-	case TPkindFIELDTAIL:		return "FLD>";
-	case TPkindLINEBREAK:		return "LINE";
-	case TPkindPAGEBREAK:		return "PAGE";
+	case TPkindOBJECT:	return "OBJ ";
+	case TPkindFIELDHEAD:	return "<FLD";
+	case TPkindFIELDTAIL:	return "FLD>";
+	case TPkindLINEBREAK:	return "LINE";
+	case TPkindPAGEBREAK:	return "PAGE";
 	case TPkindCOLUMNBREAK:	return "COL ";
-	case TPkindCHFTNSEP:		return "SEP ";
-	case TPkindCHFTNSEPC:		return "SEPC";
-	case TPkindOPT_HYPH:		return "HYPH";
-	case TPkindLTR_MARK:		return "LTR ";
-	case TPkindRTL_MARK:		return "RTL ";
+	case TPkindCHFTNSEP:	return "SEP ";
+	case TPkindCHFTNSEPC:	return "SEPC";
+	case TPkindOPT_HYPH:	return "HYPH";
+	case TPkindLTR_MARK:	return "LTR ";
+	case TPkindRTL_MARK:	return "RTL ";
 
 	default:
 	    sprintf( scratch, "%-4d", kind );

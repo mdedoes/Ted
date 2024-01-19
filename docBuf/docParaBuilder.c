@@ -36,7 +36,6 @@
 #   include	<ucdBidiClass.h>
 #   include	<bidiTree.h>
 #   include	"docParaParticuleAdmin.h"
-#   include	<docListNumberTreeImpl.h>
 
 #   include	"docDebug.h"
 #   include	<appDebugon.h>
