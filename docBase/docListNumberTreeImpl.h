@@ -71,4 +71,11 @@ extern int docListNumberNodeForAll(	ListNumberTreeNode *	root,
 					LIST_TREE_FUNC		forOne,
 					void *			through );
 
+extern int docListNumberTreeFindParagraph(
+					int *			pLevel,
+					struct ListNumberTreeNode **	path,
+					int *			nums,
+					struct ListNumberTreeNode *	root,
+					int			paraNr );
+
 #   endif

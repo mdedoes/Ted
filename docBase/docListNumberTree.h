@@ -59,6 +59,13 @@ extern int docListNumberTreesGetNumberPath(
 					int			ilvl,
 					int			paraNr );
 
+extern int docListNumberTreesGetRootOffset(	
+					int *			pRootOffset,
+					ListNumberTrees *	lnt,
+					int			ls,
+					int			ilvl,
+					int			paraNr );
+
 extern int docListNumberTreesPrevNumberPath(	
 					int *			numberPath,
 					int *			pLevel,

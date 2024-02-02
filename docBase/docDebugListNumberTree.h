@@ -22,11 +22,4 @@ extern int docListNumberTreeLogPath(	struct ListNumberTreeNode **	path,
 					int *			nums,
 					int			level );
 
-extern int docListNumberTreeFindParagraph(
-					int *			pLevel,
-					struct ListNumberTreeNode **	path,
-					int *			nums,
-					struct ListNumberTreeNode *	root,
-					int			paraNr );
-
 #   endif	/*	DOC_DEBUG_LIST_NUMBER_TREE_H	*/

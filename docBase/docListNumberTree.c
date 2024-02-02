@@ -275,12 +275,11 @@ int docListNumberTreeFindParagraph(	int *			pLevel,
     return 1;
     }
 
-/************************************************************************/
-/*									*/
-/*  Determine the list numbers on the path to a certain paragraph.	*/
-/*									*/
-/************************************************************************/
-
+/**
+ *  Determine the list numbers on the path to a certain paragraph.
+ *  This is to retrieve the path to a paragraph in the list, with the
+ *  list level given.
+ */
 int docListNumberNodeGetNumberPath(	int *			nums,
 					ListNumberTreeNode *	root,
 					int			ilvl,
@@ -336,6 +335,53 @@ int docListNumberTreesPrevNumberPath(	int *			numberPath,
 
     if  ( docListNumberNodePrevNumberPath( numberPath, pLevel, root, paraNr ) )
 	{ LLDEB(ls,paraNr); return -1;	}
+
+    return 0;
+    }
+
+/**
+ *  Determine the potential number at the root level of a certain paragraph.
+ *  This is to retrieve the list number of the paragraph, supposing that it is
+ *  in the list at the root level.
+ *
+ *  We use this to determine the path to the first paragraph in, or after
+ *  a section that resets numbers. As we only invoke this to offset the path to
+ *  an existing paragraph in the list, we know that an offset exists. (The 
+ *  one we calculate the offset path for, or an earlier one.
+ */
+int docListNumberTreesGetRootOffset(	int *			pRootOffset,
+					ListNumberTrees *	lnt,
+					int			ls,
+					int			ilvl,
+					int			paraNr )
+    {
+    int				l, m, r;
+
+    ListNumberTreeNode *	root= docGetListNumberTree( lnt, ls );
+    if  ( ! root )
+	{ LXDEB(ls,root); return -1;	}
+
+    l= 0;
+    r= root->lntnChildCount;
+    m= ( l+ r )/ 2;
+
+    /*  2  */
+    while( l < m )
+	{
+	if  ( root->lntnChildren[m]->lntnParaNr < paraNr )
+	    { l= m;	}
+	else{ r= m;	}
+
+	m= ( l+ r )/ 2;
+	}
+
+    if  ( paraNr > root->lntnChildren[m]->lntnParaNr )
+	{ m++;	}
+
+    if  ( m > root->lntnChildCount )
+	{ LLDEB(m,root->lntnChildCount); return -1;	}
+
+    *pRootOffset= m;
 
     return 0;
     }
@@ -585,7 +631,7 @@ static int docListNumberTreeExtendPath(
 
     while( level <= ilvl )
 	{
-	int			pos= 0;
+	const int	pos= 0;
 
 	fresh= docListNumberTreeInsertChild( path[level], pos, -1 );
 	if  ( ! fresh )

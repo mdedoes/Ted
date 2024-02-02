@@ -20,6 +20,8 @@
 #   include	<docParaProperties.h>
 #   include	<docTreeType.h>
 #   include	"docParaBuilder.h"
+#   include	<docSectProperties.h>
+#   include	"docSelect.h"
 
 #   include	"docDebug.h"
 #   include	<appDebugon.h>
@@ -100,6 +102,8 @@ int docRecalculateParaListtextTextParticules(
     BufferItem *		paraNode= pb->pbParaNode;
     const ParagraphProperties *	pp= paraNode->biParaProperties;
 
+    DocumentTree *		tree= rf->rfTree;
+
     int				ilvl= pp->ppListLevel;
 
     struct ListOverride *	lo;
@@ -136,12 +140,49 @@ int docRecalculateParaListtextTextParticules(
 	}
 
     /*  5  */
-    if  ( docListNumberTreesGetNumberPath( numberPath, &(rf->rfTree->dtListNumberTrees),
+    if  ( docListNumberTreesGetNumberPath( numberPath, &(tree->dtListNumberTrees),
 							pp->ppListOverride, ilvl, paraNr ) )
 	{
 	LLDEB(pp->ppListOverride,ilvl);
 	SDEB(docTreeTypeStr(paraNode->biTreeType));
 	*pCalculated= 0; goto ready;
+	}
+
+    if  ( tree->dtRoot->biTreeType == DOCinBODY )
+	{
+	const BufferItem *	sectNode= docGetSectNode( paraNode );
+	const BufferItem *	parentNode= sectNode->biParent;
+	int			sect= sectNode->biNumberInParent;
+
+	while( sect > 0 )
+	    {
+	    BufferItem *	node= parentNode->biChildren[sect];
+
+	    if  ( node->biSectRestartPageNumbers )
+		{
+		DocumentPosition	dpOffset;
+
+		if  ( ! docHeadPosition( &dpOffset, node ) )
+		    {
+		    int		offsetParaNr= docNumberOfParagraph( dpOffset.dpNode );
+		    int		rootOffset= 0;
+
+		    if  ( docListNumberTreesGetRootOffset( &rootOffset, &(tree->dtListNumberTrees),
+							pp->ppListOverride, ilvl, offsetParaNr ) )
+			{
+			LLDEB(pp->ppListOverride,ilvl);
+			SDEB(docTreeTypeStr(paraNode->biTreeType));
+			*pCalculated= 0; goto ready;
+			}
+
+		    numberPath[0] -= rootOffset;
+		    }
+
+		break;
+		}
+
+	    sect--;
+	    }
 	}
 
     /*  6  */

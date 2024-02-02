@@ -23,12 +23,10 @@
 
 #   include	<appDebugon.h>
 
-/************************************************************************/
-/*									*/
-/*  Move to the first/last position.					*/
-/*									*/
-/************************************************************************/
-
+/**
+ *  Get the first position in the node. This is a position where it makes
+ *  sense to place the I-Bar.
+ */
 int docGotoFirstPosition(	DocumentPosition *	dp,
 				struct BufferItem *	node )
     {
@@ -49,6 +47,10 @@ int docGotoFirstPosition(	DocumentPosition *	dp,
     /*XDEB(node);*/ return -1;
     }
 
+/**
+ *  Get the first position in the node. Do not care whether it makes
+ *  sense to place the I-Bar there.
+ */
 int docHeadPosition(	DocumentPosition *	dp,
 			struct BufferItem *	node )
     {
@@ -69,6 +71,10 @@ int docHeadPosition(	DocumentPosition *	dp,
     /*XDEB(node);*/ return -1;
     }
 
+/**
+ *  Get the last position in the node. This is a position where it makes
+ *  sense to place the I-Bar.
+ */
 int docGotoLastPosition(	DocumentPosition *	dp,
 				struct BufferItem *	node )
     {
@@ -89,8 +95,12 @@ int docGotoLastPosition(	DocumentPosition *	dp,
     /*XDEB(node);*/ return -1;
     }
 
+/**
+ *  Get the last position in the node. Do not care whether it makes
+ *  sense to place the I-Bar there.
+ */
 int docTailPosition(	DocumentPosition *	dp,
-			struct BufferItem *		node )
+			struct BufferItem *	node )
     {
     while( node )
 	{
