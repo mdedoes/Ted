@@ -63,7 +63,7 @@ static int docPsSaveListStructureAttributes(
 	    sioOutPrintf( sosAttributes, "/ListNumbering/LowerAlpha " );
 	    break;
 	case DOCpn_BULLET:
-	    sioOutPrintf( sosAttributes, "/ListNumbering/Disk " );
+	    sioOutPrintf( sosAttributes, "/ListNumbering/Disc " );
 	    break;
 	case DOCpn_NONE:
 	    /* The default */
