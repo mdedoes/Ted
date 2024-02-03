@@ -6,16 +6,22 @@
 
 #   include	"docLayoutConfig.h"
 
+#   include	<string.h>
+
 #   include	"docDrawLine.h"
 #   include	"docPsPrintImpl.h"
 #   include	<psPrint.h>
 #   include	<docObject.h>
 #   include	<docTextLine.h>
+#   include	<sioGeneral.h>
+#   include	<sioMemory.h>
 
 #   include	<docDebug.h>
 #   include	<appDebugon.h>
 
-StructItem * docPsPrintInlineStructItem( PrintingState *	ps )
+StructItem * docPsPrintInlineStructItem(
+				PrintingState *		ps,
+				const char *		languageTag )
     {
     StructItem *	structItem;
 
@@ -46,6 +52,7 @@ StructItem * docPsPrintInlineStructItem( PrintingState *	ps )
 	}
 
     structItem= psPdfLeafStructItem( ps, STRUCTtypeSPAN, 1 );
+    structItem->siLanguageTag= languageTag;
 
     if  ( ! structItem || psPdfPushStructItem( ps, structItem ) )
 	{ XDEB(structItem); return (StructItem *)0;	}
@@ -61,8 +68,15 @@ StructItem * docPsPrintInlineStructItem( PrintingState *	ps )
  *  of the reading order of the document, that the current leaf in 
  *  the structure tree is a /Span or a /Link.
  */
-int docPsPrintClaimInline( PrintingState *	ps )
+int docPsPrintClaimInline(	PrintingState *		ps,
+				const char *		languageTag )
     {
+    int			rval= 0;
+
+    MemoryBuffer	extraProperties;
+
+    utilInitMemoryBuffer( &extraProperties );
+
     if  ( ! ps->psInArtifact )
 	{
 	if  ( ps->psCurrentStructItem 					&&
@@ -76,20 +90,38 @@ int docPsPrintClaimInline( PrintingState *	ps )
 	if  ( ! ps->psCurrentStructItem 		||
 	      ! ps->psCurrentStructItem->siIsLeaf	)
 	    {
-	    StructItem *	structItem= docPsPrintInlineStructItem( ps );
+	    StructItem *	structItem= docPsPrintInlineStructItem( ps, languageTag );
 
 	    if  ( ! structItem )
-		{ XDEB(structItem); return -1;	}
+		{ XDEB(structItem); rval= -1; goto ready;	}
+
+	    if  ( languageTag )
+		{
+		const char *		key= "Lang";
+		SimpleOutputStream *	sosExtra= sioOutMemoryOpen( &extraProperties );
+
+		if  ( sioOutPrintf( sosExtra, " /%s ", key ) < 0 )
+		    { SDEB(key); rval= -1; goto ready;	}
+
+		if  ( psPrintStringValue( sosExtra, languageTag, strlen( languageTag ), 0 ) )
+		    { SDEB(languageTag); rval= -1; goto ready;	}
+
+		sioOutClose( sosExtra );
+		}
 
 	    if  ( psPdfBeginMarkedContent( ps,
 				structItem->siStructureType,
 				structItem->siContentId,
-				(const MemoryBuffer *)0 ) )
-		{ LDEB(structItem->siContentId); return -1;	}
+				&extraProperties ) )
+		{ LDEB(structItem->siContentId); rval= -1; goto ready;	}
 	    }
 	}
 
-    return 0;
+  ready:
+
+    utilCleanMemoryBuffer( &extraProperties );
+
+    return rval;
     }
 
 /**

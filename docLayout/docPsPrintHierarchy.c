@@ -66,6 +66,7 @@ int docPsPrintStartTree(	void *				vps,
     if  ( ps->psInsideLink || ps->psInsideListLabel )
 	{
 	SLLDEB("####",ps->psInsideLink,ps->psInsideListLabel);
+	SDEB(docTreeTypeStr(tree->dtRoot->biTreeType));
 	ps->psInsideLink= 0;
 	ps->psInsideListLabel= 0;
 	}

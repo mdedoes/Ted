@@ -119,6 +119,7 @@ void psPdfInitStructItem(	StructItem *	structItem )
     structItem->siContentId= -1;
     structItem->siIsLeaf= 0;
     structItem->siIsInline= 0;
+    structItem->siLanguageTag= (const char *)0;
     }
 
 void psPdfCleanStructItem(	StructItem *	structItem )

@@ -19,6 +19,9 @@
 #   include	"docParticuleData.h"
 #   include	"layoutContext.h"
 #   include	<psPrint.h>
+#   include	<docBuf.h>
+#   include	<docDocumentProperties.h>
+#   include	<textMsLocale.h>
 
 #   include	<docDebug.h>
 #   include	<appDebugon.h>
@@ -183,11 +186,20 @@ int docPsPrintTextRun(		const TextRun *		tr,
     int				spanBaseline= baseLine->lpPageYTwips;
     const ParticuleData *	pd= dtl->dtlParticuleData+ tr->trPartFrom;
 
-    /* Make sure that we emit text inside a /Span if needed */
-    if  ( ps->psTagDocumentStructure	&&
-	  ! ps->psInArtifact		&&
-	  docPsPrintClaimInline( ps )	)
-	{ LDEB(1); return -1;	}
+    if  ( ! ps->psInArtifact && ps->psTagDocumentStructure )
+	{
+	const char *	languageTag= (char *)0;
+	int		textLocaleId= tr->trTextAttribute->taLocaleId;
+	int		docLocaleId= tr->trDocument->bdProperties->dpDefaultLocaleId;
+
+	if  ( textLocaleId > 0 && textLocaleId != docLocaleId )
+	    { languageTag= textGetMsLocaleTagById( textLocaleId );	}
+
+	/* Make sure that we emit text inside a /Span if needed */
+	if  ( docPsPrintClaimInline( ps, languageTag )	)
+	    { LDEB(1); return -1;	}
+
+	}
 
     if  ( psMakeOutputString( &printString, &scratchString,
 				    &segments, &segmentCount,

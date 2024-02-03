@@ -272,6 +272,12 @@ typedef struct StructItem
 			     *  StructItem.
 			     */
     int			siIsInline;
+
+			    /**
+			     *  Indicates that the language of this StructItem is
+			     *  explicitly given.
+			     */
+    const char *	siLanguageTag;
     } StructItem;
 
 /************************************************************************/

@@ -1896,6 +1896,8 @@ docPsPrintImage.o: \
     docPsPrintImage.c
 
 docPsPrintLineStructure.o: \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/sioMemory.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPalette.h \
@@ -2209,14 +2211,26 @@ docPsPrintTabs.o: \
 
 docPsPrintTextLine.o: \
     ../appUtil/utilColor.h \
+    ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docInsertedObjectList.h \
     ../docBase/docLayoutPosition.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docStyleSheet.h \
     ../docBase/docTextLine.h \
     ../docBuf/docAttributes.h \
+    ../docBuf/docBuf.h \
     ../docBuf/docDebug.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
     ../docBuf/docTextRun.h \
     docDraw.h \
     docDrawLine.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
     ../docFont/fontMatchFont.h \
     docLayoutConfig.h \
     docLayoutDocumentTree.h \
@@ -2225,6 +2239,7 @@ docPsPrintTextLine.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     layoutContext.h \
+    ../textEncoding/textMsLocale.h \
     ../utilGeo/geoAffineTransform.h \
     ../utilGeo/geoDocumentPageSetup.h \
     ../utilGeo/geoRectangle.h \

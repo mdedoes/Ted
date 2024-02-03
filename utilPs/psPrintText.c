@@ -305,7 +305,7 @@ int psPrintPdfmarkTextEntry(
 			const MemoryBuffer *		text )
     {
     if  ( sioOutPrintf( sos, " /%s ", key ) < 0 )
-	{ XDEB(text); return -1;	}
+	{ SDEB(key); return -1;	}
 
     if  ( psPrintPdfMarkStringValue( sos, text ) < 0 )
 	{ XDEB(text); return -1;	}

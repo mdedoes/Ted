@@ -151,6 +151,13 @@ int docPsPrintFinishField(	const DrawTextLine *	dtl,
 	return 0;
 	}
 
+    if  ( df->dfKind == DOCfkCHFTN )
+	{
+	/* TODO Make notes work correctly */
+	ps->psInsideLink= 0;
+	return 0;
+	}
+
     if  ( df->dfKind == DOCfkSYMBOL )
 	{
 	if  ( docPsPrintFinishSymbol( dtl, df ) )

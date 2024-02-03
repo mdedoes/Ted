@@ -226,10 +226,12 @@ int docPsPrintBeginInlineArtifact(
 extern int docPsPrintFinishInline( struct PrintingState *	ps );
 
 extern int docPsPrintClaimInline(
-				struct PrintingState *		ps );
+				struct PrintingState *		ps,
+				const char *			languageTag );
 
 extern struct StructItem * docPsPrintInlineStructItem(
-				struct PrintingState *		ps );
+				struct PrintingState *		ps,
+				const char *			languageTag );
 
 extern int docPsFinishAnnotation( struct PrintingState *	ps,
 				int				x1Twips,

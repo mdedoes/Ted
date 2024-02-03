@@ -45,7 +45,7 @@ int docPsPrintStartSymbol(
 		/* Studioform/Beyondoc extension */
 		if  ( ! utilMemoryBufferIsEmpty( &(sf.sfActualText) ) )
 		    {
-		    StructItem *	structItem= docPsPrintInlineStructItem( ps );
+		    StructItem *	structItem= docPsPrintInlineStructItem( ps, (const char *)0 );
 
 		    if  ( ! structItem )
 			{ XDEB(structItem); return -1;	}

@@ -15,16 +15,32 @@ AC_DEFUN(AC_PATH_ENCHANT,
     ENCHANT_LIBS_FOUND=NO
     ENCHANT_FOUND=0
 
+    ENCHANT_VERSION=1
+
     if  ( pkg-config libenchant --cflags ) > /dev/null 2>&1
     then
 	ENCHANT_CFLAGS=`pkg-config libenchant --cflags`
 	ENCHANT_HEADERS_FOUND=YES
+	ENCHANT_VERSION=1
+    else
+	if  ( pkg-config enchant-2 --cflags ) > /dev/null 2>&1
+	then
+	    ENCHANT_CFLAGS=`pkg-config enchant-2 --cflags`
+	    ENCHANT_HEADERS_FOUND=YES
+	    ENCHANT_VERSION=2
+	fi
     fi
 
     if  ( pkg-config libenchant --libs ) > /dev/null 2>&1
     then
 	ENCHANT_LIBS=`pkg-config libenchant --libs`
 	ENCHANT_LIBS_FOUND=YES
+    else
+	if  ( pkg-config enchant-2 --libs ) > /dev/null 2>&1
+	then
+	    ENCHANT_LIBS=`pkg-config enchant-2 --libs`
+	    ENCHANT_LIBS_FOUND=YES
+	fi
     fi
 
     ########  The hard way
@@ -33,7 +49,8 @@ AC_DEFUN(AC_PATH_ENCHANT,
 	h_so_tmp="$$.h_so_tmp"
 	trap "rm -f $h_so_tmp" 0
 	for h_so in \
-	    "/usr/include enchant/enchant.h - enchant"
+	    "/usr/include enchant/enchant.h - enchant" \
+	    "/usr/include enchant-2/enchant.h - enchant"
 	do
 	    echo $h_so
 	done > ${h_so_tmp}
@@ -100,6 +117,7 @@ AC_DEFUN(AC_PATH_ENCHANT,
 	    echo 'Using libenchant'
 	    AC_DEFINE(HAVE_ENCHANT,1)
 	    AC_DEFINE(USE_ENCHANT,1)
+	    AC_DEFINE_UNQUOTED(ENCHANT_VERSION,[$ENCHANT_VERSION])
 	    USE_ENCHANT=YES
 	    ;;
 	YES.NO)

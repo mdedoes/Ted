@@ -476,7 +476,11 @@ static int docDrawTextLines(
 	    }
 
 	if  ( res < 0 )
-	    { LLDEB(line,res); return -1; }
+	    {
+	    LLDEB(line,res);
+	    docListNode(lc->lcDocument,0,paraNode,0);
+	    return -1;
+	    }
 	if  ( res == SCANadviceSTOP )
 	    {
 	    if  ( dc->dcFinishLines && (*dc->dcFinishLines)( through, dc, paraNode, line, &(pds->pdsStripSelection) ) )
