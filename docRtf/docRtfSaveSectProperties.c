@@ -48,6 +48,10 @@ static const int SectRegularProperties[]=
     SPpropNUMBER_HYPHEN,
     SPpropPAGE_RESTART,
     SPpropSTART_PAGE, /*  Count from 1! */
+    SPpropFST_HEADER_NO_PDF_ARTIFACT,
+    SPpropFST_FOOTER_NO_PDF_ARTIFACT,
+    SPpropLST_HEADER_NO_PDF_ARTIFACT,
+    SPpropLST_FOOTER_NO_PDF_ARTIFACT,
     SPpropCOLUMN_COUNT,
     SPpropCOLUMN_SPACING,
 };

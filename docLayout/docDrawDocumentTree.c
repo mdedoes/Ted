@@ -31,19 +31,19 @@ static int docDrawTreeRoot(	LayoutPosition *		lpBelow,
     int				rval;
     const struct BufferItem *	saveBodySectNode= dc->dcBodySectNode;
 
+    dc->dcBodySectNode= bodySectNode;
+
     if  ( dc->dcStartTree && (*dc->dcStartTree)( through, dc, tree ) )
 	{ LDEB(tree->dtRoot->biTreeType); return -1; }
-
-    dc->dcBodySectNode= bodySectNode;
 
     rval= docDrawNode( lpBelow, tree->dtRoot, through, dc );
     if  ( rval )
 	{ LDEB(rval);	}
 
-    dc->dcBodySectNode= saveBodySectNode;
-
     if  ( dc->dcFinishTree && (*dc->dcFinishTree)( through, dc, tree ) )
 	{ LDEB(tree->dtRoot->biTreeType); return -1; }
+
+    dc->dcBodySectNode= saveBodySectNode;
 
     return rval;
     }

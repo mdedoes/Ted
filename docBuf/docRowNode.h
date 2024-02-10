@@ -121,7 +121,8 @@ typedef struct RowNode
 				 *  row, has a property that makes it a real table row.
 				 *  PDF generation uses this flag to decide that a table 
 				 *  is a formatting means, rather than that the table is 
-				 *  a meaningful table.
+				 *  a meaningful table. The logic is only suitable to make 
+				 *  a decision for PDF generation.
 				 */
     unsigned char		brIsPlain;
 

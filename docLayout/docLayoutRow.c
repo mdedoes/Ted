@@ -573,7 +573,11 @@ int docLayoutRowNode(	int *				pStopCode,
 	rowNode->biChildCount= rp->rpCellCount;
 	}
 
+#   if 0
     rowNode->biRowIsPlain= docRowPropertiesArePlain( lj->ljContext->lcDocument, rp );
+#   else
+    rowNode->biRowIsPlain= ! rp->rpIsTableHeader && utilMemoryBufferIsEmpty( &(rowNode->biRowSummary) );
+#   endif
 
     {
     const int		line= 0;

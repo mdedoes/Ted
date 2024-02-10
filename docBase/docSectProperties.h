@@ -84,7 +84,8 @@ typedef struct SectionProperties
 				 *  Use different headers and footers on the 
 				 *  last page of the section. Unless those for
 				 *  the first page apply. NOTE: This is not a 
-				 *  MS-Word RTF feature.
+				 *  MS-Word RTF feature. Limitations apply for
+				 *  the height of the last page header.
 				 */
     unsigned char		spHasEndPage;
 				/**
@@ -113,7 +114,8 @@ typedef struct SectionProperties
 				 *  Use per section page numbering for this 
 				 *  section. (A boolean flag.)
 				 *
-				 *  Also restart the numbering of list numbers (bullets)
+				 *  Also restart the numbering of the top level of
+				 *  list numbers (bullets)
 				 */
     unsigned char		spRestartPageNumbers;
 
@@ -124,6 +126,38 @@ typedef struct SectionProperties
 				 *	columns from right to left
 				 */
     unsigned char		spRToL;
+
+				/**
+				 * Do not mark the header of the first page of
+				 * this section as an artifact in the PdfMarks
+				 * in the PS/PDF output. This is not a regular 
+				 * RTF feature. (\sfsthdnopdfart)
+				 */
+    unsigned char		spFirstPageHeaderNoPdfArtifact;
+
+				/**
+				 * Do not mark the footer of the first page of
+				 * this section as an artifact in the PdfMarks
+				 * in the PS/PDF output. This is not a regular 
+				 * RTF feature. (\sfstftnopdfart)
+				 */
+    unsigned char		spFirstPageFooterNoPdfArtifact;
+
+				/**
+				 * Do not mark the header of the last page of
+				 * this section as an artifact in the PdfMarks
+				 * in the PS/PDF output. This is not a regular 
+				 * RTF feature. (\slsthdnopdfart)
+				 */
+    unsigned char		spLastPageHeaderNoPdfArtifact;
+
+				/**
+				 * Do not mark the footer of the last page of
+				 * this section as an artifact in the PdfMarks
+				 * in the PS/PDF output. This is not a regular 
+				 * RTF feature. (\slsftdnopdfart)
+				 */
+    unsigned char		spLastPageFooterNoPdfArtifact;
 
 				/**
 				 *  If this section uses per section page 
@@ -170,6 +204,10 @@ typedef enum SectionProperty
     SPpropNUMBER_HYPHEN,
     SPpropPAGE_RESTART, /* Counts from 1! */
     SPpropRTOL,
+    SPpropFST_HEADER_NO_PDF_ARTIFACT,
+    SPpropFST_FOOTER_NO_PDF_ARTIFACT,
+    SPpropLST_HEADER_NO_PDF_ARTIFACT,
+    SPpropLST_FOOTER_NO_PDF_ARTIFACT,
     SPpropSTART_PAGE,
     SPpropCOLUMN_COUNT,
     SPpropCOLUMN_SPACING,

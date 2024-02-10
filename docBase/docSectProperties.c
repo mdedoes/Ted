@@ -65,6 +65,10 @@ static const int DocSectIntProps[]=
     SPpropNUMBER_HYPHEN,
     SPpropPAGE_RESTART,
     SPpropRTOL,
+    SPpropFST_HEADER_NO_PDF_ARTIFACT,
+    SPpropFST_FOOTER_NO_PDF_ARTIFACT,
+    SPpropLST_HEADER_NO_PDF_ARTIFACT,
+    SPpropLST_FOOTER_NO_PDF_ARTIFACT,
     SPpropSTART_PAGE,
     SPpropCOLUMN_COUNT,
     SPpropCOLUMN_SPACING,
@@ -211,6 +215,7 @@ int docUpdSectProperties(	PropertyMask *			pSpDoneMask,
 		    PROPmaskADD( &doneMask, SPpropCOLUMNS );
 		    }
 		}
+
 	    if  ( scTo->scColumnWidthTwips != scFrom->scColumnWidthTwips )
 		{
 		scTo->scColumnWidthTwips= scFrom->scColumnWidthTwips;
@@ -315,6 +320,11 @@ void docInitSectionProperties(	SectionProperties *	sp )
     sp->spPageNumberHyphen= DOCpgnhPGNHNSH;
     sp->spRestartPageNumbers= 0;
 
+    sp->spFirstPageHeaderNoPdfArtifact= 0;
+    sp->spFirstPageFooterNoPdfArtifact= 0;
+    sp->spLastPageHeaderNoPdfArtifact= 0;
+    sp->spLastPageFooterNoPdfArtifact= 0;
+
     sp->spColumnCount= 1;
     sp->spColumns= (SectionColumn *)0;
 
@@ -386,6 +396,11 @@ int docCopySectionProperties(	SectionProperties *		to,
     to->spPageNumberHyphen= from->spPageNumberHyphen;
     to->spRestartPageNumbers= from->spRestartPageNumbers;
     to->spRToL= from->spRToL;
+
+    to->spFirstPageHeaderNoPdfArtifact= from->spFirstPageHeaderNoPdfArtifact;
+    to->spFirstPageFooterNoPdfArtifact= from->spFirstPageFooterNoPdfArtifact;
+    to->spLastPageHeaderNoPdfArtifact= from->spLastPageHeaderNoPdfArtifact;
+    to->spLastPageFooterNoPdfArtifact= from->spLastPageFooterNoPdfArtifact;
 
     to->spStartPageNumber= from->spStartPageNumber;
 
@@ -622,6 +637,19 @@ int docSetSectionProperty(	SectionProperties *	sp,
 	    sp->spRToL= arg != 0;
 	    break;
 
+	case SPpropFST_HEADER_NO_PDF_ARTIFACT:
+	    sp->spFirstPageHeaderNoPdfArtifact= arg != 0;
+	    break;
+	case SPpropFST_FOOTER_NO_PDF_ARTIFACT:
+	    sp->spFirstPageFooterNoPdfArtifact= arg != 0;
+	    break;
+	case SPpropLST_HEADER_NO_PDF_ARTIFACT:
+	    sp->spLastPageHeaderNoPdfArtifact= arg != 0;
+	    break;
+	case SPpropLST_FOOTER_NO_PDF_ARTIFACT:
+	    sp->spLastPageFooterNoPdfArtifact= arg != 0;
+	    break;
+
 	case SPpropSTART_PAGE:
 	    /*  Count from 1! */
 	    if  ( arg > 0 )
@@ -758,6 +786,15 @@ int docGetSectionProperty(	const SectionProperties *	sp,
 
 	case SPpropRTOL:
 	    return sp->spRToL;
+
+	case SPpropFST_HEADER_NO_PDF_ARTIFACT:
+	    return sp->spFirstPageHeaderNoPdfArtifact;
+	case SPpropFST_FOOTER_NO_PDF_ARTIFACT:
+	    return sp->spFirstPageFooterNoPdfArtifact;
+	case SPpropLST_HEADER_NO_PDF_ARTIFACT:
+	    return sp->spLastPageHeaderNoPdfArtifact;
+	case SPpropLST_FOOTER_NO_PDF_ARTIFACT:
+	    return sp->spLastPageFooterNoPdfArtifact;
 
 	case SPpropSTART_PAGE:
 	    /* Count from 1 */

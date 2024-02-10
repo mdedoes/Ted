@@ -258,6 +258,10 @@ static int docGetTocEntry(	TocEntry *		te,
 	      te->teLevel < tf->tfEntryLevel0	)
 	    { return 1;	}
 
+	if  ( ! utilMemoryBufferIsEmpty( &(tf->tfIdentifierName) )	&&
+	      flag[0] != tf->tfIdentifierName.mbBytes[0]		)
+	    { return 1; }
+
 	dfBookmark= docFindTypedChildField( &(ct->ctBdDoc->bdBody.dtRootFields),
 			    &(te->teField->dfHeadPosition), DOCfkBOOKMARK );
 	if  ( ! dfBookmark )

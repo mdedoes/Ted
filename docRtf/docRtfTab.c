@@ -1378,6 +1378,11 @@ static RtfControlWord	docRtfPropertyWords[]=
     RTF_SECT_FLAG( RTFtag_titlepg,	SPpropTITLEPG ),
     RTF_SECT_FLAG( RTFtag_endpg,	SPpropENDPG ),
 
+    RTF_SECT_FLAG( "sfsthdnopdfart",	SPpropFST_HEADER_NO_PDF_ARTIFACT ),
+    RTF_SECT_FLAG( "sfstftnopdfart",	SPpropFST_FOOTER_NO_PDF_ARTIFACT ),
+    RTF_SECT_FLAG( "slsthdnopdfart",	SPpropLST_HEADER_NO_PDF_ARTIFACT ),
+    RTF_SECT_FLAG( "slsftdnopdfart",	SPpropLST_FOOTER_NO_PDF_ARTIFACT ),
+
     RTF_SECT_ENUM( "sbknone",		SPpropBREAK_KIND, DOCibkNONE ),
     RTF_SECT_ENUM( "sbkcol",		SPpropBREAK_KIND, DOCibkCOL ),
     RTF_SECT_ENUM( "sbkpage",		SPpropBREAK_KIND, DOCibkPAGE ),

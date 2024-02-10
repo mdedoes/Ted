@@ -55,6 +55,15 @@ typedef struct SectNode
 
 #   define biSectNotesProperties	biSectProperties->spNotesProperties
 
+#   define biSectFirstPageHeaderNoPdfArtifact \
+					biSectProperties->spFirstPageHeaderNoPdfArtifact
+#   define biSectFirstPageFooterNoPdfArtifact \
+					biSectProperties->spFirstPageFooterNoPdfArtifact
+#   define biSectLastPageHeaderNoPdfArtifact \
+					biSectProperties->spLastPageHeaderNoPdfArtifact
+#   define biSectLastPageFooterNoPdfArtifact \
+					biSectProperties->spLastPageFooterNoPdfArtifact
+
 /************************************************************************/
 /*									*/
 /*  Routine dectarations.						*/

@@ -1820,12 +1820,15 @@ docPsPrintFields.o: \
     docPsPrintFields.c
 
 docPsPrintHierarchy.o: \
+    ../appUtil/utilColor.h \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
     ../appUtil/utilPagedList.h \
     ../docBase/docInsertedObjectList.h \
     ../docBase/docLayoutPosition.h \
     ../docBase/docListNumberTree.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docSectProperties.h \
     ../docBase/docSelectionScope.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docTreeType.h \
@@ -1839,9 +1842,11 @@ docPsPrintHierarchy.o: \
     ../docBuf/docRowNode.h \
     ../docBuf/docSectNode.h \
     ../docBuf/docTreeNode.h \
+    docDraw.h \
     ../docField/docChildFields.h \
     ../docField/docDocumentFieldList.h \
     docLayoutConfig.h \
+    docLayoutDocumentTree.h \
     docPsPrintImpl.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
@@ -1851,6 +1856,7 @@ docPsPrintHierarchy.o: \
     ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/psNup.h \
     ../utilPs/psPrint.h \
+    ../utilPs/textAttribute.h \
     docPsPrintHierarchy.c
 
 docPsPrintImage.o: \
