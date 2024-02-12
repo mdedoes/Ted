@@ -423,6 +423,21 @@ static int docRowToNextColumn(	LayoutPosition *	lpHere,
     }
 
 /************************************************************************/
+
+static void docRowDeterminePlain(	BufferItem *	rowNode )
+    {
+    const RowProperties *	rp= rowNode->biRowProperties;
+
+#   if 0
+    rowNode->biRowIsPlain= utilMemoryBufferIsEmpty( &(rowNode->biRowSummary) ) &&
+	    docRowPropertiesArePlain( lj->ljContext->lcDocument, rp );
+#   else
+    rowNode->biRowIsPlain= utilMemoryBufferIsEmpty( &(rowNode->biRowSummary) ) &&
+	    ! rp->rpIsTableHeader;
+#   endif
+    }
+
+/************************************************************************/
 /* 									*/
 /*  Calculate the layout of a nested table row.				*/
 /* 									*/
@@ -445,6 +460,8 @@ int docLayoutRowInStrip(	int *				pStopCode,
 
     const int		atHead= ! rowPlp->pspChildAdvanced;
     int			col;
+
+    docRowDeterminePlain( rowNode );
 
     if  ( atHead )
 	{
@@ -573,11 +590,7 @@ int docLayoutRowNode(	int *				pStopCode,
 	rowNode->biChildCount= rp->rpCellCount;
 	}
 
-#   if 0
-    rowNode->biRowIsPlain= docRowPropertiesArePlain( lj->ljContext->lcDocument, rp );
-#   else
-    rowNode->biRowIsPlain= ! rp->rpIsTableHeader && utilMemoryBufferIsEmpty( &(rowNode->biRowSummary) );
-#   endif
+    docRowDeterminePlain( rowNode );
 
     {
     const int		line= 0;
