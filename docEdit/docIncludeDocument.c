@@ -536,11 +536,15 @@ static int docInsertMultipleParagraphs(
 				&(dsSource->dsHead), &(dsSource->dsTail) ) )
 	    { LDEB(partFrom); rval= -1; goto ready;	}
 
-	if  ( dcjInsert->dcjCopyHeadParaProperties			&&
-	      docEditTransferParaProperties( eo, tailDp.dpNode,
-			      dsSource->dsHead.dpNode,
-			      0, &(dcjInsert->dcjAttributeMap) )	)
-	    { LDEB(1); rval= -1; goto ready; }
+	if  ( dcjInsert->dcjCopyHeadParaProperties )
+	    {
+	    if  ( docEditTransferParaProperties( eo, tailDp.dpNode,
+				  dsSource->dsHead.dpNode,
+				  0, &(dcjInsert->dcjAttributeMap) )	)
+		{ LDEB(1); rval= -1; goto ready; }
+
+	    tailDp.dpNode->biParaTocLevel= dsSource->dsHead.dpNode->biParaTocLevel;
+	    }
 
 	step= docInsertNextStep( &tcj );
 	if  ( step < 0 )

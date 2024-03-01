@@ -1838,7 +1838,6 @@ docPsPrintHierarchy.o: \
     ../docBuf/docDocumentTree.h \
     ../docBuf/docDrawingShapeList.h \
     ../docBuf/docParaNode.h \
-    ../docBuf/docParaParticules.h \
     ../docBuf/docRowNode.h \
     ../docBuf/docSectNode.h \
     ../docBuf/docTreeNode.h \
@@ -2039,6 +2038,7 @@ docPsPrintParagraph.o: \
     ../docBuf/docCellNode.h \
     ../docBuf/docDebug.h \
     ../docBuf/docParaNode.h \
+    ../docBuf/docParaParticules.h \
     ../docBuf/docRowNode.h \
     ../docBuf/docSectNode.h \
     ../docBuf/docTreeNode.h \

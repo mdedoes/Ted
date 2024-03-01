@@ -699,7 +699,7 @@ int psPdfmarkAppendMarkedLink(	PrintingState *		ps,
 	    itemDict );
 
 	sioOutPrintf( ps->psSos,
-	    "[ {%s} <</S /%s /P {%s} /K [ <</Obj {%s} /Pg {ThisPage} /Type /OBJR>> %d ] /Pg {ThisPage} ",
+	    "[ {%s} <</Type /StructElem /S /%s /P {%s} /K [ <</Obj {%s} /Pg {ThisPage} /Type /OBJR>> %d ] /Pg {ThisPage} ",
 	    itemDict,
 	    structItem->siStructureType,
 	    parentDict,

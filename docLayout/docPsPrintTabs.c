@@ -27,15 +27,26 @@ static int psPrintDrawTab(	DrawingContext *	dc,
 				int			step,
 				const char *		tabProc )
     {
+    const int	asArtifact= ps->psTagDocumentStructure && ! ps->psInArtifact;
+
     x0= step* ( ( x0+ step- 1 )/ step );
     if  ( x1 <= x0 )
 	{ return 0;	}
+
+    if  ( asArtifact					&&
+	  docPsPrintBeginArtifact( ps )			)
+	{ LDEB(-1); return -1;	}
 
     docDrawSetColorNumber( dc, (void *)ps, ta->taTextColorNumber );
 
     sioOutPrintf( ps->psSos, "%d %d %d %s\n", x1- x0, x0, baseLine, tabProc );
 
+    if  ( asArtifact					&&
+	  docPsPrintEndArtifact( ps )			)
+	{ LDEB(1); return -1;	}
+
     ps->psLastPageMarked= ps->psPagesPrinted;
+
     return 0;
     }
 

@@ -36,6 +36,8 @@ struct DocumentSelection;
 extern const char STRUCTtypeLBODY[];
 extern const char STRUCTtypeL[];
 extern const char STRUCTtypeLI[];
+extern const char STRUCTtypeTOC[];
+extern const char STRUCTtypeTOCI[];
 extern const char STRUCTtypeTR[];
 extern const char STRUCTtypeTABLE[];
 extern const char STRUCTtypeSPAN[];
@@ -263,18 +265,6 @@ extern int docPsPrintFinishSymbol(
 
 extern int docParagraphIsListItem(
 				const struct BufferItem *	paraNode );
-
-extern const char * docPsParagraphNodeStartMark(
-				const struct PrintingState *	ps,
-				const struct BufferItem * 	paraNode,
-				int				firstLine,
-				int *				pListLevelsToOpen );
-
-extern const char * docPsParagraphNodeEndMark(
-				const struct PrintingState *	ps,
-				const struct BufferItem * 	paraNode,
-				int				lastLine,
-				int *				pListLevelsToClose );
 
 extern int docPsMarkRowNode(	const struct PrintingState *	ps,
 				const struct BufferItem *	rowNode,

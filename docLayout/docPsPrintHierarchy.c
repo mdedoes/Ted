@@ -7,13 +7,10 @@
 
 #   include	"docLayoutConfig.h"
 
-#   include	<string.h>
-
 #   include	"docPsPrintImpl.h"
 #   include	<docTreeNode.h>
 #   include	<docTreeType.h>
 #   include	<docBuf.h>
-#   include	<docParaParticules.h>
 #   include	<psPrint.h>
 #   include	"docDraw.h"
 #   include	<docSectProperties.h>
@@ -28,6 +25,9 @@ const char STRUCTtypeL[]= "L";
 const char STRUCTtypeLI[]= "LI";
 const char STRUCTtypeLBL[]= "Lbl";
 const char STRUCTtypeLBODY[]= "LBody";
+
+const char STRUCTtypeTOC[]= "TOC";
+const char STRUCTtypeTOCI[]= "TOCI";
 
 /* const char STRUCTtypePART[]= "Part"; */
 /* const char STRUCTtypeSECT[]= "Sect"; */
@@ -179,84 +179,6 @@ int docPsPrintFinishTree( void *			vps,
 	    if  ( docPsPrintEndArtifact( ps ) )
 		{ LDEB(tree->dtRoot->biTreeType); return -1;	}
 	    break;
-	}
-
-    return 0;
-    }
-
-/**
- *  Start printing a slice of a paragraph. Currently, we make 
- *  a /Div content item. Once we have the structural hierarchy 
- *  in place, consider using /NonStruct: The paragraph that holds 
- *  the lines determines the document structure.
- */
-int docPsPrintStartLines( void *			vps,
-			struct DrawingContext *		dc,
-			const struct BufferItem *	paraNode,
-			int				firstLine,
-			const struct DocumentSelection * ds )
-    {
-    PrintingState *	ps= (PrintingState *)vps;
-    int			listLevelsToOpen= 0;
-
-    if  ( ! ps->psInArtifact && ! docParagraphIsEmpty( paraNode ) )
-	{
-	const char *	mark;
-
-	mark= docPsParagraphNodeStartMark( ps, paraNode, firstLine, &listLevelsToOpen );
-
-	if  ( mark )
-	    {
-	    if  ( listLevelsToOpen > 0 &&
-		  docPsPrintOpenListLevels( ps, dc, paraNode, listLevelsToOpen ) )
-		{ LDEB(listLevelsToOpen); return -1;	}
-
-	    if  ( docPsPrintBeginMarkedGroup( ps, mark, (MemoryBuffer *)0 ) )
-		{ LSDEB(paraNode->biLevel,mark); return -1;	}
-	    }
-	}
-
-    return 0;
-    }
-
-/**
- *  Finish printing a slice of a paragraph. If we are in an open 
- *  span, close the span.
- */
-int docPsPrintFinishLines( void *			vps,
-			struct DrawingContext *		dc,
-			const struct BufferItem *	paraNode,
-			int				lastLine,
-			const struct DocumentSelection * ds )
-    {
-    PrintingState *	ps= (PrintingState *)vps;
-
-    if  ( ! ps->psInArtifact && ! docParagraphIsEmpty( paraNode ) )
-	{
-	int		listLevelsToClose= 0;
-	const char *	mark;
-
-	if  ( docPsPrintFinishInline( ps ) )
-	    { LDEB(paraNode->biLevel); return -1;	}
-
-	mark= docPsParagraphNodeEndMark( ps, paraNode, lastLine, &listLevelsToClose );
-
-	if  ( mark )
-	    {
-	    if  ( ps->psCurrentStructItem		&&
-		  ! strcmp( ps->psCurrentStructItem->siStructureType, STRUCTtypeLBODY ) )
-		{
-		if  ( docPsPrintEndMarkedGroup( ps, STRUCTtypeLBODY ) )
-		    { SSDEB(docLevelStr(paraNode->biLevel),STRUCTtypeLBODY); return -1;	}
-		}
-
-	    if  ( docPsPrintEndMarkedGroup( ps, mark ) )
-		{ SSDEB(docLevelStr(paraNode->biLevel),mark); return -1;	}
-	    }
-
-	if  ( listLevelsToClose > 0						&&
-	      docPsPrintCloseListLevels( ps, dc, paraNode, listLevelsToClose )	)
-	    { LSDEB(listLevelsToClose,mark); return -1;	}
 	}
 
     return 0;

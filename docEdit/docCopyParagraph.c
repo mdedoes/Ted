@@ -663,6 +663,8 @@ struct BufferItem * docCopyParaNode(
 				srcParaNode, 0, &(dcj->dcjAttributeMap) ) )
 	{ LDEB(1); goto ready;	}
 
+    tgtParaNode->biParaTocLevel= srcParaNode->biParaTocLevel;
+
     eo->eoParagraphsInserted++;
     if  ( tgtParaNode->biParaProperties->ppListOverride > 0 )
 	{ dcj->dcjBulletsCopied++;	}

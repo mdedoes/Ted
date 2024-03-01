@@ -285,7 +285,7 @@ static struct BufferItem * docMakeTocParagraph(
     if  ( ! paraNodeToc )
 	{ XDEB(paraNodeToc); goto ready;	}
 
-    paraNodeToc->biParaTocLevel= level;
+    paraNodeToc->biParaTocLevel= level+ 1;
 
   ready:
 
