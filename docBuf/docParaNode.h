@@ -81,9 +81,6 @@ typedef struct ParaNode
     int				btLineCount;
     struct TextLine *		btLines;
 
-    int				btMajorityFontAscY0;
-    int				btMajorityFontDescY1;
-
 				/**
 				 *  The font size of the majority of the 
 				 *  paragraph. It is reset to zero when 
@@ -92,10 +89,34 @@ typedef struct ParaNode
 				 */
     int				btMajorityFontSize;
 
-    int				btBorderNrAbove;
-    int				btBorderNrBelow;
+				/**
+				 *  The ascender height of the majority font 
+				 *  in the paragraph. btMajorityFontAscY0 is 
+				 *  determined by btMajorityFontSize and the 
+				 *  majority font.
+				 */
+    int				btMajorityFontAscY0;
+
+				/**
+				 *  The descender depth of the majority font 
+				 *  in the paragraph. btMajorityFontDescY1 is 
+				 *  determined by btMajorityFontSize and the 
+				 *  majority font.
+				 */
+    int				btMajorityFontDescY1;
+
     int				btTopInset;
     int				btBottomInset;
+
+				/**
+				 *  In paragraphs that are part of a table of contents,
+				 *  btTocLevel is set to a (small) positve number: The 
+				 *  level of the TOC entry that the paragraph is part of.
+				 *  This is NOT saved to the RTF file. So the value is only
+				 *  reliable if the table of contents is generated in the 
+				 *  same run. (It normally is)
+				 */
+    short			btTocLevel;
     } ParaNode;
 
 /************************************************************************/
@@ -125,10 +146,7 @@ typedef struct ParaNode
 
 # define biParaTopInset		BIU.biuPara.btTopInset
 # define biParaBottomInset	BIU.biuPara.btBottomInset
-# define biParaFlags		BIU.biuPara.btFlags
-
-# define biParaBorderNrAbove	BIU.biuPara.btBorderNrAbove
-# define biParaBorderNrBelow	BIU.biuPara.btBorderNrBelow
+# define biParaTocLevel		BIU.biuPara.btTocLevel
 
 # define biParaProperties	BIU.biuPara.btProperties
 

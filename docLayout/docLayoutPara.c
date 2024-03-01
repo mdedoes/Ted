@@ -227,7 +227,6 @@ void docLayoutCalculateParaTopInset(
 	{ docAddBorderToInset( &topInset, bpTop ); 		}
 
     paraNode->biParaTopInset= cellMargin+ topInset;
-    paraNode->biParaBorderNrAbove= nrAbove;
 
     return;
     }
@@ -288,7 +287,6 @@ void docLayoutCalculateParaBottomInset(
     bottomInset += paraNode->biParaProperties->ppSpaceAfterTwips;
 
     paraNode->biParaBottomInset= bottomInset+ cellMargin;
-    paraNode->biParaBorderNrBelow= nrBelow;
 
     return;
     }

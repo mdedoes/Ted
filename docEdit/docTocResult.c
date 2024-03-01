@@ -185,7 +185,7 @@ static struct BufferItem * docMakeTocParagraph(
     const DocumentStyle *	ds= ct->ctLevelStyles[level];
     const DocumentProperties *	dp= ct->ctBdToc->bdProperties;
 
-    struct BufferItem *		paraNodeToc= (struct BufferItem *)0;
+    BufferItem *		paraNodeToc= (struct BufferItem *)0;
 
     TabStopList			tsl;
     ParagraphProperties		ppToc;
@@ -284,6 +284,8 @@ static struct BufferItem * docMakeTocParagraph(
 					refNode, &ppToc, ta, ppToc.ppRToL );
     if  ( ! paraNodeToc )
 	{ XDEB(paraNodeToc); goto ready;	}
+
+    paraNodeToc->biParaTocLevel= level;
 
   ready:
 

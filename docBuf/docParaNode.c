@@ -30,7 +30,7 @@
 
 void docCleanParaNode(	struct BufferDocument *	bd,
 			struct DocumentTree *	dt,
-			struct BufferItem *	paraNode )
+			BufferItem *		paraNode )
     {
     int				i;
     TextParticule *		tp;
@@ -90,7 +90,7 @@ void docCleanParaNode(	struct BufferDocument *	bd,
     return;
     }
 
-void docInitParaNode(	struct BufferItem *		paraNode )
+void docInitParaNode(	BufferItem *		paraNode )
     {
     utilInitMemoryBuffer( &(paraNode->biParaStringBuffer) );
 
@@ -102,26 +102,20 @@ void docInitParaNode(	struct BufferItem *		paraNode )
     paraNode->biParaLineCount= 0;
     paraNode->biParaLines= (struct TextLine *)0;
 
+    paraNode->biParaMajorityFontSize= 0;
     paraNode->biParaMajorityFontAscY0= 0;
     paraNode->biParaMajorityFontDescY1= 0;
-    paraNode->biParaMajorityFontSize= 0;
-				/********************************/
-				/*  Also used to find out	*/
-				/*  whether the line extents	*/
-				/*  must be recalculated.	*/
-				/********************************/
-
-    paraNode->biParaBorderNrAbove= -1;
-    paraNode->biParaBorderNrBelow= -1;
 
     paraNode->biParaTopInset= 0;
     paraNode->biParaBottomInset= 0;
 
-    paraNode->BIU.biuPara.btProperties= (const struct ParagraphProperties *)0;
+    paraNode->biParaTocLevel= 0;
+
+    paraNode->biParaProperties= (const struct ParagraphProperties *)0;
     paraNode->BIU.biuPara.btParaPropertyNumber= 0;
     }
 
-int docParagraphIsEmpty(	const struct BufferItem *	paraNode )
+int docParagraphIsEmpty(	const BufferItem *	paraNode )
     {
     return paraNode->biParaParticuleCount == 0			||
 	  (   paraNode->biParaParticuleCount == 1			&&
