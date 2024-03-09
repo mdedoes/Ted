@@ -186,9 +186,12 @@ static int docDrawDocNode(	LayoutPosition *		lpBelow,
 
     BlockOrigin			bo;
 
+    const struct DocumentTree *	saveTree= dc->dcTree;
     const struct BufferItem *	saveBodySectNode= dc->dcBodySectNode;
 
     /* dc->dcStartNode ... Done by docDrawGroupNode */
+
+    dc->dcTree= &(bd->bdBody);
 
     docInitBlockOrigin( &bo );
 
@@ -217,6 +220,7 @@ static int docDrawDocNode(	LayoutPosition *		lpBelow,
   ready:
 
     dc->dcBodySectNode= saveBodySectNode;
+    dc->dcTree= saveTree;
 
     return rval;
     }
@@ -241,6 +245,7 @@ static int docDrawSectNode(	LayoutPosition *		lpBelow,
 
     BlockOrigin			bo;
 
+    const struct DocumentTree *	saveTree= dc->dcTree;
     const struct BufferItem *	saveBodySectNode= dc->dcBodySectNode;
 
     /* dc->dcStartNode ... Done by docDrawGroupNode */
@@ -266,6 +271,7 @@ static int docDrawSectNode(	LayoutPosition *		lpBelow,
   ready:
 
     dc->dcBodySectNode= saveBodySectNode;
+    dc->dcTree= saveTree;
 
     return rval;
     }

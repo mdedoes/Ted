@@ -24,6 +24,11 @@ typedef struct DrawTextLine
     struct BufferDocument *	dtlDocument;
 
 				/**
+				 *  The document tree that we are currently drawing
+				 */
+    const struct DocumentTree *	dtlTree;
+
+				/**
 				 *  Pixel rectangle for the line. It is used
 				 *  to optimize and to centralize pixel 
 				 *  calculations for screen drawing.

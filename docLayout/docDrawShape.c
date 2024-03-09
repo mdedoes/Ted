@@ -82,6 +82,7 @@ static int docDrawDrawingShape(	const DocumentRectangle *	drOutside,
     DocumentRectangle			drHere;
     DocumentRectangle			drNorm;
 
+    const struct DocumentTree *	saveTree= dc->dcTree;
     const struct BufferItem *	saveBodySectNode= dc->dcBodySectNode;
 
     docShapeGetRects( &drHere, &drNorm, &atHere, drOutside, atOutside, ds );
@@ -140,6 +141,7 @@ static int docDrawDrawingShape(	const DocumentRectangle *	drOutside,
   ready:
 
     dc->dcBodySectNode= saveBodySectNode;
+    dc->dcTree= saveTree;
 
     return rval;
     }

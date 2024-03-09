@@ -33,6 +33,7 @@ void docInitDrawingContext(	DrawingContext *	dc )
 
     dc->dcLayoutContext= (struct LayoutContext *)0;
     dc->dcBodySectNode= (struct BufferItem *)0;
+    dc->dcTree= (struct DocumentTree *)0;
 
     dc->dcClipRect= (DocumentRectangle *)0;
     dc->dcSelection= (struct DocumentSelection *)0;

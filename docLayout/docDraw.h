@@ -223,6 +223,11 @@ typedef struct DrawingContext
     struct BufferDocument *	dcDocument;
 
 				/**
+				 *  The document tree that we are currently drawing
+				 */
+    const struct DocumentTree *	dcTree;
+
+				/**
 				 *  Draw text particules separately: Normally,
 				 *  spans in a line with the same text attributes 
 				 *  are drawn as one string. This has the advantage, 

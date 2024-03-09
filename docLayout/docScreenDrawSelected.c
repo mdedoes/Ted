@@ -167,6 +167,8 @@ int docScreenDrawSelection(
     int				rval= 0;
 
     LayoutPosition		lpBelow;
+
+    const struct DocumentTree *	saveTree= dc->dcTree;
     const struct BufferItem *	saveBodySectNode= dc->dcBodySectNode;
 
     dc->dcStartTextLine= docStartTextLineSelected;
@@ -202,6 +204,7 @@ int docScreenDrawSelection(
 	{ LDEB(1); rval= -1;	}
 
     dc->dcBodySectNode= saveBodySectNode;
+    dc->dcTree= saveTree;
 
     return rval;
     }

@@ -29,9 +29,11 @@ static int docDrawTreeRoot(	LayoutPosition *		lpBelow,
 				void *				through )
     {
     int				rval;
+    const struct DocumentTree *	saveTree= dc->dcTree;
     const struct BufferItem *	saveBodySectNode= dc->dcBodySectNode;
 
     dc->dcBodySectNode= bodySectNode;
+    dc->dcTree= tree;
 
     if  ( dc->dcStartTree && (*dc->dcStartTree)( through, dc, tree ) )
 	{ LDEB(tree->dtRoot->biTreeType); return -1; }
@@ -44,6 +46,7 @@ static int docDrawTreeRoot(	LayoutPosition *		lpBelow,
 	{ LDEB(tree->dtRoot->biTreeType); return -1; }
 
     dc->dcBodySectNode= saveBodySectNode;
+    dc->dcTree= saveTree;
 
     return rval;
     }

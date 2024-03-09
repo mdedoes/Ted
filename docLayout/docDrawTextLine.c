@@ -51,6 +51,7 @@ static void docSetDrawTextLine(
     dtl->dtlThrough= through;
     dtl->dtlDrawingContext= dc;
     dtl->dtlDocument= lc->lcDocument;
+    dtl->dtlTree= dc->dcTree;
 
     dtl->dtlTextLine= tl;
     dtl->dtlPartUpto= tl->tlFirstParticule+ tl->tlParticuleCount;
@@ -94,6 +95,7 @@ static void docInitDrawTextLine(	DrawTextLine *	dtl )
     dtl->dtlThrough= (void *)0;
     dtl->dtlDrawingContext= (DrawingContext *)0;
     dtl->dtlDocument= (struct BufferDocument *)0;
+    dtl->dtlTree= (struct DocumentTree *)0;
 
     geoInitRectangle( &(dtl->dtlLineFrameRectanglePixels) );
     docInitLayoutPosition( &(dtl->dtlShiftedTopPosition) );
