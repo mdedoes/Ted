@@ -246,7 +246,7 @@ static void psFileLinkDestMark(	SimpleOutputStream *	sos,
 /*									*/
 /************************************************************************/
 
-static void pdPdfmarkWriteClickArea(
+static void psPdfmarkWriteClickArea(
 				SimpleOutputStream *		sos,
 				const DocumentRectangle *	drLink )
     {
@@ -290,6 +290,7 @@ int psPdfmarkDefineAnnotationDictionary(
 				PrintingState *			ps,
 				const MemoryBuffer *		fileName,
 				const MemoryBuffer *		markName,
+				const MemoryBuffer *		contents,
 				const char *			annotationDictionaryName )
     {
     int		pageAnnotationReference= 0;
@@ -298,6 +299,8 @@ int psPdfmarkDefineAnnotationDictionary(
 	{ fileName= (const MemoryBuffer *)0;	}
     if  ( markName && utilMemoryBufferIsEmpty( markName ) )
 	{ markName= (const MemoryBuffer *)0;	}
+    if  ( contents && utilMemoryBufferIsEmpty( contents ) )
+	{ contents= (const MemoryBuffer *)0;	}
 
     sioOutPrintf( ps->psSos,
 	"[ /_objdef {%s} /type /dict /OBJ pdfmark\n",
@@ -308,9 +311,9 @@ int psPdfmarkDefineAnnotationDictionary(
     if  ( psPdfmarkWriteSourceProperties( ps, fileName, markName ) )
 	{ LDEB(1); return -1;	}
 
-    if  ( fileName )
+    if  ( contents )
 	{
-	if  ( psPrintPdfmarkTextEntry( ps->psSos, "Contents", fileName ) < 0 )
+	if  ( psPrintPdfmarkTextEntry( ps->psSos, "Contents", contents ) < 0 )
 	    { XDEB(fileName); return -1;	}
 	}
 
@@ -335,7 +338,7 @@ static int psSourcePdfmark(	PrintingState *			ps,
 
     /* Start populating annotation pdfmark */
     sioOutPrintf( ps->psSos, "[" );
-    pdPdfmarkWriteClickArea( ps->psSos, drLink );
+    psPdfmarkWriteClickArea( ps->psSos, drLink );
 
     if  ( psPdfmarkWriteSourceProperties( ps, fileName, markName ) )
 	{ LDEB(1); return -1;	}
@@ -364,7 +367,7 @@ static void psGotoPdfmark(	PrintingState *			ps,
     static int		n= 0;
 
     sioOutPrintf( ps->psSos, "[ " );
-    pdPdfmarkWriteClickArea( sos, drLink );
+    psPdfmarkWriteClickArea( sos, drLink );
 
     sioOutPrintf( sos, "  /T (Widget%d) ", n++ );
     sioOutPrintf( sos, "  /TU (tooltip text) " );
@@ -519,7 +522,7 @@ void psSetLinkRectangle(	PrintingState *		ps,
     geoTransformRectangle( &dr, &drLink, &(ps->psCurrentTransform) );
 
     sioOutPrintf( ps->psSos, "[ {%s} << ", annotationDictionaryName );
-    pdPdfmarkWriteClickArea( ps->psSos, &dr );
+    psPdfmarkWriteClickArea( ps->psSos, &dr );
     sioOutPrintf( ps->psSos, " >> /PUT pdfmark\n" );
 
     ps->psLinkParticulesDone= 0;

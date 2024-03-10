@@ -12,6 +12,8 @@
 #   include	<docHyperlinkField.h>
 #   include	<docBookmarkField.h>
 #   include	<docDocumentField.h>
+#   include	<docSelect.h>
+#   include	<docFields.h>
 #   include	<psPrint.h>
 
 #   include	<docDebug.h>
@@ -49,15 +51,26 @@ int docPsPrintStartHyperlink(
 
     if  ( ! docGetHyperlinkField( &hf, df ) )
 	{
+	DocumentSelection	dsInside;
+
 	ps->psInsideLink= 1;
 	ps->psLinkParticulesDone= 0;
 	ps->psLinkRectLeft= x0Twips;
 
+	utilEmptyMemoryBuffer( &(ps->psAnnotationDictionaryName) );
 	utilEmptyMemoryBuffer( &(ps->psLinkTitle) );
 	if  ( utilCopyMemoryBuffer( &(ps->psLinkFile), &(hf.hfFile) ) )
 	    { LDEB(1); rval= -1; goto ready;	}
 	if  ( utilCopyMemoryBuffer( &(ps->psLinkMark), &(hf.hfBookmark) ) )
 	    { LDEB(1); rval= -1; goto ready;	}
+
+	if  ( ! docDelimitFieldInTree( &dsInside, (DocumentSelection *)0,
+					(int *)0, (int *)0, dtl->dtlTree, df ) )
+	    {
+	    if  ( docCollectReference( &(ps->psLinkTitle), &dsInside, dtl->dtlDocument ) )
+		{ LDEB(1); return -1;	}
+	    }
+
 
 	if  ( ps->psTagDocumentStructure	&&
 	      ! ps->psInArtifact		&&
@@ -97,3 +110,20 @@ int docPsPrintFinishLink( const DrawTextLine *	dtl,
 
     return 0;
     }
+
+int docPsFinishAnnotation(	PrintingState *		ps,
+				int			x1Twips,
+				int			lineTop,
+				int			lineHeight )
+    {
+    const StructItem *	structItem= ps->psCurrentStructItem;
+
+    if  ( ! structItem || utilMemoryBufferIsEmpty( &(structItem->siAnnotationDictionaryName) ) )
+	{ XDEB(structItem); return -1;	}
+
+    psSetLinkRectangle( ps, x1Twips, lineTop, lineHeight,
+			utilMemoryBufferGetString( &(structItem->siAnnotationDictionaryName) ) );
+
+    return 0;
+    }
+

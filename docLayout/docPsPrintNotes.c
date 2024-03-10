@@ -53,6 +53,7 @@ int docPsPrintStartNote(
     psDestPdfmark( ps, lineTop, &mbSource );
 
     /* Remember what the target is to use that at the end of the link */
+    utilEmptyMemoryBuffer( &(ps->psAnnotationDictionaryName) );
     utilEmptyMemoryBuffer( &(ps->psLinkFile) );
 
     utilEmptyMemoryBuffer( &(ps->psLinkTitle) );

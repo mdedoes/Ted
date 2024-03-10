@@ -45,7 +45,7 @@ CFLAGS=	\
 
 #CFLAGS= -g -O2 $(WFLAGS) $(INCLUDES)
 
-# 83!!obs
+# 84!!obs
 OBS	=	\
 		layoutContext.o\
 		docValignCells.o\
@@ -74,6 +74,7 @@ OBS	=	\
 		docPsPrintPdfmarks.o\
 		docPsPrintParagraph.o\
 		docPsPrintOrnaments.o\
+		docPsPrintNotes.o\
 		docPsPrintList.o\
 		docPsPrintLink.o\
 		docPsPrintLineStructure.o\
@@ -1793,15 +1794,7 @@ docPsPrintFields.o: \
     ../docBase/docLayoutPosition.h \
     ../docBase/docSelectionScope.h \
     ../docBase/docTextLine.h \
-    ../docBase/docTreeType.h \
-    ../docBuf/docCellNode.h \
     ../docBuf/docDebug.h \
-    ../docBuf/docFields.h \
-    ../docBuf/docNotes.h \
-    ../docBuf/docParaNode.h \
-    ../docBuf/docRowNode.h \
-    ../docBuf/docSectNode.h \
-    ../docBuf/docTreeNode.h \
     docDrawLine.h \
     ../docField/docChildFields.h \
     ../docField/docDocumentField.h \
@@ -1933,6 +1926,8 @@ docPsPrintLink.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docTextLine.h \
     ../docBuf/docDebug.h \
+    ../docBuf/docFields.h \
+    ../docBuf/docSelect.h \
     docDrawLine.h \
     ../docField/docBookmarkField.h \
     ../docField/docChildFields.h \
@@ -1988,6 +1983,37 @@ docPsPrintList.o: \
     ../utilPs/psPrint.h \
     ../utilPs/textAttribute.h \
     docPsPrintList.c
+
+docPsPrintNotes.o: \
+    ../appUtil/utilMemoryBuffer.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docTreeType.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDebug.h \
+    ../docBuf/docFields.h \
+    ../docBuf/docNotes.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docTreeNode.h \
+    docDrawLine.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentField.h \
+    ../docField/docFieldInstructions.h \
+    docLayoutConfig.h \
+    docPsPrintImpl.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/psNup.h \
+    ../utilPs/psPrint.h \
+    docPsPrintNotes.c
 
 docPsPrintOrnaments.o: \
     ../appUtil/sioGeneral.h \

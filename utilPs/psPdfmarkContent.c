@@ -687,7 +687,7 @@ int psPdfmarkAppendMarkedLink(	PrintingState *		ps,
 	{ LDEB(ps->psInArtifact); return -1;	}
 
     pageAnnotationReference= psPdfmarkDefineAnnotationDictionary( ps,
-				    &(ps->psLinkFile), &(ps->psLinkMark),
+				    &(ps->psLinkFile), &(ps->psLinkMark), &(ps->psLinkTitle),
 				    annotationDictionaryName );
     if  ( pageAnnotationReference < 0 )
 	{ LDEB(pageAnnotationReference); return -1;	}

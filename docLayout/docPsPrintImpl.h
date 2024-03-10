@@ -321,3 +321,9 @@ extern int docPsListNodeDeeper(	const struct BufferItem *	paraNode,
 
 extern int docPsListNodeShallower( const struct BufferItem *	paraNode,
 				const struct BufferItem *	prevNode );
+
+extern int docPsPrintStartNote(	const struct DrawTextLine *	dtl,
+				int				part,
+				int				x0Twips,
+				const struct DocumentField *	df,
+				int				lineTop );

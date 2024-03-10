@@ -100,17 +100,30 @@ typedef struct PrintingState
 				 *  as a while.
 				 */
     MemoryBuffer		psLinkFile;
+
 				/**
 				 *  The bookmark part of the current hyperlink.
 				 *  It refers to a location inside the document.
 				 *  This is the equivalent of the HTML fragment identifier.
 				 */
     MemoryBuffer		psLinkMark;
+
 				/**
 				 *  The title for the current hyperlink.
 				 *  Currently, it is only used for notes.
 				 */
     MemoryBuffer		psLinkTitle;
+
+				/**
+				 *  This is the name of the annotation dictionary.
+				 *  that implements the current (hyper)link.
+				 *  We start an annotation at the beginning of the 
+				 *  link end we end it at the end of the link.
+				 *  When the link spans multiple lines, we end the 
+				 *  annotation at the end of the line and we start a new
+				 *  one on the next line.
+				 */
+    MemoryBuffer		psAnnotationDictionaryName;
 
     unsigned char		psUsePostScriptFilters;
     unsigned char		psUsePostScriptIndexedImages;
@@ -440,6 +453,7 @@ extern int psPdfmarkDefineAnnotationDictionary(
 				PrintingState *			ps,
 				const MemoryBuffer *		fileName,
 				const MemoryBuffer *		markName,
+				const MemoryBuffer *		contents,
 				const char *			annotationDictionaryName );
 
 extern int psPageModePdfmark(	struct SimpleOutputStream *	sos,

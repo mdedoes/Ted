@@ -152,9 +152,10 @@ void psInitPrintingState(	PrintingState *	ps )
 
     ps->psLinkParticulesDone= 0;
     ps->psLinkRectLeft= -1;
-    utilInitMemoryBuffer( &(ps->psLinkFile) );
     utilInitMemoryBuffer( &(ps->psLinkMark) );
+    utilInitMemoryBuffer( &(ps->psLinkFile) );
     utilInitMemoryBuffer( &(ps->psLinkTitle) );
+    utilInitMemoryBuffer( &(ps->psAnnotationDictionaryName) );
 
     ps->psUsePostScriptFilters= 1;
     ps->psUsePostScriptIndexedImages= 1;
@@ -185,6 +186,7 @@ void psCleanPrintingState(	PrintingState *	ps )
     utilCleanMemoryBuffer( &(ps->psLinkMark) );
     utilCleanMemoryBuffer( &(ps->psLinkFile) );
     utilCleanMemoryBuffer( &(ps->psLinkTitle) );
+    utilCleanMemoryBuffer( &(ps->psAnnotationDictionaryName) );
 
     while( ps->psCurrentStructItem )
 	{ psPdfPopStructItem( ps );	}

@@ -100,20 +100,3 @@ int docPsPrintEndArtifact(	PrintingState *		ps )
 
     return psPdfEndMarkedContent( ps, STRUCTtypeARTIFACT );
     }
-
-int docPsFinishAnnotation(	PrintingState *		ps,
-				int			x1Twips,
-				int			lineTop,
-				int			lineHeight )
-    {
-    const StructItem *	structItem= ps->psCurrentStructItem;
-
-    if  ( ! structItem || utilMemoryBufferIsEmpty( &(structItem->siAnnotationDictionaryName) ) )
-	{ XDEB(structItem); return -1;	}
-
-    psSetLinkRectangle( ps, x1Twips, lineTop, lineHeight,
-			utilMemoryBufferGetString( &(structItem->siAnnotationDictionaryName) ) );
-
-    return 0;
-    }
-
