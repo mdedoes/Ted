@@ -306,5 +306,7 @@ int docPsPrintFinishTextLine(	const struct DrawTextLine *	dtl,
 	    }
 	}
 
+    docPsPrintFinishInline( ps );
+
     return 0;
     }
