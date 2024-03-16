@@ -141,6 +141,22 @@ int docPsPrintFinishInline(	PrintingState *		ps )
     return 0;
     }
 
+/**
+ *  Do we need to embed non-textual in-line output in an artifact?
+ *  It looks like this is only needed outside an InLineStructElem (ILSE)
+ */
+int docPsPrintNeedInlineArtifact(	PrintingState *	ps )
+    {
+    if  ( ps->psInsideLink						&&
+	  ps->psCurrentStructItem 					&&
+	  ps->psCurrentStructItem->siIsLeaf				&&
+	  ps->psCurrentStructItem->siIsInline				)
+	{ return 0;	}
+    else{
+	return ps->psTagDocumentStructure && ! ps->psInArtifact;
+	}
+    }
+
 int docPsPrintBeginInlineArtifact(
 			const DrawTextLine *		dtl,
 			int				xTwips )

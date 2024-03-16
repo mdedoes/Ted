@@ -221,6 +221,9 @@ extern int docPsPrintBeginArtifact(
 extern int docPsPrintEndArtifact(
 				struct PrintingState *		ps );
 
+extern int docPsPrintNeedInlineArtifact(
+				struct PrintingState *		ps );
+
 int docPsPrintBeginInlineArtifact(
 			const struct DrawTextLine *	dtl,
 			int				xTwips );
