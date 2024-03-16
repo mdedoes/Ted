@@ -51,14 +51,6 @@ const char STRUCTtypeTH[]= "TH";
 
 const char STRUCTtypeARTIFACT[] = "Artifact";
 
-/************************************************************************/
-/*									*/
-/*  Start/Finish printing a (sub)tree in the document tree. This is	*/
-/*  invoked to mark the content structure E.G. to support reflowing or	*/
-/*  PDF-UA.								*/
-/*									*/
-/************************************************************************/
-
 static int docPsPrintHeaderAsArtifact(
 				int				page,
 				struct DrawingContext *		dc )
@@ -92,6 +84,14 @@ static int docPsPrintFooterAsArtifact(
 
     return 1;
     }
+
+/************************************************************************/
+/*									*/
+/*  Start/Finish printing a (sub)tree in the document tree. This is	*/
+/*  invoked to mark the content structure E.G. to support reflowing or	*/
+/*  PDF-UA.								*/
+/*									*/
+/************************************************************************/
 
 int docPsPrintStartTree(	void *				vps,
 				struct DrawingContext *		dc,
