@@ -45,13 +45,14 @@ CFLAGS=	\
 
 #CFLAGS= -g -O2 $(WFLAGS) $(INCLUDES)
 
-# 84!!obs
+# 85!!obs
 OBS	=	\
 		layoutContext.o\
 		docValignCells.o\
 		docStripLayoutJob.o\
 		docSelectLayout.o\
 		docSelectionGeometry.o\
+		docSectionPages.o\
 		docScreenRuler.o\
 		docScreenLineX.o\
 		docScreenLayoutFindX.o\
@@ -1820,8 +1821,6 @@ docPsPrintHierarchy.o: \
     ../docBase/docInsertedObjectList.h \
     ../docBase/docLayoutPosition.h \
     ../docBase/docListNumberTree.h \
-    ../docBase/docNotesProperties.h \
-    ../docBase/docSectProperties.h \
     ../docBase/docSelectionScope.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docTreeType.h \
@@ -2688,6 +2687,29 @@ docScreenRuler.o: \
     ../utilGeo/geoRectangle.h \
     ../utilGeo/geoRectangleOffsets.h \
     docScreenRuler.c
+
+docSectionPages.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docSectProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDebug.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docTreeNode.h \
+    docDraw.h \
+    docLayoutConfig.h \
+    docLayoutDocumentTree.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
+    docSectionPages.c
 
 docSelectLayout.o: \
     ../appUtil/utilIndexSet.h \

@@ -192,6 +192,10 @@ static int docPsFinishPage(	void *				vps,
     int			pageHasFooter= dc->dcDocHasPageFooters;
     int			skip= 0;
 
+    const int asArtifact= docDrawHeaderAsArtifact(
+					    page, bodySectNode );
+    const int postponedHeader= dc->dcPostponeHeadersFooters && asArtifact;
+
 #   if 0
     docPsPageBoxes( dc, vps,
 	&(dc->dcLayoutContext.lcDocument->bdProperties.dpGeometry) );
@@ -208,13 +212,17 @@ static int docPsFinishPage(	void *				vps,
     */
 
     /*  1  */
-    if  ( pageWasMarked			&&
-	  dc->dcPostponeHeadersFooters	)
+    if  ( pageWasMarked && postponedHeader )
 	{
 	if  ( dc->dcDocHasPageHeaders				&&
 	      docDrawPageHeader( bodySectNode, vps, dc, page )	)
 	    { LLDEB(dc->dcDocHasPageHeaders,page);	}
+	}
 
+    /*  1  */
+    if  ( pageWasMarked			&&
+	  dc->dcPostponeHeadersFooters	)
+	{
 	if  ( dc->dcDocHasPageFooters				&&
 	      docDrawPageFooter( bodySectNode, vps, dc, page )	)
 	    { LLDEB(dc->dcDocHasPageFooters,page);	}
@@ -322,20 +330,26 @@ static int docPsPrintPageRange(	PrintingState *		ps,
 				int			asLast )
     {
     LayoutPosition		lpBelow;
-    struct BufferItem *		sectNode;
+    struct BufferItem *		bodySectNode;
 
     docInitLayoutPosition( &lpBelow );
 
-    sectNode= docFindFirstSectionOnPage( bodyNode, firstPage );
-    if  ( ! sectNode )
-	{ LXDEB(firstPage,sectNode); return -1;	}
+    bodySectNode= docFindFirstSectionOnPage( bodyNode, firstPage );
+    if  ( ! bodySectNode )
+	{ LXDEB(firstPage,bodySectNode); return -1;	}
 
-    if  ( docPsPrintStartPage( (void *)ps, &(sectNode->biSectDocumentGeometry),
+    if  ( docPsPrintStartPage( (void *)ps, &(bodySectNode->biSectDocumentGeometry),
 						    dc, "start", firstPage ) )
 	{ LDEB(firstPage); return -1;	}
 
-    if  ( ! dc->dcPostponeHeadersFooters )
-	{ docDrawPageHeader( sectNode, (void *)ps, dc, firstPage );	}
+    {
+    const int asArtifact= docDrawHeaderAsArtifact(
+					    firstPage, bodySectNode );
+    const int postponeHeader= dc->dcPostponeHeadersFooters && asArtifact;
+
+    if  ( ! postponeHeader )
+	{ docDrawPageHeader( bodySectNode, (void *)ps, dc, firstPage );	}
+    }
 
     if  ( docDrawShapesForPage( (void *)ps, dc, 1, firstPage ) )
 	{ LDEB(firstPage);	}
@@ -345,17 +359,17 @@ static int docPsPrintPageRange(	PrintingState *		ps,
     if  ( lastPage < 0 )
 	{ lastPage= bodyNode->biBelowPosition.lpPage;	}
 
-    sectNode= docFindLastSectionOnPage( bodyNode, lastPage );
-    if  ( ! sectNode )
-	{ LXDEB(lastPage,sectNode); return -1;	}
+    bodySectNode= docFindLastSectionOnPage( bodyNode, lastPage );
+    if  ( ! bodySectNode )
+	{ LXDEB(lastPage,bodySectNode); return -1;	}
 
     if  ( docDrawShapesForPage( (void *)ps, dc, 0, lastPage ) )
 	{ LDEB(lastPage);	}
 
     if  ( ! dc->dcPostponeHeadersFooters )
-	{ docDrawPageFooter( sectNode, (void *)ps, dc, lastPage );	}
+	{ docDrawPageFooter( bodySectNode, (void *)ps, dc, lastPage );	}
 
-    docPsFinishPage( (void *)ps, dc, sectNode, lastPage, asLast );
+    docPsFinishPage( (void *)ps, dc, bodySectNode, lastPage, asLast );
 
     return 0;
     }

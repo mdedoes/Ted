@@ -13,7 +13,6 @@
 #   include	<docBuf.h>
 #   include	<psPrint.h>
 #   include	"docDraw.h"
-#   include	<docSectProperties.h>
 
 #   include	<appDebugon.h>
 #   include	<docDebug.h>
@@ -51,40 +50,6 @@ const char STRUCTtypeTH[]= "TH";
 
 const char STRUCTtypeARTIFACT[] = "Artifact";
 
-static int docPsPrintHeaderAsArtifact(
-				int				page,
-				struct DrawingContext *		dc )
-    {
-    const BufferItem *	bodySectNode= dc->dcBodySectNode;
-
-    if  ( bodySectNode->biSectFirstPageHeaderNoPdfArtifact	&&
-	  page == bodySectNode->biTopPosition.lpPage		)
-	{ return 0;	}
-
-    if  ( bodySectNode->biSectLastPageHeaderNoPdfArtifact	&&
-	  page == bodySectNode->biBelowPosition.lpPage		)
-	{ return 0;	}
-
-    return 1;
-    }
-
-static int docPsPrintFooterAsArtifact(
-				int				page,
-				struct DrawingContext *		dc )
-    {
-    const BufferItem *	bodySectNode= dc->dcBodySectNode;
-
-    if  ( bodySectNode->biSectFirstPageFooterNoPdfArtifact	&&
-	  page == bodySectNode->biTopPosition.lpPage		)
-	{ return 0;	}
-
-    if  ( bodySectNode->biSectLastPageFooterNoPdfArtifact	&&
-	  page == bodySectNode->biBelowPosition.lpPage		)
-	{ return 0;	}
-
-    return 1;
-    }
-
 /************************************************************************/
 /*									*/
 /*  Start/Finish printing a (sub)tree in the document tree. This is	*/
@@ -118,7 +83,7 @@ int docPsPrintStartTree(	void *				vps,
 	case DOCinLEFT_HEADER:
 	case DOCinRIGHT_HEADER:
 	case DOCinLAST_HEADER:
-	    if  ( docPsPrintHeaderAsArtifact( ps->psPagesPrinted, dc )		&&
+	    if  ( docDrawHeaderAsArtifact( ps->psPagesPrinted, dc->dcBodySectNode ) &&
 		  docPsPrintBeginTypedArtifact( ps, "Pagination", "Header" )	)
 		{ LDEB(tree->dtRoot->biTreeType); return -1;	}
 	    break;
@@ -128,7 +93,7 @@ int docPsPrintStartTree(	void *				vps,
 	case DOCinLEFT_FOOTER:
 	case DOCinRIGHT_FOOTER:
 	case DOCinLAST_FOOTER:
-	    if  ( docPsPrintFooterAsArtifact( ps->psPagesPrinted, dc )		&&
+	    if  ( docDrawFooterAsArtifact( ps->psPagesPrinted, dc->dcBodySectNode ) &&
 		  docPsPrintBeginTypedArtifact( ps, "Pagination", "Footer" )	)
 		{ LDEB(tree->dtRoot->biTreeType); return -1;	}
 	    break;
@@ -160,7 +125,7 @@ int docPsPrintFinishTree( void *			vps,
 	case DOCinLEFT_HEADER:
 	case DOCinRIGHT_HEADER:
 	case DOCinLAST_HEADER:
-	    if  ( docPsPrintHeaderAsArtifact( ps->psPagesPrinted, dc )	&&
+	    if  ( docDrawHeaderAsArtifact( ps->psPagesPrinted, dc->dcBodySectNode ) &&
 		  docPsPrintEndArtifact( ps )				)
 		{ LDEB(tree->dtRoot->biTreeType); return -1;	}
 	    break;
@@ -169,7 +134,7 @@ int docPsPrintFinishTree( void *			vps,
 	case DOCinLEFT_FOOTER:
 	case DOCinRIGHT_FOOTER:
 	case DOCinLAST_FOOTER:
-	    if  ( docPsPrintFooterAsArtifact( ps->psPagesPrinted, dc )	&&
+	    if  ( docDrawFooterAsArtifact( ps->psPagesPrinted, dc->dcBodySectNode ) &&
 		  docPsPrintEndArtifact( ps )				)
 		{ LDEB(tree->dtRoot->biTreeType); return -1;	}
 	    break;

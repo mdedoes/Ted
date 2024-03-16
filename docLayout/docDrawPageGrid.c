@@ -275,6 +275,10 @@ int docDrawToNextColumn(	struct BufferItem *	thisNode,
 
 	    if  ( isPageBreak && startNewPage )
 		{
+		const int asArtifact= docDrawHeaderAsArtifact(
+					    lpHere->lpPage, nextBodySectNode );
+		const int postponeHeader= dc->dcPostponeHeadersFooters && asArtifact;
+
 		if  ( dc->dcStartPage					&&
 		      (*dc->dcStartPage)( through, dg, dc, why,
 						    lpHere->lpPage )	)
@@ -289,7 +293,7 @@ int docDrawToNextColumn(	struct BufferItem *	thisNode,
 		    { LDEB(lpHere->lpPage);	}
 
 		if  ( dc->dcDrawOtherTrees				&&
-		      ! dc->dcPostponeHeadersFooters			&&
+		      ! postponeHeader					&&
 		      docDrawPageHeader( nextBodySectNode, through, dc,
 						    lpHere->lpPage )	)
 		    { LDEB(lpHere->lpPage); return -1;	}
@@ -426,36 +430,3 @@ if  ( thisNode->biTreeType == DOCinSHPTXT )
 
     return rval;
     }
-
-struct BufferItem * docFindFirstSectionOnPage(
-				struct BufferItem *	bodyNode,
-				int			page )
-    {
-    int		sect;
-
-    for ( sect= 0; sect < bodyNode->biChildCount; sect++ )
-	{
-	if  ( bodyNode->biChildren[sect]->biBelowPosition.lpPage >= page )
-	    { return bodyNode->biChildren[sect];	}
-	}
-
-    LLDEB(bodyNode->biChildCount,sect);
-    return (struct BufferItem *)0;
-    }
-
-struct BufferItem * docFindLastSectionOnPage(
-				struct BufferItem *	bodyNode,
-				int			page )
-    {
-    int		sect;
-
-    for ( sect= bodyNode->biChildCount- 1; sect >= 0; sect-- )
-	{
-	if  ( bodyNode->biChildren[sect]->biTopPosition.lpPage <= page )
-	    { return bodyNode->biChildren[sect];	}
-	}
-
-    LDEB(sect);
-    return (struct BufferItem *)0;
-    }
-

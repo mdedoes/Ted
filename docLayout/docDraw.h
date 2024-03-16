@@ -540,4 +540,12 @@ extern struct BufferItem * docFindLastSectionOnPage(
 				struct BufferItem *		bodyNode,
 				int				page );
 
+extern int docDrawHeaderAsArtifact(
+				int				page,
+				const struct BufferItem *	bodySectNode );
+
+extern int docDrawFooterAsArtifact(
+				int				page,
+				const struct BufferItem *	bodySectNode );
+
 #   endif
