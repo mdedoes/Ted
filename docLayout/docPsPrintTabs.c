@@ -27,7 +27,11 @@ static int psPrintDrawTab(	DrawingContext *	dc,
 				int			step,
 				const char *		tabProc )
     {
+    /* Looks like this is not needed, and as it causes problems inside a TOC/HYPERLINK 
+       do not draw in an artifact.
     const int	asArtifact= ps->psTagDocumentStructure && ! ps->psInArtifact;
+    */
+    const int	asArtifact= 0;
 
     x0= step* ( ( x0+ step- 1 )/ step );
     if  ( x1 <= x0 )

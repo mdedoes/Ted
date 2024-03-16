@@ -37,7 +37,11 @@ int docPsPrintRunUnderline(	const DrawTextLine *	dtl,
     int				y0;
     int				h;
 
+				/* Gives problems inside HYPERLINKS. and it looks like
+				   this is not required.
     const int			asArtifact= ps->psTagDocumentStructure && ! ps->psInArtifact;
+				*/
+    const int			asArtifact= 0;
 
     psUnderlineGeometry( &y0, &h, baseLine->lpPageYTwips,
 				TA_FONT_SIZE_TWIPS( ta ), pd[part].pdAfi );
@@ -76,7 +80,11 @@ int docPsPrintRunStrikethrough(	const DrawTextLine *	dtl,
     int				y0;
     int				h;
 
+				/* Gives problems inside HYPERLINKS. and it looks like
+				   this is not required.
     const int			asArtifact= ps->psTagDocumentStructure && ! ps->psInArtifact;
+				*/
+    const int			asArtifact= 0;
 
     psStrikethroughGeometry( &y0, &h, baseLine->lpPageYTwips,
 				TA_FONT_SIZE_TWIPS( ta ), pd[part].pdAfi );
