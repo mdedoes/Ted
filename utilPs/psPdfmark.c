@@ -83,11 +83,14 @@ void psImageQualityDistillerparams(	SimpleOutputStream *	sos )
 /*									*/
 /************************************************************************/
 
-static int psEmitDestination(	SimpleOutputStream *	sos,
-				const MemoryBuffer *	destName )
+static int psEmitDestinationProperty(
+		SimpleOutputStream *	sos,
+		const MemoryBuffer *	destName )
     {
     int			i;
     const char *	s= utilMemoryBufferGetString( destName );
+
+    sioOutPrintf( sos, " /Dest (" );
 
     for ( i= 0; i < destName->mbSize; s++, i++ )
 	{
@@ -106,6 +109,8 @@ static int psEmitDestination(	SimpleOutputStream *	sos,
 	if  ( sioOutPutByte( *s, sos ) < 0 )
 	    { return -1;	}
 	}
+
+    sioOutPrintf( sos, ")" );
 
     return 0;
     }
@@ -127,9 +132,9 @@ int psEmitDestPdfmark(		SimpleOutputStream *		sos,
 
     top= AT2_Y( x, y, at );
 
-    sioOutPrintf( sos, "[ /Dest /" );
+    sioOutPrintf( sos, "[" );
 
-    psEmitDestination( sos, mbRef );
+    psEmitDestinationProperty( sos, mbRef );
     sioOutPrintf( sos, "\n" );
 
     sioOutPrintf( sos, "  /View [ /XYZ null %d null ]\n", top );
@@ -266,9 +271,7 @@ static int psPdfmarkWriteSourceProperties(
 	if  ( ! markName )
 	    { XDEB(markName);	}
 	else{
-	    sioOutPrintf( ps->psSos, " /Dest /" );
-
-	    psEmitDestination( ps->psSos, markName );
+	    psEmitDestinationProperty( ps->psSos, markName );
 	    }
 	}
     else{
@@ -419,8 +422,7 @@ int psOutlinePdfmark(		PrintingState *		ps,
     if  ( childCount != 0 )
 	{ sioOutPrintf( ps->psSos, " /Count %d", childCount );	}
 
-    sioOutPrintf( ps->psSos, " /Dest /" );
-    psEmitDestination( ps->psSos, markName );
+    psEmitDestinationProperty( ps->psSos, markName );
 
     if  ( psPrintPdfmarkTextEntry( ps->psSos, "Title", title ) < 0 )
 	{ XDEB(title); return -1;	}
