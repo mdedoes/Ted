@@ -72,18 +72,16 @@ void psImageQualityDistillerparams(	SimpleOutputStream *	sos )
 	    sizeof(appPspsImageQualityDistillerparams)/sizeof(const char *) );
     }
 
-/************************************************************************/
-/*									*/
-/*  Emit the bookmark part of an internal link.				*/
-/*									*/
-/*  As the link is internal, we save both the source and its		*/
-/*  destination. This makes it possible to replace strange characters,	*/
-/*  rather than to escape them to pass them through the PostScript	*/
-/*  interpreter and the pdfmark translator.				*/
-/*									*/
-/************************************************************************/
-
-static int psEmitDestinationProperty(
+/**
+ *  Emit the bookmark part dictionary entry of an internal link.
+ *
+ *  As the link is internal, we save both the source and its
+ *  destination. This makes it possible to replace strange characters,
+ *  rather than to escape them to pass them through the PostScript
+ *
+ *  Some confusion exists whether this must be a (string) or a /name.
+ */
+static int psEmitDestEntry(
 		SimpleOutputStream *	sos,
 		const MemoryBuffer *	destName )
     {
@@ -134,7 +132,7 @@ int psEmitDestPdfmark(		SimpleOutputStream *		sos,
 
     sioOutPrintf( sos, "[" );
 
-    psEmitDestinationProperty( sos, mbRef );
+    psEmitDestEntry( sos, mbRef );
     sioOutPrintf( sos, "\n" );
 
     sioOutPrintf( sos, "  /View [ /XYZ null %d null ]\n", top );
@@ -271,7 +269,7 @@ static int psPdfmarkWriteSourceProperties(
 	if  ( ! markName )
 	    { XDEB(markName);	}
 	else{
-	    psEmitDestinationProperty( ps->psSos, markName );
+	    psEmitDestEntry( ps->psSos, markName );
 	    }
 	}
     else{
@@ -422,7 +420,7 @@ int psOutlinePdfmark(		PrintingState *		ps,
     if  ( childCount != 0 )
 	{ sioOutPrintf( ps->psSos, " /Count %d", childCount );	}
 
-    psEmitDestinationProperty( ps->psSos, markName );
+    psEmitDestEntry( ps->psSos, markName );
 
     if  ( psPrintPdfmarkTextEntry( ps->psSos, "Title", title ) < 0 )
 	{ XDEB(title); return -1;	}
