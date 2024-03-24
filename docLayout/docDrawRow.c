@@ -247,16 +247,21 @@ static int docDrawCellPageStrip( void *				through,
 
 /************************************************************************/
 
-static int docNextRowNodeOnNextPage(	const BufferItem *	rowNode )
+/**
+ * Is the next node on the same page as the current row? (This to not 
+ * finish the row where the pagination logic would also close it.)
+ */
+static int docNextNodeOnNextPage(	const BufferItem *	rowNode )
     {
-    const int	nextRowNumber= rowNode->biNumberInParent+ 1;
+    const int	nextNumber= rowNode->biNumberInParent+ 1;
 
-    if  ( nextRowNumber < rowNode->biRowTablePast )
+    /* NO!  if  ( nextNumber < rowNode->biRowTablePast ) */
+    if  ( nextNumber < rowNode->biParent->biChildCount )
 	{
-	const BufferItem *	nextRowNode=
-				rowNode->biParent->biChildren[nextRowNumber];
+	const BufferItem *	nextNode=
+				    rowNode->biParent->biChildren[nextNumber];
 
-	return nextRowNode->biTopPosition.lpPage > rowNode->biBelowPosition.lpPage;
+	return nextNode->biTopPosition.lpPage > rowNode->biBelowPosition.lpPage;
 	}
     else{
 	return 0;
@@ -303,7 +308,7 @@ static int docDrawRowPageStrip(	const BufferItem *		rowNode,
     int			atRowBottom= 0;
     int			isTableHeader;
 
-    const int		nextOnNextPage= docNextRowNodeOnNextPage( rowNode );
+    const int		nextOnNextPage= docNextNodeOnNextPage( rowNode );
     const int		prevOnPrevPage= docPrevRowNodeOnPrevPage( rowNode );
 
     isTableHeader= rowNode->biNumberInParent < rowNode->biRowPastHeaderRow;
