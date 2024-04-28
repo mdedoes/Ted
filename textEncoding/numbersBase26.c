@@ -23,8 +23,8 @@
 /*									*/
 /************************************************************************/
 
-static const char UTIL_Base26LowerDigits[]= "abcdefghijklnmopqrstuvwxyz";
-static const char UTIL_Base26UpperDigits[]= "ABCDEFGHIJKLNMOPQRSTUVWXYZ";
+static const char UTIL_Base26LowerDigits[]= "abcdefghijklmnopqrstuvwxyz";
+static const char UTIL_Base26UpperDigits[]= "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 int numbersBase26String(	char *		target,
 				int		maxlen,
