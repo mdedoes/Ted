@@ -1,6 +1,6 @@
 #   include	"docLayoutConfig.h"
 
-#   include	"docDraw.h"
+#   include	"docSectLayout.h"
 #   include	<docTreeNode.h>
 #   include	<docSectProperties.h>
 

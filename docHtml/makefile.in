@@ -26,6 +26,7 @@ WFLAGS=	-Wall			\
 
 INCLUDES=			\
 	-I../docEdit		\
+	-I../docDraw		\
 	-I../docLayout		\
 	-I../docBuf		\
 	-I../docField		\
@@ -922,13 +923,14 @@ docSvgDraw.o: \
     ../docBuf/docSectNode.h \
     ../docBuf/docShape.h \
     ../docBuf/docTreeNode.h \
+    ../docDraw/docDraw.h \
     ../docField/docChildFields.h \
     ../docField/docDocumentFieldList.h \
     ../docFont/fontMatchFont.h \
     docHtmlConfig.h \
-    ../docLayout/docDraw.h \
     ../docLayout/docLayoutDocumentTree.h \
     ../docLayout/docLayout.h \
+    ../docLayout/docSectLayout.h \
     ../docLayout/layoutContext.h \
     docSvgDraw.h \
     docSvgDrawImpl.h \
@@ -965,11 +967,11 @@ docSvgDrawImage.o: \
     ../docBase/docShapeProperties.h \
     ../docBuf/docDocumentTree.h \
     ../docBuf/docShape.h \
+    ../docDraw/docDraw.h \
+    ../docDraw/docDrawLine.h \
     ../docField/docChildFields.h \
     ../docFont/fontMatchFont.h \
     docHtmlConfig.h \
-    ../docLayout/docDraw.h \
-    ../docLayout/docDrawLine.h \
     ../docLayout/docLayoutDocumentTree.h \
     ../docLayout/docLayoutObject.h \
     ../docLayout/docMetafileObject.h \
@@ -1003,11 +1005,11 @@ docSvgDrawShapeText.o: \
     ../docBuf/docDocumentTree.h \
     ../docBuf/docShape.h \
     ../docBuf/docStripFrame.h \
+    ../docDraw/docDraw.h \
     ../docField/docChildFields.h \
     ../docFont/fontMatchFont.h \
     docHtmlConfig.h \
     docHtmlWriteImpl.h \
-    ../docLayout/docDraw.h \
     ../docLayout/docLayoutDocumentTree.h \
     ../docLayout/layoutContext.h \
     docSvgDrawImpl.h \
@@ -1039,9 +1041,9 @@ docSvgDrawShapes.o: \
     ../docBase/docShapeType.h \
     ../docBuf/docDocumentTree.h \
     ../docBuf/docShape.h \
+    ../docDraw/docDraw.h \
     ../docField/docChildFields.h \
     docHtmlConfig.h \
-    ../docLayout/docDraw.h \
     ../docLayout/docLayoutDocumentTree.h \
     docSvgDrawImpl.h \
     ../drawMeta/drawMetafileSvg.h \
@@ -1072,14 +1074,14 @@ docSvgDrawTextLine.o: \
     ../docBuf/docDocumentTree.h \
     ../docBuf/docDrawingShapeList.h \
     ../docBuf/docTextRun.h \
+    ../docDraw/docDraw.h \
+    ../docDraw/docDrawLine.h \
     ../docField/docChildFields.h \
     ../docField/docDocumentFieldList.h \
     ../docFont/fontDocFont.h \
     ../docFont/fontDocFontList.h \
     ../docFont/fontMatchFont.h \
     docHtmlConfig.h \
-    ../docLayout/docDraw.h \
-    ../docLayout/docDrawLine.h \
     ../docLayout/docLayoutDocumentTree.h \
     ../docLayout/docParticuleData.h \
     ../docLayout/layoutContext.h \

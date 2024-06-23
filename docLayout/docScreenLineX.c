@@ -11,6 +11,7 @@
 #   include	<utilIndexMapping.h>
 #   include	"layoutContext.h"
 #   include	"docLayout.h"
+#   include	"docScreenLayout.h"
 #   include	<docTextRun.h>
 #   include	<psTextExtents.h>
 #   include	<drawDrawingSurface.h>

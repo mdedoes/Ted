@@ -129,6 +129,7 @@ tedlibs: 	lib/appUtil.a		\
 		lib/docRtf.a		\
 		lib/docEdit.a		\
 		lib/docLayout.a		\
+		lib/docDraw.a		\
 		lib/docHtml.a		\
 		lib/guiBase.a		\
 		lib/appFrame.a		\
@@ -288,9 +289,19 @@ $(CFG_docLayout): docLayout/makefile.in $(DEP_docLayout) Makefile
 lib/docLayout.a: $(CFG_docLayout) lib
 	 cd docLayout && $(MAKE)
 
+#### docDraw
+CFG_docDraw=docDraw/docDrawConfig.h
+DEP_docDraw= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docField) $(DEP_docBuf) $(DEP_docRtf) $(DEP_ind) $(DEP_docEdit) $(DEP_docLayout) $(DEP_guiBase) $(CFG_docDraw)
+
+$(CFG_docDraw): docDraw/makefile.in $(DEP_docDraw) Makefile
+	 cd docDraw && ./configure $(CONFIGURE_OPTIONS)
+
+lib/docDraw.a: $(CFG_docDraw) lib
+	 cd docDraw && $(MAKE)
+
 #### appFrame
 CFG_appFrame=appFrame/appFrameConfig.h
-DEP_appFrame= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docField) $(DEP_docBuf) $(DEP_docRtf) $(DEP_ind) $(DEP_docEdit) $(DEP_guiBase) $(DEP_docLayout) $(CFG_appFrame)
+DEP_appFrame= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docField) $(DEP_docBuf) $(DEP_docRtf) $(DEP_ind) $(DEP_docEdit) $(DEP_guiBase) $(DEP_docLayout) $(DEP_docDraw) $(CFG_appFrame)
 
 $(CFG_appFrame): appFrame/makefile.in $(DEP_appFrame) Makefile
 	 cd appFrame && ./configure $(CONFIGURE_OPTIONS)
@@ -300,7 +311,7 @@ lib/appFrame.a: $(CFG_appFrame) lib
 
 #### docHtml
 CFG_docHtml=docHtml/docHtmlConfig.h
-DEP_docHtml= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docField) $(DEP_docBuf) $(DEP_docRtf) $(DEP_ind) $(DEP_docEdit) $(DEP_guiBase) $(DEP_docLayout) $(DEP_appFrame) $(CFG_docHtml)
+DEP_docHtml= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docField) $(DEP_docBuf) $(DEP_docRtf) $(DEP_ind) $(DEP_docEdit) $(DEP_guiBase) $(DEP_docLayout) $(DEP_docDraw) $(DEP_appFrame) $(CFG_docHtml)
 
 $(CFG_docHtml): docHtml/makefile.in $(DEP_docHtml) Makefile
 	 cd docHtml && ./configure $(CONFIGURE_OPTIONS)
@@ -310,7 +321,7 @@ lib/docHtml.a: $(CFG_docHtml) lib
 
 #### appTools
 CFG_appTools=appTools/appToolsConfig.h
-DEP_appTools= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docField) $(DEP_docBuf) $(DEP_docRtf) $(DEP_ind) $(DEP_docEdit) $(DEP_guiBase) $(DEP_docLayout) $(DEP_appFrame) $(DEP_docHtml) $(CFG_appTools)
+DEP_appTools= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docField) $(DEP_docBuf) $(DEP_docRtf) $(DEP_ind) $(DEP_docEdit) $(DEP_guiBase) $(DEP_docLayout) $(DEP_docDraw) $(DEP_appFrame) $(DEP_docHtml) $(CFG_appTools)
 
 $(CFG_appTools): appTools/makefile.in $(DEP_appTools) Makefile
 	 cd appTools && ./configure $(CONFIGURE_OPTIONS)
@@ -320,7 +331,7 @@ lib/appTools.a: $(CFG_appTools) lib
 
 #### tedTools
 CFG_tedTools=tedTools/tedToolsConfig.h
-DEP_tedTools= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docField) $(DEP_docBuf) $(DEP_docRtf) $(DEP_ind) $(DEP_docEdit) $(DEP_guiBase) $(DEP_docLayout) $(DEP_appFrame) $(DEP_docHtml) $(DEP_appTools) $(CFG_tedTools)
+DEP_tedTools= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docField) $(DEP_docBuf) $(DEP_docRtf) $(DEP_ind) $(DEP_docEdit) $(DEP_guiBase) $(DEP_docLayout) $(DEP_docDraw) $(DEP_appFrame) $(DEP_docHtml) $(DEP_appTools) $(CFG_tedTools)
 
 $(CFG_tedTools): tedTools/makefile.in $(DEP_tedTools) Makefile
 	 cd tedTools && ./configure $(CONFIGURE_OPTIONS)
@@ -330,7 +341,7 @@ lib/tedTools.a: $(CFG_tedTools) lib
 
 #### tedResource
 CFG_tedResource=tedResource/tedResourceConfig.h
-DEP_tedResource= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docField) $(DEP_docBuf) $(DEP_docRtf) $(DEP_ind) $(DEP_docEdit) $(DEP_guiBase) $(DEP_docLayout) $(DEP_appFrame) $(DEP_docHtml) $(DEP_appTools) $(DEP_tedTools) $(CFG_tedResource)
+DEP_tedResource= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docField) $(DEP_docBuf) $(DEP_docRtf) $(DEP_ind) $(DEP_docEdit) $(DEP_guiBase) $(DEP_docLayout) $(DEP_docDraw) $(DEP_appFrame) $(DEP_docHtml) $(DEP_appTools) $(DEP_tedTools) $(CFG_tedResource)
 
 $(CFG_tedResource): tedResource/makefile.in $(DEP_tedResource) Makefile
 	 cd tedResource && ./configure $(CONFIGURE_OPTIONS)
@@ -339,7 +350,7 @@ lib/tedResource.a: $(CFG_tedResource) lib
 	 cd tedResource && $(MAKE)
 
 #### Ted
-DEP_Ted= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docField) $(DEP_docBuf) $(DEP_docRtf) $(DEP_ind) $(DEP_docEdit) $(DEP_guiBase) $(DEP_docLayout) $(DEP_appFrame) $(DEP_docHtml) $(DEP_appTools) $(DEP_tedTools) $(DEP_tedResource)
+DEP_Ted= $(DEP_appUtil) $(DEP_utilGeo) $(DEP_textEncoding) $(DEP_utilPs) $(DEP_bitmap) $(DEP_docFont) $(DEP_drawMeta) $(DEP_docBase) $(DEP_docField) $(DEP_docBuf) $(DEP_docRtf) $(DEP_ind) $(DEP_docEdit) $(DEP_guiBase) $(DEP_docLayout) $(DEP_docDraw) $(DEP_appFrame) $(DEP_docHtml) $(DEP_appTools) $(DEP_tedTools) $(DEP_tedResource)
 CFG_Ted=Ted/tedConfig.h
 
 $(CFG_Ted): Ted/makefile.in Ted/tedConfig.h.in $(DEP_Ted) Makefile

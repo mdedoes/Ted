@@ -31,6 +31,7 @@
 #   include	<docAttributes.h>
 #   include	<docShapeGeometry.h>
 #   include	<layoutContext.h>
+#   include	<docSectLayout.h>
 
 #   include	<appDebugon.h>
 

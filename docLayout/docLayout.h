@@ -29,7 +29,6 @@ struct ParagraphLayoutPosition;
 struct BlockOrigin;
 struct BlockFrame;
 struct NotesReservation;
-struct TextRun;
 struct LineLayoutJob;
 struct LayoutContext;
 
@@ -575,32 +574,5 @@ extern int docLayoutLineXOfPosition(
 extern const struct AfmFontInfo * docDocLayoutGetFontInfo(
 				const struct LayoutContext *	lc,
 				const struct TextAttribute *	ta );
-
-extern int docLayoutMakeOutput(
-			const char **			pPrintString,
-			char **				pScratchString,
-			int **				pSegments,
-			int *				pSegmentCount,
-			int *				pFullScreenFont,
-			int *				pScapsScreenFont,
-			const struct AfmFontInfo **	pAfi,
-			int *				pFullSizeTwips,
-			int *				pScapsSizeTwips,
-			const struct TextRun *		tr,
-			int				mirror,
-			const struct LayoutContext *	lc,
-			const char *			outputString,
-			int				len );
-
-extern int docGetScreenWidth(
-			const struct LayoutContext *	lc,
-			int				xPixels,
-			int				yPixels,
-			int				fullScreenFont,
-			int				scapsScreenFont,
-			const char *			outputString,
-			const int			outputLength,
-			const int *			segments,
-			int				segmentCount );
 
 #   endif	/*  DOC_LAYOUT_H  */

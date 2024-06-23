@@ -48,6 +48,7 @@ INCLUDES=			\
 	-I../guiBase		\
 	-I../guiInterface	\
 	-I../docLayout		\
+	-I../docDraw		\
 	-I../docEdit		\
 	-I../docBuf		\
 	-I../docField		\
@@ -148,7 +149,7 @@ duplicates: $(OBS)
 includes:
 	includes.sh tedToolsConfig.h $(INCLUDES)
 
-# deps -I../include -I../tedFront -I../appTools -I../guiInterface -I../docHtml -I../docLayout -I../docRtf -I../docEdit -I../docBuf -I../docField -I../docBase -I../guiBase -I../appFrame -I../utilPs -I../docFont -I../textEncoding -I../utilGeo -I../appUtil -I/usr/X11R6/include -I../bitmap -I../ind -I/usr/include/gtk-2.0 -I/usr/lib/x86_64-linux-gnu/gtk-2.0/include -I/usr/include/atk-1.0 -I/usr/include/cairo -I/usr/include/gdk-pixbuf-2.0 -I/usr/include/pango-1.0 -I/usr/include/harfbuzz -I/usr/include/gio-unix-2.0/ -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/pixman-1 -I/usr/include/freetype2 -I/usr/include/libpng12
+# deps -I../include -I../tedFront -I../appTools -I../guiInterface -I../docHtml -I../docDraw -I../docLayout -I../docRtf -I../docEdit -I../docBuf -I../docField -I../docBase -I../guiBase -I../appFrame -I../utilPs -I../docFont -I../textEncoding -I../utilGeo -I../appUtil -I/usr/X11R6/include -I../bitmap -I../ind -I/usr/include/gtk-2.0 -I/usr/lib/x86_64-linux-gnu/gtk-2.0/include -I/usr/include/atk-1.0 -I/usr/include/cairo -I/usr/include/gdk-pixbuf-2.0 -I/usr/include/pango-1.0 -I/usr/include/harfbuzz -I/usr/include/gio-unix-2.0/ -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/pixman-1 -I/usr/include/freetype2 -I/usr/include/libpng12
 ################################# !! sh
 
 tedAppFormatTool.o: \
@@ -310,9 +311,9 @@ tedBorderTool.o: \
     ../docBuf/docBuf.h \
     ../docBuf/docDocumentTree.h \
     ../docBuf/docDrawingShapeList.h \
+    ../docDraw/docScreenDrawOrnaments.h \
     ../docField/docChildFields.h \
     ../docField/docDocumentFieldList.h \
-    ../docLayout/docScreenDrawOrnaments.h \
     ../guiBase/guiBaseGtk.h \
     ../guiBase/guiBase.h \
     ../guiBase/guiBaseMotif.h \
@@ -425,9 +426,9 @@ tedColumnTool.o: \
     ../docBuf/docSelect.h \
     ../docBuf/docTableRectangle.h \
     ../docBuf/docTreeNode.h \
+    ../docDraw/docSelectionGeometry.h \
     ../docEdit/docEditCommand.h \
     ../docEdit/docSelectionDescription.h \
-    ../docLayout/docSelectionGeometry.h \
     ../guiBase/guiBaseGtk.h \
     ../guiBase/guiBase.h \
     ../guiBase/guiBaseMotif.h \
