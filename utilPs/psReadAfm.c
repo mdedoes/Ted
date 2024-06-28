@@ -735,17 +735,20 @@ static int psAfmFamilyName(	AfmReader *		ar,
     { return psAfmSaveString( &(ar->arAfi->afiFamilyName), input+ valPos ); }
 
 static int psAfmWeight(	AfmReader *		ar,
-				int			valPos,
-				char *			input )
+			int			valPos,
+			char *			input )
     {
     int		weight;
     int		start;
     int		length;
 
+    if  ( psAfmSaveString( &(ar->arAfi->afiWeightStr), input+ valPos ) )
+    	{ LDEB(valPos); return -1;	}
+
     if  ( utilFontWeightFromString( &weight, &start, &length, input+ valPos ) )
 	{ ar->arAfi->afiWeightInt= weight;	}
 
-    return psAfmSaveString( &(ar->arAfi->afiWeightStr), input+ valPos );
+    return 0;
     }
 
 static int psAfmEncodingScheme(	AfmReader *	ar,
