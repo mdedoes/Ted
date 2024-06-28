@@ -977,10 +977,14 @@ static int appMacPictSetPatternBrush(	DeviceContext *		dc,
 					PatternBrush *		pb,
 					const unsigned char *	pattern )
     {
+    int			rval= 0;
+
     int			foreBlack;
     int			foreWhite;
     int			backBlack;
     int			backWhite;
+
+    RasterImage *	ri= (RasterImage *)0;
 
     foreBlack=	dc->dcMacPictForeColor.rgb8Red == 0 &&
 		dc->dcMacPictForeColor.rgb8Green == 0 &&
@@ -995,51 +999,59 @@ static int appMacPictSetPatternBrush(	DeviceContext *		dc,
 		dc->dcMacPictBackColor.rgb8Green == 255 &&
 		dc->dcMacPictBackColor.rgb8Blue == 255;
 
-    pb->pbAbi= (RasterImage *)malloc( sizeof(RasterImage) );
-    if  ( ! pb->pbAbi )
-	{ XDEB(pb->pbAbi); return -1;	}
-    bmInitRasterImage( pb->pbAbi );
-    pb->pbAbi->riBytes= (unsigned char *)malloc( 8 );
-    if  ( ! pb->pbAbi->riBytes )
-	{ XDEB(pb->pbAbi->riBytes); return -1;	}
-    memcpy( pb->pbAbi->riBytes, pattern, 8 );
+    ri= (RasterImage *)malloc( sizeof(RasterImage) );
+    if  ( ! ri )
+	{ XDEB(ri); rval= -1; goto ready;	}
+    bmInitRasterImage( ri );
+    ri->riBytes= (unsigned char *)malloc( 8 );
+    if  ( ! ri->riBytes )
+	{ XDEB(ri->riBytes); rval= -1; goto ready;	}
+    memcpy( ri->riBytes, pattern, 8 );
 
-    pb->pbAbi->riDescription.bdPixelsWide= 8;
-    pb->pbAbi->riDescription.bdPixelsHigh= 8;
-    pb->pbAbi->riDescription.bdBitsPerSample= 1;
-    pb->pbAbi->riDescription.bdXResolution= 1;
-    pb->pbAbi->riDescription.bdYResolution= 1;
-    pb->pbAbi->riDescription.bdUnit= BMunPIXEL;
+    ri->riDescription.bdPixelsWide= 8;
+    ri->riDescription.bdPixelsHigh= 8;
+    ri->riDescription.bdBitsPerSample= 1;
+    ri->riDescription.bdXResolution= 1;
+    ri->riDescription.bdYResolution= 1;
+    ri->riDescription.bdUnit= BMunPIXEL;
 
     if  ( foreBlack && backWhite )
 	{
-	pb->pbAbi->riDescription.bdSamplesPerPixel= 1;
-	pb->pbAbi->riDescription.bdColorEncoding= BMcoBLACKWHITE;
+	ri->riDescription.bdSamplesPerPixel= 1;
+	ri->riDescription.bdColorEncoding= BMcoBLACKWHITE;
 	}
     else{
 	if  ( foreWhite && backBlack )
 	    {
-	    pb->pbAbi->riDescription.bdSamplesPerPixel= 1;
-	    pb->pbAbi->riDescription.bdColorEncoding= BMcoWHITEBLACK;
+	    ri->riDescription.bdSamplesPerPixel= 1;
+	    ri->riDescription.bdColorEncoding= BMcoWHITEBLACK;
 	    }
 	else{
-	    ColorPalette *	cp= &(pb->pbAbi->riDescription.bdPalette);
+	    ColorPalette *	cp= &(ri->riDescription.bdPalette);
 
-	    pb->pbAbi->riDescription.bdSamplesPerPixel= 3;
-	    pb->pbAbi->riDescription.bdColorEncoding= BMcoRGB8PALETTE;
+	    ri->riDescription.bdSamplesPerPixel= 3;
+	    ri->riDescription.bdColorEncoding= BMcoRGB8PALETTE;
 
 	    if  ( utilPaletteSetCount( cp, 2 ) )
-		{ LDEB(2); return -1;	}
+		{ LDEB(2); rval= -1; goto ready;	}
 
 	    cp->cpColors[0]= dc->dcMacPictBackColor;
 	    cp->cpColors[1]= dc->dcMacPictForeColor;
 	    }
 	}
 
-    bmCalculateSizes( &(pb->pbAbi->riDescription) );
+    bmCalculateSizes( &(ri->riDescription) );
     pb->pbType= 5;
     pb->pbUsage= 0;
-    return 0;
+
+    pb->pbAbi= ri;
+    ri= (RasterImage *)0; /* steal */
+
+  ready:
+    if  ( ri )
+	{ bmFreeRasterImage( ri );	}
+
+    return rval;
     }
 
 # ifdef __GNUC__
