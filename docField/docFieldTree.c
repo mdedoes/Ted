@@ -485,20 +485,23 @@ DocumentField *	docFieldGetCommonParent(	DocumentField *	dfHead,
     if  ( deepHead < 0 || deepTail < 0 )
 	{ LLDEB(deepHead,deepTail); goto ready;	}
 
-    for ( deep= 0; deep < deepHead && deep < deepTail; deep++ )
+    if  ( pathHead && pathTail ) /* To make gcc -fanalyzer happy */
 	{
-	DocumentField *	df;
+	for ( deep= 0; deep < deepHead && deep < deepTail; deep++ )
+	    {
+	    DocumentField *	df;
 
-	if  ( pathHead[deep] != pathTail[deep] )
-	    { break;	}
+	    if  ( pathHead[deep] != pathTail[deep] )
+		{ break;	}
 
-	df= pathHead[deep];
-	if  ( df == dfHead )
-	    { break;	}
-	if  ( df == dfTail )
-	    { break;	}
+	    df= pathHead[deep];
+	    if  ( df == dfHead )
+		{ break;	}
+	    if  ( df == dfTail )
+		{ break;	}
 
-	rval= df;
+	    rval= df;
+	    }
 	}
 
   ready:
