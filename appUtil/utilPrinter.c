@@ -44,18 +44,19 @@ static int utilPrinterSetLpCommand(	PrintDestination *	pd,
 					const char *		name,
 					int			l )
     {
+    pd->pdPrintKind= APPprinterPIPE;
+
     pd->pdCommand= (char *)malloc( l+ 12 );
     if  ( ! pd->pdCommand )
 	{ LXDEB(l,pd->pdCommand); return -1;	}
     sprintf( pd->pdCommand, "lp -s -d '%s'", name );
-    pd->pdPrintKind= APPprinterPIPE;
-    pd->pdPrinterName= (char *)malloc( l+ 1 );
-    if  ( ! pd->pdPrinterName )
-	{ LXDEB(l,pd->pdPrinterName); return -1;	}
 
     pd->pdCommandLength= strlen( pd->pdCommand );
     pd->pdPercentCount= 0;
 
+    pd->pdPrinterName= (char *)malloc( l+ 1 );
+    if  ( ! pd->pdPrinterName )
+	{ LXDEB(l,pd->pdPrinterName); return -1;	}
     strcpy( pd->pdPrinterName, name );
 
     return 0;
@@ -124,8 +125,6 @@ static int utilPrinterGetLprPrinters(	const char *		command,
 
 	found++; count++;
 	}
-
-    pclose( f );
 
     if  ( *pDestinations )
 	{
