@@ -96,6 +96,8 @@ static void docIncludeParentCellRectangle(
     {
     DocumentRectangle	dr;
 
+    geoInitRectangle( &dr );
+
     docSetParaXRange( &dr, bf, pf, lc, paraNode );
 
     if  ( docSelectionInsideCell( ds ) )

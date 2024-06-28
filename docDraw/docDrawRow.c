@@ -195,7 +195,7 @@ static int docDrawCellPageStrip( void *				through,
 
     /* We do this for every page that the row of the cell appears on */
     if  ( dc->dcStartNode && (*dc->dcStartNode)( through, dc,
-				    bo->boOverrideFrame, ! atRowTop, cellNode ) )
+				    bo && bo->boOverrideFrame, ! atRowTop, cellNode ) )
 	{ LDEB(cellNode->biLevel); return -1; }
 
     if  ( child < cellNode->biChildCount )
@@ -361,7 +361,7 @@ static int docDrawRowPageStrip(	const BufferItem *		rowNode,
 
     /* We do this for every page that the row appears on */
     if  ( dc->dcStartNode && (*dc->dcStartNode)( through, dc,
-					bo->boOverrideFrame, ! atRowTop || prevOnPrevPage, rowNode ) )
+					bo && bo->boOverrideFrame, ! atRowTop || prevOnPrevPage, rowNode ) )
 	{ LDEB(rowNode->biLevel); return -1; }
 
     if  ( docDrawCellOrnamentsForRow( rowNode, bf, bo, through, dc,
