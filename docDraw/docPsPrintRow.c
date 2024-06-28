@@ -52,18 +52,37 @@ int docPsMarkRowNode(
 	    MemoryBuffer *		tableStructureAttributes,
 	    MemoryBuffer *		structureAttributes )
     {
-    if  ( ! docIsRowNode( rowNode ) || ( ps->psFlattenPlainTables && docTableIsPlain( rowNode ) ) )
+    const BufferItem *	parentNode= rowNode->biParent;
+
+    if  ( ! docIsRowNode( rowNode )					||
+	  rowNode->biRowProperties->rpFlatInPDF				||
+	  ( ps->psFlattenPlainTables && docTableIsPlain( rowNode ) )	)
 	{ return 0;	}
 
     if  ( pAsTableFirst )
-	{ *pAsTableFirst= rowNode->biNumberInParent == rowNode->biRowTableFirst;	}
+	{
+	if  ( rowNode->biNumberInParent == rowNode->biRowTableFirst )
+	    { *pAsTableFirst= 1;	}
+	else{
+	    const BufferItem *	prevNode= parentNode->biChildren[rowNode->biNumberInParent- 1];
+
+	    *pAsTableFirst= prevNode->biRowProperties->rpFlatInPDF;
+	    }
+	}
 
     if  ( pAsTableLast )
-	{ *pAsTableLast= rowNode->biNumberInParent == rowNode->biRowTablePast- 1;	}
+	{
+	if  ( rowNode->biNumberInParent == rowNode->biRowTablePast- 1 )
+	    { *pAsTableLast= 1;	}
+	else{
+	    const BufferItem *	nextNode= parentNode->biChildren[rowNode->biNumberInParent+ 1];
+
+	    *pAsTableLast= nextNode->biRowProperties->rpFlatInPDF;
+	    }
+	}
 
     if  ( tableStructureAttributes )
 	{
-	const BufferItem *	parentNode= rowNode->biParent;
 	int			row;
 
 	for ( row= rowNode->biRowTableFirst; row < rowNode->biRowTablePast; row++ )

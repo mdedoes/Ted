@@ -1141,6 +1141,7 @@ static RtfControlWord	docRtfPropertyWords[]=
 
     RTF_ROW_FLAG( "lastrow",		RPpropIS_LAST_ROW ),
     RTF_ROW_FLAG( "trauth",		RPpropTRAUTH ),
+    RTF_ROW_FLAG( "trflat",		RPpropTRFLAT ),
 
     RTF_ROW_FLAG_X( "tbllknocolband",	RPprop_IGNORED ),
     RTF_ROW_NUMBER_X( "tblind",		RPprop_IGNORED ),

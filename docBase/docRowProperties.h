@@ -94,6 +94,19 @@ typedef struct RowProperties
 
     int				rpAuthor;
 
+				/**
+				 *  Do not emit PDF content marks that mark this
+				 *  table row in RTF as a table row in PDF. Independent of
+				 *  its actual ornaments, row is also counted as plain when 
+				 *  we check whether the table that holds it is plain.
+				 *
+				 *  I.E. the row is excluded from the table. Flat rows at
+				 *  the head and tail are pruned from the table. Flat rows
+				 *  in the interior of the RTF table divide the RTf table 
+				 *  in multiple PDF tables.
+				 */
+    unsigned char		rpFlatInPDF;
+
 				/* TableAutoFormatUnit */
     unsigned char		rpPreferredWidthUnit;
 
@@ -200,6 +213,8 @@ typedef enum RowProperty
 
     RPpropIS_LAST_ROW,
     RPpropTRAUTH,
+
+    RPpropTRFLAT,
 
     RPprop_COUNT,
 					/* For read/write/tool only */

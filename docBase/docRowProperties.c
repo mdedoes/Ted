@@ -51,6 +51,7 @@ static const int DocRowIntProperties[]=
     RPpropTRW_WIDTHA,
     RPpropTRFTS_WIDTHB,
     RPpropTRFTS_WIDTHA,
+    RPpropTRFLAT,
 };
 
 static const int DocRowIntPropertyCount=
@@ -131,6 +132,8 @@ void docInitRowProperties(	RowProperties *	rp )
     /**/
     rp->rpCellWidthBefore= 0;
     rp->rpCellWidthAfter= 0;
+
+    rp->rpFlatInPDF= 0;
 
     rp->rpAuthor= -1;
 
@@ -912,6 +915,10 @@ int docSetRowProperty(		RowProperties *		rp,
 	    rp->rpAuthor= arg;
 	    break;
 
+	case RPpropTRFLAT:
+	    rp->rpFlatInPDF= arg != 0;
+	    break;
+
 	case RPprop_CELL_COUNT:
 	case RPprop_CELL_PROPS:
 	default:
@@ -1054,6 +1061,9 @@ int docGetRowProperty(		const RowProperties *	rp,
 
 	case RPpropTRAUTH:
 	    return rp->rpAuthor;
+
+	case RPpropTRFLAT:
+	    return rp->rpFlatInPDF;
 
 	case RPprop_CELL_COUNT:
 	    return rp->rpCellCount;

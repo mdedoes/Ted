@@ -139,9 +139,9 @@ static void docLayoutPlaceSectTop(	struct BufferItem *	sectNode,
 /*  3)  Between tables.							*/
 /*  4)  Tables.								*/
 /*  5)  Finally do the layout of the end notes belonging to this	*/
-/*	section. Though strictly spoken notes are not children, they	*/
+/*	section. Though strictly spoken, notes are not children, they	*/
 /*	appear at the end of the section and they are part of the	*/
-/*	balancing if multi column sections.				*/
+/*	balancing of multi column sections.				*/
 /*									*/
 /************************************************************************/
 

@@ -42,6 +42,7 @@ static const int RowRegularProperties[]=
     RPpropBOTTOM_BORDER,
     RPpropVERT_BORDER,
     RPpropHORIZ_BORDER,
+    RPpropTRFLAT,
 };
 
 static const int RowRegularPropertyCount=
