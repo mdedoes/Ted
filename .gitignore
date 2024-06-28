@@ -38,7 +38,7 @@ docFont/docFontConfig.h
 docFont/makefile
 docHtml/docHtmlConfig.h
 docHtml/makefile
-docDraw/docLayoutConfig.h
+docDraw/docDrawConfig.h
 docDraw/makefile
 docLayout/docLayoutConfig.h
 docLayout/makefile
