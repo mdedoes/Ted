@@ -313,7 +313,8 @@ int docLayoutWord(	LineLayoutJob *			llj,
 	docGetEffectiveTextAttributes( &ta, bd, paraNode, part );
 
 	/*  7  */
-	if  ( part < particuleUpto	&&
+	if  ( afi			&&
+	      part < particuleUpto	&&
 	      ! ta->taFontIsSlanted	&&
 	      taPr->taFontIsSlanted	)
 	    { docLayoutAddSlantToPrevious( &x, pd, afi, ta, taPr ); }
