@@ -202,7 +202,7 @@ int appSpellGetLocaleNames(		EditApplication *	ea,
 
 	    if  ( appSpellSetLocaleResource( APP_dictNames, e* sizeof(MsLcid),
 				&(APP_dictRes[2*e]), tag, def, def ) )
-		{ LLSDEB(i,e,tag); return -1;	}
+		{ LLSDEB(i,e,tag); free( def ); return -1;	}
 
 	    APP_dictNames[e++].mlTag= def;
 	    }
