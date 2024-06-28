@@ -75,10 +75,14 @@ static int docDrawCellOrnamentsForRow(
 
 	docCellRectangleTwips( &drCell, bf, cellNode );
 
-	drCell.drX0 += bo->boXShift;
-	drCell.drX1 += bo->boXShift;
 	drCell.drY0= lpTop->lpPageYTwips;
-	drCell.drY1 += bo->boYShift;
+
+	if  ( bo )
+	    {
+	    drCell.drX0 += bo->boXShift;
+	    drCell.drX1 += bo->boXShift;
+	    drCell.drY1 += bo->boYShift;
+	    }
 
 	docGetCellOrnaments( &cellOrnaments, &drOutside, &drInside, &drCell,
 			bd, rowNode, col,
