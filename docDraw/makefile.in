@@ -46,7 +46,7 @@ CFLAGS=	\
 
 #CFLAGS= -g -O2 $(WFLAGS) $(INCLUDES)
 
-# 42!!obs
+# 43!!obs
 OBS	=	\
 		docSelectionGeometry.o\
 		docScreenRuler.o\
@@ -58,6 +58,7 @@ OBS	=	\
 		docScreenDrawOrnaments.o\
 		docScreenDrawObject.o\
 		docScreenDraw.o\
+		docPsPrintToc.o\
 		docPsPrintTextOrnaments.o\
 		docPsPrintTextLine.o\
 		docPsPrintTabs.o\
@@ -524,7 +525,6 @@ docLineRectangles.o: \
     ../docBuf/docTreeNode.h \
     docDrawConfig.h \
     ../docFont/fontMatchFont.h \
-    ../docLayout/docLayout.h \
     ../docLayout/docScreenLayout.h \
     ../docLayout/layoutContext.h \
     docLineRectangles.h \
@@ -1128,6 +1128,28 @@ docPsPrintTextOrnaments.o: \
     ../utilPs/psTextExtents.h \
     ../utilPs/textAttribute.h \
     docPsPrintTextOrnaments.c
+
+docPsPrintToc.o: \
+    ../appUtil/utilMemoryBuffer.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docSelectionScope.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDebug.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docTreeNode.h \
+    docDrawConfig.h \
+    docPsPrintImpl.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/psNup.h \
+    ../utilPs/psPrint.h \
+    docPsPrintToc.c
 
 docScreenDraw.o: \
     ../appUtil/utilColor.h \
