@@ -551,7 +551,6 @@ int bmbmpDescriptionToHeader(	BmpImageHeader *		bih,
 				int				hasAlpha,
 				const BitmapDescription *	bd )
     {
-    RGB8Color			BWPalette[257];
     RGB8Color *			palette= (RGB8Color *)0;
 
     bih->bihMagic= BMP_ID;
@@ -605,9 +604,13 @@ int bmbmpDescriptionToHeader(	BmpImageHeader *		bih,
 	int	transparentColor;
 
 	case BMcoBLACKWHITE:
-	case BMcoWHITEBLACK:
+	case BMcoWHITEBLACK: {
+	    RGB8Color * bwPalette= (RGB8Color *)malloc( 257* sizeof(RGB8Color) );
+	    if  ( ! bwPalette )
+		{ XDEB(bwPalette); return -1;	}
+
 	    if  ( bmMakeGrayPalette( bd, &colorCount,
-					&transparentColor, BWPalette, 257 ) )
+					&transparentColor, bwPalette, 257 ) )
 		{ LDEB(bd->bdBitsPerPixel); return -1;	}
 			
 	    switch( bd->bdBitsPerPixel )
@@ -616,7 +619,7 @@ int bmbmpDescriptionToHeader(	BmpImageHeader *		bih,
 		    bih->bihBitsPerPixel= bd->bdBitsPerPixel;
 		    bih->bihColorCount= colorCount;
 		    bih->bihCompression= 0;
-		    palette= BWPalette;
+		    palette= bwPalette;
 		    break;
 
 		case 2:
@@ -624,18 +627,20 @@ int bmbmpDescriptionToHeader(	BmpImageHeader *		bih,
 		    bih->bihBitsPerPixel= 4;
 		    bih->bihColorCount= colorCount;
 		    bih->bihCompression= 2;
-		    palette= BWPalette;
+		    palette= bwPalette;
 		    break;
 
 		case 8:
 		    bih->bihBitsPerPixel= bd->bdBitsPerPixel;
 		    bih->bihColorCount= colorCount;
 		    bih->bihCompression= 1;
-		    palette= BWPalette;
+		    palette= bwPalette;
 		    break;
 
 		default:
+		    free( bwPalette );
 		    LDEB(bd->bdBitsPerPixel); return -1;
+		}
 		}
 	    break;
 
