@@ -20,21 +20,30 @@
  *  or sections. So it is the first if it is the first child in its 
  *  parent, if the previous sibling is not a paragraph, or the 
  *  sibling is not in a table of contents or at a shallower level.
+ *
+ *  If this is called at a position inside the paragraph, that is
+ *  because the paragraph is split over pages. To correctly balance 
+ *  marked content markers inside the page, we split TOCs that span 
+ *  multiple pages.
+ *  The same applies if the previous paragraph is on a different 
+ *  page.
  */
 static int docPsPrintParagraphTocLevelsToOpen(	
-			const BufferItem *	paraNode )
+			const BufferItem *	paraNode,
+			int			firstLine )
     {
     const BufferItem *		parentNode= paraNode->biParent;
 
     if  ( paraNode->biParaTocLevel <= 0 )
 	{ return 0;	}
 
-    if  ( paraNode->biNumberInParent == 0 )
+    if  ( paraNode->biNumberInParent == 0 || firstLine > 0 )
 	{ return paraNode->biParaTocLevel;	}
     else{
 	const BufferItem *	prevNode= parentNode->biChildren[paraNode->biNumberInParent-1];
 
-	if  ( prevNode->biLevel != DOClevPARA )
+	if  ( prevNode->biLevel != DOClevPARA 						||
+	      prevNode->biBelowPosition.lpPage != paraNode->biTopPosition.lpPage	)
 	    { return paraNode->biParaTocLevel;	}
 	else{
 	    if  ( paraNode->biParaTocLevel > prevNode->biParaTocLevel )
@@ -50,21 +59,30 @@ static int docPsPrintParagraphTocLevelsToOpen(
  *  or sections. So it is the last if it is the last child in its 
  *  parent, if the next sibling is not a paragraph, or the 
  *  sibling is not in a table of contents or at a shallower level.
+ *
+ *  If this is called at a position inside the paragraph, that is
+ *  because the paragraph is split over pages. To correctly balance 
+ *  marked content markers inside the page, we split TOCs that span 
+ *  multiple pages.
+ *  The same applies if the next paragraph is on a different 
+ *  page.
  */
 static int docPsPrintParagraphTocLevelsToClose(	
-			const BufferItem *	paraNode )
+			const BufferItem *	paraNode,
+			int			lastLine )
     {
     const BufferItem *		parentNode= paraNode->biParent;
 
     if  ( paraNode->biParaTocLevel <= 0 )
 	{ return 0;	}
 
-    if  ( paraNode->biNumberInParent == parentNode->biChildCount- 1 )
+    if  ( paraNode->biNumberInParent == parentNode->biChildCount- 1 || lastLine < paraNode->biParaLineCount- 1 )
 	{ return paraNode->biParaTocLevel;	}
     else{
 	const BufferItem *	nextNode= parentNode->biChildren[paraNode->biNumberInParent+1];
 
-	if  ( nextNode->biLevel != DOClevPARA )
+	if  ( nextNode->biLevel != DOClevPARA						||
+	      nextNode->biTopPosition.lpPage != paraNode->biBelowPosition.lpPage	)
 	    { return paraNode->biParaTocLevel;	}
 	else{
 	    if  ( paraNode->biParaTocLevel > nextNode->biParaTocLevel )
@@ -75,10 +93,11 @@ static int docPsPrintParagraphTocLevelsToClose(
     }
 
 int docPsPrintOpenParaTocLevels(	PrintingState *			ps,
-					const struct BufferItem *	paraNode )
+					const struct BufferItem *	paraNode,
+					int				firstLine )
     {
     int		level;
-    int		tocLevelsToOpen= docPsPrintParagraphTocLevelsToOpen( paraNode );
+    int		tocLevelsToOpen= docPsPrintParagraphTocLevelsToOpen( paraNode, firstLine );
 
     for ( level= 0; level < tocLevelsToOpen; level++ )
 	{
@@ -93,10 +112,11 @@ int docPsPrintOpenParaTocLevels(	PrintingState *			ps,
     }
 
 int docPsPrintCloseParaTocLevels(	PrintingState *			ps,
-					const struct BufferItem *	paraNode )
+					const struct BufferItem *	paraNode,
+					int				lastLine )
     {
     int		level;
-    int		tocLevelsToClose= docPsPrintParagraphTocLevelsToClose( paraNode );
+    int		tocLevelsToClose= docPsPrintParagraphTocLevelsToClose( paraNode, lastLine );
 
     if  ( docPsPrintEndMarkedGroup( ps, STRUCTtypeTOCI ) )
 	{ LLDEB(paraNode->biLevel,paraNode->biParaTocLevel); return -1;	}

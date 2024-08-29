@@ -332,7 +332,9 @@ extern int docPsPrintStartNote(	const struct DrawTextLine *	dtl,
 				int				lineTop );
 
 extern int docPsPrintOpenParaTocLevels(	struct PrintingState *		ps,
-					const struct BufferItem *	paraNode );
+					const struct BufferItem *	paraNode,
+					int				firstLine );
 
 extern int docPsPrintCloseParaTocLevels( struct PrintingState *		ps,
-					const struct BufferItem *	paraNode );
+					const struct BufferItem *	paraNode,
+					int				lastLine );

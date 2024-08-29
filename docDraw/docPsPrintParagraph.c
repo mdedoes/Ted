@@ -156,7 +156,7 @@ int docPsPrintStartLines( void *			vps,
 		    { LDEB(listLevelsToOpen); return -1;	}
 		}
 	    else{
-		if  ( paraNode->biParaTocLevel > 0 && docPsPrintOpenParaTocLevels( ps, paraNode ) )
+		if  ( paraNode->biParaTocLevel > 0 && docPsPrintOpenParaTocLevels( ps, paraNode, firstLine ) )
 		    { LDEB(paraNode->biParaTocLevel); return -1;	}
 		}
 
@@ -209,7 +209,7 @@ int docPsPrintFinishLines( void *			vps,
 		{ LSDEB(listLevelsToClose,mark); return -1;	}
 	    }
 	else{
-	    if  ( paraNode->biParaTocLevel > 0 && docPsPrintCloseParaTocLevels( ps, paraNode ) )
+	    if  ( paraNode->biParaTocLevel > 0 && docPsPrintCloseParaTocLevels( ps, paraNode, lastLine ) )
 		{ LDEB(paraNode->biParaTocLevel); return -1;}
 	    }
 	}
