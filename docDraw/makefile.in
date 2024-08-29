@@ -492,10 +492,10 @@ docLayoutPixels.o: \
     ../docBuf/docRowNode.h \
     ../docBuf/docSectNode.h \
     ../docBuf/docTreeNode.h \
+    docDrawConfig.h \
     ../docField/docChildFields.h \
     ../docField/docDocumentFieldList.h \
     ../docFont/fontMatchFont.h \
-    ../docLayout/docLayoutConfig.h \
     ../docLayout/docLayout.h \
     ../docLayout/layoutContext.h \
     docSelectionGeometry.h \
@@ -1353,10 +1353,10 @@ docScreenFindLinePosition.o: \
     ../docBuf/docSelect.h \
     ../docBuf/docTextRun.h \
     ../docBuf/docTreeNode.h \
+    docDrawConfig.h \
     docDraw.h \
     docDrawLine.h \
     ../docFont/fontMatchFont.h \
-    ../docLayout/docLayoutConfig.h \
     ../docLayout/docLayoutDocumentTree.h \
     ../docLayout/docLayout.h \
     ../docLayout/docScreenLayout.h \
@@ -1392,8 +1392,8 @@ docScreenLayoutFindX.o: \
     ../docBuf/docStripFrame.h \
     ../docBuf/docTextRun.h \
     ../docBuf/docTreeNode.h \
+    docDrawConfig.h \
     ../docFont/fontMatchFont.h \
-    ../docLayout/docLayoutConfig.h \
     ../docLayout/docLayout.h \
     ../docLayout/docScreenLayout.h \
     ../docLayout/layoutContext.h \
@@ -1459,9 +1459,9 @@ docSelectionGeometry.o: \
     ../docBuf/docSelect.h \
     ../docBuf/docStripFrame.h \
     ../docBuf/docTreeNode.h \
+    docDrawConfig.h \
     docDraw.h \
     ../docFont/fontMatchFont.h \
-    ../docLayout/docLayoutConfig.h \
     ../docLayout/docLayoutDocumentTree.h \
     ../docLayout/docLayout.h \
     ../docLayout/layoutContext.h \

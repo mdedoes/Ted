@@ -5,7 +5,7 @@
 /*									*/
 /************************************************************************/
 
-#   include	<docLayoutConfig.h>
+#   include	"docDrawConfig.h"
 
 #   include	<stdlib.h>
 

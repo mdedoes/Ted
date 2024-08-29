@@ -4,7 +4,7 @@
 /*									*/
 /************************************************************************/
 
-#   include	<docLayoutConfig.h>
+#   include	"docDrawConfig.h"
 
 #   include	<limits.h>
 
