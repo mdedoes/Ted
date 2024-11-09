@@ -32,10 +32,30 @@ typedef struct DocumentGeometry
 
     RectangleOffsets	dgMargins;
 
+			/**
+			 * The (vertical) position of the (top of the)
+			 * page header on the page.
+			 */
     int			dgHeaderPositionTwips;
+
+			/**
+			 * The (vertical) position of the (bottom of the)
+			 * page footer on the page.
+			 */
     int			dgFooterPositionTwips;
 
+			/**
+			 * With multiple columns of text per page, this is 
+			 * the distance between the columns. (With a single
+			 * column, dgGutterTwips is irrelevant)
+			 */
     int			dgGutterTwips;
+
+			/**
+			 * If true, swap=mirror left and right margins on
+			 * pages with an odd index. (Normally, an odd index
+			 * results in an even page number)
+			 */
     unsigned char	dgMirrorMargins;
     } DocumentGeometry;
 

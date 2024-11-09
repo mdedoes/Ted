@@ -632,6 +632,8 @@ static int bmPngWritePng_x(	png_colorp *			pPalette,
     if  ( setjmp( png_jmpbuf( pngp ) ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
+    rval= 0; /* to make gcc happy */
+
     png_init_io( pngp, (FILE *)0 );
     png_set_write_fn( pngp, (void *)sos, bmPngWriteBytes, bmPngFlushBytes );
 

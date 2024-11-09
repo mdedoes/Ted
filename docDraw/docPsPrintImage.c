@@ -334,7 +334,7 @@ int docPsPrintShapeImage(	PrintingState *			ps,
     }
 
 static int docPsPrintJpegImage( PrintingState *			ps,
-				int				x0,
+				int				x0Twips,
 				int				baseLine,
 				InsertedObject *		io,
 				MemoryBuffer *			mb )
@@ -370,7 +370,7 @@ static int docPsPrintJpegImage( PrintingState *			ps,
 
     if  ( bmPsPrintJpegImage( ps->psSos,
 		    pip->pipTwipsWide* scaleX, -pip->pipTwipsHigh* scaleY,
-		    componentCount, x0, baseLine,
+		    componentCount, x0Twips, baseLine,
 		    pixelsWide, pixelsHigh, bitsPerComponent, sisData ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 

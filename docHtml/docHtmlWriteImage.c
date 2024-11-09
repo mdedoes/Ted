@@ -284,7 +284,7 @@ static int docHtmlStartImgElement(
 
 /************************************************************************/
 /*									*/
-/*  Determine the size of a raster image thta is included in the html	*/
+/*  Determine the size of a raster image that is included in the html	*/
 /*  file.								*/
 /*									*/
 /************************************************************************/

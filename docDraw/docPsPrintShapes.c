@@ -522,8 +522,10 @@ int docPsPrintDrawDrawingShape(	const DocumentRectangle *	drOutside,
     int				line= 0;
     RGB8Color			rgb8Fill;
 
-    if  ( docPsPrintBeginArtifact( ps ) )
-	{ LDEB(-1); rval= -1; goto ready;	}
+    const int			asArtifact= ps->psTagDocumentStructure && ! ps->psInArtifact;
+
+    if  ( asArtifact && docPsPrintBeginArtifact( ps ) )
+	{ LDEB(asArtifact); rval= -1; goto ready;	}
 
     switch( sd->sdShapeType )
 	{
@@ -995,8 +997,8 @@ int docPsPrintDrawDrawingShape(	const DocumentRectangle *	drOutside,
 	{}
     */
 
-    if  ( docPsPrintEndArtifact( ps ) )
-	{ LDEB(-1); rval= -1; goto ready;	}
+    if  ( asArtifact && docPsPrintEndArtifact( ps ) )
+	{ LDEB(asArtifact); rval= -1; goto ready;	}
 
     ps->psLastPageMarked= ps->psPagesPrinted;
 

@@ -531,6 +531,7 @@ static int docDrawLineObject(	const VisitParticule *	vp,
     int				res= SCANadviceOK;
 
     const TextParticule *	tp= vp->vpTextParticule;
+    int				x0Twips= dtl->dtlX+ dtl->dtlXShift;
     LayoutPosition		spanBaseline;
 
     DocumentRectangle		drOutside;
@@ -543,7 +544,7 @@ static int docDrawLineObject(	const VisitParticule *	vp,
 		10* vp->vpTextAttribute->taBaselineShiftHalfPoints;
 
     docObjectGetPageRect( &drOutside, io,
-				dtl->dtlX, spanBaseline.lpPageYTwips );
+				x0Twips, spanBaseline.lpPageYTwips );
 
     if  ( io->ioKind == DOCokDRAWING_SHAPE )
 	{
