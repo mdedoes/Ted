@@ -1,0 +1,3467 @@
+CC=@CC@
+
+XM_CFLAGS=@XM_CFLAGS@
+LIBXPM_CFLAGS=@LIBXPM_CFLAGS@
+X_CFLAGS=@X_CFLAGS@
+GTK_CFLAGS= @GTK_CFLAGS@
+FT2_CFLAGS=@FT2_CFLAGS@
+XFT_CFLAGS=@XFT_CFLAGS@
+
+MOTIF_CFLAGS=$(XM_CFLAGS)
+
+GUI_CFLAGS=$(@GUI@_CFLAGS)
+
+#	-Wmaybe-uninitialized
+#	-Wunused-but-set-variable
+
+WFLAGS=	-Wall			\
+	-Wextra			\
+	-Winit-self		\
+	-pedantic		\
+	-Wpointer-arith		\
+	-Wno-format-y2k		\
+	-Wstrict-prototypes	\
+	-Wmissing-declarations	\
+	-Wmissing-prototypes	\
+	-Wnested-externs	\
+	-Wuninitialized		\
+	-Wundef			\
+	-Wshadow		\
+	-Wlogical-op		\
+	-Wnull-dereference	\
+	-Wwrite-strings		\
+	-Wold-style-definition	\
+	-Wno-missing-field-initializers	\
+	-Wredundant-decls	\
+	-Wno-unused-parameter	\
+	-Wno-sign-compare	\
+	-fsanitize=address	\
+	-isystem /usr/include/gtk-2.0 \
+	-Werror
+
+INCLUDES=			\
+	$(FT2_CFLAGS)		\
+	$(XFT_CFLAGS)		\
+	$(X_CFLAGS)		\
+	$(GUI_CFLAGS)		\
+	-I../tedFront		\
+	-I../tedResource	\
+	-I../guiInterface	\
+	-I../appFrame		\
+	-I../appTools		\
+	-I../guiBase		\
+	-I../docRtf		\
+	-I../docHtml		\
+	-I../docEdit		\
+	-I../docDraw		\
+	-I../docLayout		\
+	-I../docBuf		\
+	-I../docField		\
+	-I../docBase		\
+	-I../ind		\
+	-I../drawMeta		\
+	-I../bitmap		\
+	-I../utilPs		\
+	-I../docFont		\
+	-I../textEncoding	\
+	-I../utilGeo		\
+	-I../appUtil		\
+	-I../include
+
+CFLAGS=			\
+	@CFLAGS@	\
+	$(INCLUDES)	\
+	$(DEF_PKGDIR)
+
+LDFLAGS=@LDFLAGS@
+LD_FLAGS_STATIC=@LD_FLAGS_STATIC@
+
+X_LIBS=@X_LIBS@
+# -lXmu and -lXp are added if libXm.a has references to them.
+XM_EXTRA_LIBS=@XM_EXTRA_LIBS@
+X_EXTRA_LIBS= @X_EXTRA_LIBS@
+X_PRE_LIBS= @X_PRE_LIBS@
+
+XFT_LIBS= @XFT_LIBS@
+FT2_LIBS= @FT2_LIBS@
+FONTCONFIG_LIBS= @FONTCONFIG_LIBS@
+
+#CFLAGS= @CFLAGS@ $(WFLAGS) $(INCLUDES) $(DEF_PKGDIR)
+#LDFLAGS= $(WFLAGS) @LDFLAGS@
+
+# 58!!obs
+OBS	=	\
+		tedVerticalRuler.o\
+		tedUndo.o\
+		tedToc.o\
+		tedTable.o\
+		tedSelectionDescription.o\
+		tedSelect.o\
+		tedSaveDocument.o\
+		tedRuler.o\
+		tedRepeat.o\
+		tedPaste.o\
+		tedPage.o\
+		tedOpenDocumentFile.o\
+		tedOpenDocument.o\
+		tedObjectDrag.o\
+		tedNote.o\
+		tedMoveOnKey.o\
+		tedMouseInput.o\
+		tedMenu.o\
+		tedMain.o\
+		tedLayout.o\
+		tedInsertNode.o\
+		tedInput.o\
+		tedIncludeDocument.o\
+		tedHyperlink.o\
+		tedHeaderFooter.o\
+		tedFollowLink.o\
+		tedFindPosition.o\
+		tedFind.o\
+		tedFileConvert.o\
+		tedField.o\
+		tedExtendSelection.o\
+		tedEditSplit.o\
+		tedEditOperation.o\
+		tedEditOnKey.o\
+		tedEditObject.o\
+		tedEditList.o\
+		tedEdit.o\
+		tedDrawRuler.o\
+		tedDrawMotif.o\
+		tedDrawGtk.o\
+		tedDraw.o\
+		tedDocumentWindow.o\
+		tedDocument.o\
+		tedDocSetProperties.o\
+		tedDocRuler.o\
+		tedDocFront.o\
+		tedDocFont.o\
+		tedDeleteNode.o\
+		tedDeleteFromTable.o\
+		tedCopyPasteImpl.o\
+		tedCopy.o\
+		tedBottomRuler.o\
+		tedAppFront.o\
+		tedApp.o\
+		docSpell.o\
+		docScreenObjects.o
+
+# Application libraries: docEdit.a appears twice. This is deliberate.
+
+TED_LIBS=	../lib/tedTools.a		\
+		../lib/tedResource.a		\
+		../lib/appTools.a		\
+		../lib/appFrame.a		\
+		../lib/guiBase.a		\
+		../lib/docHtml.a		\
+		../lib/docLayout.a		\
+		../lib/docDraw.a		\
+		../lib/docEdit.a		\
+		../lib/docRtf.a			\
+		../lib/docBuf.a			\
+		../lib/docEdit.a		\
+		../lib/docField.a		\
+		../lib/docBase.a		\
+		../lib/drawMeta.a		\
+		../lib/bitmap.a			\
+		../lib/ind.a			\
+		../lib/docFont.a		\
+		../lib/utilPs.a			\
+		../lib/textEncoding.a		\
+		../lib/utilGeo.a		\
+		../lib/appUtil.a
+
+IMG_LIBS= \
+		@LIBTIFF_LIBS@		\
+		@LIBJPEG_LIBS@		\
+		@LIBWEBP_LIBS@		\
+		@LIBPNG_LIBS@		\
+		@ZLIB_LIBS@
+
+MOTIF_X_LIBS=	$(X_LIBS)		\
+		-lXt			\
+		-lXext			\
+		$(X_PRE_LIBS)		\
+		-lX11			\
+		$(X_EXTRA_LIBS)
+
+MOTIF_ALL_LIBS= \
+		@XM_LIBS@		\
+		$(XM_EXTRA_LIBS)	\
+		$(MOTIF_X_LIBS)
+
+GTK_X_LIBS=	$(X_LIBS)		\
+		$(X_PRE_LIBS)		\
+		-lX11			\
+		$(X_EXTRA_LIBS)
+
+GTK_ALL_LIBS= @GTK_LIBS@ $(GTK_X_LIBS)
+
+GUI_ALL_LIBS=	@LIBXPM_LIBS@		\
+		$(@GUI@_ALL_LIBS)	\
+		$(XFT_LIBS)		\
+		$(FT2_LIBS)		\
+		$(FONTCONFIG_LIBS)
+
+SYS_LIBS=	@LIBICONV_LIBS@ @LIBJANSSON_LIBS@ @LIBPCRE2_LIBS@ @LIBPAPER_LIBS@ @ENCHANT_LIBS@
+
+Ted Ted.dynamic: $(OBS) $(TED_LIBS)
+	$(CC) $(LDFLAGS) -o $@ $(OBS) $(TED_LIBS) \
+			    $(SYS_LIBS) \
+			    $(IMG_LIBS) \
+			    $(GUI_ALL_LIBS) -lm
+
+Ted.static:	$(OBS) $(TED_LIBS)
+	$(CC) $(LDFLAGS) -o $@ $(OBS) $(TED_LIBS) \
+			    $(SYS_LIBS) \
+			    $(IMG_LIBS) \
+			    $(GUI_ALL_LIBS) -lm
+	ldd $@ || true
+
+Ted.fullystatic: $(OBS) $(TED_LIBS)
+	$(CC) $(LDFLAGS) $(LD_FLAGS_STATIC) -o $@ $(OBS) $(TED_LIBS) \
+			    $(IMG_LIBS) \
+			    $(GUI_ALL_LIBS) \ -ldl -lm
+	ldd $@ || true
+
+refresh:
+	rm -f	$(TED_LIBS) Ted
+	( cd ../appUtil && make )
+	( cd ../utilGeo && make )
+	( cd ../textEncoding && make )
+	( cd ../utilPs && make )
+	( cd ../docFont && make )
+	( cd ../docBase && make )
+	( cd ../docField && make )
+	( cd ../docBuf && make )
+	( cd ../docEdit && make )
+	( cd ../docRtf && make )
+	( cd ../docLayout && make )
+	( cd ../docDraw && make )
+	( cd ../docHtml && make )
+	( cd ../bitmap && make )
+	( cd ../ind && make )
+	( cd ../guiBase && make )
+	( cd ../appFrame && make )
+	( cd ../appTools && make )
+	( cd ../drawMeta && make )
+	( cd ../tedTools && make )
+	( cd ../tedResource && make )
+	make Ted
+
+WMF=sed -i -e 's/^CC=gcc/CC=ccc/' -e 's/^\#CFLAGS=/CFLAGS=/' -e 's/^\#LDFLAGS=/LDFLAGS=/' makefile
+
+RECONF= \
+	rm -f *.o makefile ; \
+	make -f makefile.in configure && \
+	./configure && $(WMF)
+
+reconfigure:
+	rm -f Ted Ted.static
+	:
+	( cd ../appUtil && $(RECONF) )
+	( cd ../utilGeo && $(RECONF) )
+	( cd ../textEncoding && $(RECONF) )
+	( cd ../utilPs && $(RECONF) )
+	( cd ../docFont && $(RECONF) )
+	( cd ../bitmap && $(RECONF) )
+	( cd ../ind && $(RECONF) )
+	( cd ../guiBase && $(RECONF) )
+	( cd ../appFrame && $(RECONF) )
+	( cd ../appTools && $(RECONF) )
+	( cd ../drawMeta && $(RECONF) )
+	( cd ../docBase && $(RECONF) )
+	( cd ../docField && $(RECONF) )
+	( cd ../docBuf && $(RECONF) )
+	( cd ../docEdit && $(RECONF) )
+	( cd ../docRtf && $(RECONF) )
+	( cd ../docLayout && $(RECONF) )
+	( cd ../docDraw && $(RECONF) )
+	( cd ../docHtml && $(RECONF) )
+	( cd ../tedTools && $(RECONF) )
+	( cd ../tedResource && $(RECONF) )
+	$(RECONF)
+	make refresh
+
+valgrind:
+	for m in ../*/makefile ; \
+	do \
+	    sed -i -e '/\s-fsanitize=address/d' $$m ; \
+	done
+	rm ../*/*.[ao]
+	make refresh
+
+GUI_DEPENDENT= \
+	../guiBase	\
+	../appFrame	\
+	../appTools	\
+	../tedTools	\
+	../tedResource	\
+	../Ted
+
+motif:
+	for d in $(GUI_DEPENDENT) ; \
+	do \
+	    cd $$d && ./configure --with-MOTIF && $(WMF); \
+	    cd $$d && rm -f *.o ../lib/$d.a ; \
+	done
+	make refresh
+
+gtk:
+	for d in $(GUI_DEPENDENT) ; \
+	do \
+	    cd $$d && ./configure --with-GTK && $(WMF); \
+	    cd $$d && rm -f *.o ../lib/$d.a ; \
+	done
+	make refresh
+
+headless:
+	for d in $(GUI_DEPENDENT) ; \
+	do \
+	    cd $$d && ./configure --with-HEADLESS && $(WMF); \
+	    cd $$d && rm -f *.o ../lib/$d.a ; \
+	done
+	make refresh
+
+gtk3:
+	for d in $(GUI_DEPENDENT) ; \
+	do \
+	    cd $$d && ./configure --with-GTK3 && $(WMF); \
+	    cd $$d && rm -f *.o ../lib/$d.a ; \
+	done
+	make refresh
+
+###########################################################################
+#
+#  This is cyclic, but at least it documents what extra autoconf configuration
+#  is used in this directory:
+#
+ACLOCAL=				\
+	../configure/platform.m4	\
+	../configure/static.m4		\
+	../configure/gtk.m4		\
+	../configure/freetype.m4	\
+	../configure/fontconfig.m4	\
+	../configure/xft.m4		\
+	../configure/xpm.m4		\
+	../configure/motif.m4		\
+	../configure/libpaper.m4	\
+	../configure/enchant.m4		\
+	../configure/png.m4		\
+	../configure/zlib.m4		\
+	../configure/iconv.m4		\
+	../configure/jansson.m4		\
+	../configure/pcre2.m4		\
+	../configure/jpeg.m4		\
+	../configure/tiff.m4		\
+	../configure/webp.m4		\
+	../configure/prefix.m4		\
+	../configure/gui.m4
+
+aclocal.m4:	$(ACLOCAL)
+	cat $(ACLOCAL) > $@
+
+configure: aclocal.m4 configure.in
+	rm -rf config.cache autom4te.cache
+	autoconf
+
+duplicates: $(OBS)
+	nm $(OBS) | grep -w [Tt] | \
+	while read addr t name; do echo $$name; done | sort | uniq -c | sort -n
+
+includes:
+	includes.sh tedConfig.h $(INCLUDES)
+
+calls:
+	calls.sh ../appUtil/*.o \
+		../utilGeo/*.o \
+		../tedTools/*.o \
+		../tedResource/*.o \
+		../textEncoding/*.o \
+		../bitmap/*.o \
+		../ind/*.o \
+		../guiBase/*.o \
+		../appFrame/*.o \
+		../appTools/*.o \
+		../drawMeta/*.o \
+		../docBuf/*.o \
+		../docEdit/*.o \
+		../docRtf/*.o \
+		../docDraw/*.o \
+		../docLayout/*.o \
+		../docHtml/*.o \
+		../docField/*.o \
+		../docBase/*.o \
+		../utilPs/*.o \
+		../docFont/*.o \
+		*.o
+
+# deps -I../include -I../tedResource -I../tedFront -I../guiInterface -I../docHtml -I../docDraw -I../docLayout -I../docRtf -I../docEdit -I../docBuf -I../docField -I../docBase -I../drawMeta -I../guiBase -I../appFrame -I../appTools -I../utilPs -I../docFont -I../textEncoding -I../utilGeo -I../appUtil -I/usr/X11R6/include -I../bitmap -I../ind -I/usr/include/gtk-2.0 -I/usr/lib/x86_64-linux-gnu/gtk-2.0/include -I/usr/include/pango-1.0 -I/usr/include/atk-1.0 -I/usr/include/gdk-pixbuf-2.0 -I/usr/include/x86_64-linux-gnu -I/usr/include/pango-1.0 -I/usr/include/harfbuzz -I/usr/include/pango-1.0 -I/usr/include/libmount -I/usr/include/blkid -I/usr/include/fribidi -I/usr/include/cairo -I/usr/include/pixman-1 -I/usr/include/harfbuzz -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/uuid -I/usr/include/freetype2 -I/usr/include/libpng16
+################################# !! sh
+
+docScreenObjects.o: \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appWinMetaX11.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/sioHexedMemory.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPalette.h \
+    ../bitmap/bitmap.h \
+    ../bitmap/bmio.h \
+    ../bitmap/bmObjectReader.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docObject.h \
+    ../docBase/docObjectProperties.h \
+    ../docBase/docPictureProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docShapeDrawing.h \
+    ../docBase/docShapeProperties.h \
+    ../docBase/docTextParticule.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDebug.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docObjects.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docParaParticules.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docShape.h \
+    ../docBuf/docTreeNode.h \
+    ../docBuf/docTreeScanner.h \
+    ../docField/docChildFields.h \
+    ../docFont/fontMatchFont.h \
+    ../docLayout/docMetafileObject.h \
+    ../docLayout/layoutContext.h \
+    docScreenObjects.h \
+    ../drawMeta/drawMetafile.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedConfig.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoGrid.h \
+    ../utilGeo/geoRectangle.h \
+    docScreenObjects.c
+
+docSpell.o: \
+    ../appFrame/appFrameConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyleSheet.h \
+    ../docBase/docTextParticule.h \
+    ../docBuf/docAttributes.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docFields.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docParaParticules.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTreeNode.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../ind/indSpellScanJob.h \
+    ../ind/spellComplain.h \
+    tedConfig.h \
+    tedFind.h \
+    ../textEncoding/textMsLocale.h \
+    ../utilPs/textAttribute.h \
+    docSpell.c
+
+tedApp.o: \
+    ../appFrame/appEditApplication.h \
+    ../appFrame/appEditDocument.h \
+    ../appFrame/appFileChooser.h \
+    ../appFrame/appFileMessageResources.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiApplication.h \
+    ../appFrame/appTool.h \
+    ../appTools/appInspector.h \
+    ../appTools/appPrintDialog.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilArgToX.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilFileExtension.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMD5.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPalette.h \
+    ../appUtil/utilPropMask.h \
+    ../bitmap/bitmap.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyleSheet.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDocument.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docFileExtensions.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docBuf/docTreeNode.h \
+    ../docDraw/docResizeHandles.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docEditTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiOptionmenu.h \
+    ../guiBase/guiWidgets.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedApp.h \
+    tedAppResources.h \
+    tedConfig.h \
+    tedDocMenu.h \
+    tedDocument.h \
+    tedEdit.h \
+    ../tedFront/tedDocFront.h \
+    tedSelect.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/psPostScriptFontList.h \
+    ../utilPs/textAttribute.h \
+    tedApp.c
+
+tedAppFront.o: \
+    ../appFrame/appEditApplication.h \
+    ../appFrame/appEditDocument.h \
+    ../appFrame/appFileMessageResources.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiApplication.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMD5.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docDraw/docResizeHandles.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docEditTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiWidgets.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedApp.h \
+    tedConfig.h \
+    tedDocMenu.h \
+    tedDocument.h \
+    ../tedFront/tedAppFront.h \
+    ../tedFront/tedDocFront.h \
+    ../textEncoding/textMsLocale.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/psPostScriptFontList.h \
+    ../utilPs/textAttribute.h \
+    tedAppFront.c
+
+tedBottomRuler.o: \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appRuler.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiDrawingWidget.h \
+    ../guiBase/guiWidgetDrawingSurface.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedConfig.h \
+    tedRuler.h \
+    ../utilGeo/geoRectangle.h \
+    tedBottomRuler.c
+
+tedCopy.o: \
+    ../appFrame/appDocFront.h \
+    ../appFrame/appEditDocument.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appSelectionType.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/sioFileio.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/sioMemory.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMD5.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPalette.h \
+    ../appUtil/utilPropMask.h \
+    ../bitmap/bitmap.h \
+    ../bitmap/bmio.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docSelectionScope.h \
+    ../docBuf/docDocument.h \
+    ../docBuf/docFileExtensions.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docDraw/docResizeHandles.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docEditCommand.h \
+    ../docEdit/docEditTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../docRtf/docPlainReadWrite.h \
+    ../docRtf/docRtfFlags.h \
+    ../docRtf/docRtfReadWrite.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiWidgets.h \
+    ../guiBase/sioXprop.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedApp.h \
+    tedConfig.h \
+    tedCopyPaste.h \
+    tedCopyPasteImpl.h \
+    tedDocMenu.h \
+    tedDocument.h \
+    tedEdit.h \
+    ../tedFront/tedDocFront.h \
+    tedSelect.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilPs/textAttribute.h \
+    tedCopy.c
+
+tedCopyPasteImpl.o: \
+    ../appFrame/appEditDocument.h \
+    ../appFrame/appFrameConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/sioFileio.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/sioMemory.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMD5.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPalette.h \
+    ../appUtil/utilPropMask.h \
+    ../bitmap/bitmap.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docObject.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docPictureProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyleSheet.h \
+    ../docBuf/docAttributes.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docBuf/docTreeNode.h \
+    ../docDraw/docResizeHandles.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docDocumentCopyJob.h \
+    ../docEdit/docEditCommand.h \
+    ../docEdit/docEdit.h \
+    ../docEdit/docEditOperation.h \
+    ../docEdit/docEditTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../docFont/fontMatchFont.h \
+    ../docLayout/layoutContext.h \
+    ../docRtf/docPlainReadWrite.h \
+    ../docRtf/docRtfFlags.h \
+    ../docRtf/docRtfReadWrite.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiWidgets.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedConfig.h \
+    tedCopyPasteImpl.h \
+    tedDocument.h \
+    tedEditOperation.h \
+    tedSelect.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilPs/textAttribute.h \
+    tedCopyPasteImpl.c
+
+tedDeleteFromTable.o: \
+    ../appFrame/appFrameConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docSelectionScope.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docNodeTree.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docBuf/docTreeNode.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docEditCommand.h \
+    ../docEdit/docEdit.h \
+    ../docEdit/docEditImpl.h \
+    ../docEdit/docEditOperation.h \
+    ../docEdit/docRtfTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../docFont/fontMatchFont.h \
+    ../docLayout/layoutContext.h \
+    ../docRtf/docRtfFlags.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedConfig.h \
+    tedEditOperation.h \
+    ../tedFront/tedDocFront.h \
+    tedSelect.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilPs/textAttribute.h \
+    tedDeleteFromTable.c
+
+tedDeleteNode.o: \
+    ../appFrame/appFrameConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docSelectionScope.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docNodeTree.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docBuf/docTreeNode.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docEditCommand.h \
+    ../docEdit/docEdit.h \
+    ../docEdit/docEditImpl.h \
+    ../docEdit/docEditOperation.h \
+    ../docEdit/docRtfTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../docFont/fontMatchFont.h \
+    ../docLayout/layoutContext.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedConfig.h \
+    tedEditOperation.h \
+    ../tedFront/tedDocFront.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilPs/textAttribute.h \
+    tedDeleteNode.c
+
+tedDocFont.o: \
+    ../appFrame/appEditDocument.h \
+    ../appFrame/appFrameConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMD5.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docSelectionScope.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docDraw/docResizeHandles.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docEditTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiWidgets.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedConfig.h \
+    tedDocument.h \
+    ../tedFront/tedDocFront.h \
+    tedSelect.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilPs/textAttribute.h \
+    tedDocFont.c
+
+tedDocFront.o: \
+    ../appFrame/appDocFront.h \
+    ../appFrame/appEditApplication.h \
+    ../appFrame/appEditDocument.h \
+    ../appFrame/appFileMessageResources.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiDocument.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMD5.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docBreakKind.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docPropVal.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStatistics.h \
+    ../docBase/docStyleSheet.h \
+    ../docBase/docTextParticule.h \
+    ../docBase/docTreeType.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docCollectStatistics.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docFind.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docDraw/docResizeHandles.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docEditCommand.h \
+    ../docEdit/docEditTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../docField/docFieldKind.h \
+    ../docFont/docExpandedTextAttribute.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiDrawingWidget.h \
+    ../guiBase/guiWidgets.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedApp.h \
+    tedAppResources.h \
+    tedConfig.h \
+    tedCopyPasteImpl.h \
+    tedDocMenu.h \
+    tedDocument.h \
+    tedEdit.h \
+    ../tedFront/tedDocFront.h \
+    ../tedFront/tedToolFront.h \
+    tedSelect.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/psPostScriptFontList.h \
+    ../utilPs/textAttribute.h \
+    tedDocFront.c
+
+tedDocRuler.o: \
+    ../appFrame/appEditApplication.h \
+    ../appFrame/appEditDocument.h \
+    ../appFrame/appFileMessageResources.h \
+    ../appFrame/appFrameConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMD5.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docRulerColumnSeparator.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyleSheet.h \
+    ../docBase/docTabStopList.h \
+    ../docBuf/docBlockFrame.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docNodeTree.h \
+    ../docBuf/docPageGrid.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docParaNodeProperties.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docStripFrame.h \
+    ../docBuf/docTableRectangle.h \
+    ../docBuf/docTreeNode.h \
+    ../docDraw/docResizeHandles.h \
+    ../docDraw/docScreenRuler.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docEditTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../docFont/fontMatchFont.h \
+    ../docLayout/docLayout.h \
+    ../docLayout/layoutContext.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiDrawingWidget.h \
+    ../guiBase/guiWidgets.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedAppResources.h \
+    tedConfig.h \
+    tedDocument.h \
+    ../tedFront/tedDocFront.h \
+    ../tedFront/tedToolFront.h \
+    tedLayout.h \
+    tedRuler.h \
+    tedSelect.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/psPostScriptFontList.h \
+    ../utilPs/textAttribute.h \
+    tedDocRuler.c
+
+tedDocSetProperties.o: \
+    ../appFrame/appEditDocument.h \
+    ../appFrame/appFrameConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMD5.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docSectProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBuf/docAttributes.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docBuf/docTreeNode.h \
+    ../docDraw/docResizeHandles.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docEditCommand.h \
+    ../docEdit/docEdit.h \
+    ../docEdit/docEditOperation.h \
+    ../docEdit/docEditTrace.h \
+    ../docEdit/docRtfTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../docFont/fontMatchFont.h \
+    ../docLayout/layoutContext.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiWidgets.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedConfig.h \
+    tedDocument.h \
+    tedEditOperation.h \
+    ../tedFront/tedDocFront.h \
+    tedLayout.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
+    tedDocSetProperties.c
+
+tedDocument.o: \
+    ../appFrame/appDocument.h \
+    ../appFrame/appEditApplication.h \
+    ../appFrame/appEditDocument.h \
+    ../appFrame/appFileMessageResources.h \
+    ../appFrame/appFrameConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMD5.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPalette.h \
+    ../appUtil/utilPropMask.h \
+    ../bitmap/bitmap.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyleSheet.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDebug.h \
+    ../docBuf/docDocument.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docField.h \
+    ../docBuf/docFileExtensions.h \
+    ../docBuf/docFind.h \
+    ../docBuf/docNodeTree.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRecalculateFields.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docBuf/docTreeNode.h \
+    ../docDraw/docResizeHandles.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docEditCommand.h \
+    ../docEdit/docEditTrace.h \
+    ../docEdit/docRecalculateIncludeTextField.h \
+    ../docEdit/docRecalculateTocField.h \
+    ../docEdit/docSelectionDescription.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../docFont/fontMatchFont.h \
+    ../docLayout/docLayout.h \
+    ../docLayout/layoutContext.h \
+    docScreenObjects.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiWidgets.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedApp.h \
+    tedAppResources.h \
+    tedConfig.h \
+    tedDocument.h \
+    tedDraw.h \
+    ../tedFront/tedDocFront.h \
+    tedLayout.h \
+    tedSelect.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/psNup.h \
+    ../utilPs/psPostScriptFontList.h \
+    ../utilPs/textAttribute.h \
+    tedDocument.c
+
+tedDocumentWindow.o: \
+    ../appFrame/appDocFront.h \
+    ../appFrame/appDocument.h \
+    ../appFrame/appEditApplication.h \
+    ../appFrame/appEditDocument.h \
+    ../appFrame/appFileMessageResources.h \
+    ../appFrame/appFrameConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMD5.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docSelectionScope.h \
+    ../docBuf/docDebug.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docDraw/docResizeHandles.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docEditTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../docFont/fontMatchFont.h \
+    ../docLayout/layoutContext.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiWidgets.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedApp.h \
+    tedConfig.h \
+    tedDocument.h \
+    tedDraw.h \
+    ../tedFront/tedDocFront.h \
+    tedLayout.h \
+    tedRuler.h \
+    tedSelect.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/psPostScriptFontList.h \
+    ../utilPs/textAttribute.h \
+    tedDocumentWindow.c
+
+tedDraw.o: \
+    ../appFrame/appEditDocument.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiDocument.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMD5.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyleSheet.h \
+    ../docBase/docTreeType.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDebug.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docBuf/docTreeNode.h \
+    ../docDraw/docDraw.h \
+    ../docDraw/docResizeHandles.h \
+    ../docDraw/docScreenDraw.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docEditTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../docFont/fontMatchFont.h \
+    ../docLayout/docLayoutDocumentTree.h \
+    ../docLayout/layoutContext.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiWidgets.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedConfig.h \
+    tedDocument.h \
+    tedDraw.h \
+    tedLayout.h \
+    tedSelect.h \
+    ../utilGeo/geo2DInteger.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilPs/psShading.h \
+    ../utilPs/textAttribute.h \
+    tedDraw.c
+
+tedDrawGtk.o: \
+    ../appFrame/appEditApplication.h \
+    ../appFrame/appEditDocument.h \
+    ../appFrame/appFileMessageResources.h \
+    ../appFrame/appFrameConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMD5.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docSelectionScope.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docDraw/docResizeHandles.h \
+    ../docDraw/docScreenDraw.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docEditTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../docFont/fontMatchFont.h \
+    ../docLayout/layoutContext.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiWidgets.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedConfig.h \
+    tedDocument.h \
+    tedDraw.h \
+    tedLayout.h \
+    tedSelect.h \
+    ../utilGeo/geo2DInteger.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/psPostScriptFontList.h \
+    ../utilPs/psShading.h \
+    ../utilPs/textAttribute.h \
+    tedDrawGtk.c
+
+tedDrawMotif.o: \
+    ../appFrame/appFrameConfig.h \
+    ../appUtil/appUtilConfig.h \
+    tedConfig.h \
+    tedDrawMotif.c
+
+tedDrawRuler.o: \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appMetricRuler.h \
+    ../appFrame/appRuler.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../docBase/docRulerColumnSeparator.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedConfig.h \
+    tedDrawRuler.h \
+    ../utilGeo/geo2DInteger.h \
+    ../utilGeo/geoRectangle.h \
+    tedDrawRuler.c
+
+tedEdit.o: \
+    ../appFrame/appEditDocument.h \
+    ../appFrame/appFrameConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMD5.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docTextParticule.h \
+    ../docBase/docTreeType.h \
+    ../docBuf/docAttributes.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docField.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docBuf/docTreeNode.h \
+    ../docDraw/docResizeHandles.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docEditCommand.h \
+    ../docEdit/docEdit.h \
+    ../docEdit/docEditOperation.h \
+    ../docEdit/docEditTrace.h \
+    ../docEdit/docRtfTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentField.h \
+    ../docField/docFieldInstructions.h \
+    ../docField/docFieldKind.h \
+    ../docFont/fontMatchFont.h \
+    ../docLayout/layoutContext.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiWidgets.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedConfig.h \
+    tedDocument.h \
+    tedEdit.h \
+    tedEditOperation.h \
+    ../tedFront/tedDocFront.h \
+    ../tedFront/tedToolFront.h \
+    tedSelect.h \
+    ../textEncoding/ucdGeneralCategory.h \
+    ../textEncoding/uniUtf8.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilPs/textAttribute.h \
+    tedEdit.c
+
+tedEditList.o: \
+    ../appFrame/appEditDocument.h \
+    ../appFrame/appFrameConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMD5.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentList.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListDepth.h \
+    ../docBase/docListLevel.h \
+    ../docBase/docSelectionScope.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docDraw/docResizeHandles.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docEditCommand.h \
+    ../docEdit/docEdit.h \
+    ../docEdit/docEditOperation.h \
+    ../docEdit/docEditTrace.h \
+    ../docEdit/docRtfTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../docFont/docExpandedTextAttribute.h \
+    ../docFont/fontMatchFont.h \
+    ../docLayout/layoutContext.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiWidgets.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedConfig.h \
+    tedDocument.h \
+    tedEditOperation.h \
+    ../tedFront/tedDocFront.h \
+    tedSelect.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilPs/textAttribute.h \
+    tedEditList.c
+
+tedEditObject.o: \
+    ../appFrame/appEditDocument.h \
+    ../appFrame/appFrameConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMD5.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPalette.h \
+    ../appUtil/utilPropMask.h \
+    ../bitmap/bitmap.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docObject.h \
+    ../docBase/docObjectIo.h \
+    ../docBase/docPictureProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyleSheet.h \
+    ../docBase/docTextParticule.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docObjects.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docBuf/docTreeNode.h \
+    ../docDraw/docResizeHandles.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docEditCommand.h \
+    ../docEdit/docEdit.h \
+    ../docEdit/docEditOperation.h \
+    ../docEdit/docEditTrace.h \
+    ../docEdit/docRtfTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../docFont/fontMatchFont.h \
+    ../docLayout/docLayoutObject.h \
+    ../docLayout/layoutContext.h \
+    docScreenObjects.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiWidgets.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedConfig.h \
+    tedDocument.h \
+    tedEdit.h \
+    tedEditOperation.h \
+    ../tedFront/tedDocFront.h \
+    tedLayout.h \
+    tedSelect.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilPs/textAttribute.h \
+    tedEditObject.c
+
+tedEditOnKey.o: \
+    ../appFrame/appEditDocument.h \
+    ../appFrame/appFrameConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMD5.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docBreakKind.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docTextParticule.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docParaParticules.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docBuf/docTreeNode.h \
+    ../docDraw/docResizeHandles.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docEditCommand.h \
+    ../docEdit/docEditTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiKeysGtk.h \
+    ../guiBase/guiKeys.h \
+    ../guiBase/guiKeysMotif.h \
+    ../guiBase/guiWidgets.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedConfig.h \
+    tedDocument.h \
+    tedEdit.h \
+    ../tedFront/tedDocFront.h \
+    tedKeyboard.h \
+    tedSelect.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilPs/textAttribute.h \
+    tedEditOnKey.c
+
+tedEditOperation.o: \
+    ../appFrame/appEditDocument.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiDocument.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMD5.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docNoteProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyleSheet.h \
+    ../docBase/docTreeType.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDebug.h \
+    ../docBuf/docDocumentNote.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docField.h \
+    ../docBuf/docFields.h \
+    ../docBuf/docNodeTree.h \
+    ../docBuf/docNotes.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRecalculateFields.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docBuf/docTreeNode.h \
+    ../docDraw/docResizeHandles.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docEdit.h \
+    ../docEdit/docEditOperation.h \
+    ../docEdit/docEditTrace.h \
+    ../docEdit/docRtfTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentField.h \
+    ../docField/docDocumentFieldList.h \
+    ../docField/docFieldInstructions.h \
+    ../docField/docFieldKind.h \
+    ../docFont/fontMatchFont.h \
+    ../docLayout/docLayoutDocumentTree.h \
+    ../docLayout/docLayout.h \
+    ../docLayout/docScreenLayout.h \
+    ../docLayout/layoutContext.h \
+    docScreenObjects.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiWidgets.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedConfig.h \
+    tedDocument.h \
+    tedDraw.h \
+    tedEditOperation.h \
+    ../tedFront/tedDocFront.h \
+    tedLayout.h \
+    tedSelect.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilPs/textAttribute.h \
+    tedEditOperation.c
+
+tedEditSplit.o: \
+    ../appFrame/appFrameConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docBreakKind.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docParaNodeProperties.h \
+    ../docBuf/docParaParticules.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docBuf/docTreeNode.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docEditCommand.h \
+    ../docEdit/docEdit.h \
+    ../docEdit/docEditOperation.h \
+    ../docEdit/docRtfTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../docFont/fontMatchFont.h \
+    ../docLayout/docLayout.h \
+    ../docLayout/layoutContext.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedConfig.h \
+    tedEditOperation.h \
+    ../tedFront/tedDocFront.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilPs/textAttribute.h \
+    tedEditSplit.c
+
+tedExtendSelection.o: \
+    ../appFrame/appDocFront.h \
+    ../appFrame/appEditDocument.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiDocument.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMD5.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docFields.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docParaParticules.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docBuf/docTreeNode.h \
+    ../docDraw/docResizeHandles.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docEditTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../docFont/fontMatchFont.h \
+    ../docLayout/docLayout.h \
+    ../docLayout/layoutContext.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiWidgets.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedConfig.h \
+    tedDocument.h \
+    tedLayout.h \
+    tedSelect.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilPs/textAttribute.h \
+    tedExtendSelection.c
+
+tedField.o: \
+    ../appFrame/appEditDocument.h \
+    ../appFrame/appFrameConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMD5.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyleSheet.h \
+    ../docBuf/docAttributes.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docField.h \
+    ../docBuf/docFields.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRecalculateFields.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docBuf/docTreeNode.h \
+    ../docDraw/docResizeHandles.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docEditCommand.h \
+    ../docEdit/docEdit.h \
+    ../docEdit/docEditOperation.h \
+    ../docEdit/docEditTrace.h \
+    ../docEdit/docRtfTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentField.h \
+    ../docField/docDocumentFieldList.h \
+    ../docField/docFieldInstructions.h \
+    ../docField/docFieldKind.h \
+    ../docFont/fontMatchFont.h \
+    ../docLayout/layoutContext.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiWidgets.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedConfig.h \
+    tedDocument.h \
+    tedEdit.h \
+    tedEditOperation.h \
+    ../tedFront/tedToolFront.h \
+    tedSelect.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilPs/textAttribute.h \
+    tedField.c
+
+tedFileConvert.o: \
+    ../appFrame/appEditApplication.h \
+    ../appFrame/appFileMessageResources.h \
+    ../appFrame/appFrameConfig.h \
+    ../appUtil/appSystem.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/sioFileio.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/sioStdout.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMD5.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docSelectionScope.h \
+    ../docBuf/docDebug.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docDraw/docResizeHandles.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docCopyNode.h \
+    ../docEdit/docEditTrace.h \
+    ../docEdit/docFontsDocuments.h \
+    ../docEdit/docJsonReport.h \
+    ../docEdit/docSelectionDescription.h \
+    ../guiBase/drawMatchFont.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiWidgets.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedConfig.h \
+    tedDocument.h \
+    tedFileConvert.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/psBuildConfigFiles.h \
+    ../utilPs/psPostScriptFontList.h \
+    ../utilPs/textAttribute.h \
+    tedFileConvert.c
+
+tedFind.o: \
+    ../appFrame/appEditApplication.h \
+    ../appFrame/appEditDocument.h \
+    ../appFrame/appFileMessageResources.h \
+    ../appFrame/appFrameConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMD5.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docSelectionScope.h \
+    ../docBuf/docFind.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docDraw/docResizeHandles.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docEditTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiWidgets.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedConfig.h \
+    tedDocument.h \
+    tedFind.h \
+    ../tedFront/tedAppFront.h \
+    ../tedFront/tedDocFront.h \
+    tedSelect.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/psPostScriptFontList.h \
+    ../utilPs/textAttribute.h \
+    tedFind.c
+
+tedFindPosition.o: \
+    ../appFrame/appFrameConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyleSheet.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docNodeTree.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTreeNode.h \
+    ../docDraw/docDraw.h \
+    ../docDraw/docPositionFindJob.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../docFont/fontMatchFont.h \
+    ../docLayout/docLayoutDocumentTree.h \
+    ../docLayout/layoutContext.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedConfig.h \
+    tedLayout.h \
+    tedSelect.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilPs/textAttribute.h \
+    tedFindPosition.c
+
+tedFollowLink.o: \
+    ../appFrame/appEditApplication.h \
+    ../appFrame/appEditDocument.h \
+    ../appFrame/appFileMessageResources.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiApplication.h \
+    ../appUtil/appSystem.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/sioMemory.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMD5.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyleSheet.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docDraw/docResizeHandles.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docEditTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiWidgets.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedConfig.h \
+    tedDocument.h \
+    ../tedFront/tedDocFront.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/psPostScriptFontList.h \
+    ../utilPs/textAttribute.h \
+    tedFollowLink.c
+
+tedHeaderFooter.o: \
+    ../appFrame/appEditApplication.h \
+    ../appFrame/appEditDocument.h \
+    ../appFrame/appFileMessageResources.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appQuestion.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMD5.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyleSheet.h \
+    ../docBase/docTreeType.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docBuf/docTreeNode.h \
+    ../docDraw/docResizeHandles.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docEditCommand.h \
+    ../docEdit/docEdit.h \
+    ../docEdit/docEditImpl.h \
+    ../docEdit/docEditOperation.h \
+    ../docEdit/docEditTrace.h \
+    ../docEdit/docRtfTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../docFont/fontMatchFont.h \
+    ../docLayout/docSelectLayout.h \
+    ../docLayout/layoutContext.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiWidgets.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedAppResources.h \
+    tedConfig.h \
+    tedDocument.h \
+    tedEditOperation.h \
+    ../tedFront/tedDocFront.h \
+    tedLayout.h \
+    tedSelect.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/psPostScriptFontList.h \
+    ../utilPs/textAttribute.h \
+    tedHeaderFooter.c
+
+tedHyperlink.o: \
+    ../appFrame/appEditDocument.h \
+    ../appFrame/appFrameConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMD5.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyleSheet.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docField.h \
+    ../docBuf/docFields.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docDraw/docResizeHandles.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docEditCommand.h \
+    ../docEdit/docEdit.h \
+    ../docEdit/docEditOperation.h \
+    ../docEdit/docEditTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../docField/docBookmarkField.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../docField/docFieldInstructions.h \
+    ../docField/docFieldKind.h \
+    ../docField/docHyperlinkField.h \
+    ../docFont/fontMatchFont.h \
+    ../docLayout/layoutContext.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiWidgets.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedConfig.h \
+    tedDocument.h \
+    tedEdit.h \
+    tedEditOperation.h \
+    ../tedFront/tedDocFront.h \
+    tedSelect.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilPs/textAttribute.h \
+    tedHyperlink.c
+
+tedIncludeDocument.o: \
+    ../appFrame/appEditDocument.h \
+    ../appFrame/appFrameConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyleSheet.h \
+    ../docBase/docTreeType.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDebug.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docParaParticules.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docBuf/docTreeNode.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docDocumentCopyJob.h \
+    ../docEdit/docEditCommand.h \
+    ../docEdit/docEdit.h \
+    ../docEdit/docEditOperation.h \
+    ../docEdit/docRtfTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../docFont/fontMatchFont.h \
+    ../docLayout/layoutContext.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiWidgets.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedConfig.h \
+    tedEdit.h \
+    tedEditOperation.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
+    tedIncludeDocument.c
+
+tedInput.o: \
+    ../appFrame/appEditDocument.h \
+    ../appFrame/appFrameConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMD5.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docSelectionScope.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docDraw/docResizeHandles.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docEditCommand.h \
+    ../docEdit/docEditTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiKeysGtk.h \
+    ../guiBase/guiKeys.h \
+    ../guiBase/guiKeysMotif.h \
+    ../guiBase/guiWidgets.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedConfig.h \
+    tedDocMenu.h \
+    tedDocument.h \
+    tedDraw.h \
+    tedEdit.h \
+    ../tedFront/tedDocFront.h \
+    tedKeyboard.h \
+    tedSelect.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilPs/textAttribute.h \
+    tedInput.c
+
+tedInsertNode.o: \
+    ../appFrame/appFrameConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docTextParticule.h \
+    ../docBase/docTreeType.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docNodeTree.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docBuf/docTreeNode.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docEditCommand.h \
+    ../docEdit/docEdit.h \
+    ../docEdit/docEditOperation.h \
+    ../docEdit/docRtfTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../docFont/fontMatchFont.h \
+    ../docLayout/layoutContext.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedConfig.h \
+    tedEditOperation.h \
+    ../tedFront/tedDocFront.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilPs/textAttribute.h \
+    tedInsertNode.c
+
+tedLayout.o: \
+    ../appFrame/appEditApplication.h \
+    ../appFrame/appEditDocument.h \
+    ../appFrame/appFileMessageResources.h \
+    ../appFrame/appFrameConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMD5.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPalette.h \
+    ../appUtil/utilPropMask.h \
+    ../bitmap/bitmap.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docObject.h \
+    ../docBase/docPictureProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBuf/docNodeTree.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docDraw/docResizeHandles.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docEdit.h \
+    ../docEdit/docEditOperation.h \
+    ../docEdit/docEditTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../docFont/fontMatchFont.h \
+    ../docLayout/docLayout.h \
+    ../docLayout/docScreenLayout.h \
+    ../docLayout/layoutContext.h \
+    docScreenObjects.h \
+    ../guiBase/drawMatchFont.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiWidgets.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedAppResources.h \
+    tedConfig.h \
+    tedDocument.h \
+    tedEditOperation.h \
+    tedLayout.h \
+    ../utilGeo/geo2DInteger.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/psPostScriptFontList.h \
+    ../utilPs/textAttribute.h \
+    tedLayout.c
+
+tedMain.o: \
+    ../appFrame/appEditApplication.h \
+    ../appFrame/appEditDocument.h \
+    ../appFrame/appFileMessageResources.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiResource.h \
+    ../appFrame/appSelectionType.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/sioStdout.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMD5.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docFrameProperties.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBuf/docFileExtensions.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docDraw/docResizeHandles.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docEditTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiMenuItem.h \
+    ../guiBase/guiWidgets.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedApp.h \
+    tedAppResources.h \
+    tedConfig.h \
+    tedCopyPaste.h \
+    tedDocMenu.h \
+    tedDocument.h \
+    tedDraw.h \
+    tedFileConvert.h \
+    ../tedFront/tedDocFront.h \
+    tedMenu.h \
+    ../tedResource/tedResource.h \
+    tedRuler.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilGeo/geoUnit.h \
+    ../utilPs/psBuildConfigFiles.h \
+    ../utilPs/psPostScriptFontList.h \
+    ../utilPs/textAttribute.h \
+    tedMain.c
+
+tedMenu.o: \
+    ../appFrame/appAppFront.h \
+    ../appFrame/appDocFront.h \
+    ../appFrame/appEditApplication.h \
+    ../appFrame/appEditDocument.h \
+    ../appFrame/appFileMessageResources.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiApplication.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMD5.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docSelectionScope.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docDraw/docResizeHandles.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docEditTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiMenuItem.h \
+    ../guiBase/guiWidgets.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedConfig.h \
+    tedDocMenu.h \
+    tedDocument.h \
+    tedMenu.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/psPostScriptFontList.h \
+    ../utilPs/textAttribute.h \
+    tedMenu.c
+
+tedMouseInput.o: \
+    ../appFrame/appDocFront.h \
+    ../appFrame/appEditApplication.h \
+    ../appFrame/appEditDocument.h \
+    ../appFrame/appFileMessageResources.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiDocument.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMD5.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyleSheet.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docField.h \
+    ../docBuf/docParaParticules.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docDraw/docResizeHandles.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docEditTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../docField/docFieldKind.h \
+    ../docField/docHyperlinkField.h \
+    ../docFont/fontMatchFont.h \
+    ../docLayout/docLayout.h \
+    ../docLayout/layoutContext.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiDrawingWidget.h \
+    ../guiBase/guiKeysGtk.h \
+    ../guiBase/guiKeys.h \
+    ../guiBase/guiKeysMotif.h \
+    ../guiBase/guiWidgets.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedConfig.h \
+    tedDocMenu.h \
+    tedDocument.h \
+    tedDraw.h \
+    ../tedFront/tedDocFront.h \
+    ../tedFront/tedToolFront.h \
+    tedLayout.h \
+    tedSelect.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/psPostScriptFontList.h \
+    ../utilPs/textAttribute.h \
+    tedMouseInput.c
+
+tedMoveOnKey.o: \
+    ../appFrame/appEditDocument.h \
+    ../appFrame/appFrameConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMD5.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyleSheet.h \
+    ../docBase/docTreeType.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docNodeTree.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docParaParticules.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docBuf/docTreeNode.h \
+    ../docDraw/docResizeHandles.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docEditTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../docFont/fontMatchFont.h \
+    ../docLayout/docSelectLayout.h \
+    ../docLayout/layoutContext.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiKeysGtk.h \
+    ../guiBase/guiKeys.h \
+    ../guiBase/guiKeysMotif.h \
+    ../guiBase/guiWidgets.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedConfig.h \
+    tedDocument.h \
+    tedKeyboard.h \
+    tedLayout.h \
+    tedSelect.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilPs/textAttribute.h \
+    tedMoveOnKey.c
+
+tedNote.o: \
+    ../appFrame/appEditDocument.h \
+    ../appFrame/appFrameConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMD5.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docNoteProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyleSheet.h \
+    ../docBase/docTreeType.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDocumentNote.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docField.h \
+    ../docBuf/docNodeTree.h \
+    ../docBuf/docNotes.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docBuf/docTreeNode.h \
+    ../docDraw/docResizeHandles.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docEditCommand.h \
+    ../docEdit/docEdit.h \
+    ../docEdit/docEditImpl.h \
+    ../docEdit/docEditOperation.h \
+    ../docEdit/docEditTrace.h \
+    ../docEdit/docRtfTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentField.h \
+    ../docField/docDocumentFieldList.h \
+    ../docField/docFieldInstructions.h \
+    ../docField/docFieldKind.h \
+    ../docFont/fontMatchFont.h \
+    ../docLayout/layoutContext.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiWidgets.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedConfig.h \
+    tedDocument.h \
+    tedEditOperation.h \
+    ../tedFront/tedDocFront.h \
+    tedSelect.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilPs/textAttribute.h \
+    tedNote.c
+
+tedObjectDrag.o: \
+    ../appFrame/appEditApplication.h \
+    ../appFrame/appEditDocument.h \
+    ../appFrame/appFileMessageResources.h \
+    ../appFrame/appFrameConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMD5.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPalette.h \
+    ../appUtil/utilPropMask.h \
+    ../bitmap/bitmap.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docObject.h \
+    ../docBase/docPictureProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBuf/docBlockFrame.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docPageGrid.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docBuf/docTreeNode.h \
+    ../docDraw/docResizeHandles.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docEditTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../docFont/fontMatchFont.h \
+    ../docLayout/layoutContext.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiDrawingWidget.h \
+    ../guiBase/guiWidgets.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedConfig.h \
+    tedDocument.h \
+    tedEdit.h \
+    tedLayout.h \
+    tedSelect.h \
+    ../utilGeo/geo2DInteger.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoGrid.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/psPostScriptFontList.h \
+    ../utilPs/textAttribute.h \
+    tedObjectDrag.c
+
+tedOpenDocument.o: \
+    ../appFrame/appDocument.h \
+    ../appFrame/appEditApplication.h \
+    ../appFrame/appEditDocument.h \
+    ../appFrame/appFileMessageResources.h \
+    ../appFrame/appFrameConfig.h \
+    ../appUtil/appSystem.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/sioFd.h \
+    ../appUtil/sioFileio.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/sioMemory.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilFileExtension.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMD5.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilMemoryBufferPrintf.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docDocumentList.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListDepth.h \
+    ../docBase/docListLevel.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docSectProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyle.h \
+    ../docBase/docStyleSheet.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docDebug.h \
+    ../docBuf/docDocument.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docFileExtensions.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docDraw/docResizeHandles.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docEditCommand.h \
+    ../docEdit/docEditStep.h \
+    ../docEdit/docEditTrace.h \
+    ../docEdit/docRtfTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../docFont/fontMatchFont.h \
+    ../docRtf/docPlainReadWrite.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiWidgets.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedApp.h \
+    tedAppResources.h \
+    tedConfig.h \
+    tedDocument.h \
+    ../tedFront/tedDocFront.h \
+    ../textEncoding/textMsLocale.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilGeo/geoUnits.h \
+    ../utilPs/psPostScriptFontList.h \
+    ../utilPs/textAttribute.h \
+    tedOpenDocument.c
+
+tedOpenDocumentFile.o: \
+    ../appFrame/appEditApplication.h \
+    ../appFrame/appFileMessageResources.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appQuestion.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/sioFileio.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/sioMD5.h \
+    ../appUtil/sioStdin.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docStyleSheet.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docDebug.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docFileExtensions.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../docRtf/docPlainReadWrite.h \
+    ../docRtf/docRtfFlags.h \
+    ../docRtf/docRtfReadWrite.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiWidgets.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedApp.h \
+    tedAppResources.h \
+    tedConfig.h \
+    ../textEncoding/textMsLocale.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/psPostScriptFontList.h \
+    tedOpenDocumentFile.c
+
+tedPage.o: \
+    ../appFrame/appEditApplication.h \
+    ../appFrame/appEditDocument.h \
+    ../appFrame/appFileMessageResources.h \
+    ../appFrame/appFrameConfig.h \
+    ../appTools/appPageTool.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMD5.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyleSheet.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docBuf/docTreeNode.h \
+    ../docDraw/docResizeHandles.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docEditTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../docFont/fontMatchFont.h \
+    ../docLayout/docLayout.h \
+    ../docLayout/docScreenLayout.h \
+    ../docLayout/layoutContext.h \
+    docScreenObjects.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiDrawingWidget.h \
+    ../guiBase/guiWidgets.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedConfig.h \
+    tedDocument.h \
+    ../tedFront/tedDocFront.h \
+    tedLayout.h \
+    tedSelect.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/psPostScriptFontList.h \
+    ../utilPs/textAttribute.h \
+    tedPage.c
+
+tedPaste.o: \
+    ../appFrame/appEditApplication.h \
+    ../appFrame/appEditDocument.h \
+    ../appFrame/appFileMessageResources.h \
+    ../appFrame/appFrameConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMD5.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPalette.h \
+    ../appUtil/utilPropMask.h \
+    ../bitmap/bitmap.h \
+    ../bitmap/bmio.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docSelectionScope.h \
+    ../docBuf/docDocument.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docDraw/docResizeHandles.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docEditTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../docRtf/docPlainReadWrite.h \
+    ../docRtf/docRtfReadWrite.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiWidgets.h \
+    ../guiBase/sioXprop.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedAppResources.h \
+    tedConfig.h \
+    tedCopyPasteImpl.h \
+    tedDocMenu.h \
+    tedDocument.h \
+    tedEdit.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/psPostScriptFontList.h \
+    ../utilPs/textAttribute.h \
+    tedPaste.c
+
+tedRepeat.o: \
+    ../appFrame/appEditDocument.h \
+    ../appFrame/appFrameConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMD5.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docDocumentList.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListDepth.h \
+    ../docBase/docListLevel.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docNoteProperties.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docSectProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyle.h \
+    ../docBase/docStyleSheet.h \
+    ../docBase/docTreeType.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDebug.h \
+    ../docBuf/docDocumentNote.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docField.h \
+    ../docBuf/docNodeTree.h \
+    ../docBuf/docNotes.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docParaParticules.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docBuf/docTreeNode.h \
+    ../docDraw/docResizeHandles.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docDocumentCopyJob.h \
+    ../docEdit/docEditCommand.h \
+    ../docEdit/docEdit.h \
+    ../docEdit/docEditOperation.h \
+    ../docEdit/docEditStep.h \
+    ../docEdit/docEditTrace.h \
+    ../docEdit/docRtfTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../docEdit/docTrace.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentField.h \
+    ../docField/docDocumentFieldList.h \
+    ../docField/docFieldInstructions.h \
+    ../docField/docFieldKind.h \
+    ../docFont/fontMatchFont.h \
+    ../docLayout/layoutContext.h \
+    ../docRtf/docRtfTraceImpl.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiWidgets.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedConfig.h \
+    tedDocument.h \
+    tedEdit.h \
+    tedEditOperation.h \
+    ../tedFront/tedDocFront.h \
+    tedSelect.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
+    tedRepeat.c
+
+tedRuler.o: \
+    ../appFrame/appEditApplication.h \
+    ../appFrame/appEditDocument.h \
+    ../appFrame/appFileMessageResources.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appMetricRuler.h \
+    ../appFrame/appRuler.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docRulerColumnSeparator.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiDrawingWidget.h \
+    ../guiBase/guiWidgetDrawingSurface.h \
+    ../guiBase/guiWidgets.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedConfig.h \
+    tedDrawRuler.h \
+    tedRuler.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/psPostScriptFontList.h \
+    tedRuler.c
+
+tedSaveDocument.o: \
+    ../appFrame/appEditApplication.h \
+    ../appFrame/appFileMessageResources.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appPrintDocument.h \
+    ../appFrame/appPrintJob.h \
+    ../appUtil/appSystem.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/sioFd.h \
+    ../appUtil/sioFileio.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/sioMD5.h \
+    ../appUtil/sioPipe.h \
+    ../appUtil/sioStdout.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMD5.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyleSheet.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docField.h \
+    ../docBuf/docFileExtensions.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRecalculateFields.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docBuf/docTreeNode.h \
+    ../docDraw/docPsPrint.h \
+    ../docDraw/docResizeHandles.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docEditCommand.h \
+    ../docEdit/docEditTrace.h \
+    ../docEdit/docRecalculateIncludeTextField.h \
+    ../docEdit/docRecalculateTocField.h \
+    ../docEdit/docRtfTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../docFont/fontMatchFont.h \
+    ../docHtml/docHtmlWrite.h \
+    ../docHtml/docMarkdownReadWrite.h \
+    ../docHtml/docSvgDraw.h \
+    ../docLayout/layoutContext.h \
+    ../docRtf/docPlainReadWrite.h \
+    ../docRtf/docRtfReadWrite.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiWidgets.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedApp.h \
+    tedAppResources.h \
+    tedConfig.h \
+    tedDocument.h \
+    tedLayout.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/psNup.h \
+    ../utilPs/psPostScriptFontList.h \
+    ../utilPs/psPrint.h \
+    ../utilPs/textAttribute.h \
+    tedSaveDocument.c
+
+tedSelect.o: \
+    ../appFrame/appDocFront.h \
+    ../appFrame/appEditDocument.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiDocument.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMD5.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyleSheet.h \
+    ../docBase/docTextLine.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docFields.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docBuf/docTreeNode.h \
+    ../docDraw/docResizeHandles.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docEditTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../docFont/fontMatchFont.h \
+    ../docLayout/docDescribeSetSelection.h \
+    ../docLayout/docLayout.h \
+    ../docLayout/layoutContext.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiWidgets.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedConfig.h \
+    tedDocument.h \
+    tedDraw.h \
+    ../tedFront/tedDocFront.h \
+    tedLayout.h \
+    tedSelect.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilPs/textAttribute.h \
+    tedSelect.c
+
+tedSelectionDescription.o: \
+    ../appFrame/appEditApplication.h \
+    ../appFrame/appEditDocument.h \
+    ../appFrame/appFileMessageResources.h \
+    ../appFrame/appFrameConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMD5.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyleSheet.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docParaParticules.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docDraw/docResizeHandles.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docEditCommand.h \
+    ../docEdit/docEditTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../docFont/fontMatchFont.h \
+    ../docLayout/layoutContext.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiWidgets.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedConfig.h \
+    tedDocument.h \
+    ../tedFront/tedDocFront.h \
+    ../tedFront/tedToolFront.h \
+    tedLayout.h \
+    tedRuler.h \
+    tedSelect.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/psPostScriptFontList.h \
+    ../utilPs/textAttribute.h \
+    tedSelectionDescription.c
+
+tedTable.o: \
+    ../appFrame/appEditDocument.h \
+    ../appFrame/appFrameConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMD5.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyleSheet.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docDebug.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docNodeTree.h \
+    ../docBuf/docParaParticules.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docDraw/docResizeHandles.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docDocumentCopyJob.h \
+    ../docEdit/docEditCommand.h \
+    ../docEdit/docEdit.h \
+    ../docEdit/docEditOperation.h \
+    ../docEdit/docEditTrace.h \
+    ../docEdit/docIntermediaryDocument.h \
+    ../docEdit/docRtfTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../docFont/fontMatchFont.h \
+    ../docLayout/layoutContext.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiWidgets.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedConfig.h \
+    tedDocument.h \
+    tedEdit.h \
+    tedEditOperation.h \
+    ../tedFront/tedDocFront.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilPs/textAttribute.h \
+    tedTable.c
+
+tedToc.o: \
+    ../appFrame/appFrameConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMD5.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyleSheet.h \
+    ../docBase/docTreeType.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docField.h \
+    ../docBuf/docFields.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRecalculateFields.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docBuf/docTreeNode.h \
+    ../docDraw/docResizeHandles.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docEditCommand.h \
+    ../docEdit/docEdit.h \
+    ../docEdit/docEditOperation.h \
+    ../docEdit/docEditTrace.h \
+    ../docEdit/docRecalculateTocField.h \
+    ../docEdit/docRtfTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../docField/docFieldInstructions.h \
+    ../docField/docFieldKind.h \
+    ../docField/docTocField.h \
+    ../docFont/fontMatchFont.h \
+    ../docLayout/layoutContext.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiWidgets.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedConfig.h \
+    tedDocument.h \
+    tedEditOperation.h \
+    ../tedFront/tedDocFront.h \
+    tedLayout.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilPs/textAttribute.h \
+    tedToc.c
+
+tedUndo.o: \
+    ../appFrame/appEditDocument.h \
+    ../appFrame/appFrameConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMD5.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docDocumentList.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListAdmin.h \
+    ../docBase/docListDepth.h \
+    ../docBase/docListLevel.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docListOverride.h \
+    ../docBase/docListOverrideLevel.h \
+    ../docBase/docListOverrideTable.h \
+    ../docBase/docListTable.h \
+    ../docBase/docNoteProperties.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docSectProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyle.h \
+    ../docBase/docStyleSheet.h \
+    ../docBase/docTreeType.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDebug.h \
+    ../docBuf/docDocumentNote.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docFields.h \
+    ../docBuf/docNodeTree.h \
+    ../docBuf/docNotes.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTableRectangle.h \
+    ../docBuf/docTreeNode.h \
+    ../docDraw/docResizeHandles.h \
+    ../docDraw/docSelectionGeometry.h \
+    ../docEdit/docEditCommand.h \
+    ../docEdit/docEdit.h \
+    ../docEdit/docEditImpl.h \
+    ../docEdit/docEditOperation.h \
+    ../docEdit/docEditStep.h \
+    ../docEdit/docEditTrace.h \
+    ../docEdit/docRtfTrace.h \
+    ../docEdit/docSelectionDescription.h \
+    ../docEdit/docTrace.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentField.h \
+    ../docField/docDocumentFieldList.h \
+    ../docField/docFieldInstructions.h \
+    ../docField/docFieldKind.h \
+    ../docFont/fontMatchFont.h \
+    ../docLayout/layoutContext.h \
+    ../docRtf/docRtfTraceImpl.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiWidgets.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedConfig.h \
+    tedDocument.h \
+    tedEditOperation.h \
+    ../tedFront/tedDocFront.h \
+    tedLayout.h \
+    tedSelect.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
+    tedUndo.c
+
+tedVerticalRuler.o: \
+    ../appFrame/appEditApplication.h \
+    ../appFrame/appEditDocument.h \
+    ../appFrame/appFileMessageResources.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appRuler.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiDrawingWidget.h \
+    ../guiBase/guiWidgetDrawingSurface.h \
+    ../guiBase/guiWidgets.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    tedConfig.h \
+    tedRuler.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/psPostScriptFontList.h \
+    tedVerticalRuler.c
+

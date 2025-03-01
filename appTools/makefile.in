@@ -1,0 +1,690 @@
+CC=@CC@
+
+XM_CFLAGS=@XM_CFLAGS@
+LIBXPM_CFLAGS=@LIBXPM_CFLAGS@
+X_CFLAGS=@X_CFLAGS@
+GTK_CFLAGS= @GTK_CFLAGS@
+FT2_CFLAGS=@FT2_CFLAGS@
+XFT_CFLAGS=@XFT_CFLAGS@
+
+MOTIF_CFLAGS=$(XM_CFLAGS)
+
+GUI_CFLAGS=$(@GUI@_CFLAGS)
+
+#	-Wmaybe-uninitialized
+#	-Wunused-but-set-variable
+
+WFLAGS=	-Wall			\
+	-Wextra			\
+	-Winit-self		\
+	-pedantic		\
+	-Wpointer-arith		\
+	-Wno-format-y2k		\
+	-Wstrict-prototypes	\
+	-Wmissing-declarations	\
+	-Wmissing-prototypes	\
+	-Wnested-externs	\
+	-Wuninitialized		\
+	-Wundef			\
+	-Wshadow		\
+	-Wlogical-op		\
+	-Wnull-dereference	\
+	-Wwrite-strings		\
+	-Wold-style-definition	\
+	-Wno-missing-field-initializers	\
+	-Wredundant-decls	\
+	-Wno-unused-parameter	\
+	-Wno-sign-compare	\
+	-fsanitize=address	\
+	-isystem /usr/include/gtk-2.0 \
+	-Werror
+
+INCLUDES=			\
+	$(FT2_CFLAGS)		\
+	$(XFT_CFLAGS)		\
+	$(X_CFLAGS)		\
+	$(GUI_CFLAGS)		\
+	-I../appFrame		\
+	-I../guiBase		\
+	-I../guiInterface	\
+	-I../ind		\
+	-I../bitmap		\
+	-I../utilPs		\
+	-I../docFont		\
+	-I../textEncoding	\
+	-I../utilGeo		\
+	-I../appUtil		\
+	-I../include
+
+CFLAGS=			\
+	@CFLAGS@	\
+	$(INCLUDES)	\
+	$(DEF_PKGDIR)
+
+#CFLAGS= @CFLAGS@ $(WFLAGS) $(INCLUDES) $(DEF_PKGDIR)
+
+# 26!!obs
+OBS	=	\
+		appVerticalFindTool.o\
+		appToolMotif.o\
+		appToolGtk.o\
+		appSymbolPicker.o\
+		appSpellTool.o\
+		appRgbCube.o\
+		appRgbChooserPage.o\
+		appPrintDialog.o\
+		appPaperChooser.o\
+		appPageTool.o\
+		appPageLayoutTool.o\
+		appPageLayoutSubject.o\
+		appMarginTool.o\
+		appMakeInspector.o\
+		appInspectorSubject.o\
+		appInspectorSelectColor.o\
+		appInspectorMotif.o\
+		appInspectorGtk.o\
+		appInspector.o\
+		appHorizontalFindTool.o\
+		appFontTool.o\
+		appFindTool.o\
+		appDrawPage.o\
+		appColorChooser.o
+
+../lib/appTools.a:      $(OBS)
+	ar ruv $@ $(OBS) && @RANLIB@ $@
+
+###########################################################################
+#
+#  This is cyclic, but at least it documents what extra autoconf configuration
+#  is used in this directory:
+#
+ACLOCAL=				\
+	../configure/gtk.m4		\
+	../configure/freetype.m4	\
+	../configure/fontconfig.m4	\
+	../configure/xft.m4		\
+	../configure/xpm.m4		\
+	../configure/motif.m4		\
+	../configure/libpaper.m4	\
+	../configure/enchant.m4		\
+	../configure/png.m4		\
+	../configure/zlib.m4		\
+	../configure/iconv.m4		\
+	../configure/pcre.m4		\
+	../configure/jpeg.m4		\
+	../configure/tiff.m4		\
+	../configure/prefix.m4		\
+	../configure/gui.m4
+
+aclocal.m4:	$(ACLOCAL)
+	cat $(ACLOCAL) > $@
+
+configure: aclocal.m4 configure.in
+	rm -rf config.cache autom4te.cache
+	autoconf
+
+duplicates: $(OBS)
+	nm $(OBS) | grep -w [Tt] | \
+	while read addr t name; do echo $$name; done | sort | uniq -c | sort -n
+
+includes:
+	includes.sh appToolsConfig.h $(INCLUDES)
+
+# deps -I../include -I../guiInterface -I../guiBase -I../appFrame -I../utilPs -I../docFont -I../textEncoding -I../utilGeo -I../appUtil -I/usr/X11R6/include -I../bitmap -I../ind -I/usr/include/gtk-2.0 -I/usr/lib/x86_64-linux-gnu/gtk-2.0/include -I/usr/include/atk-1.0 -I/usr/include/cairo -I/usr/include/gdk-pixbuf-2.0 -I/usr/include/pango-1.0 -I/usr/include/gio-unix-2.0/ -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/pixman-1 -I/usr/include/freetype2 -I/usr/include/libpng12
+################################# !! sh
+
+appColorChooser.o: \
+    appColorChooser.h \
+    ../appFrame/appFrameConfig.h \
+    appToolsConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    ../appUtil/utilPropMask.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiDrawingWidget.h \
+    ../guiBase/guiDrawnPulldown.h \
+    ../guiBase/guiWidgetDrawingSurface.h \
+    ../guiBase/guiWidgets.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilPs/psPostScriptFontList.h \
+    appColorChooser.c
+
+appDrawPage.o: \
+    ../appFrame/appFrameConfig.h \
+    appToolDrawPage.h \
+    appToolsConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiDrawingWidget.h \
+    ../guiBase/guiWidgets.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geo2DInteger.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilGeo/geoUnits.h \
+    ../utilPs/psNup.h \
+    appDrawPage.c
+
+appFindTool.o: \
+    appFindTool.h \
+    appFindToolImpl.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiResource.h \
+    appInspectorSubject.h \
+    appToolsConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiWidgets.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    appFindTool.c
+
+appFontTool.o: \
+    appFontTool.h \
+    ../appFrame/appEditApplication.h \
+    ../appFrame/appFileMessageResources.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiResource.h \
+    appInspectorSubject.h \
+    appToolsConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPropMask.h \
+    ../docFont/docExpandedTextAttribute.h \
+    ../docFont/fontDocFont.h \
+    ../docFont/fontDocFontList.h \
+    ../docFont/fontDocFontListImpl.h \
+    ../guiBase/drawDrawingSurfacePrivate.h \
+    ../guiBase/drawMatchFont.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiDrawingWidget.h \
+    ../guiBase/guiOptionmenu.h \
+    ../guiBase/guiTextUtil.h \
+    ../guiBase/guiToolUtil.h \
+    ../guiBase/guiWidgetDrawingSurface.h \
+    ../guiBase/guiWidgets.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilGeo/geoString.h \
+    ../utilGeo/geoUnit.h \
+    ../utilPs/psFontInfo.h \
+    ../utilPs/psPostScriptFontList.h \
+    ../utilPs/textAttribute.h \
+    ../utilPs/textAttributeUtil.h \
+    appFontTool.c
+
+appHorizontalFindTool.o: \
+    appFindTool.h \
+    appFindToolImpl.h \
+    ../appFrame/appEditApplication.h \
+    ../appFrame/appFileMessageResources.h \
+    ../appFrame/appFrameConfig.h \
+    appInspectorSubject.h \
+    appToolsConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiNamedImages.h \
+    ../guiBase/guiWidgets.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/psPostScriptFontList.h \
+    appHorizontalFindTool.c
+
+appInspector.o: \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appTool.h \
+    appInspector.h \
+    appInspectorSubject.h \
+    appToolsConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiOptionmenu.h \
+    ../guiBase/guiWidgets.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    appInspector.c
+
+appInspectorGtk.o: \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appTool.h \
+    appInspector.h \
+    appInspectorSubject.h \
+    appToolsConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiOptionmenu.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    appInspectorGtk.c
+
+appInspectorMotif.o: \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appTool.h \
+    appInspector.h \
+    appInspectorSubject.h \
+    appToolsConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiOptionmenu.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    appInspectorMotif.c
+
+appInspectorSelectColor.o: \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appTool.h \
+    appInspector.h \
+    appInspectorSubject.h \
+    appRgbChooserPage.h \
+    appRgbCube.h \
+    appToolsConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiOptionmenu.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoAffineTransform.h \
+    appInspectorSelectColor.c
+
+appInspectorSubject.o: \
+    ../appFrame/appFrameConfig.h \
+    appInspectorSubject.h \
+    appToolsConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    appInspectorSubject.c
+
+appMakeInspector.o: \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiApplication.h \
+    ../appFrame/appGuiResource.h \
+    ../appFrame/appTool.h \
+    appInspector.h \
+    appInspectorSubject.h \
+    appToolsConfig.h \
+    ../appUtil/appUtilConfig.h \
+    appVerticalTool.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiOptionmenu.h \
+    ../guiBase/guiToolUtil.h \
+    ../guiBase/guiWidgets.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    appMakeInspector.c
+
+appMarginTool.o: \
+    ../appFrame/appFrameConfig.h \
+    appMarginTool.h \
+    appToolsConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilPropMask.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiOptionmenu.h \
+    ../guiBase/guiTextUtil.h \
+    ../guiBase/guiToolUtil.h \
+    ../guiBase/guiWidgets.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    appMarginTool.c
+
+appPageLayoutSubject.o: \
+    ../appFrame/appFrameConfig.h \
+    appInspectorSubject.h \
+    appMarginTool.h \
+    appPageLayoutSubject.h \
+    appPageLayoutTool.h \
+    appPaperChooser.h \
+    appToolsConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiOptionmenu.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    appPageLayoutSubject.c
+
+appPageLayoutTool.o: \
+    ../appFrame/appEditApplication.h \
+    ../appFrame/appFileMessageResources.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiResource.h \
+    appInspectorSubject.h \
+    appMarginTool.h \
+    appPageLayoutTool.h \
+    appPaperChooser.h \
+    appToolDrawPage.h \
+    appToolsConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPropMask.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiDrawingWidget.h \
+    ../guiBase/guiOptionmenu.h \
+    ../guiBase/guiTextUtil.h \
+    ../guiBase/guiToolUtil.h \
+    ../guiBase/guiWidgetDrawingSurface.h \
+    ../guiBase/guiWidgets.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilGeo/geoUnit.h \
+    ../utilPs/psPostScriptFontList.h \
+    appPageLayoutTool.c
+
+appPageTool.o: \
+    ../appFrame/appEditApplication.h \
+    ../appFrame/appFileMessageResources.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiApplication.h \
+    ../appFrame/appGuiResource.h \
+    ../appFrame/appTool.h \
+    appMarginTool.h \
+    appPageTool.h \
+    appPaperChooser.h \
+    appToolDrawPage.h \
+    appToolsConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPropMask.h \
+    appVerticalTool.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiDrawingWidget.h \
+    ../guiBase/guiOptionmenu.h \
+    ../guiBase/guiWidgetDrawingSurface.h \
+    ../guiBase/guiWidgets.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilGeo/geoUnit.h \
+    ../utilPs/psPostScriptFontList.h \
+    appPageTool.c
+
+appPaperChooser.o: \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appPaper.h \
+    appPaperChooser.h \
+    appToolsConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilPropMask.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiOptionmenu.h \
+    ../guiBase/guiWidgets.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilGeo/geoString.h \
+    appPaperChooser.c
+
+appPrintDialog.o: \
+    ../appFrame/appEditApplication.h \
+    ../appFrame/appEditDocument.h \
+    ../appFrame/appFileMessageResources.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiDocument.h \
+    ../appFrame/appGuiResource.h \
+    ../appFrame/appPrintDocument.h \
+    ../appFrame/appPrintJob.h \
+    appPaperChooser.h \
+    appPrintDialog.h \
+    appToolDrawPage.h \
+    appToolsConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPrinter.h \
+    ../appUtil/utilPropMask.h \
+    ../guiBase/drawDrawingSurfacePrivate.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiDrawingWidget.h \
+    ../guiBase/guiOptionmenu.h \
+    ../guiBase/guiRunDialog.h \
+    ../guiBase/guiTextUtil.h \
+    ../guiBase/guiToolUtil.h \
+    ../guiBase/guiWidgetDrawingSurface.h \
+    ../guiBase/guiWidgets.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/psNup.h \
+    ../utilPs/psPostScriptFontList.h \
+    appPrintDialog.c
+
+appRgbChooserPage.o: \
+    ../appFrame/appEditApplication.h \
+    ../appFrame/appFileMessageResources.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiResource.h \
+    ../appFrame/appTool.h \
+    appInspector.h \
+    appInspectorSubject.h \
+    appRgbChooserPage.h \
+    appRgbCube.h \
+    appToolsConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiDrawingWidget.h \
+    ../guiBase/guiOptionmenu.h \
+    ../guiBase/guiTextUtil.h \
+    ../guiBase/guiToolUtil.h \
+    ../guiBase/guiWidgetDrawingSurface.h \
+    ../guiBase/guiWidgets.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/psPostScriptFontList.h \
+    appRgbChooserPage.c
+
+appRgbCube.o: \
+    ../appFrame/appFrameConfig.h \
+    appRgbCube.h \
+    appToolsConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geo2DInteger.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoRectangle.h \
+    appRgbCube.c
+
+appSpellTool.o: \
+    ../appFrame/appEditApplication.h \
+    ../appFrame/appFileMessageResources.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiResource.h \
+    ../appFrame/appQuestion.h \
+    ../appFrame/appTool.h \
+    ../appFrame/spellLocaleName.h \
+    appInspector.h \
+    appInspectorSubject.h \
+    appSpellTool.h \
+    appToolsConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiOptionmenu.h \
+    ../guiBase/guiTextUtil.h \
+    ../guiBase/guiTextValidate.h \
+    ../guiBase/guiToolUtil.h \
+    ../guiBase/guiWidgets.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../ind/indGuessList.h \
+    ../ind/indSpellChecker.h \
+    ../ind/indSpellScanJob.h \
+    ../ind/spellComplain.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/psPostScriptFontList.h \
+    appSpellTool.c
+
+appSymbolPicker.o: \
+    ../appFrame/appEditApplication.h \
+    ../appFrame/appFileMessageResources.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiResource.h \
+    appInspectorSubject.h \
+    appSymbolPicker.h \
+    appToolsConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPropMask.h \
+    ../docFont/docExpandedTextAttribute.h \
+    ../docFont/fontDocFont.h \
+    ../docFont/fontDocFontList.h \
+    ../docFont/fontDocFontListImpl.h \
+    ../guiBase/drawMatchFont.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiDrawingWidget.h \
+    ../guiBase/guiOptionmenu.h \
+    ../guiBase/guiToolUtil.h \
+    ../guiBase/guiWidgetDrawingSurface.h \
+    ../guiBase/guiWidgets.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../textEncoding/ucdBlock.h \
+    ../textEncoding/uniUtf8.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/psFontInfo.h \
+    ../utilPs/psPostScriptFontList.h \
+    ../utilPs/textAttribute.h \
+    ../utilPs/textAttributeUtil.h \
+    appSymbolPicker.c
+
+appToolGtk.o: \
+    ../appFrame/appEditApplication.h \
+    ../appFrame/appFileMessageResources.h \
+    ../appFrame/appFrameConfig.h \
+    ../appFrame/appGuiApplication.h \
+    appToolsConfig.h \
+    ../appUtil/appUtilConfig.h \
+    appVerticalTool.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiWidgets.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/psPostScriptFontList.h \
+    appToolGtk.c
+
+appToolMotif.o: \
+    ../appFrame/appFrameConfig.h \
+    appToolsConfig.h \
+    ../appUtil/appUtilConfig.h \
+    appToolMotif.c
+
+appVerticalFindTool.o: \
+    appFindTool.h \
+    appFindToolImpl.h \
+    ../appFrame/appFrameConfig.h \
+    appInspectorSubject.h \
+    appToolsConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiWidgets.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    appVerticalFindTool.c
+

@@ -1,0 +1,2636 @@
+CC=@CC@
+
+WFLAGS=	-Wall			\
+	-Wextra			\
+	-Winit-self		\
+	-pedantic		\
+	-Wpointer-arith		\
+	-Wno-format-y2k		\
+	-Wstrict-prototypes	\
+	-Wmissing-declarations	\
+	-Wmissing-prototypes	\
+	-Wnested-externs	\
+	-Wuninitialized		\
+	-Wundef			\
+	-Wshadow		\
+	-Wlogical-op		\
+	-Wnull-dereference	\
+	-Wwrite-strings		\
+	-Wold-style-definition	\
+	-Wno-missing-field-initializers	\
+	-Wredundant-decls	\
+	-Wno-unused-parameter	\
+	-Wno-sign-compare	\
+	-fsanitize=address	\
+	-Werror
+
+INCLUDES=			\
+	-I../docBuf		\
+	-I../docField		\
+	-I../docBase		\
+	-I../bitmap		\
+	-I../utilPs		\
+	-I../docFont		\
+	-I../textEncoding	\
+	-I../utilGeo		\
+	-I../appUtil		\
+	-I../include
+
+CFLAGS=	\
+	@CFLAGS@		\
+	$(INCLUDES)
+
+#CFLAGS= -g -O2 $(WFLAGS) $(INCLUDES)
+
+# 66!!obs
+OBS	=	\
+		docRtfWriteText.o\
+		docRtfWriterImpl.o\
+		docRtfWriteProperty.o\
+		docRtfWritePicture.o\
+		docRtfWriteNode.o\
+		docRtfWriteMail.o\
+		docRtfWriteListTable.o\
+		docRtfWriteListOverrideTable.o\
+		docRtfWriteColorTable.o\
+		docRtfTagLookup.o\
+		docRtfTagHash.o\
+		docRtfTab.o\
+		docRtfStrings.o\
+		docRtfShapeTab.o\
+		docRtfShapePropLookup.o\
+		docRtfShapePropHash.o\
+		docRtfSaveTextAttribute.o\
+		docRtfSaveStylesheet.o\
+		docRtfSaveShape.o\
+		docRtfSaveShading.o\
+		docRtfSaveSectProperties.o\
+		docRtfSaveRowProperties.o\
+		docRtfSaveRow.o\
+		docRtfSaveParaProperties.o\
+		docRtfSaveParagraph.o\
+		docRtfSaveObject.o\
+		docRtfSaveNotesProperties.o\
+		docRtfSaveFontTable.o\
+		docRtfSaveField.o\
+		docRtfSaveDocumentProperties.o\
+		docRtfSaveDocument.o\
+		docRtfSaveCellProperties.o\
+		docRtfReadTreeStack.o\
+		docRtfReadTrace.o\
+		docRtfReadTextProperties.o\
+		docRtfReadText.o\
+		docRtfReadStylesheet.o\
+		docRtfReadShape.o\
+		docRtfReadSectProperties.o\
+		docRtfReadRtf.o\
+		docRtfReadRowProperties.o\
+		docRtfReadRow.o\
+		docRtfReadParaProperties.o\
+		docRtfReadParagraph.o\
+		docRtfReadObjects.o\
+		docRtfReadNodeTree.o\
+		docRtfReadListTable.o\
+		docRtfReadListOverrideTable.o\
+		docRtfReadFormField.o\
+		docRtfReadFontTable.o\
+		docRtfReadField.o\
+		docRtfReaderImpl.o\
+		docRtfReadDocumentTree.o\
+		docRtfReadDocumentProperties.o\
+		docRtfReadColorTable.o\
+		docRtfReadCellProperties.o\
+		docRtfRead.o\
+		docRtfReadBorderProperties.o\
+		docRtfMakeLookup.o\
+		docRtfLookup.o\
+		docRtfFrameProperties.o\
+		docRtfDrawingObject.o\
+		docPlainWrite.o\
+		docPlainRead.o
+
+../lib/docRtf.a:	$(OBS)
+	ar ruv $@ $(OBS) && @RANLIB@ $@
+
+#
+#  This is cyclic, but at least it documents what extra autoconf configuration
+#  is used in this directory:
+#
+PROPERTYOBS=	docRtfStrings.o			\
+		docRtfMakeLookup.o		\
+		docRtfLookup.o
+
+PROPERTYLIBS=	../lib/appUtil.a		\
+		../lib/textEncoding.a		\
+		../lib/docBuf.a			\
+		../lib/docBase.a
+
+PROPERTYDEPS=	$(PROPERTYOBS)			\
+		$(PROPERTYLIBS)
+
+doctaghash: doctaghash.o $(PROPERTYDEPS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ doctaghash.o $(PROPERTYDEPS) -lm
+
+doctaglookup: doctaglookup.o $(PROPERTYDEPS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ doctaglookup.o $(PROPERTYDEPS) -lm
+
+docRtfTagHash.c : docRtfTab.c
+	sed -e 's/BUILD_NO_HASH/BUILD_HASH/' docRtfTab.c > doctaghash.c
+	make doctaghash
+	./doctaghash
+	rm -f doctaghash doctaghash.o doctaghash.c
+
+docRtfTagLookup.c : docRtfTab.c
+	sed -e 's/BUILD_NO_LOOKUP/BUILD_LOOKUP/' docRtfTab.c > doctaglookup.c
+	make doctaglookup
+	./doctaglookup
+	rm -f doctaglookup doctaglookup.o doctaglookup.c
+
+docshpprophash: docshpprophash.o $(PROPERTYDEPS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ docshpprophash.o $(PROPERTYDEPS) -lm
+
+docshpproplookup: docshpproplookup.o $(PROPERTYDEPS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ docshpproplookup.o $(PROPERTYDEPS) -lm
+
+docRtfShapePropHash.c : docRtfShapeTab.c ../docBase/docShapeProp.h
+	sed -e 's/BUILD_NO_HASH/BUILD_HASH/' docRtfShapeTab.c > docshpprophash.c
+	make docshpprophash
+	./docshpprophash
+	rm -f docshpprophash docshpprophash.o docshpprophash.c
+
+docRtfShapePropLookup.c : docRtfShapeTab.c ../docBase/docShapeProp.h
+	sed -e 's/BUILD_NO_LOOKUP/BUILD_LOOKUP/' docRtfShapeTab.c > docshpproplookup.c
+	make docshpproplookup
+	./docshpproplookup
+	rm -f docshpproplookup docshpproplookup.o docshpproplookup.c
+
+configure: configure.in
+	rm -rf config.cache autom4te.cache
+	autoconf
+
+duplicates:
+	nm *.o | grep -w [Tt] | \
+	while read addr t name; do echo $$name; done | sort | uniq -c | sort -n
+
+includes:
+	includes.sh docRtfConfig.h $(INCLUDES) | grep -v docRtfMakeLookup.h
+
+# deps -I../include -I../docBuf -I../docField -I../docBase -I../bitmap  -I../textEncoding -I../utilGeo -I../appUtil -I ../docFont -I../utilPs
+######################################## !! sh
+
+docPlainRead.o: \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/sioMemory.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../docBase/docBreakKind.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyleSheet.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDocument.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docNodeTree.h \
+    ../docBuf/docParaBuilder.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docParaNodeProperties.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTreeNode.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    docPlainReadWrite.h \
+    docRtfConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/sioUtf8.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
+    docPlainRead.c
+
+docPlainWrite.o: \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docNoteProperties.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docScanner.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyleSheet.h \
+    ../docBase/docTextParticule.h \
+    ../docBase/docTreeType.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDocumentNote.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docNodeTree.h \
+    ../docBuf/docNotes.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docParaScanner.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTextRun.h \
+    ../docBuf/docTreeNode.h \
+    ../docBuf/docTreeScanner.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentField.h \
+    ../docField/docDocumentFieldList.h \
+    ../docField/docFieldInstructions.h \
+    ../docField/docFieldKind.h \
+    docPlainReadWrite.h \
+    docRtfConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    docPlainWrite.c
+
+docRtfDrawingObject.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPalette.h \
+    ../appUtil/utilPropMask.h \
+    ../bitmap/bitmap.h \
+    ../docBase/docBorderProperties.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docDocumentList.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docDrawingObject.h \
+    ../docBase/docFrameProperties.h \
+    ../docBase/docItemShading.h \
+    ../docBase/docListDepth.h \
+    ../docBase/docListLevel.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docListOverride.h \
+    ../docBase/docListOverrideLevel.h \
+    ../docBase/docNoteProperties.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docPictureProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docSectProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docShapeDrawing.h \
+    ../docBase/docShapeProperties.h \
+    ../docBase/docShapeType.h \
+    ../docBase/docStyle.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docShape.h \
+    ../docField/docChildFields.h \
+    ../docField/docFormField.h \
+    ../docFont/fontDocFont.h \
+    ../docFont/fontEncodedFont.h \
+    docRtfConfig.h \
+    docRtfControlWord.h \
+    docRtfReaderImpl.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geo2DInteger.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
+    docRtfDrawingObject.c
+
+docRtfFrameProperties.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docBorderProperties.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docDocumentList.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docFrameProperties.h \
+    ../docBase/docItemShading.h \
+    ../docBase/docListDepth.h \
+    ../docBase/docListLevel.h \
+    ../docBase/docListOverride.h \
+    ../docBase/docListOverrideLevel.h \
+    ../docBase/docNoteProperties.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docPictureProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docSectProperties.h \
+    ../docBase/docStyle.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBase/docTextFlow.h \
+    ../docField/docFormField.h \
+    ../docFont/fontDocFont.h \
+    ../docFont/fontEncodedFont.h \
+    docRtfConfig.h \
+    docRtfControlWord.h \
+    docRtfReaderImpl.h \
+    docRtfWriter.h \
+    docRtfWriterImpl.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
+    docRtfFrameProperties.c
+
+docRtfLookup.o: \
+    docRtfConfig.h \
+    docRtfControlWord.h \
+    docRtfTagHash.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    docRtfLookup.c
+
+docRtfMakeLookup.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilJenkinsPerfectHash.h \
+    docRtfConfig.h \
+    docRtfControlWord.h \
+    docRtfMakeLookup.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    docRtfMakeLookup.c
+
+docRtfRead.o: \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docBorderProperties.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docDocumentList.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docFrameProperties.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docItemShading.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListAdmin.h \
+    ../docBase/docListDepth.h \
+    ../docBase/docListLevel.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docListOverride.h \
+    ../docBase/docListOverrideLevel.h \
+    ../docBase/docListOverrideTable.h \
+    ../docBase/docListTable.h \
+    ../docBase/docNoteProperties.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docPictureProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docSectProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyle.h \
+    ../docBase/docStyleSheet.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBase/docTreeType.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDocument.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docNotes.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRecalculateFields.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTreeNode.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../docField/docFieldKind.h \
+    ../docField/docFormField.h \
+    ../docFont/fontDocFont.h \
+    ../docFont/fontEncodedFont.h \
+    docRtfConfig.h \
+    docRtfControlWord.h \
+    docRtfFlags.h \
+    docRtfReaderImpl.h \
+    docRtfReadTreeStack.h \
+    docRtfReadWrite.h \
+    docRtfTagEnum.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
+    docRtfRead.c
+
+docRtfReadBorderProperties.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docBorderProperties.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docDocumentList.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docFrameProperties.h \
+    ../docBase/docItemShading.h \
+    ../docBase/docListDepth.h \
+    ../docBase/docListLevel.h \
+    ../docBase/docListOverride.h \
+    ../docBase/docListOverrideLevel.h \
+    ../docBase/docNoteProperties.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docPictureProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docSectProperties.h \
+    ../docBase/docStyle.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBuf/docAttributes.h \
+    ../docField/docFormField.h \
+    ../docFont/fontDocFont.h \
+    ../docFont/fontEncodedFont.h \
+    docRtfConfig.h \
+    docRtfControlWord.h \
+    docRtfReaderImpl.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
+    docRtfReadBorderProperties.c
+
+docRtfReadCellProperties.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docBorderProperties.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docDocumentList.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docFrameProperties.h \
+    ../docBase/docItemShading.h \
+    ../docBase/docListDepth.h \
+    ../docBase/docListLevel.h \
+    ../docBase/docListOverride.h \
+    ../docBase/docListOverrideLevel.h \
+    ../docBase/docNoteProperties.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docPictureProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docSectProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyle.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBuf/docAttributes.h \
+    ../docField/docFormField.h \
+    ../docFont/fontDocFont.h \
+    ../docFont/fontEncodedFont.h \
+    docRtfConfig.h \
+    docRtfControlWord.h \
+    docRtfReaderImpl.h \
+    docRtfReadTreeStack.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
+    docRtfReadCellProperties.c
+
+docRtfReadColorTable.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPalette.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docBorderProperties.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docDocumentList.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docFrameProperties.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docItemShading.h \
+    ../docBase/docListDepth.h \
+    ../docBase/docListLevel.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docListOverride.h \
+    ../docBase/docListOverrideLevel.h \
+    ../docBase/docNoteProperties.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docPictureProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docSectProperties.h \
+    ../docBase/docStyle.h \
+    ../docBase/docStyleSheet.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../docField/docFormField.h \
+    ../docFont/fontDocFont.h \
+    ../docFont/fontEncodedFont.h \
+    docRtfConfig.h \
+    docRtfControlWord.h \
+    docRtfReaderImpl.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
+    docRtfReadColorTable.c
+
+docRtfReadDocumentProperties.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilDateTime.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docBorderProperties.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docDocumentList.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docFrameProperties.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docItemShading.h \
+    ../docBase/docListDepth.h \
+    ../docBase/docListLevel.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docListOverride.h \
+    ../docBase/docListOverrideLevel.h \
+    ../docBase/docNoteProperties.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docPictureProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docSectProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyle.h \
+    ../docBase/docStyleSheet.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../docField/docFormField.h \
+    ../docFont/fontDocFont.h \
+    ../docFont/fontEncodedFont.h \
+    docRtfConfig.h \
+    docRtfControlWord.h \
+    docRtfReaderImpl.h \
+    docRtfReadTrace.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/textConverter.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
+    docRtfReadDocumentProperties.c
+
+docRtfReadDocumentTree.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docBorderProperties.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docDocumentList.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docFrameProperties.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docItemShading.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListDepth.h \
+    ../docBase/docListLevel.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docListOverride.h \
+    ../docBase/docListOverrideLevel.h \
+    ../docBase/docNoteProperties.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docPictureProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docSectProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyle.h \
+    ../docBase/docStyleSheet.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBase/docTreeType.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDebug.h \
+    ../docBuf/docDocumentNote.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docFields.h \
+    ../docBuf/docNodeTree.h \
+    ../docBuf/docNotes.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTreeNode.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentField.h \
+    ../docField/docDocumentFieldList.h \
+    ../docField/docFieldInstructions.h \
+    ../docField/docFieldKind.h \
+    ../docField/docFormField.h \
+    ../docFont/fontDocFont.h \
+    ../docFont/fontEncodedFont.h \
+    docRtfConfig.h \
+    docRtfControlWord.h \
+    docRtfFindProperty.h \
+    docRtfReaderImpl.h \
+    docRtfReadTreeStack.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
+    docRtfReadDocumentTree.c
+
+docRtfReadField.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docBorderProperties.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docDocumentList.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docFrameProperties.h \
+    ../docBase/docItemShading.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListDepth.h \
+    ../docBase/docListLevel.h \
+    ../docBase/docListOverride.h \
+    ../docBase/docListOverrideLevel.h \
+    ../docBase/docNoteProperties.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docPictureProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docSectProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyle.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBase/docTreeType.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docField.h \
+    ../docBuf/docFields.h \
+    ../docBuf/docFieldStack.h \
+    ../docBuf/docParaBuilder.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTreeNode.h \
+    ../docField/docBookmarkField.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentField.h \
+    ../docField/docFieldInstructions.h \
+    ../docField/docFieldKind.h \
+    ../docField/docFormField.h \
+    ../docFont/fontDocFont.h \
+    ../docFont/fontEncodedFont.h \
+    docRtfConfig.h \
+    docRtfControlWord.h \
+    docRtfFindProperty.h \
+    docRtfReaderImpl.h \
+    docRtfReadTreeStack.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
+    docRtfReadField.c
+
+docRtfReadFontTable.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docBorderProperties.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docDocumentList.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docFrameProperties.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docItemShading.h \
+    ../docBase/docListDepth.h \
+    ../docBase/docListLevel.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docListOverride.h \
+    ../docBase/docListOverrideLevel.h \
+    ../docBase/docNoteProperties.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docPictureProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docSectProperties.h \
+    ../docBase/docStyle.h \
+    ../docBase/docStyleSheet.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../docField/docFormField.h \
+    ../docFont/fontDocFont.h \
+    ../docFont/fontDocFontList.h \
+    ../docFont/fontDocFontListImpl.h \
+    ../docFont/fontEncodedFont.h \
+    docRtfConfig.h \
+    docRtfControlWord.h \
+    docRtfReaderImpl.h \
+    docRtfTagEnum.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
+    docRtfReadFontTable.c
+
+docRtfReadFormField.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docBorderProperties.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docDocumentList.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docFrameProperties.h \
+    ../docBase/docItemShading.h \
+    ../docBase/docListDepth.h \
+    ../docBase/docListLevel.h \
+    ../docBase/docListOverride.h \
+    ../docBase/docListOverrideLevel.h \
+    ../docBase/docNoteProperties.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docPictureProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docSectProperties.h \
+    ../docBase/docStyle.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docField/docFormField.h \
+    ../docFont/fontDocFont.h \
+    ../docFont/fontEncodedFont.h \
+    docRtfConfig.h \
+    docRtfControlWord.h \
+    docRtfFindProperty.h \
+    docRtfReaderImpl.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
+    docRtfReadFormField.c
+
+docRtfReadListOverrideTable.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docBorderProperties.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docDocumentList.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docFrameProperties.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docItemShading.h \
+    ../docBase/docListAdmin.h \
+    ../docBase/docListDepth.h \
+    ../docBase/docListLevel.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docListOverride.h \
+    ../docBase/docListOverrideLevel.h \
+    ../docBase/docListOverrideTable.h \
+    ../docBase/docListTable.h \
+    ../docBase/docNoteProperties.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docPictureProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docSectProperties.h \
+    ../docBase/docStyle.h \
+    ../docBase/docStyleSheet.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../docField/docFormField.h \
+    ../docFont/fontDocFont.h \
+    ../docFont/fontEncodedFont.h \
+    docRtfConfig.h \
+    docRtfControlWord.h \
+    docRtfReaderImpl.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
+    docRtfReadListOverrideTable.c
+
+docRtfReadListTable.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docBorderProperties.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docDocumentList.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docFrameProperties.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docItemShading.h \
+    ../docBase/docListAdmin.h \
+    ../docBase/docListDepth.h \
+    ../docBase/docListLevel.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docListOverride.h \
+    ../docBase/docListOverrideLevel.h \
+    ../docBase/docListOverrideTable.h \
+    ../docBase/docListTable.h \
+    ../docBase/docNoteProperties.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docPictureProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docSectProperties.h \
+    ../docBase/docStyle.h \
+    ../docBase/docStyleSheet.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../docField/docFormField.h \
+    ../docFont/fontDocFont.h \
+    ../docFont/fontEncodedFont.h \
+    docRtfConfig.h \
+    docRtfControlWord.h \
+    docRtfReaderImpl.h \
+    docRtfTagEnum.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
+    docRtfReadListTable.c
+
+docRtfReadNodeTree.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docBorderProperties.h \
+    ../docBase/docBreakKind.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docDocumentList.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docFrameProperties.h \
+    ../docBase/docItemShading.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListDepth.h \
+    ../docBase/docListLevel.h \
+    ../docBase/docListOverride.h \
+    ../docBase/docListOverrideLevel.h \
+    ../docBase/docNoteProperties.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docPictureProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docSectProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyle.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBase/docTextParticule.h \
+    ../docBase/docTreeType.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDebug.h \
+    ../docBuf/docNodeTree.h \
+    ../docBuf/docParaBuilder.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docParaNodeProperties.h \
+    ../docBuf/docRecalculateFields.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docRowNodeProperties.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTreeNode.h \
+    ../docField/docFormField.h \
+    ../docFont/fontDocFont.h \
+    ../docFont/fontEncodedFont.h \
+    docRtfConfig.h \
+    docRtfControlWord.h \
+    docRtfReaderImpl.h \
+    docRtfReadTreeStack.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
+    docRtfReadNodeTree.c
+
+docRtfReadObjects.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPalette.h \
+    ../appUtil/utilPropMask.h \
+    ../bitmap/bitmap.h \
+    ../docBase/docBorderProperties.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docDocumentList.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docFrameProperties.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docItemShading.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListDepth.h \
+    ../docBase/docListLevel.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docListOverride.h \
+    ../docBase/docListOverrideLevel.h \
+    ../docBase/docNoteProperties.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docObject.h \
+    ../docBase/docObjectProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docPictureProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docSectProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docShapeDrawing.h \
+    ../docBase/docShapeProperties.h \
+    ../docBase/docShapeType.h \
+    ../docBase/docStyle.h \
+    ../docBase/docStyleSheet.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docObjects.h \
+    ../docBuf/docParaBuilder.h \
+    ../docBuf/docShape.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../docField/docFormField.h \
+    ../docFont/fontDocFont.h \
+    ../docFont/fontEncodedFont.h \
+    docRtfConfig.h \
+    docRtfControlWord.h \
+    docRtfParaInsertType.h \
+    docRtfReaderImpl.h \
+    docRtfReadTreeStack.h \
+    docRtfTags.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
+    docRtfReadObjects.c
+
+docRtfReadParaProperties.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docBorderProperties.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docDocumentList.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docFrameProperties.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docItemShading.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListDepth.h \
+    ../docBase/docListLevel.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docListOverride.h \
+    ../docBase/docListOverrideLevel.h \
+    ../docBase/docNoteProperties.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docPictureProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docSectProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyle.h \
+    ../docBase/docStyleSheet.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBuf/docAttributes.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docNodeTree.h \
+    ../docBuf/docParaBuilder.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docRowNodeProperties.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docTreeNode.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../docField/docFormField.h \
+    ../docFont/fontDocFont.h \
+    ../docFont/fontEncodedFont.h \
+    docRtfConfig.h \
+    docRtfControlWord.h \
+    docRtfReaderImpl.h \
+    docRtfReadTreeStack.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
+    docRtfReadParaProperties.c
+
+docRtfReadParagraph.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docBorderProperties.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docDocumentList.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docFrameProperties.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docItemShading.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListDepth.h \
+    ../docBase/docListLevel.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docListOverride.h \
+    ../docBase/docListOverrideLevel.h \
+    ../docBase/docNoteProperties.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docPictureProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docSectProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyle.h \
+    ../docBase/docStyleSheet.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDebug.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docNodeTree.h \
+    ../docBuf/docParaBuilder.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docTreeNode.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../docField/docFormField.h \
+    ../docFont/fontDocFont.h \
+    ../docFont/fontEncodedFont.h \
+    docRtfConfig.h \
+    docRtfControlWord.h \
+    docRtfReaderImpl.h \
+    docRtfReadTreeStack.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
+    docRtfReadParagraph.c
+
+docRtfReadRow.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docBorderProperties.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docDocumentList.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docFrameProperties.h \
+    ../docBase/docItemShading.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListDepth.h \
+    ../docBase/docListLevel.h \
+    ../docBase/docListOverride.h \
+    ../docBase/docListOverrideLevel.h \
+    ../docBase/docNoteProperties.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docPictureProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docSectProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyle.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBuf/docAttributes.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDebug.h \
+    ../docBuf/docNodeTree.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docRowNodeProperties.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docTreeNode.h \
+    ../docField/docFormField.h \
+    ../docFont/fontDocFont.h \
+    ../docFont/fontEncodedFont.h \
+    docRtfConfig.h \
+    docRtfControlWord.h \
+    docRtfReaderImpl.h \
+    docRtfReadTreeStack.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
+    docRtfReadRow.c
+
+docRtfReadRowProperties.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docBorderProperties.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docDocumentList.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docFrameProperties.h \
+    ../docBase/docItemShading.h \
+    ../docBase/docListDepth.h \
+    ../docBase/docListLevel.h \
+    ../docBase/docListOverride.h \
+    ../docBase/docListOverrideLevel.h \
+    ../docBase/docNoteProperties.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docPictureProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docSectProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyle.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docField/docFormField.h \
+    ../docFont/fontDocFont.h \
+    ../docFont/fontEncodedFont.h \
+    docRtfConfig.h \
+    docRtfControlWord.h \
+    docRtfFindProperty.h \
+    docRtfReaderImpl.h \
+    docRtfReadTreeStack.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
+    docRtfReadRowProperties.c
+
+docRtfReadRtf.o: \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docBorderProperties.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docDocumentList.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docFrameProperties.h \
+    ../docBase/docItemShading.h \
+    ../docBase/docListDepth.h \
+    ../docBase/docListLevel.h \
+    ../docBase/docListOverride.h \
+    ../docBase/docListOverrideLevel.h \
+    ../docBase/docNoteProperties.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docPictureProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docSectProperties.h \
+    ../docBase/docStyle.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docField/docFormField.h \
+    ../docFont/fontDocFont.h \
+    ../docFont/fontEncodedFont.h \
+    docRtfConfig.h \
+    docRtfControlWord.h \
+    docRtfFindProperty.h \
+    docRtfFlags.h \
+    docRtfReaderImpl.h \
+    docRtfTags.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../include/charnames.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
+    docRtfReadRtf.c
+
+docRtfReadSectProperties.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docBorderProperties.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docDocumentList.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docFrameProperties.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docItemShading.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListDepth.h \
+    ../docBase/docListLevel.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docListOverride.h \
+    ../docBase/docListOverrideLevel.h \
+    ../docBase/docNoteProperties.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docPictureProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docSectProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyle.h \
+    ../docBase/docStyleSheet.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBase/docTreeType.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docTreeNode.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../docField/docFormField.h \
+    ../docFont/fontDocFont.h \
+    ../docFont/fontEncodedFont.h \
+    docRtfConfig.h \
+    docRtfControlWord.h \
+    docRtfReaderImpl.h \
+    docRtfReadTreeStack.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
+    docRtfReadSectProperties.c
+
+docRtfReadShape.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPalette.h \
+    ../appUtil/utilPropMask.h \
+    ../bitmap/bitmap.h \
+    ../docBase/docBorderProperties.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docDocumentList.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docFrameProperties.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docItemShading.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListDepth.h \
+    ../docBase/docListLevel.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docListOverride.h \
+    ../docBase/docListOverrideLevel.h \
+    ../docBase/docNoteProperties.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docObject.h \
+    ../docBase/docObjectProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docPictureProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docSectProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docShapeDrawing.h \
+    ../docBase/docShapeProperties.h \
+    ../docBase/docShapeProp.h \
+    ../docBase/docShapeType.h \
+    ../docBase/docStyle.h \
+    ../docBase/docStyleSheet.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBase/docTreeType.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docNodeTree.h \
+    ../docBuf/docObjects.h \
+    ../docBuf/docParaBuilder.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docShape.h \
+    ../docBuf/docTreeNode.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../docField/docFormField.h \
+    ../docFont/fontDocFont.h \
+    ../docFont/fontEncodedFont.h \
+    docRtfConfig.h \
+    docRtfControlWord.h \
+    docRtfFindProperty.h \
+    docRtfReaderImpl.h \
+    docRtfReadTreeStack.h \
+    docRtfShapeTab.h \
+    docRtfTags.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geo2DInteger.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
+    docRtfReadShape.c
+
+docRtfReadStylesheet.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docBorderProperties.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docDocumentList.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docFrameProperties.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docItemShading.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListDepth.h \
+    ../docBase/docListLevel.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docListOverride.h \
+    ../docBase/docListOverrideLevel.h \
+    ../docBase/docNoteProperties.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docPictureProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docSectProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyle.h \
+    ../docBase/docStyleSheet.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docTreeNode.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../docField/docFormField.h \
+    ../docFont/fontDocFont.h \
+    ../docFont/fontEncodedFont.h \
+    docRtfConfig.h \
+    docRtfControlWord.h \
+    docRtfFindProperty.h \
+    docRtfReaderImpl.h \
+    docRtfReadTreeStack.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
+    docRtfReadStylesheet.c
+
+docRtfReadText.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docBorderProperties.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docDocumentList.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docFrameProperties.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docItemShading.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListDepth.h \
+    ../docBase/docListLevel.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docListOverride.h \
+    ../docBase/docListOverrideLevel.h \
+    ../docBase/docNoteProperties.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docPictureProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docSectProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyle.h \
+    ../docBase/docStyleSheet.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBase/docTextParticule.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docParaBuilder.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docTreeNode.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../docField/docFormField.h \
+    ../docFont/fontDocFont.h \
+    ../docFont/fontEncodedFont.h \
+    docRtfConfig.h \
+    docRtfControlWord.h \
+    docRtfReaderImpl.h \
+    docRtfReadTreeStack.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/textConverter.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../textEncoding/uniUtf8.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
+    docRtfReadText.c
+
+docRtfReadTextProperties.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docBorderProperties.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docDocumentList.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docFrameProperties.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docItemShading.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListDepth.h \
+    ../docBase/docListLevel.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docListOverride.h \
+    ../docBase/docListOverrideLevel.h \
+    ../docBase/docNoteProperties.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docPictureProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docSectProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyle.h \
+    ../docBase/docStyleSheet.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBuf/docAttributes.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docTreeNode.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../docField/docFormField.h \
+    ../docFont/fontDocFont.h \
+    ../docFont/fontEncodedFont.h \
+    docRtfConfig.h \
+    docRtfControlWord.h \
+    docRtfFlags.h \
+    docRtfReaderImpl.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
+    docRtfReadTextProperties.c
+
+docRtfReadTrace.o: \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docSelectionScope.h \
+    docRtfConfig.h \
+    docRtfReadTrace.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    docRtfReadTrace.c
+
+docRtfReadTreeStack.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPalette.h \
+    ../appUtil/utilPropMask.h \
+    ../bitmap/bitmap.h \
+    ../docBase/docBorderProperties.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docDocumentList.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docFrameProperties.h \
+    ../docBase/docItemShading.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListDepth.h \
+    ../docBase/docListLevel.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docListOverride.h \
+    ../docBase/docListOverrideLevel.h \
+    ../docBase/docNoteProperties.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docPictureProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docSectProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docShapeDrawing.h \
+    ../docBase/docShapeProperties.h \
+    ../docBase/docStyle.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docFieldStack.h \
+    ../docBuf/docParaBuilder.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docShape.h \
+    ../docBuf/docTreeNode.h \
+    ../docField/docChildFields.h \
+    ../docField/docFormField.h \
+    ../docFont/fontDocFont.h \
+    ../docFont/fontEncodedFont.h \
+    docRtfConfig.h \
+    docRtfControlWord.h \
+    docRtfReaderImpl.h \
+    docRtfReadTreeStack.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
+    docRtfReadTreeStack.c
+
+docRtfReaderImpl.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilDateTime.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPalette.h \
+    ../appUtil/utilPropMask.h \
+    ../bitmap/bitmap.h \
+    ../docBase/docBorderProperties.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docDocumentList.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docFrameProperties.h \
+    ../docBase/docItemShading.h \
+    ../docBase/docListDepth.h \
+    ../docBase/docListLevel.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docListOverride.h \
+    ../docBase/docListOverrideLevel.h \
+    ../docBase/docNoteProperties.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docPictureProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docSectProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docShapeDrawing.h \
+    ../docBase/docShapeProperties.h \
+    ../docBase/docStyle.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBuf/docAttributes.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docShape.h \
+    ../docField/docChildFields.h \
+    ../docField/docFormField.h \
+    ../docFont/fontDocFont.h \
+    ../docFont/fontEncodedFont.h \
+    docRtfConfig.h \
+    docRtfControlWord.h \
+    docRtfReaderImpl.h \
+    docRtfReadTreeStack.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/textConverter.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
+    docRtfReaderImpl.c
+
+docRtfSaveCellProperties.o: \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docRowProperties.h \
+    docRtfConfig.h \
+    docRtfControlWord.h \
+    docRtfTags.h \
+    docRtfWriter.h \
+    docRtfWriterImpl.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilPs/textAttribute.h \
+    docRtfSaveCellProperties.c
+
+docRtfSaveDocument.o: \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docStyleSheet.h \
+    ../docBase/docTreeType.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docNotes.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    docRtfConfig.h \
+    docRtfReadWrite.h \
+    docRtfTags.h \
+    docRtfWriter.h \
+    docRtfWriterImpl.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
+    docRtfSaveDocument.c
+
+docRtfSaveDocumentProperties.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPalette.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docListAdmin.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docListOverrideTable.h \
+    ../docBase/docListTable.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docStyleSheet.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../docFont/fontDocFontListImpl.h \
+    docRtfConfig.h \
+    docRtfControlWord.h \
+    docRtfTags.h \
+    docRtfWriter.h \
+    docRtfWriterImpl.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
+    docRtfSaveDocumentProperties.c
+
+docRtfSaveField.o: \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docNoteProperties.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docTextParticule.h \
+    ../docBase/docTreeType.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDebug.h \
+    ../docBuf/docDocumentNote.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docField.h \
+    ../docBuf/docFields.h \
+    ../docBuf/docNotes.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docTreeNode.h \
+    ../docField/docBookmarkField.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentField.h \
+    ../docField/docFieldInstructions.h \
+    ../docField/docFieldKind.h \
+    ../docField/docIncludePictureField.h \
+    docRtfConfig.h \
+    docRtfFlags.h \
+    docRtfTags.h \
+    docRtfWriter.h \
+    docRtfWriterImpl.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilPs/textAttribute.h \
+    docRtfSaveField.c
+
+docRtfSaveFontTable.o: \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docStyleSheet.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../docFont/fontDocFont.h \
+    ../docFont/fontDocFontList.h \
+    ../docFont/fontDocFontListImpl.h \
+    ../docFont/fontEncodedFont.h \
+    docRtfConfig.h \
+    docRtfControlWord.h \
+    docRtfFlags.h \
+    docRtfWriter.h \
+    docRtfWriterImpl.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
+    docRtfSaveFontTable.c
+
+docRtfSaveNotesProperties.o: \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docRowProperties.h \
+    docRtfConfig.h \
+    docRtfWriter.h \
+    docRtfWriterImpl.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilPs/textAttribute.h \
+    docRtfSaveNotesProperties.c
+
+docRtfSaveObject.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPalette.h \
+    ../bitmap/bitmap.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docObject.h \
+    ../docBase/docObjectProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docPictureProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBuf/docDebug.h \
+    docRtfConfig.h \
+    docRtfControlWord.h \
+    docRtfFlags.h \
+    docRtfTags.h \
+    docRtfWriter.h \
+    docRtfWriterImpl.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilPs/textAttribute.h \
+    docRtfSaveObject.c
+
+docRtfSaveParaProperties.o: \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docBreakKind.h \
+    ../docBase/docFrameProperties.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBuf/docAttributes.h \
+    docRtfConfig.h \
+    docRtfControlWord.h \
+    docRtfTags.h \
+    docRtfWriter.h \
+    docRtfWriterImpl.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilPs/textAttribute.h \
+    docRtfSaveParaProperties.c
+
+docRtfSaveParagraph.o: \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBase/docTextParticule.h \
+    ../docBase/docTreeType.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDebug.h \
+    ../docBuf/docObjects.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docParaParticules.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTreeNode.h \
+    docRtfConfig.h \
+    docRtfControlWord.h \
+    docRtfFlags.h \
+    docRtfTags.h \
+    docRtfWriter.h \
+    docRtfWriterImpl.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilPs/textAttribute.h \
+    docRtfSaveParagraph.c
+
+docRtfSaveRow.o: \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docScanner.h \
+    ../docBase/docSelectionScope.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDebug.h \
+    ../docBuf/docNodeTree.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTreeNode.h \
+    docRtfConfig.h \
+    docRtfFlags.h \
+    docRtfTags.h \
+    docRtfWriter.h \
+    docRtfWriterImpl.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilPs/textAttribute.h \
+    docRtfSaveRow.c
+
+docRtfSaveRowProperties.o: \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docFrameProperties.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBuf/docAttributes.h \
+    docRtfConfig.h \
+    docRtfControlWord.h \
+    docRtfWriter.h \
+    docRtfWriterImpl.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilPs/textAttribute.h \
+    docRtfSaveRowProperties.c
+
+docRtfSaveSectProperties.o: \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docSectProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyleSheet.h \
+    ../docBase/docTreeType.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDebug.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docTreeNode.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    docRtfConfig.h \
+    docRtfControlWord.h \
+    docRtfTags.h \
+    docRtfWriter.h \
+    docRtfWriterImpl.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
+    docRtfSaveSectProperties.c
+
+docRtfSaveShading.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilPagedList.h \
+    ../docBase/docItemShading.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBuf/docAttributes.h \
+    docRtfConfig.h \
+    docRtfWriter.h \
+    docRtfWriterImpl.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilPs/psShading.h \
+    ../utilPs/textAttribute.h \
+    docRtfSaveShading.c
+
+docRtfSaveShape.o: \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/sioHexedMemory.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPalette.h \
+    ../appUtil/utilPropMask.h \
+    ../bitmap/bitmap.h \
+    ../bitmap/bmio.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docObjectProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docPictureProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docShapeDrawing.h \
+    ../docBase/docShapeProperties.h \
+    ../docBase/docShapeProp.h \
+    ../docBase/docShapeType.h \
+    ../docBuf/docDebug.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docShape.h \
+    ../docField/docChildFields.h \
+    docRtfConfig.h \
+    docRtfControlWord.h \
+    docRtfFindProperty.h \
+    docRtfFlags.h \
+    docRtfWriter.h \
+    docRtfWriterImpl.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geo2DInteger.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoUnits.h \
+    ../utilPs/textAttribute.h \
+    docRtfSaveShape.c
+
+docRtfSaveStylesheet.o: \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docSectProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyle.h \
+    ../docBase/docStyleSheet.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docTreeNode.h \
+    docRtfConfig.h \
+    docRtfWriter.h \
+    docRtfWriterImpl.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
+    docRtfSaveStylesheet.c
+
+docRtfSaveTextAttribute.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docItemShading.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docStyleSheet.h \
+    ../docBuf/docAttributes.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../docFont/fontDocFont.h \
+    ../docFont/fontDocFontList.h \
+    ../docFont/fontMatchFont.h \
+    docRtfConfig.h \
+    docRtfControlWord.h \
+    docRtfFlags.h \
+    docRtfTags.h \
+    docRtfWriter.h \
+    docRtfWriterImpl.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/textConverter.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../textEncoding/uniUtf8.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/psShading.h \
+    ../utilPs/textAttribute.h \
+    docRtfSaveTextAttribute.c
+
+docRtfShapePropHash.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilJenkinsHash.h \
+    docRtfTagHash.h \
+    docRtfShapePropHash.c
+
+docRtfShapePropLookup.o: \
+    docRtfShapePropLookup.h \
+    docRtfShapePropLookup.c
+
+docRtfShapeTab.o: \
+    ../docBase/docShapeProp.h \
+    docRtfConfig.h \
+    docRtfControlWord.h \
+    docRtfFindProperty.h \
+    docRtfMakeLookup.h \
+    docRtfShapePropLookup.h \
+    docRtfShapeTab.h \
+    docRtfTagHash.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    docRtfShapeTab.c
+
+docRtfStrings.o: \
+    docRtfConfig.h \
+    docRtfTags.h \
+    docRtfStrings.c
+
+docRtfTab.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilDateTime.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPalette.h \
+    ../appUtil/utilPropMask.h \
+    ../bitmap/bitmap.h \
+    ../docBase/docBorderProperties.h \
+    ../docBase/docBreakKind.h \
+    ../docBase/docCellProperties.h \
+    ../docBase/docDocumentAttributeMap.h \
+    ../docBase/docDocumentList.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docDrawingObject.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docFrameProperties.h \
+    ../docBase/docItemShading.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListDepth.h \
+    ../docBase/docListLevel.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docListOverride.h \
+    ../docBase/docListOverrideLevel.h \
+    ../docBase/docNoteProperties.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docObjectProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docPictureProperties.h \
+    ../docBase/docPropVal.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docSectProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docShapeDrawing.h \
+    ../docBase/docShapeProperties.h \
+    ../docBase/docShapeType.h \
+    ../docBase/docStyle.h \
+    ../docBase/docTabStop.h \
+    ../docBase/docTabStopList.h \
+    ../docBase/docTextFlow.h \
+    ../docBase/docTextParticule.h \
+    ../docBase/docTreeType.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docShape.h \
+    ../docBuf/docTreeNode.h \
+    ../docField/docChildFields.h \
+    ../docField/docFieldKind.h \
+    ../docField/docFieldProperty.h \
+    ../docField/docFormField.h \
+    ../docFont/fontDocFont.h \
+    ../docFont/fontEncodedFont.h \
+    docRtfConfig.h \
+    docRtfControlWord.h \
+    docRtfFindProperty.h \
+    docRtfMakeLookup.h \
+    docRtfParaInsertType.h \
+    docRtfReaderImpl.h \
+    docRtfTagEnum.h \
+    docRtfTagHash.h \
+    docRtfTagLookup.h \
+    docRtfTags.h \
+    docRtfTraceImpl.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../include/charnames.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/psDocumentFontStyle.h \
+    ../utilPs/psShading.h \
+    ../utilPs/textAttribute.h \
+    docRtfTab.c
+
+docRtfTagHash.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilJenkinsHash.h \
+    docRtfTagHash.h \
+    docRtfTagHash.c
+
+docRtfTagLookup.o: \
+    docRtfTagLookup.h \
+    docRtfTagLookup.c
+
+docRtfWriteColorTable.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPalette.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docRowProperties.h \
+    docRtfConfig.h \
+    docRtfWriter.h \
+    docRtfWriterImpl.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/textAttribute.h \
+    docRtfWriteColorTable.c
+
+docRtfWriteListOverrideTable.o: \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docListAdmin.h \
+    ../docBase/docListDepth.h \
+    ../docBase/docListLevel.h \
+    ../docBase/docListOverride.h \
+    ../docBase/docListOverrideLevel.h \
+    ../docBase/docListOverrideTable.h \
+    ../docBase/docListTable.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docRowProperties.h \
+    docRtfConfig.h \
+    docRtfWriter.h \
+    docRtfWriterImpl.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilPs/textAttribute.h \
+    docRtfWriteListOverrideTable.c
+
+docRtfWriteListTable.o: \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docDocumentList.h \
+    ../docBase/docListDepth.h \
+    ../docBase/docListLevel.h \
+    ../docBase/docListTable.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docRowProperties.h \
+    docRtfConfig.h \
+    docRtfWriter.h \
+    docRtfWriterImpl.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilPs/textAttribute.h \
+    docRtfWriteListTable.c
+
+docRtfWriteMail.o: \
+    ../appUtil/sioBase64.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../docBase/docDocumentProperties.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyleSheet.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTreeNode.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    docPlainReadWrite.h \
+    docRtfConfig.h \
+    docRtfReadWrite.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    docRtfWriteMail.c
+
+docRtfWriteNode.o: \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docStyleSheet.h \
+    ../docBase/docTreeType.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docDebug.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docNodeTree.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
+    ../docBuf/docTreeNode.h \
+    ../docBuf/docTreeScanner.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    docRtfConfig.h \
+    docRtfFlags.h \
+    docRtfTags.h \
+    docRtfWriter.h \
+    docRtfWriterImpl.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../utilPs/textAttribute.h \
+    docRtfWriteNode.c
+
+docRtfWritePicture.o: \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docObjectProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docPictureProperties.h \
+    ../docBase/docRowProperties.h \
+    docRtfConfig.h \
+    docRtfControlWord.h \
+    docRtfTags.h \
+    docRtfWriter.h \
+    docRtfWriterImpl.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoUnits.h \
+    ../utilPs/textAttribute.h \
+    docRtfWritePicture.c
+
+docRtfWriteProperty.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilPagedList.h \
+    ../appUtil/utilPropMask.h \
+    ../docBase/docBorderProperties.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBuf/docAttributes.h \
+    docRtfConfig.h \
+    docRtfControlWord.h \
+    docRtfFindProperty.h \
+    docRtfWriter.h \
+    docRtfWriterImpl.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilPs/textAttribute.h \
+    docRtfWriteProperty.c
+
+docRtfWriteText.o: \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../docBase/docInsertedObjectList.h \
+    ../docBase/docListNumberTree.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docStyleSheet.h \
+    ../docBuf/docAttributes.h \
+    ../docBuf/docBuf.h \
+    ../docBuf/docDocumentTree.h \
+    ../docBuf/docDrawingShapeList.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentFieldList.h \
+    ../docFont/fontDocFont.h \
+    ../docFont/fontEncodedFont.h \
+    ../docFont/fontMatchFont.h \
+    docRtfConfig.h \
+    docRtfFlags.h \
+    docRtfWriter.h \
+    docRtfWriterImpl.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/textConverter.h \
+    ../textEncoding/textConverterImpl.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../textEncoding/uniUtf8.h \
+    ../utilPs/textAttribute.h \
+    docRtfWriteText.c
+
+docRtfWriterImpl.o: \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docParaProperties.h \
+    ../docBase/docPropVal.h \
+    ../docBase/docRowProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBuf/docCellNode.h \
+    ../docBuf/docParaNode.h \
+    ../docBuf/docRowNode.h \
+    ../docBuf/docSectNode.h \
+    ../docBuf/docTreeNode.h \
+    ../docFont/fontEncodedFont.h \
+    docRtfConfig.h \
+    docRtfWriter.h \
+    docRtfWriterImpl.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/textConverter.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../utilPs/textAttribute.h \
+    docRtfWriterImpl.c
+

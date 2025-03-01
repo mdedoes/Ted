@@ -1,0 +1,173 @@
+CC=@CC@
+
+INCLUDES=			\
+	-I../appUtil		\
+	-I../include
+
+CFLAGS=	@CFLAGS@ 	\
+	$(INCLUDES)
+
+WFLAGS=	-Wall			\
+	-Wextra			\
+	-Winit-self		\
+	-pedantic		\
+	-Wpointer-arith		\
+	-Wno-format-y2k		\
+	-Wstrict-prototypes	\
+	-Wmissing-declarations	\
+	-Wmissing-prototypes	\
+	-Wnested-externs	\
+	-Wuninitialized		\
+	-Wundef			\
+	-Wshadow		\
+	-Wlogical-op		\
+	-Wnull-dereference	\
+	-Wwrite-strings		\
+	-Wold-style-definition	\
+	-Wno-missing-field-initializers	\
+	-Wredundant-decls	\
+	-Wno-unused-parameter	\
+	-Wno-sign-compare	\
+	-fsanitize=address	\
+	-Werror
+
+#CFLAGS= $(WFLAGS) -g -O2 $(INCLUDES)
+
+# 14!!obs
+OBS	=	\
+		geoUnit.o\
+		geoString.o\
+		geoRectangleOffsets.o\
+		geoRectangle.o\
+		geoQuadTree.o\
+		geoLineFitter.o\
+		geoDocumentPageSetup.o\
+		geoClusterSegments.o\
+		geoAffineTransform3D.o\
+		geoAffineTransform2DLine.o\
+		geoAffineTransform2D.o\
+		geo2DInteger.o
+
+
+../lib/utilGeo.a:	$(OBS)
+	ar ruv $@ $(OBS) && @RANLIB@ $@
+
+#
+#  Check for duplicate symbols
+#
+duplicates:
+	nm *.o | grep -w [Tt] | \
+	while read addr t name; do echo $$name; done | sort | uniq -c | sort -n
+
+includes:
+	includes.sh utilGeoConfig.h $(INCLUDES)
+
+#
+#  This is cyclic, but at least it documents what extra autoconf configuration
+#  is used in this directory:
+#
+ACLOCAL=				\
+
+aclocal.m4:	$(ACLOCAL)
+	cat $(ACLOCAL) > $@
+
+configure: configure.in
+	rm -rf config.cache autom4te.cache
+	autoconf
+
+# deps -I../include -I../appUtil -I../utilGeo
+################################# !! sh
+
+geo2DInteger.o: \
+    geo2DInteger.h \
+    geoRectangle.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    utilGeoConfig.h \
+    geo2DInteger.c
+
+geoAffineTransform2D.o: \
+    geo2DDouble.h \
+    geoAffineTransform.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    geoAffineTransform2D.c
+
+geoAffineTransform2DLine.o: \
+    geoAffineTransform.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    geoAffineTransform2DLine.c
+
+geoAffineTransform3D.o: \
+    geoAffineTransform.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    geoAffineTransform3D.c
+
+geoClusterSegments.o: \
+    geo2DInteger.h \
+    geoAffineTransform.h \
+    geoClusterSegments.h \
+    geoLineFitter.h \
+    geoQuadTree.h \
+    geoRectangle.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    geoClusterSegments.c
+
+geoDocumentPageSetup.o: \
+    ../appUtil/utilPropMask.h \
+    geoDocumentPageSetup.h \
+    geoRectangle.h \
+    geoRectangleOffsets.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    utilGeoConfig.h \
+    geoDocumentPageSetup.c
+
+geoLineFitter.o: \
+    geoLineFitter.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    geoLineFitter.c
+
+geoQuadTree.o: \
+    geoQuadTree.h \
+    geoRectangle.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    utilGeoConfig.h \
+    geoQuadTree.c
+
+geoRectangle.o: \
+    geoAffineTransform.h \
+    geoRectangle.h \
+    geoRectangleOffsets.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    utilGeoConfig.h \
+    geoRectangle.c
+
+geoRectangleOffsets.o: \
+    geoRectangleOffsets.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    utilGeoConfig.h \
+    geoRectangleOffsets.c
+
+geoString.o: \
+    geoString.h \
+    geoUnit.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    utilGeoConfig.h \
+    geoString.c
+
+geoUnit.o: \
+    geoUnit.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    utilGeoConfig.h \
+    geoUnit.c
+

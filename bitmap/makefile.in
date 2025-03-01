@@ -1,0 +1,896 @@
+CC=@CC@
+X_CFLAGS=@X_CFLAGS@
+LIBXPM_CFLAGS=@LIBXPM_CFLAGS@
+LIBPNG_CFLAGS=@LIBPNG_CFLAGS@
+ZLIB_CFLAGS=@ZLIB_CFLAGS@
+LIBJPEG_CFLAGS=@LIBJPEG_CFLAGS@
+LIBTIFF_CFLAGS=@LIBTIFF_CFLAGS@
+
+WFLAGS=	-Wall			\
+	-Wextra			\
+	-Winit-self		\
+	-pedantic		\
+	-Wpointer-arith		\
+	-Wno-format-y2k		\
+	-Wstrict-prototypes	\
+	-Wmissing-declarations	\
+	-Wmissing-prototypes	\
+	-Wnested-externs	\
+	-Wuninitialized		\
+	-Wundef			\
+	-Wshadow		\
+	-Wlogical-op		\
+	-Wnull-dereference	\
+	-Wwrite-strings		\
+	-Wold-style-definition	\
+	-Wno-missing-field-initializers	\
+	-Wredundant-decls	\
+	-Wno-unused-parameter	\
+	-fsanitize=address	\
+	-Wno-sign-compare	\
+	-Werror
+
+INCLUDES=			\
+	$(LIBXPM_CFLAGS)	\
+	$(LIBPNG_CFLAGS)	\
+	$(ZLIB_CFLAGS)		\
+	$(LIBJPEG_CFLAGS)	\
+	$(LIBTIFF_CFLAGS)	\
+	-I../utilPs		\
+	-I../utilGeo		\
+	-I../appUtil		\
+	-I../include
+
+CFLAGS=	\
+	@CFLAGS@		\
+	$(X_CFLAGS)		\
+	$(INCLUDES)
+
+#CFLAGS= -g -O2 $(WFLAGS) $(X_CFLAGS) $(INCLUDES)
+
+# 64!!obs
+OBS	=	\
+		bmxwd.o\
+		bmxpm.o\
+		bmxbm.o\
+		bmWmfIo.o\
+		bmwmf.o\
+		bmWebSafe.o\
+		bmwebp.o\
+		bmwbmp.o\
+		bmtogray.o\
+		bmtiff.o\
+		bmthreshold.o\
+		bmTextureMap.o\
+		bmsqueeze.o\
+		bmselect.o\
+		bmSegments.o\
+		bmrtf.o\
+		bmreduce.o\
+		bmputrow.o\
+		bmps.o\
+		bmpng.o\
+		bmplanar.o\
+		bmpgm.o\
+		bmpalette.o\
+		bmObjectReader.o\
+		bmnative.o\
+		bmmorpho.o\
+		bmmapcolors.o\
+		bmMakeImage.o\
+		bmMacPictRaster.o\
+		bmJpegToPs.o\
+		bmjpeg.o\
+		bmio.o\
+		bminvert.o\
+		bmico.o\
+		bmGrayHisto.o\
+		bmgif.o\
+		bmgetrow.o\
+		bmgamma.o\
+		bmformats.o\
+		bmForAll.o\
+		bmflip.o\
+		bmFlipBits.o\
+		bmFindLineSegments.o\
+		bmfilter.o\
+		bmFillJob.o\
+		bmFileExtensions.o\
+		bmeps.o\
+		bmEmfIo.o\
+		bm_egif_lib.o\
+		bmDrawImage.o\
+		bmdraw.o\
+		bm_dgif_lib.o\
+		bmCountLine.o\
+		bmconvert.o\
+		bmcolor.o\
+		bmClusterSegments.o\
+		bmbmp.o\
+		bmBitmapPrinter.o\
+		bmBitmapImage.o\
+		bmaverage.o\
+		bmalpha.o\
+		bmadm.o
+
+../lib/bitmap.a:	$(OBS)
+	ar ruv $@ $(OBS) && @RANLIB@ $@
+
+#
+#  This is cyclic, but at least it documents what extra autoconf configuration
+#  is used in this directory:
+#
+ACLOCAL=			\
+	../configure/xpm.m4	\
+	../configure/png.m4	\
+	../configure/zlib.m4	\
+	../configure/jpeg.m4	\
+	../configure/tiff.m4	\
+	../configure/webp.m4
+
+aclocal.m4:	$(ACLOCAL)
+	cat $(ACLOCAL) > $@
+
+configure: aclocal.m4 configure.in
+	rm -rf config.cache autom4te.cache
+	autoconf
+
+duplicates:
+	nm *.o | grep -w [Tt] | \
+	while read addr t name; do echo $$name; done | sort | uniq -c | sort -n
+
+includes:
+	includes.sh bitmapConfig.h $(INCLUDES)
+
+# deps -I../include -I../utilGeo -I../appUtil -I../utilPs -I/usr/local/include
+######################################## !! sh
+
+bmBitmapImage.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bmBitmapImage.c
+
+bmBitmapPrinter.o: \
+    ../appUtil/sioBase85.h \
+    ../appUtil/sioFlate.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/sioHex.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmBitmapPrinter.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoRectangle.h \
+    bmBitmapPrinter.c
+
+bmClusterSegments.o: \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bmClusterSegments.c
+
+bmCountLine.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmintern.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bmCountLine.c
+
+bmDrawImage.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmintern.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bmDrawImage.c
+
+bmEmfIo.o: \
+    ../appUtil/sioEndian.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilColor.h \
+    bmEmf.h \
+    bmEmfIo.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoRectangle.h \
+    bmEmfIo.c
+
+bmFileExtensions.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilFileExtension.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmformat.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bmFileExtensions.c
+
+bmFillJob.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmcolor.h \
+    bmgetrow.h \
+    bmintern.h \
+    bmputrow.h \
+    bmRender.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bmFillJob.c
+
+bmFindLineSegments.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmintern.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geo2DInteger.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoRectangle.h \
+    bmFindLineSegments.c
+
+bmFlipBits.o: \
+    bitmapConfig.h \
+    bmFlipBits.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bmFlipBits.c
+
+bmForAll.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmintern.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bmForAll.c
+
+bmGrayHisto.o: \
+    bitmapConfig.h \
+    bmGrayHisto.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bmGrayHisto.c
+
+bmJpegToPs.o: \
+    ../appUtil/sioBase85.h \
+    ../appUtil/sioEndian.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/sioUtil.h \
+    bitmapConfig.h \
+    bmio.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bmJpegToPs.c
+
+bmMacPictRaster.o: \
+    ../appUtil/sioEndian.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmio.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoRectangle.h \
+    bmMacPictRaster.c
+
+bmMakeImage.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmintern.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bmMakeImage.c
+
+bmObjectReader.o: \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/sioHexedMemory.h \
+    ../appUtil/sioUtil.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmio.h \
+    bmObjectReader.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bmObjectReader.c
+
+bmSegments.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmintern.h \
+    bmSegments.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoRectangle.h \
+    bmSegments.c
+
+bmTextureMap.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmcolor.h \
+    bmgetrow.h \
+    bmintern.h \
+    bmputrow.h \
+    bmRender.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bmTextureMap.c
+
+bmWebSafe.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmcolor.h \
+    bmRender.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bmWebSafe.c
+
+bmWmfIo.o: \
+    ../appUtil/sioEndian.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilColor.h \
+    bmcolor.h \
+    bmWmf.h \
+    bmWmfIo.h \
+    ../utilGeo/geoRectangle.h \
+    bmWmfIo.c
+
+bm_dgif_lib.o: \
+    ../appUtil/sioBlocked.h \
+    ../appUtil/sioEndian.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/sioLzw.h \
+    ../appUtil/utilColor.h \
+    bmcolor.h \
+    bm_gif_lib.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bm_dgif_lib.c
+
+bm_egif_lib.o: \
+    ../appUtil/sioBlocked.h \
+    ../appUtil/sioEndian.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/sioLzw.h \
+    ../appUtil/utilColor.h \
+    bmcolor.h \
+    bm_gif_lib.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bm_egif_lib.c
+
+bmadm.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmintern.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoUnits.h \
+    bmadm.c
+
+bmalpha.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmintern.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bmalpha.c
+
+bmaverage.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bmaverage.c
+
+bmbmp.o: \
+    ../appUtil/sioEndian.h \
+    ../appUtil/sioFileio.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/sioMemory.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmbmp.h \
+    bmformats.h \
+    bmintern.h \
+    bmio.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoUnits.h \
+    bmbmp.c
+
+bmcolor.o: \
+    ../appUtil/utilColor.h \
+    bitmapConfig.h \
+    bmcolor.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bmcolor.c
+
+bmconvert.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmcolor.h \
+    bmgetrow.h \
+    bmintern.h \
+    bmputrow.h \
+    bmRender.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoRectangle.h \
+    bmconvert.c
+
+bmdraw.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmintern.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bmdraw.c
+
+bmeps.o: \
+    ../appUtil/sioFileio.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/sioPipe.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilMemoryBufferPrintf.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmBitmapPrinter.h \
+    bmformats.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/psNup.h \
+    ../utilPs/psPrint.h \
+    bmeps.c
+
+bmfilter.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmcolor.h \
+    bmgetrow.h \
+    bmintern.h \
+    bmputrow.h \
+    bmRender.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bmfilter.c
+
+bmflip.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmintern.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geo2DInteger.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoRectangle.h \
+    bmflip.c
+
+bmformats.o: \
+    ../appUtil/appSystem.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmformat.h \
+    bmformats.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bmformats.c
+
+bmgamma.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmintern.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bmgamma.c
+
+bmgetrow.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmgetrow.h \
+    bmintern.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bmgetrow.c
+
+bmgif.o: \
+    ../appUtil/sioFileio.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmcolor.h \
+    bmformats.h \
+    bm_gif_lib.h \
+    bmintern.h \
+    bmio.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bmgif.c
+
+bmico.o: \
+    ../appUtil/sioEndian.h \
+    ../appUtil/sioFileio.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmbmp.h \
+    bmformats.h \
+    bmintern.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bmico.c
+
+bminvert.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmintern.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bminvert.c
+
+bmio.o: \
+    ../appUtil/appSystem.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmformat.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bmio.c
+
+bmjpeg.o: \
+    ../appUtil/sioFileio.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmformats.h \
+    bmio.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bmjpeg.c
+
+bmmapcolors.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmintern.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bmmapcolors.c
+
+bmmorpho.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmintern.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bmmorpho.c
+
+bmnative.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmintern.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bmnative.c
+
+bmpalette.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmintern.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bmpalette.c
+
+bmpgm.o: \
+    ../appUtil/sioFileio.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmformats.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bmpgm.c
+
+bmplanar.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmintern.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bmplanar.c
+
+bmpng.o: \
+    ../appUtil/sioFileio.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilEndian.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmformats.h \
+    bmintern.h \
+    bmio.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoUnits.h \
+    bmpng.c
+
+bmps.o: \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmBitmapPrinter.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/psNup.h \
+    ../utilPs/psPrint.h \
+    bmps.c
+
+bmputrow.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmcolor.h \
+    bmgetrow.h \
+    bmintern.h \
+    bmputrow.h \
+    bmRender.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bmputrow.c
+
+bmreduce.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmcolor.h \
+    bmRender.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bmreduce.c
+
+bmrtf.o: \
+    ../appUtil/sioFileio.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/sioHex.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmformats.h \
+    bmio.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoUnits.h \
+    bmrtf.c
+
+bmselect.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoRectangle.h \
+    bmselect.c
+
+bmsqueeze.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmintern.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bmsqueeze.c
+
+bmthreshold.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmcolor.h \
+    bmGrayHisto.h \
+    bmRender.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bmthreshold.c
+
+bmtiff.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmformats.h \
+    bmintern.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bmtiff.c
+
+bmtogray.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmcolor.h \
+    bmRender.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bmtogray.c
+
+bmwbmp.o: \
+    ../appUtil/sioFileio.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmformats.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bmwbmp.c
+
+bmwebp.o: \
+    ../appUtil/sioFileio.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmformats.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bmwebp.c
+
+bmwmf.o: \
+    ../appUtil/sioEndian.h \
+    ../appUtil/sioFileio.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmbmp.h \
+    bmcolor.h \
+    bmformats.h \
+    bmintern.h \
+    bmio.h \
+    bmWmf.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoRectangle.h \
+    bmwmf.c
+
+bmxbm.o: \
+    ../appUtil/sioFileio.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmFlipBits.h \
+    bmformats.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bmxbm.c
+
+bmxpm.o: \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmformats.h \
+    bmintern.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    bmxpm.c
+
+bmxwd.o: \
+    ../appUtil/sioEndian.h \
+    ../appUtil/sioFileio.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    bitmapConfig.h \
+    bitmap.h \
+    bmformats.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    XWDFile.h \
+    bmxwd.c
+

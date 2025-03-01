@@ -1,0 +1,134 @@
+CC=@CC@
+
+XM_CFLAGS=@XM_CFLAGS@
+LIBXPM_CFLAGS=@LIBXPM_CFLAGS@
+X_CFLAGS=@X_CFLAGS@
+GTK_CFLAGS=@GTK_CFLAGS@
+FT2_CFLAGS=@FT2_CFLAGS@
+XFT_CFLAGS=@XFT_CFLAGS@
+
+MOTIF_CFLAGS=$(XM_CFLAGS)
+
+GUI_CFLAGS=$(@GUI@_CFLAGS)
+
+WFLAGS=	-Wall			\
+	-Wextra			\
+	-Winit-self		\
+	-pedantic		\
+	-Wpointer-arith		\
+	-Wno-format-y2k		\
+	-Wstrict-prototypes	\
+	-Wmissing-declarations	\
+	-Wmissing-prototypes	\
+	-Wnested-externs	\
+	-Wuninitialized		\
+	-Wundef			\
+	-Wshadow		\
+	-Wlogical-op		\
+	-Wnull-dereference	\
+	-Wwrite-strings		\
+	-Wold-style-definition	\
+	-Wno-missing-field-initializers	\
+	-Wredundant-decls	\
+	-Wno-unused-parameter	\
+	-Wno-sign-compare	\
+	-fsanitize=address	\
+	-isystem /usr/include/gtk-2.0 \
+	-Werror
+
+INCLUDES=			\
+	$(FT2_CFLAGS)		\
+	$(XFT_CFLAGS)		\
+	$(X_CFLAGS)		\
+	$(LIBXPM_CFLAGS)	\
+	$(GUI_CFLAGS)		\
+	-I../appFrame		\
+	-I../guiBase		\
+	-I../guiInterface	\
+	-I../appUtil		\
+	-I../include
+
+CFLAGS=			\
+	@CFLAGS@	\
+	$(INCLUDES)
+
+#CFLAGS= @CFLAGS@ $(WFLAGS) $(INCLUDES) 
+
+# 3!!obs
+OBS	=	\
+		tedIcons.o
+
+../lib/tedResource.a:	$(OBS)
+	ar ruv $@ $(OBS) && @RANLIB@ $@
+
+tedmain_png.h: tedmain.png
+	../appFrame/appResourceHeader tedmain.png tedmain > $@
+
+tedabout_png.h: tedabout.png
+	../appFrame/appResourceHeader tedabout.png tedabout > $@
+
+replace_png.h: replace.png
+	../appFrame/appResourceHeader replace.png replace > $@
+
+replace_find_png.h: replace_find.png
+	../appFrame/appResourceHeader replace_find.png replace_find > $@
+
+navigate_next_png.h: navigate_next.png
+	../appFrame/appResourceHeader navigate_next.png navigate_next > $@
+
+navigate_before_png.h: navigate_before.png
+	../appFrame/appResourceHeader navigate_before.png navigate_before > $@
+
+#
+#  This is cyclic, but at least it documents what extra autoconf configuration
+#  is used in this directory:
+#
+ACLOCAL=				\
+	../configure/gtk.m4		\
+	../configure/freetype.m4	\
+	../configure/fontconfig.m4	\
+	../configure/xft.m4		\
+	../configure/xpm.m4		\
+	../configure/motif.m4		\
+	../configure/gui.m4
+
+aclocal.m4:	$(ACLOCAL)
+	cat $(ACLOCAL) > $@
+
+configure: aclocal.m4 configure.in
+	rm -rf config.cache autom4te.cache
+	autoconf
+
+duplicates:
+	nm *.o | grep -w [Tt] | \
+	while read addr t name; do echo $$name; done | sort | uniq -c | sort -n
+
+includes:
+	includes.sh tedResourceConfig.h $(INCLUDES)
+
+# deps -I/usr/include/freetype2 -I/usr/include/freetype2  -I/usr/include/gtk-2.0 -I/usr/lib/x86_64-linux-gnu/gtk-2.0/include -I/usr/include/atk-1.0 -I/usr/include/cairo -I/usr/include/gdk-pixbuf-2.0 -I/usr/include/pango-1.0 -I/usr/include/gio-unix-2.0/ -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/pixman-1 -I/usr/include/freetype2 -I../guiInterface -I../appFrame -I../guiBase -I../appUtil -I../include
+################################# !! sh
+
+tedIcons.o: \
+    ../appFrame/appFrameConfig.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../guiBase/guiBaseGtk.h \
+    ../guiBase/guiBase.h \
+    ../guiBase/guiBaseMotif.h \
+    ../guiBase/guiImageImplGtk.h \
+    ../guiBase/guiImageImpl.h \
+    ../guiBase/guiImageImplMotif.h \
+    ../guiBase/guiNamedImage.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    navigate_before_png.h \
+    navigate_next_png.h \
+    replace_find_png.h \
+    replace_png.h \
+    tedabout_png.h \
+    tedmain_png.h \
+    tedResourceConfig.h \
+    tedResource.h \
+    tedIcons.c
+

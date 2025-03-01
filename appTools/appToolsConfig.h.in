@@ -1,0 +1,33 @@
+#   ifndef APP_TOOLS_CONFIG_H
+#   define APP_TOOLS_CONFIG_H
+
+/* Define to empty if the keyword does not work.  */
+#undef const
+
+#undef STDC_HEADERS
+
+#undef HAVE_SOCKET
+#undef HAVE_UNAME
+#undef HAVE_FCNTL_H
+#undef HAVE_SYS_TIME_H
+#undef HAVE_UNISTD_H
+
+#if 0
+/* Irrelevant: only used via appFrame */
+#undef HAVE_FT2
+#undef HAVE_XFT
+#undef HAVE_FONTCONFIG
+#endif
+
+# include <appFrameConfig.h>
+
+/************************************************************************/
+/*									*/
+/*  Choose a GUI. (only one!)						*/
+/*									*/
+/************************************************************************/
+
+#   undef	USE_MOTIF
+#   undef	USE_GTK
+
+#   endif	/*	APP_TOOLS_CONFIG_H	*/

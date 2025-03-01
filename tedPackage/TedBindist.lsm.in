@@ -1,0 +1,15 @@
+Begin3
+Title:          ted-2.23nx-linux-amd64
+Version:        2.23nx
+Entered-date:   09SEP18
+Description:    Ted is an easy rich text processor. It can edit RTF files
+		in a wysiwyg manner. It supports multiple fonts and can
+		print to PostScript printers.
+		It consists of a general part: The program some configuration 
+		and afm files. It uses Enchant for spell checking.
+Keywords:       RTF text spelling
+Author:         Mark de Does
+Maintained-by:  Mark de Does
+Primary-site:   http://www.nllgg.nl/Ted/index.html
+Copying-policy: GPL
+End

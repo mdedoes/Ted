@@ -1,0 +1,660 @@
+CC=@CC@
+
+ZLIB_CFLAGS=@ZLIB_CFLAGS@
+
+INCLUDES=			\
+	$(ZLIB_CFLAGS)		\
+	-I../include
+
+CFLAGS=	@CFLAGS@ 	\
+	$(INCLUDES)
+
+WFLAGS=	-Wall			\
+	-Wextra			\
+	-Winit-self		\
+	-pedantic		\
+	-Wpointer-arith		\
+	-Wno-format-y2k		\
+	-Wstrict-prototypes	\
+	-Wmissing-declarations	\
+	-Wmissing-prototypes	\
+	-Wnested-externs	\
+	-Wuninitialized		\
+	-Wundef			\
+	-Wshadow		\
+	-Wlogical-op		\
+	-Wnull-dereference	\
+	-Wwrite-strings		\
+	-Wold-style-definition	\
+	-Wno-missing-field-initializers	\
+	-Wredundant-decls	\
+	-Wno-unused-parameter	\
+	-Wno-sign-compare	\
+	-fsanitize=address	\
+	-Werror
+
+#CFLAGS= $(WFLAGS) -g -O2 $(INCLUDES)
+
+# 67!!obs
+OBS	=	\
+		xmlWriter.o\
+		utilX11FontNames.o\
+		utilTree.o\
+		utilRanges.o\
+		utilPropMask.o\
+		utilProperties.o\
+		utilPrinter.o\
+		utilPalette.o\
+		utilPagedList.o\
+		utilNumberFormat.o\
+		utilNumberedPropertiesAdmin.o\
+		utilMemoryBufferPrintf.o\
+		utilMemoryBuffer.o\
+		utilMD5.o\
+		utilLongestCommonSubstring.o\
+		utilLocale.o\
+		utilJenkinsPerfectHash.o\
+		utilJenkinsHash.o\
+		utilIntegerValueNode.o\
+		utilIndexSet.o\
+		utilIndexMapping.o\
+		utilFontmap.o\
+		utilFileName.o\
+		utilFileExtension.o\
+		utilEndian.o\
+		utilDosTime.o\
+		utilDateTime.o\
+		utilDate.o\
+		utilColor.o\
+		utilCgiEcho.o\
+		utilBase85.o\
+		utilBase64.o\
+		utilArgToX.o\
+		sioZip.o\
+		sioSmtp.o\
+		sioQuotedPrintable.o\
+		sioPushed.o\
+		sioPrintf.o\
+		sioPipe.o\
+		sioPfb.o\
+		sioOut.o\
+		sioMsLz77.o\
+		sioMemory.o\
+		sioMD5.o\
+		sioLzw.o\
+		sioIn.o\
+		sioHttp.o\
+		sioHexedMemory.o\
+		sioHex.o\
+		sioFork.o\
+		sioFlate.o\
+		sioFileio.o\
+		sioEndian.o\
+		sioDebug.o\
+		sioCopy.o\
+		sioCgiIn.o\
+		sioBlocked.o\
+		sioBase85.o\
+		sioBase64.o\
+		csvsheet.o\
+		appUrl.o\
+		appTagval.o\
+		appSystem.o\
+		appDebug.o\
+		appCgiIn.o
+
+
+../lib/appUtil.a:	$(OBS)
+	ar ruv $@ $(OBS) && @RANLIB@ $@
+
+#
+#  Check for duplicate symbols
+#
+duplicates:
+	nm *.o | grep -w [Tt] | \
+	while read addr t name; do echo $$name; done | sort | uniq -c | sort -n
+
+includes:
+	includes.sh appUtilConfig.h $(INCLUDES)
+
+#
+#  This is cyclic, but at least it documents what extra autoconf configuration
+#  is used in this directory:
+#
+ACLOCAL=				\
+	../configure/zlib.m4		\
+	../configure/utsn.m4
+
+aclocal.m4:	$(ACLOCAL)
+	cat $(ACLOCAL) > $@
+
+configure: aclocal.m4 configure.in
+	rm -rf config.cache autom4te.cache
+	autoconf
+
+# deps -I../include
+################################# !! sh
+
+appCgiIn.o: \
+    appCgiIn.h \
+    appTagval.h \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    utilTree.h \
+    appCgiIn.c
+
+appDebug.o: \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    appDebug.c
+
+appSystem.o: \
+    appSystem.h \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    utilMemoryBuffer.h \
+    appSystem.c
+
+appTagval.o: \
+    appTagval.h \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    utilTree.h \
+    appTagval.c
+
+appUrl.o: \
+    appUrl.h \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    appUrl.c
+
+csvsheet.o: \
+    csv.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    csvsheet.c
+
+sioBase64.o: \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    sioBase64.h \
+    sioGeneral.h \
+    utilBase64.h \
+    sioBase64.c
+
+sioBase85.o: \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    sioBase85.h \
+    sioGeneral.h \
+    utilBase85.h \
+    sioBase85.c
+
+sioBlocked.o: \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    sioBlocked.h \
+    sioGeneral.h \
+    sioBlocked.c
+
+sioCgiIn.o: \
+    appCgiIn.h \
+    appTagval.h \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    sioCgiIn.h \
+    sioGeneral.h \
+    sioCgiIn.c
+
+sioCopy.o: \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    sioFileio.h \
+    sioGeneral.h \
+    sioMemory.h \
+    sioUtil.h \
+    sioCopy.c
+
+sioDebug.o: \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    sioDebug.h \
+    sioGeneral.h \
+    sioDebug.c
+
+sioEndian.o: \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    sioEndian.h \
+    sioGeneral.h \
+    utilEndian.h \
+    sioEndian.c
+
+sioFileio.o: \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    sioFd.h \
+    sioFileio.h \
+    sioGeneral.h \
+    sioStdin.h \
+    sioStdout.h \
+    utilMemoryBuffer.h \
+    sioFileio.c
+
+sioFlate.o: \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    sioEndian.h \
+    sioFlate.h \
+    sioGeneral.h \
+    sioFlate.c
+
+sioFork.o: \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    sioFork.h \
+    sioGeneral.h \
+    sioFork.c
+
+sioHex.o: \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    sioGeneral.h \
+    sioHex.h \
+    sioHex.c
+
+sioHexedMemory.o: \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    sioGeneral.h \
+    sioHexedMemory.h \
+    sioHex.h \
+    sioMemory.h \
+    sioHexedMemory.c
+
+sioHttp.o: \
+    appSystem.h \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    sioGeneral.h \
+    sioHttp.h \
+    utilMemoryBuffer.h \
+    sioHttp.c
+
+sioIn.o: \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    sioGeneral.h \
+    sioIn.c
+
+sioLzw.o: \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    sioGeneral.h \
+    sioLzw.h \
+    sioLzw.c
+
+sioMD5.o: \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    sioGeneral.h \
+    sioMD5.h \
+    utilMD5.h \
+    sioMD5.c
+
+sioMemory.o: \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    sioGeneral.h \
+    sioMemory.h \
+    utilMemoryBuffer.h \
+    sioMemory.c
+
+sioMsLz77.o: \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    sioEndian.h \
+    sioGeneral.h \
+    sioMsLz77.h \
+    sioMsLz77.c
+
+sioOut.o: \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    sioGeneral.h \
+    sioOut.c
+
+sioPfb.o: \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    sioEndian.h \
+    sioGeneral.h \
+    sioPfb.h \
+    sioPfb.c
+
+sioPipe.o: \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    sioGeneral.h \
+    sioPipe.h \
+    utilMemoryBuffer.h \
+    sioPipe.c
+
+sioPrintf.o: \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    sioGeneral.h \
+    sioVPrintf.h \
+    sioPrintf.c
+
+sioPushed.o: \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    sioGeneral.h \
+    sioPushed.h \
+    sioPushed.c
+
+sioQuotedPrintable.o: \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    sioGeneral.h \
+    sioQuotedPrintable.h \
+    sioQuotedPrintable.c
+
+sioSmtp.o: \
+    appSystem.h \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    sioBase64.h \
+    sioGeneral.h \
+    sioMemory.h \
+    sioSmtp.h \
+    utilMemoryBuffer.h \
+    sioSmtp.c
+
+sioZip.o: \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    sioEndian.h \
+    sioGeneral.h \
+    sioZip.h \
+    utilDosTime.h \
+    utilIndexSet.h \
+    utilMemoryBuffer.h \
+    utilPagedList.h \
+    sioZip.c
+
+utilArgToX.o: \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    utilArgToX.h \
+    utilArgToX.c
+
+utilBase64.o: \
+    utilBase64.h \
+    utilBase64.c
+
+utilBase85.o: \
+    utilBase85.h \
+    utilBase85.c
+
+utilCgiEcho.o: \
+    appCgiIn.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    sioGeneral.h \
+    utilCgiEcho.h \
+    utilTree.h \
+    utilCgiEcho.c
+
+utilColor.o: \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    utilColor.h \
+    utilColor.c
+
+utilDate.o: \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    utilDate.h \
+    utilDate.c
+
+utilDateTime.o: \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    utilDateTime.h \
+    utilDateTime.c
+
+utilDosTime.o: \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    utilDosTime.h \
+    utilDosTime.c
+
+utilEndian.o: \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    utilEndian.h \
+    utilEndian.c
+
+utilFileExtension.o: \
+    appSystem.h \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    utilFileExtension.h \
+    utilMemoryBuffer.h \
+    utilFileExtension.c
+
+utilFileName.o: \
+    appSystem.h \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    utilMemoryBuffer.h \
+    utilFileName.c
+
+utilFontmap.o: \
+    appSystem.h \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    utilFontmap.h \
+    utilMemoryBuffer.h \
+    utilFontmap.c
+
+utilIndexMapping.o: \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    utilIndexMapping.h \
+    utilIndexMapping.c
+
+utilIndexSet.o: \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    utilIndexSet.h \
+    utilIndexSet.c
+
+utilIntegerValueNode.o: \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    utilIntegerValueNode.h \
+    utilIntegerValueNode.c
+
+utilJenkinsHash.o: \
+    appUtilConfig.h \
+    utilJenkinsHash.h \
+    utilJenkinsHash.c
+
+utilJenkinsPerfectHash.o: \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    utilJenkinsHash.h \
+    utilJenkinsPerfectHash.h \
+    utilJenkinsPerfectHash.c
+
+utilLocale.o: \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    utilLocale.h \
+    utilLocale.c
+
+utilLongestCommonSubstring.o: \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    utilLongestCommonSubstring.h \
+    utilLongestCommonSubstring.c
+
+utilMD5.o: \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    utilBase64.h \
+    utilMD5.h \
+    utilMD5.c
+
+utilMemoryBuffer.o: \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    utilMemoryBuffer.h \
+    utilMemoryBuffer.c
+
+utilMemoryBufferPrintf.o: \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    sioGeneral.h \
+    sioMemory.h \
+    sioVPrintf.h \
+    utilMemoryBuffer.h \
+    utilMemoryBufferPrintf.h \
+    utilMemoryBufferPrintf.c
+
+utilNumberFormat.o: \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    utilLocale.h \
+    utilNumberFormat.h \
+    utilNumberFormat.c
+
+utilNumberedPropertiesAdmin.o: \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    utilIndexSet.h \
+    utilIntegerValueNode.h \
+    utilNumberedPropertiesAdmin.h \
+    utilPagedList.h \
+    utilNumberedPropertiesAdmin.c
+
+utilPagedList.o: \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    utilIndexSet.h \
+    utilPagedList.h \
+    utilPagedList.c
+
+utilPalette.o: \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    utilColor.h \
+    utilPalette.h \
+    utilPalette.c
+
+utilPrinter.o: \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    utilPrinter.h \
+    utilPrinter.c
+
+utilPropMask.o: \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    utilPropMask.h \
+    utilPropMask.c
+
+utilProperties.o: \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    sioFileio.h \
+    sioGeneral.h \
+    utilProperties.h \
+    utilTree.h \
+    utilProperties.c
+
+utilRanges.o: \
+    ../include/appDebug.h \
+    ../include/appDebugoff.h \
+    utilRanges.h \
+    utilRanges.c
+
+utilTree.o: \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    utilTree.h \
+    utilTree.c
+
+utilX11FontNames.o: \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    utilX11FontNames.h \
+    utilX11FontNames.c
+
+xmlWriter.o: \
+    appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    sioBase64.h \
+    sioGeneral.h \
+    sioHexedMemory.h \
+    sioUtil.h \
+    utilColor.h \
+    utilMemoryBuffer.h \
+    xmlWriter.h \
+    xmlWriter.c
+

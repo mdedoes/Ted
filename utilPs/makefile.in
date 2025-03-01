@@ -1,0 +1,662 @@
+CC=@CC@
+
+INCLUDES=			\
+	-I../textEncoding	\
+	-I../utilGeo		\
+	-I../appUtil		\
+	-I../include
+
+CFLAGS=	@CFLAGS@ 	\
+	$(INCLUDES)
+
+WFLAGS=	-Wall			\
+	-Wextra			\
+	-Winit-self		\
+	-pedantic		\
+	-Wpointer-arith		\
+	-Wno-format-y2k		\
+	-Wstrict-prototypes	\
+	-Wmissing-declarations	\
+	-Wmissing-prototypes	\
+	-Wnested-externs	\
+	-Wuninitialized		\
+	-Wundef			\
+	-Wshadow		\
+	-Wlogical-op		\
+	-Wnull-dereference	\
+	-Wwrite-strings		\
+	-Wold-style-definition	\
+	-Wno-missing-field-initializers	\
+	-Wredundant-decls	\
+	-Wno-unused-parameter	\
+	-Wno-sign-compare	\
+	-fsanitize=address	\
+	-Werror
+
+#CFLAGS= $(WFLAGS) -g -O2 $(INCLUDES)
+
+# 41!!obs
+OBS	=	\
+		textAttributeUtil.o\
+		textAttribute.o\
+		textAttributeAdmin.o\
+		svgWriter.o\
+		psTtfTableEntry.o\
+		psTtfNameTable.o\
+		psTtfFontInfo.o\
+		psTtf.o\
+		psTextExtents.o\
+		psT42.o\
+		psShading.o\
+		psReadAfm.o\
+		psPrintText.o\
+		psPrintShape.o\
+		psPrintProcs.o\
+		psPrintPdf.o\
+		psPrint.o\
+		psPostScriptFontList.o\
+		psPdfStructItem.o\
+		psPdfmarkPdfUAId.o\
+		psPdfmarkContent.o\
+		psPdfmark.o\
+		psNup.o\
+		psMatchFont.o\
+		psIncludeEps.o\
+		psGlyphs.o\
+		psFontName.o\
+		psFontMetrics.o\
+		psFontInfo.o\
+		psFontFamily.o\
+		psFontCatalog.o\
+		psFace.o\
+		psDsc.o\
+		psDrawMetafileProcs.o\
+		psDocumentFonts.o\
+		psCompareFontInfo.o\
+		psBuildConfig.o\
+		psBase35.o\
+		psAfm.o
+
+
+../lib/utilPs.a:	$(OBS)
+	ar ruv $@ $(OBS) && @RANLIB@ $@
+
+configure: configure.in
+	rm -rf config.cache autom4te.cache
+	autoconf
+
+#
+#  Check for duplicate symbols
+#
+duplicates:
+	nm *.o | grep -w [Tt] | \
+	while read addr t name; do echo $$name; done | sort | uniq -c | sort -n
+
+includes:
+	includes.sh utilPsConfig.h $(INCLUDES)
+
+# deps -I../include -I../appUtil -I../utilGeo -I../textEncoding -I.
+################################# !! sh
+
+psAfm.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    psFontInfo.h \
+    psReadWriteFontInfo.h \
+    ../utilGeo/geoRectangle.h \
+    utilPsConfig.h \
+    psAfm.c
+
+psBase35.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    psFontInfo.h \
+    ../utilGeo/geoRectangle.h \
+    utilPsConfig.h \
+    psBase35.c
+
+psBuildConfig.o: \
+    ../appUtil/appSystem.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/sioFileio.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/sioPfb.h \
+    ../appUtil/sioPipe.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilMemoryBufferPrintf.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    psBuildConfigFiles.h \
+    psFontInfo.h \
+    psPostScriptFontList.h \
+    psReadWriteFontInfo.h \
+    psTtf.h \
+    ../textEncoding/textRegexp.h \
+    ../utilGeo/geoRectangle.h \
+    utilPsConfig.h \
+    psBuildConfig.c
+
+psCompareFontInfo.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    psCompareFontInfo.h \
+    psFontInfo.h \
+    ../utilGeo/geoRectangle.h \
+    utilPsConfig.h \
+    psCompareFontInfo.c
+
+psDocumentFonts.o: \
+    ../appUtil/appSystem.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/sioFileio.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/sioPfb.h \
+    ../appUtil/utilFontmap.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilTree.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    psFace.h \
+    psFontInfo.h \
+    psGlyphs.h \
+    psNup.h \
+    psPrint.h \
+    psTtf.h \
+    ../textEncoding/ucdGeneralCategory.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    utilPsConfig.h \
+    psDocumentFonts.c
+
+psDrawMetafileProcs.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    psDrawMetafileProcs.h \
+    psNup.h \
+    psPrint.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    utilPsConfig.h \
+    psDrawMetafileProcs.c
+
+psDsc.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    psNup.h \
+    psPrint.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    utilPsConfig.h \
+    psDsc.c
+
+psFace.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilTree.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    psFace.h \
+    psFontInfo.h \
+    psGlyphs.h \
+    textAttribute.h \
+    ../utilGeo/geoRectangle.h \
+    utilPsConfig.h \
+    psFace.c
+
+psFontCatalog.o: \
+    ../appUtil/appSystem.h \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/sioFileio.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    psFontInfo.h \
+    psPostScriptFontList.h \
+    psReadWriteFontInfo.h \
+    ../utilGeo/geoRectangle.h \
+    utilPsConfig.h \
+    psFontCatalog.c
+
+psFontFamily.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    psCompareFontInfo.h \
+    psFontFamily.h \
+    psFontInfo.h \
+    ../utilGeo/geoRectangle.h \
+    utilPsConfig.h \
+    psFontFamily.c
+
+psFontInfo.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilTree.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    psFontInfo.h \
+    psGlyphs.h \
+    ../textEncoding/uniAlternatives.h \
+    ../utilGeo/geoRectangle.h \
+    utilPsConfig.h \
+    psFontInfo.c
+
+psFontMetrics.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    psFontInfo.h \
+    psTextExtents.h \
+    ../textEncoding/ucdGeneralCategory.h \
+    ../textEncoding/uniUtf8.h \
+    ../utilGeo/geoRectangle.h \
+    utilPsConfig.h \
+    psFontMetrics.c
+
+psFontName.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    psFontInfo.h \
+    psFontName.h \
+    ../utilGeo/geoRectangle.h \
+    utilPsConfig.h \
+    psFontName.c
+
+psGlyphs.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    psFontInfo.h \
+    psGlyphs.h \
+    ../utilGeo/geoRectangle.h \
+    utilPsConfig.h \
+    psGlyphs.c
+
+psIncludeEps.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/sioFileio.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    psNup.h \
+    psPrint.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    utilPsConfig.h \
+    psIncludeEps.c
+
+psMatchFont.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    psDocumentFontStyle.h \
+    psFontFamily.h \
+    psFontInfo.h \
+    psMatchFont.h \
+    psPostScriptFontList.h \
+    textAttribute.h \
+    ../utilGeo/geoRectangle.h \
+    utilPsConfig.h \
+    psMatchFont.c
+
+psNup.o: \
+    ../appUtil/appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    psNup.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    utilPsConfig.h \
+    psNup.c
+
+psPdfStructItem.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilMemoryBufferPrintf.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    psNup.h \
+    psPrint.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    utilPsConfig.h \
+    psPdfStructItem.c
+
+psPdfmark.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    psNup.h \
+    psPrint.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    utilPsConfig.h \
+    psPdfmark.c
+
+psPdfmarkContent.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    psNup.h \
+    psPrint.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    utilPsConfig.h \
+    psPdfmarkContent.c
+
+psPdfmarkPdfUAId.o: \
+    ../appUtil/utilMemoryBuffer.h \
+    psNup.h \
+    psPrint.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    psPdfmarkPdfUAId.c
+
+psPostScriptFontList.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilTree.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    psCompareFontInfo.h \
+    psFontFamily.h \
+    psFontInfo.h \
+    psFontName.h \
+    psPostScriptFontList.h \
+    ../utilGeo/geoRectangle.h \
+    utilPsConfig.h \
+    psPostScriptFontList.c
+
+psPrint.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    psNup.h \
+    psPrint.h \
+    psTextExtents.h \
+    textAttribute.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    utilPsConfig.h \
+    psPrint.c
+
+psPrintPdf.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilMemoryBufferPrintf.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    psNup.h \
+    psPrint.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    utilPsConfig.h \
+    psPrintPdf.c
+
+psPrintProcs.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    psNup.h \
+    psPrint.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    utilPsConfig.h \
+    psPrintProcs.c
+
+psPrintShape.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/sioGeneral.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    psPrintShape.h \
+    ../utilGeo/geoRectangle.h \
+    utilPsConfig.h \
+    psPrintShape.c
+
+psPrintText.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    psFontInfo.h \
+    psNup.h \
+    psPrint.h \
+    ../textEncoding/uniUtf8.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    utilPsConfig.h \
+    psPrintText.c
+
+psReadAfm.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    psFontInfo.h \
+    psFontName.h \
+    psReadWriteFontInfo.h \
+    ../utilGeo/geoRectangle.h \
+    utilPsConfig.h \
+    psReadAfm.c
+
+psShading.o: \
+    ../appUtil/appUtilConfig.h \
+    psShading.h \
+    utilPsConfig.h \
+    psShading.c
+
+psT42.o: \
+    ../appUtil/sioEndian.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/sioHex.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    psFontInfo.h \
+    psReadWriteFontInfo.h \
+    psTtf.h \
+    psTtfIntern.h \
+    psTtfNameTable.h \
+    psTtfTableEntry.h \
+    ../utilGeo/geoRectangle.h \
+    psT42.c
+
+psTextExtents.o: \
+    ../appUtil/appUtilConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    psTextExtents.h \
+    textAttribute.h \
+    ../textEncoding/textUtf8Util.h \
+    ../textEncoding/uniShiftUtf8.h \
+    ../utilGeo/geoRectangle.h \
+    utilPsConfig.h \
+    psTextExtents.c
+
+psTtf.o: \
+    ../appUtil/sioEndian.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/sioMemory.h \
+    ../appUtil/utilEndian.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    psTtfIntern.h \
+    psTtfNameTable.h \
+    psTtfTableEntry.h \
+    psTtf.c
+
+psTtfFontInfo.o: \
+    ../appUtil/utilEndian.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    psFontInfo.h \
+    psFontName.h \
+    psGlyphs.h \
+    psTtf.h \
+    psTtfIntern.h \
+    psTtfNameTable.h \
+    psTtfTableEntry.h \
+    ../utilGeo/geoRectangle.h \
+    psTtfFontInfo.c
+
+psTtfNameTable.o: \
+    ../appUtil/sioEndian.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilEndian.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    psTtfNameTable.h \
+    psTtfTableEntry.h \
+    ../textEncoding/uniUtf8.h \
+    psTtfNameTable.c
+
+psTtfTableEntry.o: \
+    ../appUtil/sioEndian.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    psTtfTableEntry.h \
+    psTtfTableEntry.c
+
+svgWriter.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/xmlWriter.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    svgWriter.h \
+    ../utilGeo/geoRectangle.h \
+    utilPsConfig.h \
+    svgWriter.c
+
+textAttribute.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilPropMask.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    textAttribute.h \
+    utilPsConfig.h \
+    textAttribute.c
+
+textAttributeAdmin.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIntegerValueNode.h \
+    ../appUtil/utilNumberedPropertiesAdmin.h \
+    ../appUtil/utilPagedList.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    textAttributeAdmin.h \
+    textAttribute.h \
+    utilPsConfig.h \
+    textAttributeAdmin.c
+
+textAttributeUtil.o: \
+    ../appUtil/appUtilConfig.h \
+    psTextExtents.h \
+    textAttribute.h \
+    textAttributeUtil.h \
+    ../utilGeo/geoGrid.h \
+    utilPsConfig.h \
+    textAttributeUtil.c
+

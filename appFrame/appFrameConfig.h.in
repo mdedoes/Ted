@@ -1,0 +1,116 @@
+#   ifndef		APP_FRAME_CONFIG_H
+#   define		APP_FRAME_CONFIG_H
+
+#   include		<appUtilConfig.h>
+
+#undef HAVE_MKSTEMP
+
+#undef HAVE_FT2
+#undef HAVE_XFT
+#undef HAVE_FONTCONFIG
+#undef HAVE_ENCHANT
+#undef ENCHANT_VERSION
+
+#undef USE_XFT
+#undef USE_FONTCONFIG
+#undef USE_ENCHANT
+
+#undef HAVE_LIBPAPER
+#undef USE_LIBPAPER
+
+/************************************************************************/
+/*									*/
+/*  Locations of application related files				*/
+/*									*/
+/*  AFMDIR:	Location of the font files: something.afm files and the	*/
+/*		optional PostScript to X11 font translation table.	*/
+/*  INDDIR:	Location of the spell check dictionaries.		*/
+/*									*/
+/************************************************************************/
+
+#   undef	DATADIR
+
+#   ifdef	DATADIR
+#	define	PKGDIR	DATADIR
+#   endif
+
+#   ifndef	PKGDIR
+#	define	PKGDIR	"/usr/share"
+#   endif
+
+#   ifndef	AFMDIR
+#	define	AFMDIR	PKGDIR "/Ted/afm"
+#   endif
+
+#   ifndef 	INDDIR
+#	define	INDDIR	PKGDIR "/Ted/dfa"
+#   endif
+
+#   ifndef 	CONFDIR
+#	define	CONFDIR	PKGDIR "/Ted/config"
+#   endif
+
+/************************************************************************/
+/*									*/
+/*  Choose a GUI. (only one!)						*/
+/*									*/
+/************************************************************************/
+
+#   undef	USE_MOTIF
+#   undef	USE_GTK
+#   undef	USE_HEADLESS
+
+#   if	USE_MOTIF /* { */
+
+#	include	<X11/Xlib.h>
+#	include	<X11/Intrinsic.h>
+#	include	<Xm/Xm.h>
+#	include	<X11/IntrinsicP.h>
+
+#	define		DRAW_X11	1
+#	define		DRAW_GDK	0
+#	define		DRAW_CAIRO	0
+#	define		FONTS_CAIRO	0
+#	define		FONTS_X11	1
+
+#	if USE_XFT
+#	    define	DRAW_XFT	1
+#	    define	FONTS_XFT	1
+#	else
+#	    define	DRAW_XFT	0
+#	    define	FONTS_XFT	0
+#	endif
+
+#   endif	/* } USE_MOTIF */
+
+#   if	USE_GTK	/*  { */
+
+
+#	include	<gtk/gtk.h>
+
+#   if GTK_MAJOR_VERSION < 3
+#	define		DRAW_X11	0
+#	define		DRAW_GDK	1
+#	define		DRAW_CAIRO	0
+#	define		FONTS_CAIRO	0
+#	define		FONTS_X11	1
+#	if USE_XFT
+#	    define	DRAW_XFT	1
+#	    define	FONTS_XFT	1
+#	else
+#	    define	DRAW_XFT	0
+#	    define	FONTS_XFT	0
+#	endif
+#   else
+#	define		DRAW_X11	0
+#	define		DRAW_GDK	0
+#	define		DRAW_CAIRO	1
+#	define		FONTS_CAIRO	1
+#	define		FONTS_X11	0
+#	define		DRAW_XFT	0
+#	define		FONTS_XFT	0
+#   endif
+
+#   endif	/* } USE_GTK */
+
+#   endif	/*	APP_FRAME_CONFIG_H	*/

@@ -1,0 +1,7 @@
+#   ifndef	DOC_FIELD_CONFIG_H
+#   define	DOC_FIELD_CONFIG_H
+
+/* Define if you have the ANSI C header files.  */
+#undef STDC_HEADERS
+
+#   endif	/*  DOC_FIELD_CONFIG_H  */

@@ -1,0 +1,59 @@
+
+Ted is an easy rich text processor for X Windows
+================================================
+
+Introduction
+------------
+
+Ted can edit RTF files in a wysiwyg manner. It supports multiple fonts 
+and can print to PostScript printers.
+
+The current version is 2.23nx.
+
+More elaborate material is available through the web site: 
+http://www.nllgg.nl/Ted. The web site makes this concise README file obsolete.
+The full Ted manual is available from the download site in various 
+file formats: TedDocument-en_US.{rtf,html,pdf,txt}
+
+You can try to download Ted from one of the following locations:
+*   ftp://ftp.nluug.nl/pub/editors/ted
+*   http://ftp.nluug.nl/pub/editors/ted
+*   http://ftp.nluug.nl/pub/editors/ted/index.html
+*   http://www.nllgg.nl/Ted
+
+Ted is free software. I assume no responsibility for the consequences 
+of using it. It is up to you to decide whether Ted suits your purpose 
+or not.
+
+Ready to Install Packages, Installation
+---------------------------------------
+
+Ready to install packages include a general part: The program, afm 
+files and an American spelling checker. Additional packages with spell 
+checkers for different languages exist.
+
+The following packages exist:
+-   ted-2.23nx-linux-amd64.tar.gz: ted-2.23nx-1.i386.rpm	The program, American spelling.
+-   ted-2.23nx.src.tar.gz:	ted-2.23nx-1.src.rpm		Source code.
+
+For more information in particular about compilation, configuration 
+and issues around, X11 configuration, refer to the index.{html,rtf} files
+or the full manual: TedDocument-en_US.{rtf,html,pdf,txt}
+
+To install Ted, log in as root, download the relevant files to a temporary
+directory and issue the following command:
+$ sh ./installTed.sh
+The installation command will ask you what to install.
+
+If you want to compile yourself, please read compilation instructions 
+in the index.{html,rtf} files. They are short and easy. Or read the 
+full manual: TedDocument-en_US.{rtf,html,pdf,txt}. The Makefile in 
+the source package gives an overview of compilation options.
+
+Author
+------
+
+Mark de Does
+Sep 9, 2018
+http://www.mdedoes.com
+To prevent spam, no mail address is given in the textual material.

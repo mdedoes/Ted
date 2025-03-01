@@ -1,0 +1,250 @@
+CC=@CC@
+
+WFLAGS=	-Wall			\
+	-Wextra			\
+	-Winit-self		\
+	-pedantic		\
+	-Wpointer-arith		\
+	-Wno-format-y2k		\
+	-Wstrict-prototypes	\
+	-Wmissing-declarations	\
+	-Wmissing-prototypes	\
+	-Wnested-externs	\
+	-Wuninitialized		\
+	-Wundef			\
+	-Wundef			\
+	-Wshadow		\
+	-Wlogical-op		\
+	-Wwrite-strings		\
+	-Wold-style-definition	\
+	-Wno-missing-field-initializers	\
+	-Wredundant-decls	\
+	-Wno-unused-parameter	\
+	-Wno-sign-compare	\
+	-fsanitize=address	\
+	-isystem /usr/include/gtk-2.0 \
+	-Werror
+
+INCLUDES=			\
+	    -I../textEncoding	\
+	    -I../appUtil	\
+	    -I../include
+
+CFLAGS=				\
+	    @CFLAGS@ 		\
+	    $(INCLUDES)
+
+#CFLAGS= $(WFLAGS) -g -O2 $(INCLUDES)
+
+# 18!!obs
+OBS	=	\
+		indword.o\
+		indSpellChecker.o\
+		indSetupIndChecker.o\
+		indScanStream.o\
+		indscan.o\
+		indrenum.o\
+		indPrivateDict.o\
+		indnode.o\
+		indmini.o\
+		indlink.o\
+		indIndChecker.o\
+		indind.o\
+		indGuessList.o\
+		indguess.o\
+		indfront.o\
+		inddeb.o
+
+LIB=	../lib/ind.a
+
+$(LIB):	$(OBS)
+	ar r $@ $(OBS) && @RANLIB@ $@
+
+configure: configure.in
+	rm -rf config.cache autom4te.cache
+	autoconf
+
+duplicates:
+	nm *.o | grep -w [Tt] | \
+	while read addr t name; do echo $$name; done | sort | uniq -c | sort -n
+
+includes:
+	includes.sh indConfig.h $(INCLUDES)
+
+# deps -I. -I../textEncoding -I../appUtil -I../include
+######################################## !! sh
+
+indGuessList.o: \
+    ../include/appDebug.h \
+    ../include/appDebugoff.h \
+    indConfig.h \
+    indGuessList.h \
+    indGuessList.c
+
+indIndChecker.o: \
+    ../appUtil/utilMemoryBuffer.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    indConfig.h \
+    indGuessList.h \
+    ind.h \
+    indIndSpellDictionary.h \
+    indlocal.h \
+    indSpellChecker.h \
+    indSpellScanJob.h \
+    spellComplain.h \
+    indIndChecker.c
+
+indPrivateDict.o: \
+    ../appUtil/sioGeneral.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    indConfig.h \
+    ind.h \
+    indlocal.h \
+    indPrivateDict.h \
+    indPrivateDict.c
+
+indScanStream.o: \
+    ../appUtil/sioGeneral.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    indConfig.h \
+    indGuessList.h \
+    indScanStream.h \
+    indSpellGuessContext.h \
+    indSpellScanJob.h \
+    spellComplain.h \
+    ../textEncoding/ucdGeneralCategory.h \
+    indScanStream.c
+
+indSetupIndChecker.o: \
+    ../appUtil/appSystem.h \
+    ../appUtil/sioFileio.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    indGuessList.h \
+    ind.h \
+    indIndSpellDictionary.h \
+    indlocal.h \
+    indPrivateDict.h \
+    indSpellChecker.h \
+    indSpellGuessContext.h \
+    indSpellScanJob.h \
+    spellComplain.h \
+    indSetupIndChecker.c
+
+indSpellChecker.o: \
+    ../appUtil/utilMemoryBuffer.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    indGuessList.h \
+    indSpellChecker.h \
+    indSpellScanJob.h \
+    spellComplain.h \
+    ../textEncoding/textLocaleTag.h \
+    indSpellChecker.c
+
+inddeb.o: \
+    ../include/appDebug.h \
+    ../include/appDebugoff.h \
+    indConfig.h \
+    ind.h \
+    indlocal.h \
+    inddeb.c
+
+indfront.o: \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    indConfig.h \
+    indguess.h \
+    indGuessList.h \
+    ind.h \
+    indlocal.h \
+    indSpellGuessContext.h \
+    ../textEncoding/uniUtf8.h \
+    indfront.c
+
+indguess.o: \
+    ../appUtil/utilMemoryBuffer.h \
+    ../include/appDebug.h \
+    ../include/appDebugoff.h \
+    indConfig.h \
+    indguess.h \
+    indGuessList.h \
+    ind.h \
+    indIndSpellDictionary.h \
+    indlocal.h \
+    indSpellChecker.h \
+    indSpellGuessContext.h \
+    spellComplain.h \
+    ../textEncoding/ucd.h \
+    indguess.c
+
+indind.o: \
+    ../appUtil/utilEndian.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    indConfig.h \
+    ind.h \
+    indlocal.h \
+    indind.c
+
+indlink.o: \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    indConfig.h \
+    ind.h \
+    indlocal.h \
+    indlink.c
+
+indmini.o: \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    indConfig.h \
+    ind.h \
+    indlocal.h \
+    indmini.c
+
+indnode.o: \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    indConfig.h \
+    ind.h \
+    indlocal.h \
+    ../textEncoding/uniUtf8.h \
+    indnode.c
+
+indrenum.o: \
+    ../include/appDebug.h \
+    ../include/appDebugoff.h \
+    indConfig.h \
+    ind.h \
+    indlocal.h \
+    indrenum.c
+
+indscan.o: \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    indConfig.h \
+    indSpellScanJob.h \
+    spellComplain.h \
+    ../textEncoding/textRegexp.h \
+    indscan.c
+
+indword.o: \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    indConfig.h \
+    indguess.h \
+    indGuessList.h \
+    ind.h \
+    indlocal.h \
+    indSpellGuessContext.h \
+    ../textEncoding/ucdGeneralCategory.h \
+    ../textEncoding/ucd.h \
+    ../textEncoding/uniUtf8.h \
+    indword.c
+

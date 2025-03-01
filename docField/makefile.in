@@ -1,0 +1,466 @@
+CC=@CC@
+
+WFLAGS=	-Wall			\
+	-Wextra			\
+	-Winit-self		\
+	-pedantic		\
+	-Wpointer-arith		\
+	-Wno-format-y2k		\
+	-Wstrict-prototypes	\
+	-Wmissing-declarations	\
+	-Wmissing-prototypes	\
+	-Wnested-externs	\
+	-Wuninitialized		\
+	-Wundef			\
+	-Wshadow		\
+	-Wlogical-op		\
+	-Wnull-dereference	\
+	-Wwrite-strings		\
+	-Wold-style-definition	\
+	-Wno-missing-field-initializers	\
+	-Wredundant-decls	\
+	-Wno-unused-parameter	\
+	-Wno-sign-compare	\
+	-fsanitize=address	\
+	-Werror
+
+INCLUDES=			\
+	-I../docBase		\
+	-I../textEncoding	\
+	-I../appUtil		\
+	-I../include
+
+CFLAGS=	\
+	@CFLAGS@		\
+	$(INCLUDES)
+
+#CFLAGS= -g -O2 $(WFLAGS) $(INCLUDES)
+
+# 28!!obs
+OBS	=	\
+		docTocField.o\
+		docTcField.o\
+		docSymbolField.o\
+		docSeqField.o\
+		docRefField.o\
+		docPagerefField.o\
+		docNumericField.o\
+		docMergeField.o\
+		docIncludeTextField.o\
+		docIncludePictureField.o\
+		docIfField.o\
+		docHyperlinkField.o\
+		docFormulaField.o\
+		docFormField.o\
+		docFormatField.o\
+		docFormatChftnField.o\
+		docFileNameField.o\
+		docFieldTree.o\
+		docFieldInstructions.o\
+		docFieldGetSet.o\
+		docDocumentFieldList.o\
+		docDocumentField.o\
+		docDocPropertyField.o\
+		docDebugFieldInstructions.o\
+		docDateField.o\
+		docBookmarkField.o
+
+../lib/docField.a:	$(OBS)
+	ar ruv $@ $(OBS) && @RANLIB@ $@
+
+configure: configure.in
+	rm -rf config.cache autom4te.cache
+	autoconf
+
+duplicates:
+	nm *.o | grep -w [Tt] | \
+	while read addr t name; do echo $$name; done | sort | uniq -c | sort -n
+
+includes:
+	includes.sh docFieldConfig.h $(INCLUDES)
+
+# deps -I. -I../include -I../docBase -I../textEncoding -I../appUtil
+######################################## !! sh
+
+docBookmarkField.o: \
+    ../appUtil/utilMemoryBuffer.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docSelectionScope.h \
+    docBookmarkField.h \
+    docChildFields.h \
+    docDocumentField.h \
+    docFieldConfig.h \
+    docFieldInstructions.h \
+    docFieldKind.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/ucdGeneralCategory.h \
+    ../textEncoding/uniUtf8.h \
+    docBookmarkField.c
+
+docDateField.o: \
+    ../appUtil/utilMemoryBuffer.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docSelectionScope.h \
+    docChildFields.h \
+    docDateField.h \
+    docDocumentField.h \
+    docFieldConfig.h \
+    docFieldInstructions.h \
+    docFieldKind.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    docDateField.c
+
+docDebugFieldInstructions.o: \
+    ../appUtil/utilMemoryBuffer.h \
+    docFieldConfig.h \
+    docFieldInstructions.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    docDebugFieldInstructions.c
+
+docDocPropertyField.o: \
+    ../appUtil/utilMemoryBuffer.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docSelectionScope.h \
+    docChildFields.h \
+    docDocPropertyField.h \
+    docDocumentField.h \
+    docFieldConfig.h \
+    docFieldFormat.h \
+    docFieldInstructions.h \
+    docFieldKind.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    docDocPropertyField.c
+
+docDocumentField.o: \
+    ../appUtil/utilMemoryBuffer.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docSelectionScope.h \
+    docChildFields.h \
+    docDocumentField.h \
+    docFieldConfig.h \
+    docFieldInstructions.h \
+    docFieldKind.h \
+    docFieldProperty.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    docDocumentField.c
+
+docDocumentFieldList.o: \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docSelectionScope.h \
+    docBookmarkField.h \
+    docChildFields.h \
+    docDocumentField.h \
+    docDocumentFieldList.h \
+    docFieldConfig.h \
+    docFieldInstructions.h \
+    docFieldKind.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    docDocumentFieldList.c
+
+docFieldGetSet.o: \
+    ../appUtil/utilMemoryBuffer.h \
+    docFieldConfig.h \
+    docFieldFormat.h \
+    docFieldInstructions.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    docFieldGetSet.c
+
+docFieldInstructions.o: \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilMemoryBufferPrintf.h \
+    docFieldConfig.h \
+    docFieldInstructions.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    docFieldInstructions.c
+
+docFieldTree.o: \
+    ../appUtil/utilMemoryBuffer.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docScanner.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docTreeType.h \
+    docChildFields.h \
+    docDocumentField.h \
+    docFieldConfig.h \
+    docFieldInstructions.h \
+    docFieldScanner.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    docFieldTree.c
+
+docFileNameField.o: \
+    ../appUtil/utilMemoryBuffer.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docSelectionScope.h \
+    docChildFields.h \
+    docDocumentField.h \
+    docFieldConfig.h \
+    docFieldInstructions.h \
+    docFieldKind.h \
+    docFileNameField.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    docFileNameField.c
+
+docFormField.o: \
+    ../appUtil/utilMemoryBuffer.h \
+    docFieldConfig.h \
+    docFormField.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    docFormField.c
+
+docFormatChftnField.o: \
+    ../appUtil/utilMemoryBuffer.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docNoteProperties.h \
+    ../docBase/docNotesProperties.h \
+    ../docBase/docSelectionScope.h \
+    ../docBase/docTreeType.h \
+    docChftnField.h \
+    docChildFields.h \
+    docDocumentField.h \
+    docFieldConfig.h \
+    docFieldFormat.h \
+    docFieldInstructions.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/textChicago.h \
+    docFormatChftnField.c
+
+docFormatField.o: \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilNumberFormat.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docSelectionScope.h \
+    docChildFields.h \
+    docDocumentField.h \
+    docFieldConfig.h \
+    docFieldFormat.h \
+    docFieldInstructions.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/numbersBase26.h \
+    ../textEncoding/numbersRoman.h \
+    docFormatField.c
+
+docFormulaField.o: \
+    ../appUtil/utilMemoryBuffer.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docSelectionScope.h \
+    docChildFields.h \
+    docDocumentField.h \
+    docFieldConfig.h \
+    docFieldInstructions.h \
+    docFieldKind.h \
+    docFormulaField.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    docFormulaField.c
+
+docHyperlinkField.o: \
+    ../appUtil/utilMemoryBuffer.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docSelectionScope.h \
+    docChildFields.h \
+    docDocumentField.h \
+    docFieldConfig.h \
+    docFieldInstructions.h \
+    docFieldKind.h \
+    docHyperlinkField.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    docHyperlinkField.c
+
+docIfField.o: \
+    ../appUtil/utilMemoryBuffer.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docSelectionScope.h \
+    docChildFields.h \
+    docDocumentField.h \
+    docFieldConfig.h \
+    docFieldInstructions.h \
+    docFieldKind.h \
+    docIfField.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    docIfField.c
+
+docIncludePictureField.o: \
+    ../appUtil/utilMemoryBuffer.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docSelectionScope.h \
+    docChildFields.h \
+    docDocumentField.h \
+    docFieldConfig.h \
+    docFieldInstructions.h \
+    docFieldKind.h \
+    docIncludePictureField.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    docIncludePictureField.c
+
+docIncludeTextField.o: \
+    ../appUtil/utilMemoryBuffer.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docSelectionScope.h \
+    docChildFields.h \
+    docDocumentField.h \
+    docFieldConfig.h \
+    docFieldInstructions.h \
+    docFieldKind.h \
+    docIncludeTextField.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    docIncludeTextField.c
+
+docMergeField.o: \
+    ../appUtil/utilMemoryBuffer.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docSelectionScope.h \
+    docChildFields.h \
+    docDocumentField.h \
+    docFieldConfig.h \
+    docFieldFormat.h \
+    docFieldInstructions.h \
+    docFieldKind.h \
+    docMergeField.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    docMergeField.c
+
+docNumericField.o: \
+    ../appUtil/utilMemoryBuffer.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docSelectionScope.h \
+    docChildFields.h \
+    docDocumentField.h \
+    docFieldConfig.h \
+    docFieldFormat.h \
+    docFieldInstructions.h \
+    docNumericField.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    docNumericField.c
+
+docPagerefField.o: \
+    ../appUtil/utilMemoryBuffer.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docSelectionScope.h \
+    docChildFields.h \
+    docDocumentField.h \
+    docFieldConfig.h \
+    docFieldFormat.h \
+    docFieldInstructions.h \
+    docFieldKind.h \
+    docPagerefField.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    docPagerefField.c
+
+docRefField.o: \
+    ../appUtil/utilMemoryBuffer.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docSelectionScope.h \
+    docChildFields.h \
+    docDocumentField.h \
+    docFieldConfig.h \
+    docFieldInstructions.h \
+    docFieldKind.h \
+    docRefField.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    docRefField.c
+
+docSeqField.o: \
+    ../appUtil/utilMemoryBuffer.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docSelectionScope.h \
+    docChildFields.h \
+    docDocumentField.h \
+    docFieldConfig.h \
+    docFieldFormat.h \
+    docFieldInstructions.h \
+    docFieldKind.h \
+    docSeqField.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    docSeqField.c
+
+docSymbolField.o: \
+    ../appUtil/utilMemoryBuffer.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docSelectionScope.h \
+    docChildFields.h \
+    docDocumentField.h \
+    docFieldConfig.h \
+    docFieldInstructions.h \
+    docFieldKind.h \
+    docSymbolField.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    docSymbolField.c
+
+docTcField.o: \
+    ../appUtil/utilMemoryBuffer.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docSelectionScope.h \
+    docChildFields.h \
+    docDocumentField.h \
+    docFieldConfig.h \
+    docFieldInstructions.h \
+    docFieldKind.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    docTcField.c
+
+docTocField.o: \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilMemoryBufferPrintf.h \
+    ../appUtil/utilRanges.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docListDepth.h \
+    ../docBase/docSelectionScope.h \
+    docChildFields.h \
+    docDocumentField.h \
+    docFieldConfig.h \
+    docFieldInstructions.h \
+    docFieldKind.h \
+    docTocField.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    docTocField.c
+

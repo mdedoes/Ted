@@ -1,0 +1,163 @@
+CC=@CC@
+
+INCLUDES=			\
+	-I../utilPs		\
+	-I../textEncoding	\
+	-I../utilGeo		\
+	-I../appUtil		\
+	-I../include
+
+CFLAGS=	@CFLAGS@ 		\
+	$(INCLUDES)
+
+WFLAGS=	-Wall			\
+	-Wextra			\
+	-Winit-self		\
+	-pedantic		\
+	-Wpointer-arith		\
+	-Wno-format-y2k		\
+	-Wstrict-prototypes	\
+	-Wmissing-declarations	\
+	-Wmissing-prototypes	\
+	-Wnested-externs	\
+	-Wuninitialized		\
+	-Wundef			\
+	-Wshadow		\
+	-Wlogical-op		\
+	-Wnull-dereference	\
+	-Wwrite-strings		\
+	-Wold-style-definition	\
+	-Wno-missing-field-initializers	\
+	-Wredundant-decls	\
+	-Wno-unused-parameter	\
+	-fsanitize=address	\
+	-Wno-sign-compare	\
+	-Werror
+
+#CFLAGS= $(WFLAGS) -g -O2 $(INCLUDES)
+
+# 8!!obs
+OBS	=	\
+		fontMatchFont.o\
+		fontEncodedFont.o\
+		fontDocFontList.o\
+		fontDocFont.o\
+		docExpandedTextAttribute.o\
+		cssFontFamily.o
+
+
+../lib/docFont.a:	$(OBS)
+	ar ruv $@ $(OBS) && @RANLIB@ $@
+
+configure: configure.in
+	rm -rf config.cache autom4te.cache
+	autoconf
+
+#
+#  Check for duplicate symbols
+#
+duplicates:
+	nm *.o | grep -w [Tt] | \
+	while read addr t name; do echo $$name; done | sort | uniq -c | sort -n
+
+includes:
+	includes.sh docFontConfig.h $(INCLUDES)
+
+# deps -I../include -I../textEncoding -I../utilGeo -I../appUtil -I../utilPs -I.
+################################# !! sh
+
+cssFontFamily.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    docFontConfig.h \
+    fontDocFont.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../utilPs/psDocumentFontStyle.h \
+    cssFontFamily.c
+
+docExpandedTextAttribute.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPalette.h \
+    ../appUtil/utilPropMask.h \
+    docExpandedTextAttribute.h \
+    docFontConfig.h \
+    fontDocFont.h \
+    fontDocFontList.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../utilPs/textAttribute.h \
+    docExpandedTextAttribute.c
+
+fontDocFont.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    docFontConfig.h \
+    fontDocFont.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../utilPs/psDocumentFontStyle.h \
+    fontDocFont.c
+
+fontDocFontList.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    docFontConfig.h \
+    fontDocFont.h \
+    fontDocFontList.h \
+    fontDocFontListImpl.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../utilPs/psDocumentFontStyle.h \
+    fontDocFontList.c
+
+fontEncodedFont.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilPagedList.h \
+    docFontConfig.h \
+    fontDocFont.h \
+    fontDocFontList.h \
+    fontDocFontListImpl.h \
+    fontEncodedFont.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/textOfficeCharset.h \
+    fontEncodedFont.c
+
+fontMatchFont.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    docFontConfig.h \
+    fontDocFont.h \
+    fontDocFontList.h \
+    fontMatchFont.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilPs/psDocumentFontStyle.h \
+    ../utilPs/psFontFamily.h \
+    ../utilPs/psFontInfo.h \
+    ../utilPs/psPostScriptFontList.h \
+    ../utilPs/textAttribute.h \
+    fontMatchFont.c
+

@@ -1,0 +1,6 @@
+#   ifndef		TED_RESOURCE_CONFIG_H
+#   define		TED_RESOURCE_CONFIG_H
+
+#   include		<appFrameConfig.h>
+
+#   endif	/*	TED_RESOURCE_CONFIG_H	*/

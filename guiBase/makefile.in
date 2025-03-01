@@ -1,0 +1,1147 @@
+CC=@CC@
+
+XM_CFLAGS=@XM_CFLAGS@
+LIBXPM_CFLAGS=@LIBXPM_CFLAGS@
+X_CFLAGS=@X_CFLAGS@
+GTK_CFLAGS=@GTK_CFLAGS@
+FT2_CFLAGS=@FT2_CFLAGS@
+XFT_CFLAGS=@XFT_CFLAGS@
+
+MOTIF_CFLAGS=$(XM_CFLAGS)
+
+GUI_CFLAGS=$(@GUI@_CFLAGS)
+
+WFLAGS=	-Wall			\
+	-Wextra			\
+	-Winit-self		\
+	-pedantic		\
+	-Wpointer-arith		\
+	-Wno-format-y2k		\
+	-Wstrict-prototypes	\
+	-Wmissing-declarations	\
+	-Wmissing-prototypes	\
+	-Wnested-externs	\
+	-Wuninitialized		\
+	-Wundef			\
+	-Wshadow		\
+	-Wlogical-op		\
+	-Wnull-dereference	\
+	-Wwrite-strings		\
+	-Wold-style-definition	\
+	-Wno-missing-field-initializers	\
+	-Wredundant-decls	\
+	-Wno-unused-parameter	\
+	-Wno-sign-compare	\
+	-fsanitize=address	\
+	-isystem /usr/include/gtk-2.0 \
+	-Werror
+
+INCLUDES=			\
+	$(FT2_CFLAGS)		\
+	$(XFT_CFLAGS)		\
+	$(X_CFLAGS)		\
+	$(LIBXPM_CFLAGS)	\
+	$(GUI_CFLAGS)		\
+	-I../guiInterface	\
+	-I../bitmap		\
+	-I../utilPs		\
+	-I../docFont		\
+	-I../textEncoding	\
+	-I../utilGeo		\
+	-I../appUtil		\
+	-I../include
+
+CFLAGS=			\
+	@CFLAGS@	\
+	$(INCLUDES)	\
+	$(DEF_PKGDIR)	\
+	$(DEF_AFMDIR)	\
+	$(DEF_INDDIR)
+
+#CFLAGS= @CFLAGS@ $(WFLAGS) $(INCLUDES) $(DEF_PKGDIR) $(DEF_AFMDIR) $(DEF_INDDIR)
+
+# 71!!obs
+OBS	=	\
+		sioCopyPasteMotif.o\
+		sioCopyPasteGtk.o\
+		guiToolUtil.o\
+		guiToggleMotif.o\
+		guiToggleGtk.o\
+		guiTextValidateMotif.o\
+		guiTextValidateGtk.o\
+		guiTextUtil.o\
+		guiTextMotif.o\
+		guiTextGtk.o\
+		guiSystemFont.o\
+		guiSliderMotif.o\
+		guiSliderGtk.o\
+		guiOptionmenuMotif.o\
+		guiOptionmenuGtk.o\
+		guiNamedImage.o\
+		guiMenuMotif.o\
+		guiMenuGtk.o\
+		guiListTreeGtk.o\
+		guiListMotif.o\
+		guiListGtk.o\
+		guiLabelMotif.o\
+		guiLabelGtk.o\
+		guiKeysymToUnicodeX11.o\
+		guiKeystrokeMotif.o\
+		guiKeystrokeGtk.o\
+		guiImageMotif.o\
+		guiImageGtk.o\
+		guiGtkX.o\
+		guiGridMotif.o\
+		guiGridGtk.o\
+		guiFrameMotif.o\
+		guiEventMotif.o\
+		guiEventGtk.o\
+		guiDrawnPulldownMotif.o\
+		guiDrawnPulldownGtk.o\
+		guiDrawnPulldown.o\
+		guiDragMotif.o\
+		guiDragGtk.o\
+		guiDialogMotif.o\
+		guiDialogGtk.o\
+		guiButtonMotif.o\
+		guiButtonGtk.o\
+		guiBaseMotif.o\
+		guiBaseGtk.o\
+		drawXft.o\
+		drawTextImplX11.o\
+		drawTextExtents.o\
+		drawScreenFontImpl.o\
+		drawScreenFont.o\
+		drawScreenFontAdmin.o\
+		drawRoundedRect.o\
+		drawMatchFont.o\
+		drawImageMotif.o\
+		drawImageGdk.o\
+		drawFontX11.o\
+		drawFontMotif.o\
+		drawFontConfig.o\
+		drawDrawingWidgetMotif.o\
+		drawDrawingWidgetGtk.o\
+		drawDrawingSurfaceUtil.o\
+		drawDrawingSurfaceMotif.o\
+		drawDrawingSurfaceImpl.o\
+		drawDrawingSurfaceGdk.o\
+		drawDrawingSurfaceCairo.o\
+		drawColorsXft.o\
+		drawColorsX11.o\
+		drawColorsGdk.o\
+		drawColorsCairo.o
+
+../lib/guiBase.a:	$(OBS)
+	ar ruv $@ $(OBS) && @RANLIB@ $@
+
+#
+#  This is cyclic, but at least it documents what extra autoconf configuration
+#  is used in this directory:
+#
+ACLOCAL=				\
+	../configure/gtk.m4		\
+	../configure/freetype.m4	\
+	../configure/fontconfig.m4	\
+	../configure/xft.m4		\
+	../configure/xpm.m4		\
+	../configure/motif.m4		\
+	../configure/prefix.m4		\
+	../configure/gui.m4
+
+aclocal.m4:	$(ACLOCAL)
+	cat $(ACLOCAL) > $@
+
+configure: aclocal.m4 configure.in
+	rm -rf config.cache autom4te.cache
+	autoconf
+
+duplicates:
+	nm *.o | grep -w [Tt] | \
+	while read addr t name; do echo $$name; done | sort | uniq -c | sort -n
+
+includes:
+	includes.sh guiBaseConfig.h $(INCLUDES)
+
+# deps -I/usr/include/freetype2 -I/usr/include/freetype2  -I/usr/include/gtk-2.0 -I/usr/lib/x86_64-linux-gnu/gtk-2.0/include -I/usr/include/atk-1.0 -I/usr/include/cairo -I/usr/include/gdk-pixbuf-2.0 -I/usr/include/pango-1.0 -I/usr/include/gio-unix-2.0/ -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/pixman-1 -I/usr/include/freetype2 -I/usr/include/libpng12   -I../guiInterface -I../drawMeta -I../utilGeo -I../appUtil -I../textEncoding -I../utilPs -I../docFont -I../bitmap -I../ind -I../include
+################################# !! sh
+
+drawColorsCairo.o: \
+    ../appUtil/appUtilConfig.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    drawColorsCairo.c
+
+drawColorsGdk.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../bitmap/bmcolor.h \
+    drawColors.h \
+    drawImpl.h \
+    drawUtilGdk.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    guiImageImplGtk.h \
+    guiImageImpl.h \
+    guiImageImplMotif.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    drawColorsGdk.c
+
+drawColorsX11.o: \
+    ../appUtil/appUtilConfig.h \
+    guiBaseConfig.h \
+    drawColorsX11.c
+
+drawColorsXft.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIntegerValueNode.h \
+    ../appUtil/utilNumberedPropertiesAdmin.h \
+    ../appUtil/utilPagedList.h \
+    drawColorsXft.h \
+    drawImpl.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    drawColorsXft.c
+
+drawDrawingSurfaceCairo.o: \
+    ../appUtil/appUtilConfig.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    drawDrawingSurfaceCairo.c
+
+drawDrawingSurfaceGdk.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIntegerValueNode.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilNumberedPropertiesAdmin.h \
+    ../appUtil/utilPagedList.h \
+    ../bitmap/bmcolor.h \
+    drawColors.h \
+    drawColorsXft.h \
+    drawDrawingSurfaceImpl.h \
+    drawFontImpl.h \
+    drawFontX11.h \
+    drawImpl.h \
+    drawImplXft.h \
+    drawScreenFontAdmin.h \
+    drawScreenFontImpl.h \
+    drawTextImpl.h \
+    drawTextImplX11.h \
+    drawUtilGdk.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    guiImageImplGtk.h \
+    guiImageImpl.h \
+    guiImageImplMotif.h \
+    ../guiInterface/drawDrawingSurface.h \
+    guiWidgetDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geo2DInteger.h \
+    ../utilGeo/geoRectangle.h \
+    drawDrawingSurfaceGdk.c
+
+drawDrawingSurfaceImpl.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIntegerValueNode.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilNumberedPropertiesAdmin.h \
+    ../appUtil/utilPagedList.h \
+    ../bitmap/bmcolor.h \
+    drawColors.h \
+    drawColorsXft.h \
+    drawDrawingSurfaceImpl.h \
+    drawDrawingSurfacePrivate.h \
+    drawFontImpl.h \
+    drawFontX11.h \
+    drawImpl.h \
+    drawScreenFontAdmin.h \
+    drawScreenFontImpl.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    drawDrawingSurfaceImpl.c
+
+drawDrawingSurfaceMotif.o: \
+    ../appUtil/appUtilConfig.h \
+    guiBaseConfig.h \
+    drawDrawingSurfaceMotif.c
+
+drawDrawingSurfaceUtil.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    guiBaseConfig.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/uniUtf8.h \
+    drawDrawingSurfaceUtil.c
+
+drawDrawingWidgetGtk.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIntegerValueNode.h \
+    ../appUtil/utilNumberedPropertiesAdmin.h \
+    ../appUtil/utilPagedList.h \
+    ../bitmap/bmcolor.h \
+    drawColors.h \
+    drawColorsXft.h \
+    drawDrawingSurfaceImpl.h \
+    drawDrawingSurfacePrivate.h \
+    drawImpl.h \
+    drawUtilGdk.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    guiDrawingWidget.h \
+    guiImageImplGtk.h \
+    guiImageImpl.h \
+    guiImageImplMotif.h \
+    ../guiInterface/drawDrawingSurface.h \
+    guiWidgetDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoRectangle.h \
+    drawDrawingWidgetGtk.c
+
+drawDrawingWidgetMotif.o: \
+    ../appUtil/appUtilConfig.h \
+    guiBaseConfig.h \
+    drawDrawingWidgetMotif.c
+
+drawFontConfig.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    drawFontFc.h \
+    drawMatchFont.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/uniAlternatives.h \
+    ../textEncoding/uniLegacyEncoding.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilPs/psFontInfo.h \
+    ../utilPs/psFontName.h \
+    ../utilPs/psGlyphs.h \
+    ../utilPs/psPostScriptFontList.h \
+    ../utilPs/textAttribute.h \
+    drawFontConfig.c
+
+drawFontMotif.o: \
+    ../appUtil/appUtilConfig.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    drawFontMotif.c
+
+drawFontX11.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilLongestCommonSubstring.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilTree.h \
+    drawFontImpl.h \
+    drawFontX11.h \
+    drawImpl.h \
+    drawScreenFontImpl.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/uniLegacyEncoding.h \
+    ../textEncoding/uniLegacyMapping.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilPs/psCompareFontInfo.h \
+    ../utilPs/psFontInfo.h \
+    ../utilPs/psFontName.h \
+    ../utilPs/psPostScriptFontList.h \
+    drawFontX11.c
+
+drawImageGdk.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    ../bitmap/bitmap.h \
+    ../bitmap/bmcolor.h \
+    ../bitmap/bmRender.h \
+    drawColors.h \
+    drawImpl.h \
+    drawUtilGdk.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    guiImageImplGtk.h \
+    guiImageImpl.h \
+    guiImageImplMotif.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    drawImageGdk.c
+
+drawImageMotif.o: \
+    ../appUtil/appUtilConfig.h \
+    guiBaseConfig.h \
+    drawImageMotif.c
+
+drawMatchFont.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../docFont/fontDocFont.h \
+    ../docFont/fontDocFontList.h \
+    drawMatchFont.h \
+    guiBaseConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/textOfficeCharset.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilPs/psFontInfo.h \
+    ../utilPs/psMatchFont.h \
+    ../utilPs/psPostScriptFontList.h \
+    ../utilPs/textAttribute.h \
+    drawMatchFont.c
+
+drawRoundedRect.o: \
+    ../appUtil/appUtilConfig.h \
+    guiBaseConfig.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geo2DInteger.h \
+    ../utilGeo/geoRectangle.h \
+    drawRoundedRect.c
+
+drawScreenFont.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    drawFontImpl.h \
+    drawFontX11.h \
+    drawImpl.h \
+    drawScreenFontAdmin.h \
+    drawScreenFontImpl.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilPs/psFontInfo.h \
+    drawScreenFont.c
+
+drawScreenFontAdmin.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIntegerValueNode.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilNumberedPropertiesAdmin.h \
+    ../appUtil/utilPagedList.h \
+    ../bitmap/bmcolor.h \
+    drawColors.h \
+    drawColorsXft.h \
+    drawDrawingSurfaceImpl.h \
+    drawFontImpl.h \
+    drawFontX11.h \
+    drawImpl.h \
+    drawScreenFontAdmin.h \
+    drawScreenFontImpl.h \
+    drawTextImpl.h \
+    drawTextImplX11.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilPs/psFontInfo.h \
+    ../utilPs/psTextExtents.h \
+    drawScreenFontAdmin.c
+
+drawScreenFontImpl.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilMemoryBuffer.h \
+    drawDrawingSurfacePrivate.h \
+    drawFontImpl.h \
+    drawFontX11.h \
+    drawImpl.h \
+    drawMatchFont.h \
+    drawScreenFontImpl.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilPs/psDocumentFontStyle.h \
+    ../utilPs/psFontInfo.h \
+    ../utilPs/textAttribute.h \
+    drawScreenFontImpl.c
+
+drawTextExtents.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIntegerValueNode.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilNumberedPropertiesAdmin.h \
+    ../appUtil/utilPagedList.h \
+    ../bitmap/bmcolor.h \
+    drawColors.h \
+    drawColorsXft.h \
+    drawDrawingSurfaceImpl.h \
+    drawFontImpl.h \
+    drawFontX11.h \
+    drawImpl.h \
+    drawScreenFontAdmin.h \
+    drawScreenFontImpl.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    drawTextExtents.c
+
+drawTextImplX11.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilMemoryBuffer.h \
+    drawFontImpl.h \
+    drawFontX11.h \
+    drawImpl.h \
+    drawScreenFontImpl.h \
+    drawTextImpl.h \
+    drawTextImplX11.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/uniUtf8.h \
+    ../utilGeo/geoRectangle.h \
+    drawTextImplX11.c
+
+drawXft.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIntegerValueNode.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilNumberedPropertiesAdmin.h \
+    ../appUtil/utilPagedList.h \
+    drawColorsXft.h \
+    drawFontImpl.h \
+    drawFontX11.h \
+    drawImpl.h \
+    drawImplXft.h \
+    drawScreenFontImpl.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/uniUtf8.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilPs/psFontInfo.h \
+    ../utilPs/psFontName.h \
+    drawXft.c
+
+guiBaseGtk.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilMemoryBuffer.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    guiDrawingWidget.h \
+    guiOptionmenu.h \
+    guiWidgetsGtk.h \
+    guiWidgets.h \
+    guiWidgetsImpl.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    guiBaseGtk.c
+
+guiBaseMotif.o: \
+    ../appUtil/appUtilConfig.h \
+    guiBaseConfig.h \
+    guiBaseMotif.c
+
+guiButtonGtk.o: \
+    ../appUtil/appUtilConfig.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    guiOptionmenu.h \
+    guiWidgetsGtk.h \
+    guiWidgets.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    guiButtonGtk.c
+
+guiButtonMotif.o: \
+    ../appUtil/appUtilConfig.h \
+    guiBaseConfig.h \
+    guiButtonMotif.c
+
+guiDialogGtk.o: \
+    ../appUtil/appUtilConfig.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    guiKeysGtk.h \
+    guiRunDialog.h \
+    guiWidgets.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    guiDialogGtk.c
+
+guiDialogMotif.o: \
+    ../appUtil/appUtilConfig.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    guiDialogMotif.c
+
+guiDragGtk.o: \
+    ../appUtil/appUtilConfig.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    guiDragGtk.c
+
+guiDragMotif.o: \
+    ../appUtil/appUtilConfig.h \
+    guiBaseConfig.h \
+    guiDragMotif.c
+
+guiDrawnPulldown.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    guiDrawingWidget.h \
+    guiDrawnPulldown.h \
+    ../guiInterface/drawDrawingSurface.h \
+    guiWidgetDrawingSurface.h \
+    guiWidgets.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geo2DInteger.h \
+    ../utilGeo/geoRectangle.h \
+    guiDrawnPulldown.c
+
+guiDrawnPulldownGtk.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    guiDrawingWidget.h \
+    guiDrawnPulldown.h \
+    ../guiInterface/drawDrawingSurface.h \
+    guiOptionmenu.h \
+    guiWidgetsGtk.h \
+    guiWidgets.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    guiDrawnPulldownGtk.c
+
+guiDrawnPulldownMotif.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    guiDrawingWidget.h \
+    guiDrawnPulldown.h \
+    ../guiInterface/drawDrawingSurface.h \
+    guiWidgets.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    guiDrawnPulldownMotif.c
+
+guiEventGtk.o: \
+    ../appUtil/appUtilConfig.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    guiDrawingWidget.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    guiEventGtk.c
+
+guiEventMotif.o: \
+    ../appUtil/appUtilConfig.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    guiDrawingWidget.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    guiEventMotif.c
+
+guiFrameMotif.o: \
+    ../appUtil/appUtilConfig.h \
+    guiBaseConfig.h \
+    guiFrameMotif.c
+
+guiGridGtk.o: \
+    ../appUtil/appUtilConfig.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    guiOptionmenu.h \
+    guiWidgetsGtk.h \
+    guiWidgets.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    guiGridGtk.c
+
+guiGridMotif.o: \
+    ../appUtil/appUtilConfig.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    guiWidgets.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    guiGridMotif.c
+
+guiGtkX.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIntegerValueNode.h \
+    ../appUtil/utilNumberedPropertiesAdmin.h \
+    ../appUtil/utilPagedList.h \
+    drawColorsXft.h \
+    drawImpl.h \
+    drawUtilGdk.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    guiImageImplGtk.h \
+    guiImageImpl.h \
+    guiImageImplMotif.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    guiGtkX.c
+
+guiImageGtk.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    ../bitmap/bitmap.h \
+    ../bitmap/bmFlipBits.h \
+    drawImpl.h \
+    drawUtilGdk.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    guiImageImplGtk.h \
+    guiImageImpl.h \
+    guiImageImplMotif.h \
+    guiNamedImage.h \
+    guiOptionmenu.h \
+    guiWidgetsGtk.h \
+    guiWidgets.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoRectangle.h \
+    guiImageGtk.c
+
+guiImageMotif.o: \
+    ../appUtil/appUtilConfig.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    guiImageMotif.c
+
+guiKeystrokeGtk.o: \
+    ../appUtil/appUtilConfig.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    guiKeysGtk.h \
+    guiWidgets.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../textEncoding/uniUtf8.h \
+    guiKeystrokeGtk.c
+
+guiKeystrokeMotif.o: \
+    ../appUtil/appUtilConfig.h \
+    guiBaseConfig.h \
+    guiKeystrokeMotif.c
+
+guiKeysymToUnicodeX11.o: \
+    ../appUtil/appUtilConfig.h \
+    guiBaseConfig.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    guiKeysymToUnicodeX11.c
+
+guiLabelGtk.o: \
+    ../appUtil/appUtilConfig.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    guiOptionmenu.h \
+    guiWidgetsGtk.h \
+    guiWidgets.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    guiLabelGtk.c
+
+guiLabelMotif.o: \
+    ../appUtil/appUtilConfig.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    guiWidgets.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    guiLabelMotif.c
+
+guiListGtk.o: \
+    ../appUtil/appUtilConfig.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    guiListGtk.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    guiListGtk.c
+
+guiListMotif.o: \
+    ../appUtil/appUtilConfig.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    guiWidgets.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    guiListMotif.c
+
+guiListTreeGtk.o: \
+    ../appUtil/appUtilConfig.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    guiListGtk.h \
+    guiWidgets.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    guiListTreeGtk.c
+
+guiMenuGtk.o: \
+    ../appUtil/appUtilConfig.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    guiKeysGtk.h \
+    guiMenuItem.h \
+    guiOptionmenu.h \
+    guiWidgetsGtk.h \
+    guiWidgets.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    guiMenuGtk.c
+
+guiMenuMotif.o: \
+    ../appUtil/appUtilConfig.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    guiMenuItem.h \
+    guiWidgets.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    guiMenuMotif.c
+
+guiNamedImage.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/sioMemory.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilPalette.h \
+    ../bitmap/bitmap.h \
+    ../bitmap/bmio.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    guiImageImplGtk.h \
+    guiImageImpl.h \
+    guiImageImplMotif.h \
+    guiNamedImage.h \
+    guiNamedImages.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    guiNamedImage.c
+
+guiOptionmenuGtk.o: \
+    ../appUtil/appUtilConfig.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    guiListGtk.h \
+    guiOptionmenu.h \
+    guiWidgetsGtk.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    guiOptionmenuGtk.c
+
+guiOptionmenuMotif.o: \
+    ../appUtil/appUtilConfig.h \
+    guiBaseConfig.h \
+    guiOptionmenuMotif.c
+
+guiSliderGtk.o: \
+    ../appUtil/appUtilConfig.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    guiOptionmenu.h \
+    guiWidgetsGtk.h \
+    guiWidgets.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    guiSliderGtk.c
+
+guiSliderMotif.o: \
+    ../appUtil/appUtilConfig.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    guiWidgets.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    guiSliderMotif.c
+
+guiSystemFont.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilColor.h \
+    ../appUtil/utilIndexMapping.h \
+    ../appUtil/utilIndexSet.h \
+    ../appUtil/utilIntegerValueNode.h \
+    ../appUtil/utilMemoryBuffer.h \
+    ../appUtil/utilNumberedPropertiesAdmin.h \
+    ../appUtil/utilPagedList.h \
+    ../bitmap/bmcolor.h \
+    drawColors.h \
+    drawColorsXft.h \
+    drawDrawingSurfaceImpl.h \
+    drawFontImpl.h \
+    drawFontX11.h \
+    drawImpl.h \
+    drawScreenFontImpl.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    ../guiInterface/drawDrawingSurface.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    guiSystemFont.c
+
+guiTextGtk.o: \
+    ../appUtil/appUtilConfig.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    guiOptionmenu.h \
+    guiWidgetsGtk.h \
+    guiWidgets.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    guiTextGtk.c
+
+guiTextMotif.o: \
+    ../appUtil/appUtilConfig.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    guiWidgets.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    guiTextMotif.c
+
+guiTextUtil.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/utilMemoryBuffer.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    guiTextUtil.h \
+    guiWidgets.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoString.h \
+    guiTextUtil.c
+
+guiTextValidateGtk.o: \
+    ../appUtil/appUtilConfig.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    guiTextValidate.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    guiTextValidateGtk.c
+
+guiTextValidateMotif.o: \
+    ../appUtil/appUtilConfig.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    guiTextValidate.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    guiTextValidateMotif.c
+
+guiToggleGtk.o: \
+    ../appUtil/appUtilConfig.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    guiOptionmenu.h \
+    guiWidgetsGtk.h \
+    guiWidgets.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    guiToggleGtk.c
+
+guiToggleMotif.o: \
+    ../appUtil/appUtilConfig.h \
+    guiBaseConfig.h \
+    guiToggleMotif.c
+
+guiToolUtil.o: \
+    ../appUtil/appUtilConfig.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    guiOptionmenu.h \
+    guiToolUtil.h \
+    guiWidgets.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    guiToolUtil.c
+
+sioCopyPasteGtk.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/sioMemory.h \
+    ../appUtil/utilMemoryBuffer.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    sioXprop.h \
+    sioCopyPasteGtk.c
+
+sioCopyPasteMotif.o: \
+    ../appUtil/appUtilConfig.h \
+    ../appUtil/sioGeneral.h \
+    guiBaseConfig.h \
+    guiBaseGtk.h \
+    guiBase.h \
+    guiBaseMotif.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    sioXprop.h \
+    sioCopyPasteMotif.c
+
