@@ -128,9 +128,9 @@ int docLayoutRowValignCells(	BufferItem *			rowNode,
 		BufferItem *	topCellNode= topRowNode->biChildren[topCol];
 
 		/* TODO: This is the layout admin for the bottom cell:
-		   We do not have access to the layout admin of the top 
-		   cell. This means that we do not handle vertically merged cells
-		   that span span pages correctly.
+		   We do not have access to the layout admin of the top cell.
+		   This means that we do not correctly handle vertically merged
+		   cells that span pages.
 		if  ( ! docLayoutStripDone( &(plj->pljPos), plj ) ) ......
 		*/
 
