@@ -65,10 +65,9 @@ static void docLayoutValignCell( BufferItem *			cellNode,
 	    cellNode->biCellTopInset= ( rowHigh- cellHigh )/ 2;
 	    lpCellTop.lpPageYTwips += cellNode->biCellTopInset;
 
-if  ( cellNode->biChildCount > 0 )
-{
-    cellNode->biChildren[0]->biTopPosition.lpPageYTwips += cellNode->biCellTopInset;
-}
+	    if  ( cellNode->biChildCount > 0 )
+		{ cellNode->biChildren[0]->biTopPosition.lpPageYTwips += cellNode->biCellTopInset;	}
+
 	    docRedoParaStripLayout( lj, bf, &lpCellTop,
 					    cellNode, paraFrom, paraUpto );
 	    return;
@@ -77,10 +76,9 @@ if  ( cellNode->biChildCount > 0 )
 	    cellNode->biCellTopInset= rowHigh- cellHigh;
 	    lpCellTop.lpPageYTwips += cellNode->biCellTopInset;
 
-if  ( cellNode->biChildCount > 0 )
-{
-    cellNode->biChildren[0]->biTopPosition.lpPageYTwips += cellNode->biCellTopInset;
-}
+	    if  ( cellNode->biChildCount > 0 )
+		{ cellNode->biChildren[0]->biTopPosition.lpPageYTwips += cellNode->biCellTopInset;	}
+
 	    docRedoParaStripLayout( lj, bf, &lpCellTop,
 					    cellNode, paraFrom, paraUpto );
 	    return;
@@ -111,37 +109,47 @@ int docLayoutRowValignCells(	BufferItem *			rowNode,
 
 	if  ( cellNode->biCellRowspan > 1 )
 	    { continue;	}
-	if  ( ! docLayoutStripDone( &(plj->pljPos), plj) )
-	    { continue;	}
 
-
+	/* Only valign on the first page of the row */
 	if  ( docCompareLayoutPositionFrames( &(rowNode->biTopPosition),
 							    lpBelow ) != 0 )
 	    { continue;	}
 
 	if  ( cp->cpVerticalMerge == CELLmergeFOLLOW )
 	    {
+	    /* The merge administration is only valid in the bottom cell */
 	    if  ( cellNode->biCellMergedCellTopRow < 0 )
 		{ continue;	}
 	    else{
-		BufferItem *	topRowNode;
-
 		int		topRow= cellNode->biCellMergedCellTopRow;
 		int		topCol= cellNode->biCellMergedCellTopCol;
 
-		topRowNode= rowNode->biParent->biChildren[topRow];
+		BufferItem *	topRowNode= rowNode->biParent->biChildren[topRow];
+		BufferItem *	topCellNode= topRowNode->biChildren[topCol];
 
+		/* TODO: This is the layout admin for the bottom cell:
+		   We do not have access to the layout admin of the top 
+		   cell. This means that we do not handle vertically merged cells
+		   that span span pages correctly.
+		if  ( ! docLayoutStripDone( &(plj->pljPos), plj ) ) ......
+		*/
+
+
+		/* Only valign on the first page of the merged cells */
 		if  ( docCompareLayoutPositionFrames(
 				&(topRowNode->biTopPosition), lpBelow ) != 0 )
 		    { continue;	}
 
-		docLayoutValignCell( topRowNode->biChildren[topCol], bf,
+		docLayoutValignCell( topCellNode, bf,
 			    &(topRowNode->biTopPosition), lpBelow, lj );
 		}
 	    }
 	else{
-	    docLayoutValignCell( cellNode, bf, &(rowNode->biTopPosition),
+	    if  ( docLayoutStripDone( &(plj->pljPos), plj ) )
+		{
+		docLayoutValignCell( cellNode, bf, &(rowNode->biTopPosition),
 								lpBelow, lj );
+		}
 	    }
 	}
 
