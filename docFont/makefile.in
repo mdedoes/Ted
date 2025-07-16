@@ -7,7 +7,8 @@ INCLUDES=			\
 	-I../appUtil		\
 	-I../include
 
-CFLAGS=	@CFLAGS@ 		\
+CFLAGS=	\
+	@CFLAGS@ 		\
 	$(INCLUDES)
 
 WFLAGS=	-Wall			\

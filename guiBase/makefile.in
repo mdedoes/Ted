@@ -51,7 +51,7 @@ INCLUDES=			\
 	-I../appUtil		\
 	-I../include
 
-CFLAGS=			\
+CFLAGS=	\
 	@CFLAGS@	\
 	$(INCLUDES)	\
 	$(DEF_PKGDIR)	\

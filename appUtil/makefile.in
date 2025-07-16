@@ -6,7 +6,8 @@ INCLUDES=			\
 	$(ZLIB_CFLAGS)		\
 	-I../include
 
-CFLAGS=	@CFLAGS@ 	\
+CFLAGS=	\
+	@CFLAGS@ 	\
 	$(INCLUDES)
 
 WFLAGS=	-Wall			\
