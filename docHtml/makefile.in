@@ -98,7 +98,7 @@ duplicates:
 includes:
 	includes.sh docHtmlConfig.h $(INCLUDES)
 
-# deps -I. -I../include -I../docBuf -I../docLayout -I../docEdit -I../docField -I../docBase -I../bitmap  -I../drawMeta  -I../textEncoding -I../utilGeo -I../appUtil -I ../docFont -I../utilPs
+# deps -I. -I../include -I../docBuf -I../docLayout -I../docDraw -I../docEdit -I../docField -I../docBase -I../bitmap  -I../drawMeta  -I../textEncoding -I../utilGeo -I../appUtil -I ../docFont -I../utilPs
 ######################################## !! sh
 
 docEpubWriteNavig.o: \

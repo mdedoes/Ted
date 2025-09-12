@@ -36,6 +36,7 @@
 #   include	<ucdBidiClass.h>
 #   include	<bidiTree.h>
 #   include	"docParaParticuleAdmin.h"
+#   include	"docListUtil.h"
 
 #   include	"docDebug.h"
 #   include	<appDebugon.h>
@@ -383,8 +384,8 @@ int docFinishParaNode(		ParagraphBuilder *	pb )
 	    }
 
 	paraListLevel= paraNode->biParaProperties->ppListLevel;
-	if  ( docListNumberTreesInsertParagraph( &(tree->dtListNumberTrees),
-							paraListOverride, paraListLevel, pb->pbParaNr ) )
+	if  ( docListNumbersInsertParagraph( tree, pb->pbDocument,
+					    paraListOverride, paraListLevel, pb->pbParaNr ) )
 	    { LLLDEB(paraListOverride,paraListLevel,pb->pbParaNr);	}
 	}
 

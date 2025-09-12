@@ -14,9 +14,18 @@
 
 struct ListLevel;
 
+/**
+ * The administration of the lists in the document. (Mostly bullets and numbering)
+ */
 typedef struct ListAdmin
     {
+    			/**
+			 * The lists in the document
+			 */
     DocumentListTable	laListTable;
+    			/**
+			 * The list overrides in the document
+			 */
     ListOverrideTable	laListOverrideTable;
     } ListAdmin;
 

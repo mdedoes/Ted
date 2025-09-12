@@ -22,6 +22,7 @@
 #   include	<docDocumentProperties.h>
 #   include	<docParaProperties.h>
 #   include	<docListNumberTreeImpl.h>
+#   include	"docListUtil.h"
 
 #   include	<appDebugon.h>
 
@@ -38,10 +39,10 @@
 
 int docGetListOfParagraph(	ListOverride **			pLo,
 				DocumentList **			pDl,
-				int				listOverride,
+				int				ls,
 				const struct BufferDocument *	bd )
     {
-    return docGetListForStyle( pLo, pDl, listOverride, bd->bdProperties->dpListAdmin );
+    return docGetListForStyle( pLo, pDl, ls, bd->bdProperties->dpListAdmin );
     }
 
 int docGetListLevel(	int *				startPath,
@@ -95,31 +96,36 @@ int docGetListLevelOfParagraph(	int *				startPath,
 /************************************************************************/
 
 int docRemoveParagraphFromList(	struct BufferItem *			paraNode,
-				struct DocumentTree *			dt,
+				struct DocumentTree *			tree,
 				const struct BufferDocument *		bd )
     {
     int		rval= 0;
     int		paraNr= docNumberOfParagraph( paraNode );
 
-    int		listOverride;
+    int		ls;
     int		listLevel;
     int		outlineLevel;
 
     if  ( docParaNodeRemoveListProperties(
-		    &listOverride, &listLevel, &outlineLevel, paraNode, bd ) )
+		    &ls, &listLevel, &outlineLevel, paraNode, bd ) )
 	{ LDEB(1); return -1;	}
 
-    if  ( listOverride > 0 )
+    if  ( ls > 0 )
 	{
-	if  ( docListNumberTreesDeleteParagraph( &(dt->dtListNumberTrees),
-						    listOverride, paraNr ) )
-	    { LDEB(paraNr); rval= -1;	}
+	ListOverride *	lo;
+
+	if  ( docGetListForStyle( &lo, (struct DocumentList **)0, ls, bd->bdProperties->dpListAdmin ) )
+	    { LDEB(ls); return -1;	}
+
+	if  ( docListNumberTreesDeleteParagraph( &(tree->dtListNumberTrees),
+						    lo->loListIndex, paraNr ) )
+	    { LLDEB(paraNr,lo->loListIndex); rval= -1;	}
 	}
 
     if  ( outlineLevel < PPoutlineBODYTEXT )
 	{
 	if  ( docListNumberTreeDeleteParagraph(
-					&(dt->dtOutlineTree), paraNr ) )
+					&(tree->dtOutlineTree), paraNr ) )
 	    { LDEB(paraNr); rval= -1;	}
 	}
 
@@ -434,3 +440,102 @@ int docApplyListRuler(	const DocumentList *		dl,
     return rval;
     }
 
+
+int docListNumbersInsertParagraph(
+			    struct DocumentTree *	tree,
+			    struct BufferDocument *	bd,
+			    int				ls,
+			    int				ilvl,
+			    int				paraNr )
+    {
+    ListOverride *	lo;
+
+    if  ( docGetListForStyle( &lo, (struct DocumentList **)0, ls, bd->bdProperties->dpListAdmin ) )
+	{ LDEB(ls); return -1;	}
+
+    if  ( docListNumberTreesInsertParagraph(
+			    &(tree->dtListNumberTrees),
+			    lo->loListIndex, ilvl, paraNr ) )
+	{ LLLDEB(ls,ilvl,paraNr); return -1;	}
+
+    return 0;
+    }
+
+int docListNumbersGetNumberPath( int *			numberPath,
+				struct DocumentTree *	tree,
+				struct BufferDocument *	bd,
+				int			ls,
+				int			ilvl,
+				int			paraNr )
+    {
+    ListOverride *	lo;
+
+    if  ( docGetListForStyle( &lo, (struct DocumentList **)0, ls, bd->bdProperties->dpListAdmin ) )
+	{ LDEB(ls); return -1;	}
+
+    if  ( docListNumberTreesGetNumberPath( numberPath,
+			    &(tree->dtListNumberTrees),
+			    lo->loListIndex, ilvl, paraNr ) )
+	{ LLLDEB(ls,ilvl,paraNr); return -1;	}
+
+    return 0;
+    }
+
+int docListNumbersGetRootOffset( int *			pRootOffset,
+				struct DocumentTree *	tree,
+				struct BufferDocument *	bd,
+				int			ls,
+				int			ilvl,
+				int			paraNr )
+    {
+    ListOverride *	lo;
+
+    if  ( docGetListForStyle( &lo, (struct DocumentList **)0, ls, bd->bdProperties->dpListAdmin ) )
+	{ LDEB(ls); return -1;	}
+
+    if ( docListNumberTreesGetRootOffset( pRootOffset,
+			    &(tree->dtListNumberTrees),
+			    lo->loListIndex, ilvl, paraNr ) )
+	{ LLLDEB(ls,ilvl,paraNr); return -1;	}
+
+    return 0;
+    }
+
+int docListNumbersDeleteParagraph(
+				struct DocumentTree *	tree,
+				struct BufferDocument *	bd,
+				int			ls,
+				int			paraNr )
+    {
+    ListOverride *	lo;
+
+    if  ( docGetListForStyle( &lo, (struct DocumentList **)0, ls, bd->bdProperties->dpListAdmin ) )
+	{ LDEB(ls); return -1;	}
+
+    if  ( docListNumberTreesDeleteParagraph(
+			    &(tree->dtListNumberTrees),
+			    lo->loListIndex, paraNr ) )
+	{ LLDEB(ls,paraNr); return -1;	}
+
+    return 0;
+    }
+
+int docListNumbersPrevNumberPath( int *			numberPath,
+				int *			pLevel,
+				struct DocumentTree *	tree,
+				struct BufferDocument *	bd,
+				int			ls,
+				int			paraNr )
+    {
+    ListOverride *	lo;
+
+    if  ( docGetListForStyle( &lo, (struct DocumentList **)0, ls, bd->bdProperties->dpListAdmin ) )
+	{ LDEB(ls); return -1;	}
+
+    if  ( docListNumberTreesPrevNumberPath( numberPath, pLevel,
+			    &(tree->dtListNumberTrees),
+			    lo->loListIndex, paraNr ) )
+	{ LLDEB(ls,paraNr); return -1;	}
+
+    return 0;
+    }

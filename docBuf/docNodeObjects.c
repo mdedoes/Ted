@@ -19,6 +19,7 @@
 #   include	<bitmap.h>
 #   include	<docObject.h>
 #   include	<docObjectIo.h>
+#   include	"docListUtil.h"
 
 #   include	"docDebug.h"
 #   include	<appDebugon.h>

@@ -20,10 +20,12 @@ typedef struct ListNumberTreeNode
 				 *  of the tree.
 				 */
     int				lntnParaNr;
+
 				/**
 				 *  The array of children.
 				 */
-    struct ListNumberTreeNode **	lntnChildren;
+    struct ListNumberTreeNode ** lntnChildren;
+
 				/**
 				 *  The number of children.
 				 */
@@ -36,7 +38,7 @@ typedef struct ListNumberTreeNode
 /*									*/
 /************************************************************************/
 
-extern ListNumberTreeNode * docGetListNumberTree( ListNumberTrees *	lnt,
+extern ListNumberTreeNode * x_docGetListNumberTree( ListNumberTrees *	lnt,
 						int			ls );
 
 extern void docInitListNumberTreeNode( ListNumberTreeNode *	lntn );

@@ -3393,6 +3393,7 @@ tedUndo.o: \
     ../docBuf/docDocumentTree.h \
     ../docBuf/docDrawingShapeList.h \
     ../docBuf/docFields.h \
+    ../docBuf/docListUtil.h \
     ../docBuf/docNodeTree.h \
     ../docBuf/docNotes.h \
     ../docBuf/docParaNode.h \

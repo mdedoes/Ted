@@ -12,7 +12,6 @@
 #   include	"docBuf.h"
 #   include	"docNodeTree.h"
 #   include	"docParaParticules.h"
-#   include	"docParaNodeProperties.h"
 #   include	<docListLevel.h>
 #   include	<fontMatchFont.h>
 #   include	<fontDocFont.h>
@@ -27,6 +26,7 @@
 #   include	<psShading.h>
 #   include	<docItemShading.h>
 #   include	<docCellProperties.h>
+#   include	"docListUtil.h"
 
 #   include	<appDebugon.h>
 

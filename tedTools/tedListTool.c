@@ -35,6 +35,7 @@
 #   include	<docListAdmin.h>
 #   include	<docSelect.h>
 #   include	"tedFormatToolSubject.h"
+#   include	<docListUtil.h>
 
 #   include	<appDebugon.h>
 
@@ -1207,7 +1208,8 @@ static void tedFormatToolNoList(	ListTool *		lt,
 
 static int tedFormatToolSetList(	ListTool *			lt,
 					InspectorSubject *		is,
-					ListNumberTrees *		lnt,
+					struct DocumentTree *		tree,
+					struct BufferDocument *		bd,
 					int				ls,
 					int				level,
 					int				paraNr,
@@ -1238,10 +1240,10 @@ static int tedFormatToolSetList(	ListTool *			lt,
 
     lt->ltCurrentParagraphNumber= paraNr;
 
-    docListNumberTreesGetNumberPath( lt->ltHerePath, lnt, ls, level, paraNr );
+    docListNumbersGetNumberPath( lt->ltHerePath, tree, bd, ls, level, paraNr );
 
-    if  ( docListNumberTreesPrevNumberPath( lt->ltPrevPath, &(lt->ltPrevLevel),
-							    lnt, ls, paraNr ) )
+    if  ( docListNumbersPrevNumberPath( lt->ltPrevPath, &(lt->ltPrevLevel),
+							    tree, bd, ls, paraNr ) )
 	{
 	int i;
 
@@ -1316,7 +1318,7 @@ static void tedRefreshListTool(	void *				vlt,
 	/* Input was const. We are not going to update this. */
 	struct BufferDocument *		xbd= (struct BufferDocument *)bd;
 
-	if  ( tedFormatToolSetList( lt, is, &(xbd->bdBody.dtListNumberTrees),
+	if  ( tedFormatToolSetList( lt, is, &(xbd->bdBody), xbd,
 			sd->sdListOverride, sd->sdListLevel, sd->sdFirstListParaNr,
 			lo, dl ) )
 	    { LDEB(sd->sdFirstListParaNr); goto ready;	}

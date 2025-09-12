@@ -14,6 +14,7 @@
 #   include	<docListTable.h>
 #   include	<docListAdmin.h>
 #   include	<docDocumentProperties.h>
+#   include	<docListUtil.h>
 
 #   include	<appDebugon.h>
 

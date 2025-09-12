@@ -6,7 +6,6 @@
 
 #   include	"docEditConfig.h"
 
-#   include	<docBuf.h>
 #   include	<docNotes.h>
 #   include	<docTreeNode.h>
 #   include	"docEdit.h"
@@ -23,6 +22,7 @@
 #   include	<docFields.h>
 #   include	<docNodeTree.h>
 #   include	<docParaBuilder.h>
+#   include	<docListUtil.h>
 
 #   include	<appDebugon.h>
 
@@ -97,8 +97,8 @@ int docEditUpdParaProperties(	EditOperation *			eo,
 			    &partBulletHead, &partBulletTail, paraNode, bd ) )
 	    { /* LDEB(paraNode->biParaListOverride); */	}
 
-	if  ( docListNumberTreesDeleteParagraph(
-				&(eo->eoTree->dtListNumberTrees), ls, paraNr ) )
+	if  ( docListNumbersDeleteParagraph(
+				eo->eoTree, eo->eoDocument, ls, paraNr ) )
 	    { /*LLDEB(override,paraNr);*/	}
 
 	if  ( dfBullet )
@@ -150,15 +150,15 @@ int docEditUpdParaProperties(	EditOperation *			eo,
 	  ( paraNode->biParaProperties->ppListOverride != ls	||
 	    paraNode->biParaProperties->ppListLevel != ilvl	)	)
 	{
-	if  ( docListNumberTreesDeleteParagraph(
-				&(eo->eoTree->dtListNumberTrees), ls, paraNr ) )
+	if  ( docListNumbersDeleteParagraph(
+				eo->eoTree, eo->eoDocument, ls, paraNr ) )
 	    { LLDEB(ls,paraNr);	}
 
 	ls= paraNode->biParaProperties->ppListOverride;
 	ilvl= paraNode->biParaProperties->ppListLevel;
 
-	if  ( docListNumberTreesInsertParagraph(
-			&(eo->eoTree->dtListNumberTrees), ls, ilvl, paraNr ) )
+	if  ( docListNumbersInsertParagraph(
+			eo->eoTree, eo->eoDocument, ls, ilvl, paraNr ) )
 	    { LLLDEB(ls,ilvl,paraNr);	}
 
 	listChange= 1;

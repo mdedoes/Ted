@@ -34,6 +34,7 @@
 #   include	<docFields.h>
 #   include	<docBuf.h>
 #   include	<docEditImpl.h>
+#   include	<docListUtil.h>
 
 #   include	<docDebug.h>
 #   include	<appDebugon.h>

@@ -13,13 +13,13 @@
 #   include	"docDraw.h"
 #   include	<docTreeNode.h>
 #   include	<docParaProperties.h>
-#   include	<docParaNodeProperties.h>
 #   include	<psPrint.h>
 #   include	"docDrawLine.h"
 #   include	<docDocumentField.h>
 #   include	<docListLevel.h>
 #   include	<sioGeneral.h>
 #   include	<sioMemory.h>
+#   include	<docListUtil.h>
 
 #   include	<appDebugon.h>
 #   include	<docDebug.h>

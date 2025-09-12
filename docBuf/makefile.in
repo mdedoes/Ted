@@ -471,7 +471,9 @@ docCalculateListtextField.o: \
     ../docBase/docListDepth.h \
     ../docBase/docListLevel.h \
     ../docBase/docListNumberTree.h \
+    ../docBase/docNotesProperties.h \
     ../docBase/docParaProperties.h \
+    ../docBase/docSectProperties.h \
     ../docBase/docSelectionScope.h \
     ../docBase/docStyleSheet.h \
     ../docBase/docTextParticule.h \
@@ -485,19 +487,22 @@ docCalculateListtextField.o: \
     docEvalField.h \
     ../docField/docChildFields.h \
     ../docField/docDocumentFieldList.h \
+    docListUtil.h \
     docNodeTree.h \
     docParaBuilder.h \
     docParaBuilderImpl.h \
     docParaNode.h \
-    docParaNodeProperties.h \
     docParaParticuleAdmin.h \
     docRecalculateFields.h \
     docRowNode.h \
     docSectNode.h \
+    docSelect.h \
     docTreeNode.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../textEncoding/bidiScanner.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangleOffsets.h \
     ../utilPs/textAttribute.h \
     docCalculateListtextField.c
 
@@ -1254,9 +1259,9 @@ docGetFont.o: \
     ../docFont/fontDocFont.h \
     ../docFont/fontDocFontList.h \
     ../docFont/fontMatchFont.h \
+    docListUtil.h \
     docNodeTree.h \
     docParaNode.h \
-    docParaNodeProperties.h \
     docParaParticules.h \
     docRowNode.h \
     docSectNode.h \
@@ -1445,6 +1450,7 @@ docListUtil.o: \
     docDrawingShapeList.h \
     ../docField/docChildFields.h \
     ../docField/docDocumentFieldList.h \
+    docListUtil.h \
     docNodeTree.h \
     docParaNode.h \
     docParaNodeProperties.h \
@@ -1487,6 +1493,7 @@ docNodeObjects.o: \
     docDrawingShapeList.h \
     ../docField/docChildFields.h \
     ../docField/docDocumentFieldList.h \
+    docListUtil.h \
     docObjects.h \
     docParaNode.h \
     docRowNode.h \
@@ -1694,6 +1701,7 @@ docParaBuilder.o: \
     ../docField/docFieldInstructions.h \
     ../docField/docFieldKind.h \
     docFields.h \
+    docListUtil.h \
     docNodeTree.h \
     docParaBuilder.h \
     docParaBuilderImpl.h \
@@ -1773,19 +1781,18 @@ docParaBuilderFields.o: \
     ../docBase/docEditRange.h \
     ../docBase/docLayoutPosition.h \
     ../docBase/docListDepth.h \
-    ../docBase/docListNumberTree.h \
     ../docBase/docParaProperties.h \
     ../docBase/docSelectionScope.h \
     ../docBase/docTextParticule.h \
     docBufConfig.h \
     docCellNode.h \
     docDebug.h \
-    docDocumentTree.h \
     ../docField/docChildFields.h \
     ../docField/docDocumentField.h \
     ../docField/docFieldInstructions.h \
     ../docField/docFieldKind.h \
     docFields.h \
+    docListUtil.h \
     docParaBuilder.h \
     docParaBuilderImpl.h \
     docParaNode.h \

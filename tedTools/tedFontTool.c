@@ -22,6 +22,7 @@
 #   include	<docSelect.h>
 #   include	<docSelectionDescription.h>
 #   include	<docBuf.h>
+#   include	<docListUtil.h>
 #   include	<appInspectorSubject.h>
 #   include	<appGuiResource.h>
 #   include	<appFontTool.h>

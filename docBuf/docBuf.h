@@ -25,9 +25,7 @@ struct DocumentPosition;
 struct DocumentSelection;
 struct SelectionScope;
 struct DocumentProperties;
-struct ListOverride;
 struct DocumentGeometry;
-struct DocumentList;
 struct MemoryBuffer;
 
 /************************************************************************/
@@ -255,16 +253,6 @@ extern int docSectionHeaderFooterFirstPage(
 				int				treeType,
 				const struct BufferDocument *	bd );
 
-extern int docGetListOfParagraph(	struct ListOverride **	pLo,
-					struct DocumentList **	pDl,
-					int			ls,
-					const BufferDocument *	bd );
-
-extern int docRemoveParagraphFromList(
-				struct BufferItem *		paraNode,
-				DocumentTree *			dt,
-				const BufferDocument *		bd );
-
 extern int docFindListOfSelection(
 				int *				pLs,
 				int *				pLevel,
@@ -275,10 +263,6 @@ extern int docFindListOfSelection(
 				DocumentTree *			tree,
 				BufferDocument *		bd );
 
-extern int docApplyListRuler(	const struct DocumentList *	dl,
-				const struct ListOverride *	lo,
-				BufferDocument *		bd );
-
 extern int docNextSimilarTree(	struct DocumentPosition *	dp,
 				struct DocumentTree **		pTree,
 				BufferDocument *		bd );
@@ -286,11 +270,6 @@ extern int docNextSimilarTree(	struct DocumentPosition *	dp,
 extern int docPrevSimilarTree(	struct DocumentPosition *	dp,
 				struct DocumentTree **		pTree,
 				BufferDocument *		bd );
-
-extern int docAdaptParagraphToListLevel(
-				int *				pChanged,
-				struct BufferItem *		paraNode,
-				const BufferDocument *		bd );
 
 extern int docGetCharsUsed(	struct BufferDocument *		bd );
 

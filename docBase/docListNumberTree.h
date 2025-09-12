@@ -9,9 +9,19 @@
 
 struct ListNumberTreeNode;
 
+/**
+ *  Keep track of the indices (numbers) of paragraphs that belong to some
+ *  kind of list.
+ */
 typedef struct ListNumberTrees
     {
+				/**
+				 * The trees per list. The index of the tree
+				 * is the index of list in the document.
+				 * (NOT the number of the list override)
+				 */
     struct ListNumberTreeNode *	lntTrees;
+				/** The number of trees */
     int				lntTreeCount;
     } ListNumberTrees;
 
@@ -43,26 +53,26 @@ extern void docShiftListTreesReferences( ListNumberTrees *	lnt,
 
 extern int docListNumberTreesInsertParagraph(
 					ListNumberTrees *	lnt,
-					int			ls,
+					int			listIndex,
 					int			ilvl,
 					int			paraNr );
 
 extern int docListNumberTreesDeleteParagraph(
 					ListNumberTrees *	lnt,
-					int			ls,
+					int			listIndex,
 					int			paraNr );
 
 extern int docListNumberTreesGetNumberPath(	
 					int *			numberPath,
 					ListNumberTrees *	lnt,
-					int			ls,
+					int			listIndex,
 					int			ilvl,
 					int			paraNr );
 
 extern int docListNumberTreesGetRootOffset(	
 					int *			pRootOffset,
 					ListNumberTrees *	lnt,
-					int			ls,
+					int			listIndex,
 					int			ilvl,
 					int			paraNr );
 
@@ -70,7 +80,7 @@ extern int docListNumberTreesPrevNumberPath(
 					int *			numberPath,
 					int *			pLevel,
 					ListNumberTrees *	lnt,
-					int			ls,
+					int			listIndex,
 					int			paraNr );
 
 extern int docListNumberTreeInsertParagraph(

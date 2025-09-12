@@ -6,7 +6,6 @@
 
 #   include	"docEditConfig.h"
 
-#   include	<docBuf.h>
 #   include	<docDebug.h>
 #   include	<docParaString.h>
 #   include	<docNodeTree.h>
@@ -22,6 +21,7 @@
 #   include	<docParaProperties.h>
 #   include	<docObjects.h>
 #   include	<docFields.h>
+#   include	<docListUtil.h>
 
 #   include	<appDebugon.h>
 
