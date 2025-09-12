@@ -26,6 +26,7 @@
 #   include	<appEditDocument.h>
 #   include	<docBuf.h>
 #   include	<docEditImpl.h>
+#   include	<docNodeTree.h>
 
 #   include	<appDebugon.h>
 

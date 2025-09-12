@@ -993,22 +993,18 @@ docEditParagraph.o: \
 docEditSection.o: \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
-    ../appUtil/utilPagedList.h \
     ../docBase/docDocumentAttributeMap.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
-    ../docBase/docInsertedObjectList.h \
     ../docBase/docLayoutPosition.h \
     ../docBase/docListNumberTree.h \
     ../docBase/docNotesProperties.h \
     ../docBase/docSectProperties.h \
     ../docBase/docSelectionScope.h \
-    ../docBase/docStyleSheet.h \
     ../docBase/docTreeType.h \
-    ../docBuf/docBuf.h \
     ../docBuf/docCellNode.h \
     ../docBuf/docDocumentTree.h \
-    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docNodeTree.h \
     ../docBuf/docParaNode.h \
     ../docBuf/docRowNode.h \
     ../docBuf/docSectHeadersFooters.h \
@@ -1020,7 +1016,6 @@ docEditSection.o: \
     docEditConfig.h \
     docEditOperation.h \
     ../docField/docChildFields.h \
-    ../docField/docDocumentFieldList.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../utilGeo/geoDocumentPageSetup.h \

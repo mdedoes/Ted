@@ -318,27 +318,18 @@ docCalculateDocpropField.o: \
     docCalculateDocpropField.c
 
 docCalculateFormulaField.o: \
-    ../appUtil/utilIndexSet.h \
     ../appUtil/utilLocale.h \
     ../appUtil/utilMemoryBuffer.h \
-    ../appUtil/utilPagedList.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
-    ../docBase/docInsertedObjectList.h \
     ../docBase/docLayoutPosition.h \
-    ../docBase/docListNumberTree.h \
     ../docBase/docSelectionScope.h \
-    ../docBase/docStyleSheet.h \
     docBufConfig.h \
-    docBuf.h \
     docCalculateFormulaValue.h \
     docCellNode.h \
-    docDocumentTree.h \
-    docDrawingShapeList.h \
     docEvalField.h \
     ../docField/docChildFields.h \
     ../docField/docDocumentField.h \
-    ../docField/docDocumentFieldList.h \
     ../docField/docFieldInstructions.h \
     ../docField/docFormulaField.h \
     docField.h \
@@ -558,6 +549,7 @@ docCalculatePageField.o: \
     ../docField/docNumericField.h \
     ../docField/docPagerefField.h \
     docFields.h \
+    docNodeTree.h \
     docParaNode.h \
     docParaParticules.h \
     docRecalculateFields.h \
@@ -596,28 +588,20 @@ docCalculateRefField.o: \
     docCalculateRefField.c
 
 docCalculateSectionField.o: \
-    ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
-    ../appUtil/utilPagedList.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
-    ../docBase/docInsertedObjectList.h \
     ../docBase/docLayoutPosition.h \
-    ../docBase/docListNumberTree.h \
     ../docBase/docSelectionScope.h \
-    ../docBase/docStyleSheet.h \
     docBufConfig.h \
-    docBuf.h \
     docCellNode.h \
-    docDocumentTree.h \
-    docDrawingShapeList.h \
     docEvalField.h \
     ../docField/docChildFields.h \
     ../docField/docDocumentField.h \
-    ../docField/docDocumentFieldList.h \
     ../docField/docFieldInstructions.h \
     ../docField/docFieldKind.h \
     ../docField/docNumericField.h \
+    docNodeTree.h \
     docParaNode.h \
     docRecalculateFields.h \
     docRowNode.h \
@@ -2055,24 +2039,14 @@ docParaTextLines.o: \
     docParaTextLines.c
 
 docPositions.o: \
-    ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
-    ../appUtil/utilPagedList.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
-    ../docBase/docInsertedObjectList.h \
     ../docBase/docLayoutPosition.h \
-    ../docBase/docListNumberTree.h \
     ../docBase/docSelectionScope.h \
-    ../docBase/docStyleSheet.h \
     docBufConfig.h \
-    docBuf.h \
     docCellNode.h \
     docDebug.h \
-    docDocumentTree.h \
-    docDrawingShapeList.h \
-    ../docField/docChildFields.h \
-    ../docField/docDocumentFieldList.h \
     docNodeTree.h \
     docParaNode.h \
     docRowNode.h \

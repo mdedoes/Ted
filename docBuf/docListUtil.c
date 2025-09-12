@@ -539,3 +539,24 @@ int docListNumbersPrevNumberPath( int *			numberPath,
 
     return 0;
     }
+
+int docListDeleteFreshList(	struct BufferDocument *	bd,
+				int			ls )
+    {
+    ListAdmin *		la= bd->bdProperties->dpListAdmin;
+    ListOverride *	lo;
+
+    if  ( docGetListOfParagraph( &lo, (struct DocumentList **)0, ls, bd ) )
+	{ LDEB(1); return -1;	}
+
+    if  ( docDocumentListTableDeleteList( &(la->laListTable),
+							    lo->loListIndex ) )
+	{ LDEB(lo->loListIndex); return -1;	}
+
+    if  ( docListOverrideTableDeleteOverride( &(la->laListOverrideTable),
+							    lo->loIndex ) )
+	{ LDEB(lo->loIndex); return -1;	}
+
+    return 0;
+    }
+

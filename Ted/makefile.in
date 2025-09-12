@@ -1891,18 +1891,12 @@ tedFindPosition.o: \
     ../appFrame/appFrameConfig.h \
     ../appUtil/appUtilConfig.h \
     ../appUtil/utilColor.h \
-    ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
-    ../appUtil/utilPagedList.h \
-    ../docBase/docInsertedObjectList.h \
     ../docBase/docLayoutPosition.h \
     ../docBase/docListNumberTree.h \
     ../docBase/docSelectionScope.h \
-    ../docBase/docStyleSheet.h \
-    ../docBuf/docBuf.h \
     ../docBuf/docCellNode.h \
     ../docBuf/docDocumentTree.h \
-    ../docBuf/docDrawingShapeList.h \
     ../docBuf/docNodeTree.h \
     ../docBuf/docParaNode.h \
     ../docBuf/docRowNode.h \
@@ -1913,7 +1907,6 @@ tedFindPosition.o: \
     ../docDraw/docPositionFindJob.h \
     ../docDraw/docSelectionGeometry.h \
     ../docField/docChildFields.h \
-    ../docField/docDocumentFieldList.h \
     ../docFont/fontMatchFont.h \
     ../docLayout/docLayoutDocumentTree.h \
     ../docLayout/layoutContext.h \
@@ -2009,6 +2002,7 @@ tedHeaderFooter.o: \
     ../docBuf/docCellNode.h \
     ../docBuf/docDocumentTree.h \
     ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docNodeTree.h \
     ../docBuf/docParaNode.h \
     ../docBuf/docRowNode.h \
     ../docBuf/docSectNode.h \
@@ -2444,6 +2438,7 @@ tedMouseInput.o: \
     ../docBuf/docDocumentTree.h \
     ../docBuf/docDrawingShapeList.h \
     ../docBuf/docField.h \
+    ../docBuf/docNodeTree.h \
     ../docBuf/docParaParticules.h \
     ../docBuf/docSelect.h \
     ../docBuf/docTableRectangle.h \
@@ -3367,16 +3362,10 @@ tedUndo.o: \
     ../docBase/docDocumentProperties.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
-    ../docBase/docInsertedObjectList.h \
     ../docBase/docLayoutPosition.h \
-    ../docBase/docListAdmin.h \
     ../docBase/docListDepth.h \
     ../docBase/docListLevel.h \
     ../docBase/docListNumberTree.h \
-    ../docBase/docListOverride.h \
-    ../docBase/docListOverrideLevel.h \
-    ../docBase/docListOverrideTable.h \
-    ../docBase/docListTable.h \
     ../docBase/docNoteProperties.h \
     ../docBase/docNotesProperties.h \
     ../docBase/docParaProperties.h \
@@ -3384,14 +3373,11 @@ tedUndo.o: \
     ../docBase/docSectProperties.h \
     ../docBase/docSelectionScope.h \
     ../docBase/docStyle.h \
-    ../docBase/docStyleSheet.h \
     ../docBase/docTreeType.h \
-    ../docBuf/docBuf.h \
     ../docBuf/docCellNode.h \
     ../docBuf/docDebug.h \
     ../docBuf/docDocumentNote.h \
     ../docBuf/docDocumentTree.h \
-    ../docBuf/docDrawingShapeList.h \
     ../docBuf/docFields.h \
     ../docBuf/docListUtil.h \
     ../docBuf/docNodeTree.h \
@@ -3415,7 +3401,6 @@ tedUndo.o: \
     ../docEdit/docTrace.h \
     ../docField/docChildFields.h \
     ../docField/docDocumentField.h \
-    ../docField/docDocumentFieldList.h \
     ../docField/docFieldInstructions.h \
     ../docField/docFieldKind.h \
     ../docFont/fontMatchFont.h \

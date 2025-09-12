@@ -289,14 +289,11 @@ docHtmlWriteDrawingShape.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/utilColor.h \
     ../appUtil/utilIndexMapping.h \
-    ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
-    ../appUtil/utilPagedList.h \
     ../appUtil/utilPalette.h \
     ../appUtil/xmlWriter.h \
     ../bitmap/bitmap.h \
     ../bitmap/bmio.h \
-    ../docBase/docInsertedObjectList.h \
     ../docBase/docLayoutPosition.h \
     ../docBase/docListNumberTree.h \
     ../docBase/docObject.h \
@@ -305,17 +302,14 @@ docHtmlWriteDrawingShape.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docShapeDrawing.h \
     ../docBase/docShapeProperties.h \
-    ../docBase/docStyleSheet.h \
     ../docBuf/docBlockFrame.h \
-    ../docBuf/docBuf.h \
     ../docBuf/docDebug.h \
     ../docBuf/docDocumentTree.h \
-    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docNodeTree.h \
     ../docBuf/docPageGrid.h \
     ../docBuf/docShape.h \
     ../docBuf/docStripFrame.h \
     ../docField/docChildFields.h \
-    ../docField/docDocumentFieldList.h \
     docHtmlConfig.h \
     docHtmlWriteDrawingShape.h \
     docHtmlWriteImpl.h \

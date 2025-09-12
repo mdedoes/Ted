@@ -568,6 +568,7 @@ docLayoutNotes.o: \
     ../docBuf/docDocumentTree.h \
     ../docBuf/docDrawingShapeList.h \
     ../docBuf/docFields.h \
+    ../docBuf/docNodeTree.h \
     ../docBuf/docNotes.h \
     ../docBuf/docPageGrid.h \
     ../docBuf/docParaNode.h \

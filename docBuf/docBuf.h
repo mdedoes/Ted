@@ -156,12 +156,6 @@ typedef struct BufferDocument
 /*									*/
 /************************************************************************/
 
-extern void docDeleteDocumentTree(	BufferDocument *	bd,
-					DocumentTree *		dt );
-
-extern void docEraseDocumentTree(	BufferDocument *	bd,
-					DocumentTree *		dt );
-
 extern int docWhatPagesForHeaderFooter(
 				const struct DocumentProperties *	dp,
 				const struct SectionProperties *	sp,
@@ -196,13 +190,6 @@ extern struct BufferItem * docStartDocumentTree(
 				const struct BufferItem *	bodyNode,
 				int				ownerNumber,
 				int				txtAttrNr );
-
-extern struct BufferItem * docMakeTreeRoot(
-				BufferDocument *		bd,
-				DocumentTree *			dt,
-				const struct BufferItem *	bodyNode,
-				int				ownerNumber,
-				int				treeType );
 
 extern int docMergeDocumentLists(
 				int **				pFontMap,
@@ -241,11 +228,6 @@ extern int docGetTreeOfNode(	DocumentTree **			pTree,
 				struct BufferItem **		pBodySectNode,
 				BufferDocument *		bd,
 				struct BufferItem *		node );
-
-extern int docGetRootOfSelectionScope(	struct DocumentTree **	pTree,
-					struct BufferItem **	pBodySectNode,
-					struct BufferDocument *	bd,
-					const struct SelectionScope *	ss );
 
 extern int docSectionHeaderFooterFirstPage(
 				int *				pUsedInDocument,

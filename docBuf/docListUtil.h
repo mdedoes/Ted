@@ -92,4 +92,7 @@ extern int docListNumbersPrevNumberPath( int *		numberPath,
 				int			ls,
 				int			paraNr );
 
+extern int docListDeleteFreshList( struct BufferDocument *	bd,
+				int				ls );
+
 #   endif	/*  DOC_LIST_UTIL_H  */

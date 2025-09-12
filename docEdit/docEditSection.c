@@ -8,7 +8,6 @@
 
 #   include	<stdlib.h>
 
-#   include	<docBuf.h>
 #   include	<docTreeNode.h>
 #   include	"docCopyNode.h"
 #   include	<docTreeType.h>
@@ -16,6 +15,7 @@
 #   include	<docSectProperties.h>
 #   include	"docEditOperation.h"
 #   include	"docDocumentCopyJob.h"
+#   include	<docNodeTree.h>
 
 #   include	<appDebugon.h>
 
