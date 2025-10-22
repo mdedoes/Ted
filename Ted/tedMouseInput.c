@@ -28,6 +28,7 @@
 #   include	<docBuf.h>
 #   include	<appDocFront.h>
 #   include	<layoutContext.h>
+#   include	<docNodeTree.h>
 
 #   include	<guiKeys.h>
 

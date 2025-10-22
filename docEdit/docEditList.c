@@ -20,6 +20,7 @@
 #   include	"docEditImpl.h"
 #   include	"docSelectionDescription.h"
 #   include	"docRtfTrace.h"
+#   include	<docListUtil.h>
 
 /************************************************************************/
 /*									*/

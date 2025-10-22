@@ -15,9 +15,9 @@
 #   include	"docParticuleData.h"
 #   include	<docStripFrame.h>
 #   include	<docTextLine.h>
-#   include	<docParaNodeProperties.h>
 #   include	<docListLevel.h>
 #   include	"docLayout.h"
+#   include	<docListUtil.h>
 
 #   include	<docDebug.h>
 #   include	<appDebugon.h>

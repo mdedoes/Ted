@@ -266,6 +266,8 @@ static int docGetCellLeftBorder( const BorderProperties **	pBpLeft,
 /*  properties. So in right-to-left rows, the result is drawn on the	*/
 /*  left hand side of the cell.						*/
 /*									*/
+/*  Do not draw the border if the next cell in the row has a left border*/
+/*									*/
 /************************************************************************/
 
 static int docGetCellRightBorder( const BorderProperties **	pBpRight,
@@ -277,46 +279,40 @@ static int docGetCellRightBorder( const BorderProperties **	pBpRight,
     int				rval= 0;
     const CellProperties *	cp= rp->rpCells+ col;
 
-    int				drawCellRight= 1;
+    int				nextCol= col+ 1;
+    const CellProperties *	nextCp= rp->rpCells+ nextCol;
 
-    int				rightHasBorder= 0;
     int				hasRightBorder= 0;
 
     const BorderProperties *	bpRight= (const BorderProperties *)0;
 
-    if  ( col < rp->rpCellCount- 1 )
+    if  ( nextCol < rp->rpCellCount )
 	{
-	int			nextCol= col+ 1;
-	const CellProperties *	nextCp= rp->rpCells+ nextCol;
-
 	while( nextCol < rp->rpCellCount			&&
 	       nextCp->cpHorizontalMerge == CELLmergeFOLLOW	)
 	    { nextCol++; nextCp++;	}
-
-	if  ( nextCol < rp->rpCellCount )
-	    { drawCellRight= 0;	}
 	}
-
-    /*  6  */
-    if  ( col < rp->rpCellCount- 1					&&
-	  docBorderNumberIsBorder( bd, cp[1].cpLeftBorderNumber )	)
-	{ rightHasBorder= 1;	}
 
     bpRight= docGetBorderPropertiesByNumber( bd, cp->cpRightBorderNumber );
     hasRightBorder= DOCisBORDER( bpRight );
 
-    if  ( ! hasRightBorder && rightHasBorder )
+    /*  6  */
+    if  ( nextCol < rp->rpCellCount					&&
+	  docBorderNumberIsBorder( bd, nextCp->cpLeftBorderNumber )	)
 	{
-	bpRight= docGetBorderPropertiesByNumber( bd,
-						cp[1].cpLeftBorderNumber );
-	*bpRightNr= cp[1].cpLeftBorderNumber;
+	if  ( ! hasRightBorder )
+	    {
+	    bpRight= docGetBorderPropertiesByNumber( bd, nextCp->cpLeftBorderNumber );
+	    *bpRightNr= nextCp->cpLeftBorderNumber;
+	    }
 	}
-
-    /*  10  */
-    if  ( drawCellRight && hasRightBorder )
-	{
-	*bpRightNr= cp->cpRightBorderNumber;
-	rval= 1;
+    else{
+	/*  10  */
+	if  ( hasRightBorder )
+	    {
+	    *bpRightNr= cp->cpRightBorderNumber;
+	    rval= 1;
+	    }
 	}
 
     *pBpRight= bpRight;

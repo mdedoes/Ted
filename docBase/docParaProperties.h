@@ -108,7 +108,7 @@ typedef struct ParagraphProperties
 			 *  Reference to a list style override in the list
 			 *  override table. Override 0 is not used: It is 
 			 *  used to indicate that the paragraph is not part 
-			 *  of a list.
+			 *  of a list. (rtf: ls)
 			 */
     short int		ppListOverride;
 
@@ -182,7 +182,7 @@ typedef struct ParagraphProperties
     unsigned char	ppOutlineLevel;
 
 			/**
-			 *  The list level of the paragraph. (ilvl)
+			 *  The list level of the paragraph. (Rtf: ilvl)
 			 *  Values range from 0 to 9.
 			 */
     unsigned char	ppListLevel;

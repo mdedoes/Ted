@@ -28,6 +28,7 @@
 #   include	<docBuf.h>
 #   include	<docFields.h>
 #   include	<docBlockFrame.h>
+#   include	<docNodeTree.h>
 
 #   include	<appDebugon.h>
 

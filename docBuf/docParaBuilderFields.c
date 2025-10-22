@@ -12,7 +12,6 @@
 #   include	"docParaBuilder.h"
 #   include	"docParaBuilderImpl.h"
 #   include	"docTreeNode.h"
-#   include	"docDocumentTree.h"
 #   include	"docTreeNode.h"
 #   include	"docFields.h"
 #   include	<docTextParticule.h>
@@ -23,6 +22,7 @@
 #   include	"docParaParticuleAdmin.h"
 #   include	<docFieldKind.h>
 #   include	<docParaProperties.h>
+#   include	"docListUtil.h"
 
 #   include	"docDebug.h"
 #   include	<appDebugon.h>
@@ -242,8 +242,8 @@ int docParagraphBuilderInsertListtextField(
 			    pb, DOCfkLISTTEXT, textAttrNr ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    if  ( docListNumberTreesInsertParagraph(
-			    &(pb->pbTree->dtListNumberTrees),
+    if  ( docListNumbersInsertParagraph(
+			    pb->pbTree, pb->pbDocument,
 			    paraNode->biParaProperties->ppListOverride,
 			    paraNode->biParaProperties->ppListLevel,
 			    pb->pbParaNr ) )

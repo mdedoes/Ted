@@ -10,14 +10,40 @@
 #   include	"docListOverrideLevel.h"
 #   include	"docListDepth.h"
 
+/**
+ * A list override in the document
+ * List overrides serve two purposes:
+ * - Provide an indirect reference from the paragraph to the list that it belongs to
+ * - Make it possible to override some of the formatting for particular (groups of) paragraphs in the list.
+ */
 typedef struct ListOverride
     {
+				/**
+				 *  The ID of the list that this override refers to.
+				 */
     long			loListID;
+
+				/**
+				 *  The index of this list override in the list override table. 
+				 */
     short int			loIndex;
+
+				/**
+				 *  The index of the list that we override in the documents list table.
+				 */
     short int			loListIndex;
+
+				/**
+				 *  The number of override levels according to the rtf document.
+				 *  Not actually used in functional code.
+				 */
     unsigned char		loOverrideCount;
 
+				/**
+				 *  Style overrides for the indentation levels in the list.
+				 */
     ListOverrideLevel		loLevels[DLmaxLEVELS];
+				/** The number of style overrides */
     int				loLevelCount;
     } ListOverride;
 

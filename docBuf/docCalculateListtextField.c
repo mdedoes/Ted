@@ -11,7 +11,6 @@
 #   include	"docNodeTree.h"
 #   include	"docEvalField.h"
 #   include	"docRecalculateFields.h"
-#   include	"docParaNodeProperties.h"
 #   include	"docParaBuilderImpl.h"
 #   include	"docParaParticuleAdmin.h"
 #   include	<docListLevel.h>
@@ -22,6 +21,7 @@
 #   include	"docParaBuilder.h"
 #   include	<docSectProperties.h>
 #   include	"docSelect.h"
+#   include	"docListUtil.h"
 
 #   include	"docDebug.h"
 #   include	<appDebugon.h>
@@ -140,8 +140,9 @@ int docRecalculateParaListtextTextParticules(
 	}
 
     /*  5  */
-    if  ( docListNumberTreesGetNumberPath( numberPath, &(tree->dtListNumberTrees),
-							pp->ppListOverride, ilvl, paraNr ) )
+    if  ( docListNumbersGetNumberPath( numberPath,
+				tree, rf->rfDocument,
+				pp->ppListOverride, ilvl, paraNr ) )
 	{
 	LLDEB(pp->ppListOverride,ilvl);
 	SDEB(docTreeTypeStr(paraNode->biTreeType));
@@ -167,8 +168,8 @@ int docRecalculateParaListtextTextParticules(
 		    int		offsetParaNr= docNumberOfParagraph( dpOffset.dpNode );
 		    int		rootOffset= 0;
 
-		    if  ( docListNumberTreesGetRootOffset( &rootOffset, &(tree->dtListNumberTrees),
-							pp->ppListOverride, ilvl, offsetParaNr ) )
+		    if  ( docListNumbersGetRootOffset( &rootOffset, tree, pb->pbDocument,
+						pp->ppListOverride, ilvl, offsetParaNr ) )
 			{
 			LLDEB(pp->ppListOverride,ilvl);
 			SDEB(docTreeTypeStr(paraNode->biTreeType));

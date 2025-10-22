@@ -126,14 +126,14 @@ int docClaimListNumberTrees(	ListNumberTrees *	lnt,
 						&(lnt->lntTreeCount), count );
     }
 
-ListNumberTreeNode * docGetListNumberTree(	ListNumberTrees *	lnt,
-						int			ls )
+ListNumberTreeNode * x_docGetListNumberTree(	ListNumberTrees *	lnt,
+						int			listIndex )
     {
-    if  ( ls >= lnt->lntTreeCount			&&
-	  docClaimListNumberTrees( lnt, ls+ 1 )		)
-	{ LDEB(ls); return (ListNumberTreeNode *)0;	}
+    if  ( listIndex >= lnt->lntTreeCount		&&
+	  docClaimListNumberTrees( lnt, listIndex+ 1 )	)
+	{ LDEB(listIndex); return (ListNumberTreeNode *)0;	}
 
-    return lnt->lntTrees+ ls;
+    return lnt->lntTrees+ listIndex;
     }
 
 void docInitListNumberTrees(	ListNumberTrees *	lnt )
@@ -309,16 +309,16 @@ int docListNumberNodeGetNumberPath(	int *			nums,
 
 int docListNumberTreesGetNumberPath(	int *			numberPath,
 					ListNumberTrees *	lnt,
-					int			ls,
+					int			listIndex,
 					int			ilvl,
 					int			paraNr )
     {
-    ListNumberTreeNode *	root= docGetListNumberTree( lnt, ls );
+    ListNumberTreeNode *	root= x_docGetListNumberTree( lnt, listIndex );
     if  ( ! root )
-	{ LXDEB(ls,root); return -1;	}
+	{ LXDEB(listIndex,root); return -1;	}
 
     if  ( docListNumberNodeGetNumberPath( numberPath, root, ilvl, paraNr ) )
-	{ LLLDEB(ls,ilvl,paraNr); return -1;	}
+	{ LLLDEB(listIndex,ilvl,paraNr); return -1;	}
 
     return 0;
     }
@@ -326,15 +326,15 @@ int docListNumberTreesGetNumberPath(	int *			numberPath,
 int docListNumberTreesPrevNumberPath(	int *			numberPath,
 					int *			pLevel,
 					ListNumberTrees *	lnt,
-					int			ls,
+					int			listIndex,
 					int			paraNr )
     {
-    ListNumberTreeNode *	root= docGetListNumberTree( lnt, ls );
+    ListNumberTreeNode *	root= x_docGetListNumberTree( lnt, listIndex );
     if  ( ! root )
-	{ LXDEB(ls,root); return -1;	}
+	{ LXDEB(listIndex,root); return -1;	}
 
     if  ( docListNumberNodePrevNumberPath( numberPath, pLevel, root, paraNr ) )
-	{ LLDEB(ls,paraNr); return -1;	}
+	{ LLDEB(listIndex,paraNr); return -1;	}
 
     return 0;
     }
@@ -351,15 +351,15 @@ int docListNumberTreesPrevNumberPath(	int *			numberPath,
  */
 int docListNumberTreesGetRootOffset(	int *			pRootOffset,
 					ListNumberTrees *	lnt,
-					int			ls,
+					int			listIndex,
 					int			ilvl,
 					int			paraNr )
     {
     int				l, m, r;
 
-    ListNumberTreeNode *	root= docGetListNumberTree( lnt, ls );
+    ListNumberTreeNode *	root= x_docGetListNumberTree( lnt, listIndex );
     if  ( ! root )
-	{ LXDEB(ls,root); return -1;	}
+	{ LXDEB(listIndex,root); return -1;	}
 
     l= 0;
     r= root->lntnChildCount;
@@ -858,18 +858,18 @@ int docListNumberTreeNodeInsertParagraph( ListNumberTreeNode *	root,
     }
 
 int docListNumberTreesInsertParagraph(	ListNumberTrees *	lnt,
-					int			ls,
+					int			listIndex,
 					int			ilvl,
 					int			paraNr )
     {
-    if  ( ls < 0 )
-	{ LLDEB(ls,lnt->lntTreeCount); return -1;	}
+    if  ( listIndex < 0 )
+	{ LLDEB(listIndex,lnt->lntTreeCount); return -1;	}
 
-    if  ( ls >= lnt->lntTreeCount			&&
-	  docClaimListNumberTrees( lnt, ls+ 1 )		)
-	{ LDEB(ls); return -1;	}
+    if  ( listIndex >= lnt->lntTreeCount		&&
+	  docClaimListNumberTrees( lnt, listIndex+ 1 )	)
+	{ LDEB(listIndex); return -1;	}
 
-    return docListNumberTreeNodeInsertParagraph( lnt->lntTrees+ ls, ilvl, paraNr );
+    return docListNumberTreeNodeInsertParagraph( lnt->lntTrees+ listIndex, ilvl, paraNr );
     }
 
 int docListNumberTreeInsertParagraph(	ListNumberTree *	lnt,
@@ -1046,13 +1046,13 @@ int docListNumberTreeNodeDeleteParagraph( ListNumberTreeNode *	root,
     }
 
 int docListNumberTreesDeleteParagraph(	ListNumberTrees *	lnt,
-					int			ls,
+					int			listIndex,
 					int			paraNr )
     {
-    if  ( ls < 0 || ls >= lnt->lntTreeCount )
-	{ LLDEB(ls,lnt->lntTreeCount); return -1;	}
+    if  ( listIndex < 0 || listIndex >= lnt->lntTreeCount )
+	{ LLDEB(listIndex,lnt->lntTreeCount); return -1;	}
 
-    return docListNumberTreeNodeDeleteParagraph( lnt->lntTrees+ ls, paraNr );
+    return docListNumberTreeNodeDeleteParagraph( lnt->lntTrees+ listIndex, paraNr );
     }
 
 int docListNumberTreeDeleteParagraph(	ListNumberTree *	lnt,

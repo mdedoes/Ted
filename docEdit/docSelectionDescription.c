@@ -31,6 +31,7 @@
 #   include	<docSelect.h>
 #   include	<docFields.h>
 #   include	<docAttributes.h>
+#   include	<docListUtil.h>
 
 #   include	<appDebugon.h>
 

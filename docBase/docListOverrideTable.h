@@ -9,6 +9,12 @@
 
 struct ListOverride;
 
+/**
+ * The list overrides in the document
+ * List overrides serve two purposes:
+ * - Provide an indirect reference from the paragraph to the list that it belongs to
+ * - Make it possible to override some of the formatting for particular (groups of) paragraphs in the list.
+ */
 typedef struct ListOverrideTable
     {
     struct ListOverride *	lotOverrides;

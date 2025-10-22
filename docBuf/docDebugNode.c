@@ -640,6 +640,13 @@ static void docListParaNode(	const struct BufferDocument *	bd,
 			    paraNode->biParaParticuleCount,
 			    paraNode->biParaLineCount );
 
+    if  ( pp->ppListOverride > 0 )
+	{
+	appDebug( "%*s  ls=%d ilvl=%d\n",
+			    IS* indent+ IS, "",
+			    pp->ppListOverride, pp->ppListLevel );
+	}
+
     rowNode= docGetRowNode( (BufferItem *)paraNode );
     if  ( rowNode )
 	{

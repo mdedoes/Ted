@@ -17,6 +17,7 @@
 #   include	<docDocumentProperties.h>
 #   include	<docParaProperties.h>
 #   include	<docBuf.h>
+#   include	<docListUtil.h>
 
 #   include	<appDebugon.h>
 

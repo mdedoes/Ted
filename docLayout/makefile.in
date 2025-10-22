@@ -409,8 +409,8 @@ docLayoutLineGeometry.o: \
     ../docBase/docTextParticule.h \
     ../docBuf/docCellNode.h \
     ../docBuf/docDebug.h \
+    ../docBuf/docListUtil.h \
     ../docBuf/docParaNode.h \
-    ../docBuf/docParaNodeProperties.h \
     ../docBuf/docRowNode.h \
     ../docBuf/docSectNode.h \
     ../docBuf/docStripFrame.h \
@@ -568,6 +568,7 @@ docLayoutNotes.o: \
     ../docBuf/docDocumentTree.h \
     ../docBuf/docDrawingShapeList.h \
     ../docBuf/docFields.h \
+    ../docBuf/docNodeTree.h \
     ../docBuf/docNotes.h \
     ../docBuf/docPageGrid.h \
     ../docBuf/docParaNode.h \

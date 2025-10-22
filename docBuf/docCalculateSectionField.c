@@ -6,8 +6,8 @@
 
 #   include	"docBufConfig.h"
 
-#   include	"docBuf.h"
 #   include	"docTreeNode.h"
+#   include	"docNodeTree.h"
 #   include	"docRecalculateFields.h"
 #   include	"docEvalField.h"
 

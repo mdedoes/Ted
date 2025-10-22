@@ -15,8 +15,6 @@ struct DocumentAttributeMap;
 struct TabStopList;
 struct FrameProperties;
 struct ListLevel;
-struct ListOverride;
-struct DocumentList;
 
 /************************************************************************/
 /*									*/
@@ -79,24 +77,6 @@ extern int docParaNodeAdaptPropertiesToListLevel(
 				int *				pChanged,
 				struct BufferItem *		paraNode,
 				const struct ListLevel *	ll,
-				const struct BufferDocument *	bd );
-
-extern int docGetListLevelOfParagraph(
-				int *				startPath,
-				int *				formatPath,
-				struct ListOverride **		pLo,
-				struct DocumentList **		pDl,
-				const struct ListLevel **	pLl,
-				const struct BufferItem *	paraNode,
-				const struct BufferDocument *	bd );
-
-extern int docGetListLevel(	int *				startPath,
-				int *				formatPath,
-				struct ListOverride **		pLo,
-				struct DocumentList **		pDl,
-				const struct ListLevel **	pLl,
-				int				listOverride,
-				int				listLevel,
 				const struct BufferDocument *	bd );
 
 #   endif

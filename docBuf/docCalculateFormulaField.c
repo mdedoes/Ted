@@ -8,7 +8,6 @@
 
 #   include	<stdlib.h>
 
-#   include	"docBuf.h"
 #   include	"docEvalField.h"
 #   include	"docRecalculateFields.h"
 #   include	"docCalculateFormulaValue.h"

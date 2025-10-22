@@ -149,4 +149,22 @@ extern int docGetCellBottom(	struct LayoutPosition *		lpBottom,
 extern void docDelimitTables(		struct BufferItem *	parentNode,
 					int			recursively );
 
+extern int docGetRootOfSelectionScope(	struct DocumentTree **	pTree,
+					struct BufferItem **	pBodySectNode,
+					struct BufferDocument *	bd,
+					const struct SelectionScope *	ss );
+
+extern void docDeleteDocumentTree(	struct BufferDocument *		bd,
+					struct DocumentTree *		dt );
+
+extern void docEraseDocumentTree(	struct BufferDocument *		bd,
+					struct DocumentTree *		dt );
+
+extern struct BufferItem * docMakeTreeRoot(
+				struct BufferDocument *		bd,
+				struct DocumentTree *		dt,
+				const struct BufferItem *	bodyNode,
+				int				ownerNumber,
+				int				treeType );
+
 #   endif

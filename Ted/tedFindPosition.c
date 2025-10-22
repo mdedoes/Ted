@@ -19,7 +19,6 @@
 #   include	<docSelect.h>
 #   include	<docSelectionGeometry.h>
 #   include	<docDocumentTree.h>
-#   include	<docBuf.h>
 #   include	<docPositionFindJob.h>
 #   include	<layoutContext.h>
 

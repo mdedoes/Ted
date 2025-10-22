@@ -21,10 +21,10 @@
 
 #   include	<sioGeneral.h>
 
-#   include	<docBuf.h>
 #   include	<docPageGrid.h>
 #   include	<docShape.h>
 #   include	"docHtmlWriteImpl.h"
+#   include	<docNodeTree.h>
 
 #   include	<docObject.h>
 

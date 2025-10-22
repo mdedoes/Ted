@@ -381,24 +381,18 @@ docDocumentCopyJob.o: \
 docEdit.o: \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
-    ../appUtil/utilPagedList.h \
     ../docBase/docDocumentAttributeMap.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
-    ../docBase/docInsertedObjectList.h \
     ../docBase/docLayoutPosition.h \
-    ../docBase/docListNumberTree.h \
     ../docBase/docParaProperties.h \
     ../docBase/docSelectionScope.h \
-    ../docBase/docStyleSheet.h \
     ../docBase/docTextParticule.h \
-    ../docBuf/docBuf.h \
     ../docBuf/docCellNode.h \
     ../docBuf/docDebug.h \
-    ../docBuf/docDocumentTree.h \
-    ../docBuf/docDrawingShapeList.h \
     ../docBuf/docField.h \
     ../docBuf/docFields.h \
+    ../docBuf/docListUtil.h \
     ../docBuf/docNodeTree.h \
     ../docBuf/docObjects.h \
     ../docBuf/docParaNode.h \
@@ -415,7 +409,6 @@ docEdit.o: \
     docEditOperation.h \
     ../docField/docChildFields.h \
     ../docField/docDocumentField.h \
-    ../docField/docDocumentFieldList.h \
     ../docField/docFieldInstructions.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
@@ -708,6 +701,7 @@ docEditList.o: \
     ../docBuf/docDocumentTree.h \
     ../docBuf/docDrawingShapeList.h \
     ../docBuf/docField.h \
+    ../docBuf/docListUtil.h \
     ../docBuf/docParaNode.h \
     ../docBuf/docRowNode.h \
     ../docBuf/docSectNode.h \
@@ -749,6 +743,7 @@ docEditListImpl.o: \
     ../docBuf/docBuf.h \
     ../docBuf/docDocumentTree.h \
     ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docListUtil.h \
     docEditConfig.h \
     docEditImpl.h \
     ../docField/docChildFields.h \
@@ -798,11 +793,9 @@ docEditMakeField.o: \
 docEditNodeProperties.o: \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
-    ../appUtil/utilPagedList.h \
     ../appUtil/utilPropMask.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
-    ../docBase/docInsertedObjectList.h \
     ../docBase/docLayoutPosition.h \
     ../docBase/docListDepth.h \
     ../docBase/docListNumberTree.h \
@@ -811,15 +804,13 @@ docEditNodeProperties.o: \
     ../docBase/docParaProperties.h \
     ../docBase/docSectProperties.h \
     ../docBase/docSelectionScope.h \
-    ../docBase/docStyleSheet.h \
     ../docBase/docTreeType.h \
-    ../docBuf/docBuf.h \
     ../docBuf/docCellNode.h \
     ../docBuf/docDocumentNote.h \
     ../docBuf/docDocumentTree.h \
-    ../docBuf/docDrawingShapeList.h \
     ../docBuf/docField.h \
     ../docBuf/docFields.h \
+    ../docBuf/docListUtil.h \
     ../docBuf/docNodeTree.h \
     ../docBuf/docNotes.h \
     ../docBuf/docParaBuilder.h \
@@ -834,7 +825,6 @@ docEditNodeProperties.o: \
     docEdit.h \
     docEditOperation.h \
     ../docField/docChildFields.h \
-    ../docField/docDocumentFieldList.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../utilGeo/geoDocumentPageSetup.h \
@@ -1003,22 +993,18 @@ docEditParagraph.o: \
 docEditSection.o: \
     ../appUtil/utilIndexSet.h \
     ../appUtil/utilMemoryBuffer.h \
-    ../appUtil/utilPagedList.h \
     ../docBase/docDocumentAttributeMap.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
-    ../docBase/docInsertedObjectList.h \
     ../docBase/docLayoutPosition.h \
     ../docBase/docListNumberTree.h \
     ../docBase/docNotesProperties.h \
     ../docBase/docSectProperties.h \
     ../docBase/docSelectionScope.h \
-    ../docBase/docStyleSheet.h \
     ../docBase/docTreeType.h \
-    ../docBuf/docBuf.h \
     ../docBuf/docCellNode.h \
     ../docBuf/docDocumentTree.h \
-    ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docNodeTree.h \
     ../docBuf/docParaNode.h \
     ../docBuf/docRowNode.h \
     ../docBuf/docSectHeadersFooters.h \
@@ -1030,7 +1016,6 @@ docEditSection.o: \
     docEditConfig.h \
     docEditOperation.h \
     ../docField/docChildFields.h \
-    ../docField/docDocumentFieldList.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     ../utilGeo/geoDocumentPageSetup.h \
@@ -1591,6 +1576,7 @@ docSelectionDescription.o: \
     ../docBuf/docField.h \
     ../docBuf/docFields.h \
     ../docBuf/docHeaderFooterScopes.h \
+    ../docBuf/docListUtil.h \
     ../docBuf/docNodeTree.h \
     ../docBuf/docNotes.h \
     ../docBuf/docParaNode.h \
@@ -1638,6 +1624,7 @@ docShiftIndent.o: \
     ../docBuf/docCellNode.h \
     ../docBuf/docDocumentTree.h \
     ../docBuf/docDrawingShapeList.h \
+    ../docBuf/docListUtil.h \
     ../docBuf/docNodeTree.h \
     ../docBuf/docParaNode.h \
     ../docBuf/docRowNode.h \

@@ -22,7 +22,6 @@
 #   include	<docNodeTree.h>
 #   include	<docNotes.h>
 #   include	<docDocumentNote.h>
-#   include	<docListOverride.h>
 #   include	<docEditCommand.h>
 #   include	<docRtfTraceImpl.h>
 #   include	<docDocumentField.h>
@@ -30,10 +29,10 @@
 #   include	<docEditStep.h>
 #   include	<docDocumentProperties.h>
 #   include	<appEditDocument.h>
-#   include	<docListAdmin.h>
 #   include	<docFields.h>
-#   include	<docBuf.h>
+//#   include	<docBuf.h>
 #   include	<docEditImpl.h>
+#   include	<docListUtil.h>
 
 #   include	<docDebug.h>
 #   include	<appDebugon.h>
@@ -760,36 +759,20 @@ static int tedUndoSetNewList(	UndoOperation *		uo )
     {
     int					rval= 0;
 
-    struct ListOverride *		lo;
-    DocumentList *			dl;
-
     TedEditOperation *			teo= &(uo->uoEditOperation);
     EditOperation *			eo= &(teo->teoEo);
     const EditStep *			es= uo->uoEditStep;
     const SelectionDescription *	sd= &(uo->uoSelectionDescription);
 
-    if  ( ! sd->sdHasLists	||
+    if  ( ! sd->sdHasLists		||
 	  sd->sdListOverride < 1	)
 	{ LLDEB(sd->sdHasLists,sd->sdListOverride); return -1;	}
-
-    if  ( docGetListOfParagraph( &lo, &dl,
-				    sd->sdListOverride, eo->eoDocument ) )
-	{ LDEB(1); return -1;	}
 
     if  ( docUndoUpdProps( eo, es ) )
 	{ LDEB(1); rval= -1; goto ready;	}
 
-    {
-    ListAdmin *		la= eo->eoDocument->bdProperties->dpListAdmin;
-
-    if  ( docDocumentListTableDeleteList( &(la->laListTable),
-							    lo->loListIndex ) )
-	{ LDEB(lo->loListIndex); rval= -1;	}
-
-    if  ( docListOverrideTableDeleteOverride( &(la->laListOverrideTable),
-							    lo->loIndex ) )
-	{ LDEB(lo->loIndex); rval= -1;	}
-    }
+    if  ( docListDeleteFreshList( eo->eoDocument, sd->sdListOverride ) )
+	{ LDEB(sd->sdListOverride); rval= -1;	}
 
     tedEditFinishRange( teo,
 		    es->esOldCol0, es->esOldCol1, &(es->esOldEditRange) );

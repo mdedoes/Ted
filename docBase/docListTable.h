@@ -9,6 +9,11 @@
 
 struct DocumentList;
 
+/**
+ * The lists in the document. Lists serve two purposes:
+ * - Describe the presentation of the items in the list
+ * - Keep track of the indices (numbers) of the paragraphs in the list.
+ */
 typedef struct DocumentListTable
     {
     struct DocumentList *	dltLists;

@@ -18,6 +18,7 @@
 #   include	<docFieldKind.h>
 #   include	"docSelect.h"
 #   include	"docTreeNode.h"
+#   include	"docNodeTree.h"
 #   include	<docTextLine.h>
 #   include	<docSectProperties.h>
 #   include	"docFields.h"

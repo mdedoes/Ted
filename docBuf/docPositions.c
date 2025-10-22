@@ -6,7 +6,6 @@
 
 #   include	"docBufConfig.h"
 
-#   include	"docBuf.h"
 #   include	"docTreeNode.h"
 #   include	"docSelect.h"
 #   include	<docEditPosition.h>
