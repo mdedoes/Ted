@@ -421,12 +421,7 @@ extern int psDestPdfmark(	PrintingState *			ps,
 				int				lineTop,
 				const struct MemoryBuffer *	mbRef );
 
-extern int psEmitDestPdfmark(	struct SimpleOutputStream *	sos,
-				const AffineTransform2D *	at,
-				int				lineTop,
-				const struct MemoryBuffer *	mbRef );
-
-extern void psTransformMatrix(		struct SimpleOutputStream *		sos,
+extern void psTransformMatrix(		struct SimpleOutputStream *	sos,
 					const AffineTransform2D *	at );
 
 extern void psFillRectangle(		PrintingState *		ps,
