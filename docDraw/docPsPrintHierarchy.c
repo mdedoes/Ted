@@ -99,6 +99,10 @@ int docPsPrintStartTree(	void *				vps,
 		{ LDEB(tree->dtRoot->biTreeType); return -1;	}
 	    break;
 
+	case DOCinFOOTNOTE:
+	    /* Not as an artifact */
+	    break;
+
 	default:
 	    /* What about notes and text in shapes? */
 	    SDEB(docTreeTypeStr(tree->dtRoot->biTreeType));
@@ -138,6 +142,10 @@ int docPsPrintFinishTree( void *			vps,
 	    if  ( docDrawFooterAsArtifact( ps->psPagesPrinted, dc->dcBodySectNode ) &&
 		  docPsPrintEndArtifact( ps )				)
 		{ LDEB(tree->dtRoot->biTreeType); return -1;	}
+	    break;
+
+	case DOCinFOOTNOTE:
+	    /* Not as an artifact */
 	    break;
 
 	default:

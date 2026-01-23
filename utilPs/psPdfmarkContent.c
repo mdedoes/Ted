@@ -83,35 +83,6 @@ static const char PS_PAGE_LEAF_ARRAY_NAME[]= "PTREEA%d";
 static const char PS_PAGE_ANNOTATION_ARRAY_NAME[]= "PANN%d";
 
 /************************************************************************/
-/*									*/
-/*  Mark a position in the document.					*/
-/*									*/
-/************************************************************************/
-
-int psPdfMarkPosition(		PrintingState *		ps,
-				const char *		structureType,
-				int			contentId )
-    {
-    if  ( ps->psInArtifact )
-	{ LDEB(ps->psInArtifact); return -1;	}
-
-    if  ( contentId < 0 )
-	{
-	if  ( sioOutPrintf( ps->psSos,
-		"[ /%s /MP pdfmark\n", structureType ) < 0 )
-	    { LDEB(1); return -1;	}
-	}
-    else{
-	if  ( sioOutPrintf( ps->psSos,
-		"[ /%s << /MCID %d >> /DP pdfmark\n",
-		structureType, contentId ) < 0 )
-	    { LDEB(1); return -1;	}
-	}
-
-    return 0;
-    }
-
-/************************************************************************/
 
 static int psPdfmarkSetText(
 			PrintingState *			ps,
@@ -138,12 +109,11 @@ static int psPdfmarkSetActualText(
 			const MemoryBuffer *		actualText )
     { return psPdfmarkSetText( ps, "ActualText", actualText );	}
 
-/************************************************************************/
-/*									*/
-/*  Begin/End a piece of marked content.				*/
-/*									*/
-/************************************************************************/
-
+/**
+ *  Begin a piece of marked content.
+ *  @param structureType The type of structure that we end. (For debugging)
+ *  @param contentId The id of the StructElem that we mark. (or -1 for no id)
+ */
 int psPdfBeginMarkedContent(	PrintingState *		ps,
 				const char *		structureType,
 				int			contentId,
