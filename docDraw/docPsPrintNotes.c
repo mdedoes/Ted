@@ -44,7 +44,7 @@ int docPsPrintStartNote(
 
     PrintingState *		ps= (PrintingState *)dtl->dtlThrough;
 
-    struct BufferItem *		paraNode= dtl->dtlParaNode;
+    BufferItem *		paraNode= dtl->dtlParaNode;
 
 
     int				cnt;
@@ -91,4 +91,12 @@ int docPsPrintStartNote(
     utilCleanMemoryBuffer( &mbSource );
 
     return rval;
+    }
+
+int docPsPrintFinishNote(
+			const DrawTextLine *	dtl,
+			int			x1Twips,
+			const DocumentField *	df )
+    {
+    return docPsPrintFinishLink( dtl, x1Twips, df );
     }

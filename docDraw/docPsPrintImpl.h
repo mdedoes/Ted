@@ -257,6 +257,15 @@ extern int docPsPrintFinishLink( const struct DrawTextLine *	dtl,
 				int				x1Twips,
 				const struct DocumentField *	df );
 
+extern int docPsPrintFinishNote( const struct DrawTextLine *	dtl,
+				int				x1Twips,
+				const struct DocumentField *	df );
+
+extern int docPsPrintFinishHyperlink(
+				const struct DrawTextLine *	dtl,
+				int				x1Twips,
+				const struct DocumentField *	df );
+
 extern int docPsPrintStartSymbol(
 				const struct DrawTextLine *	dtl,
 				int				x0Twips,

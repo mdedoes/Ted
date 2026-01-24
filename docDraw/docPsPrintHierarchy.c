@@ -33,6 +33,7 @@ const char STRUCTtypeTOCI[]= "TOCI";
 /* const char STRUCTtypeSECT[]= "Sect"; */
 const char STRUCTtypeTR[]= "TR";
 const char STRUCTtypeTABLE[]= "Table";
+const char STRUCTtypeNOTE[]= "Note";
 
 const char STRUCTtypeSPAN[]= "Span";
 const char STRUCTtypeLINK[]= "Link";
@@ -100,7 +101,10 @@ int docPsPrintStartTree(	void *				vps,
 	    break;
 
 	case DOCinFOOTNOTE:
-	    /* Not as an artifact */
+	case DOCinENDNOTE:
+	    if  ( docPsMarkNode( tree->dtRoot )			&&
+		  docPsPrintBeginMarkedGroup( ps, STRUCTtypeNOTE, (MemoryBuffer *)0  ) )
+		{ LLDEB(tree->dtRoot->biTreeType,tree->dtRoot->biLevel); return -1;	}
 	    break;
 
 	default:
@@ -145,7 +149,10 @@ int docPsPrintFinishTree( void *			vps,
 	    break;
 
 	case DOCinFOOTNOTE:
-	    /* Not as an artifact */
+	case DOCinENDNOTE:
+	    if  ( docPsMarkNode( tree->dtRoot )			&&
+		  docPsPrintEndMarkedGroup( ps, STRUCTtypeNOTE  ) )
+		{ LLDEB(tree->dtRoot->biTreeType,tree->dtRoot->biLevel); return -1;	}
 	    break;
 
 	default:

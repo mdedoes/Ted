@@ -73,7 +73,7 @@ int docPsPrintFinishField(	const DrawTextLine *	dtl,
 	case DOCfkCHFTN:
 	    if  ( ps->psInsideLink )
 		{
-		if  ( docPsPrintFinishLink( dtl, x1Twips, df ) )
+		if  ( docPsPrintFinishNote( dtl, x1Twips, df ) )
 		    { LDEB(df->dfKind); return -1;	}
 		}
 	    break;
@@ -81,7 +81,7 @@ int docPsPrintFinishField(	const DrawTextLine *	dtl,
 	case DOCfkHYPERLINK:
 	    if  ( ps->psInsideLink )
 		{
-		if  ( docPsPrintFinishLink( dtl, x1Twips, df ) )
+		if  ( docPsPrintFinishHyperlink( dtl, x1Twips, df ) )
 		    { LDEB(df->dfKind); return -1;	}
 		}
 	    break;
