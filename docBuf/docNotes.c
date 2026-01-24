@@ -36,6 +36,9 @@
 /*									*/
 /************************************************************************/
 
+const char * const	DOC_NOTES_FORMAT_REF= "_NREF_%d";
+const char * const	DOC_NOTES_FORMAT_DEF= "_NDEF_%d";
+
 void docInitNote(		DocumentNote *		dn )
     {
     docInitDocumentTree( &(dn->dnDocumentTree) );
@@ -426,9 +429,6 @@ int docSetNoteLinks(	MemoryBuffer *			mbTarget,
 			BufferItem *			paraNode,
 			const DocumentField *		dfChftn )
     {
-    const char *	formatRef= "_NREF_%d";
-    const char *	formatDef= "_NDEF_%d";
-
     if  ( paraNode->biTreeType != DOCinBODY )
 	{
 	struct BufferItem *	rootNode= docGetSectNode( paraNode );
@@ -438,8 +438,8 @@ int docSetNoteLinks(	MemoryBuffer *			mbTarget,
 	else{
 	    int	fieldNumber= rootNode->biSectSelectionScope.ssOwnerNumber;
 
-	    utilMemoryBufferPrintf( mbTarget, formatRef, fieldNumber+ 1 );
-	    utilMemoryBufferPrintf( mbSource, formatDef, fieldNumber+ 1 );
+	    utilMemoryBufferPrintf( mbTarget, DOC_NOTES_FORMAT_REF, fieldNumber+ 1 );
+	    utilMemoryBufferPrintf( mbSource, DOC_NOTES_FORMAT_DEF, fieldNumber+ 1 );
 
 	    return 0;
 	    }
@@ -447,8 +447,8 @@ int docSetNoteLinks(	MemoryBuffer *			mbTarget,
     else{
 	int	fieldNumber= dfChftn->dfFieldNumber;
 
-	utilMemoryBufferPrintf( mbTarget, formatDef, fieldNumber+ 1 );
-	utilMemoryBufferPrintf( mbSource, formatRef, fieldNumber+ 1 );
+	utilMemoryBufferPrintf( mbTarget, DOC_NOTES_FORMAT_DEF, fieldNumber+ 1 );
+	utilMemoryBufferPrintf( mbSource, DOC_NOTES_FORMAT_REF, fieldNumber+ 1 );
 
 	return 0;
 	}

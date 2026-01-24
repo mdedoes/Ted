@@ -14,6 +14,8 @@
 #   include	<psPrint.h>
 #   include	<docFields.h>
 #   include	<docTreeType.h>
+#   include	<sioGeneral.h>
+#   include	<sioMemory.h>
 
 #   include	<docDebug.h>
 #   include	<appDebugon.h>
@@ -99,4 +101,48 @@ int docPsPrintFinishNote(
 			const DocumentField *	df )
     {
     return docPsPrintFinishLink( dtl, x1Twips, df );
+    }
+
+static void fillStructureAttributes(
+			MemoryBuffer *			structureAttributes,
+			const char *			noteType,
+			const struct BufferItem *	rootNode )
+    {
+    int				fieldNumber= rootNode->biSectSelectionScope.ssOwnerNumber;
+    SimpleOutputStream *	sosAttributes= sioOutMemoryOpen( structureAttributes );
+
+    char			scratch[30];
+
+    sprintf( scratch, DOC_NOTES_FORMAT_DEF, fieldNumber );
+
+    sioOutPrintf( sosAttributes, "/NoteType/%s", noteType ); /* Is a PDF-UA 2 FENote attribute */
+    sioOutPrintf( sosAttributes, " /ID (%s)", scratch );
+
+    sioOutClose( sosAttributes );
+    }
+
+const char * docPsNoteNodeMark(
+		const PrintingState *		ps,
+		const struct BufferItem *	rootNode,
+		MemoryBuffer *			structureAttributes )
+    {
+    if  ( structureAttributes )
+	{
+	switch( rootNode->biTreeType )
+	    {
+	    case DOCinFOOTNOTE:
+		fillStructureAttributes( structureAttributes, "Footnote", rootNode );
+		break;
+
+	    case DOCinENDNOTE:
+		fillStructureAttributes( structureAttributes, "Endnote", rootNode );
+		break;
+
+	    default:
+		LDEB(rootNode->biTreeType);
+		return (char *)0;
+	    }
+	}
+
+    return STRUCTtypeNOTE;
     }
