@@ -411,6 +411,16 @@ DocumentNote *	docGetNoteOfField(	const DocumentField *	dfNote,
     return (DocumentNote *)0;
     }
 
+/**
+ * Collect the internal destinations for the links that go back and forth
+ * from the reference in the document body and the link back from the 
+ * note back to the reference.
+ * @param mbTarget receives the target of the link. Use it to create a hyperlink
+ * @param mbSource receives the source of the link. Use is to create a bookmark
+ * @param paraNode The paragraph that holds the field. The type of tree determines
+ *	the direction of the links.
+ * @param dfChftn The note field
+ */
 int docSetNoteLinks(	MemoryBuffer *			mbTarget,
 			MemoryBuffer *			mbSource,
 			BufferItem *			paraNode,

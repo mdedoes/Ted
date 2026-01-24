@@ -425,36 +425,23 @@ int psSetCatalogProperty(	PrintingState *		ps,
     return 0;
     }
 
-/************************************************************************/
-/*									*/
-/*  Insert the destination of a pdfmark jump in the Printout.		*/
-/*									*/
-/************************************************************************/
-
 /**
  * Insert the destination of a pdfmark jump in the Printout.
- * @param at The current page transform
- * @param at The top y coordinate of the current text line
+ *
+ * @param lineTop The top y coordinate of the current text line
  * @param mbRef The name of the destination (reference)
  */
 int psDestPdfmark(		PrintingState *		ps,
 				int			lineTop,
 				const MemoryBuffer *	mbRef )
     {
-    int			top;
-    int			x= 0;
-    int			y= lineTop;
-
-    top= AT2_Y( x, y, &(ps->psCurrentTransform) );
+    const int	x= 0;
+    const int	y= lineTop;
+    const int	top= AT2_Y( x, y, &(ps->psCurrentTransform) );
 
     sioOutPrintf( ps->psSos, "[" );
-
     psEmitDestEntry( ps->psSos, mbRef );
-    sioOutPrintf( ps->psSos, "\n" );
-
-    sioOutPrintf( ps->psSos, "  /View [ /XYZ null %d null ]\n", top );
-
-    sioOutPrintf( ps->psSos, "/DEST pdfmark\n" );
+    sioOutPrintf( ps->psSos, " /View [ /XYZ null %d null ] /DEST pdfmark\n", top );
 
     return 0;
     }

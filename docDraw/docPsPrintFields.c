@@ -30,34 +30,32 @@ int docPsPrintStartField(	const DrawTextLine *		dtl,
     const TextLine *		tl= dtl->dtlTextLine;
     int				lineTop= tl->tlTopPosition.lpPageYTwips;
 
-    if  ( df->dfKind == DOCfkBOOKMARK )
+    switch( df->dfKind )
 	{
-	if  ( docPsPrintStartBookmark( dtl, df, lineTop ) )
-	    { LDEB(1); return -1;	}
-	}
+	case DOCfkBOOKMARK:
+	    if  ( docPsPrintStartBookmark( dtl, df, lineTop ) )
+		{ LDEB(df->dfKind); return -1;	}
+	    break;
 
-    if  ( df->dfKind == DOCfkCHFTN )
-	{
-	if  ( docPsPrintStartNote( dtl, part, x0Twips, df, lineTop ) )
-	    { LDEB(1); return -1;	}
-	}
+	case DOCfkCHFTN:
+	    if  ( docPsPrintStartNote( dtl, part, x0Twips, df, lineTop ) )
+		{ LDEB(df->dfKind); return -1;	}
+	    break;
 
-    if  ( df->dfKind == DOCfkHYPERLINK )
-	{
-	if  ( docPsPrintStartHyperlink( dtl, x0Twips, df ) )
-	    { LDEB(1); return -1;	}
-	}
+	case DOCfkHYPERLINK:
+	    if  ( docPsPrintStartHyperlink( dtl, x0Twips, df ) )
+		{ LDEB(df->dfKind); return -1;	}
+	    break;
 
-    if  ( df->dfKind == DOCfkSYMBOL )
-	{
-	if  ( docPsPrintStartSymbol( dtl, x0Twips, df ) )
-	    { LDEB(1); return -1;	}
-	}
+	case DOCfkSYMBOL:
+	    if  ( docPsPrintStartSymbol( dtl, x0Twips, df ) )
+		{ LDEB(df->dfKind); return -1;	}
+	    break;
 
-    if  ( df->dfKind == DOCfkLISTTEXT )
-	{
-	if  ( docPsPrintStartListTextField( dtl, df ) )
-	    { LDEB(1); return -1;	}
+	case DOCfkLISTTEXT:
+	    if  ( docPsPrintStartListTextField( dtl, df ) )
+		{ LDEB(df->dfKind); return -1;	}
+	    break;
 	}
 
     return 0;
@@ -70,41 +68,36 @@ int docPsPrintFinishField(	const DrawTextLine *	dtl,
     {
     PrintingState *		ps= (PrintingState *)dtl->dtlThrough;
 
-    if  ( df->dfKind == DOCfkHYPERLINK )
+    switch( df->dfKind )
 	{
-	if  ( ps->psInsideLink )
-	    {
-	    if  ( docPsPrintFinishLink( dtl, x1Twips, df ) )
-		{ LDEB(1); return -1;	}
-	    }
+	case DOCfkCHFTN:
+	    if  ( ps->psInsideLink )
+		{
+		if  ( docPsPrintFinishLink( dtl, x1Twips, df ) )
+		    { LDEB(df->dfKind); return -1;	}
+		}
+	    break;
 
-	return 0;
-	}
+	case DOCfkHYPERLINK:
+	    if  ( ps->psInsideLink )
+		{
+		if  ( docPsPrintFinishLink( dtl, x1Twips, df ) )
+		    { LDEB(df->dfKind); return -1;	}
+		}
+	    break;
 
-    if  ( df->dfKind == DOCfkCHFTN )
-	{
-	/* TODO Make notes work correctly */
-	ps->psInsideLink= 0;
-	return 0;
-	}
+	case DOCfkSYMBOL:
+	    if  ( docPsPrintFinishSymbol( dtl, df ) )
+		{ LDEB(df->dfKind); return -1;	}
+	    break;
 
-    if  ( df->dfKind == DOCfkSYMBOL )
-	{
-	if  ( docPsPrintFinishSymbol( dtl, df ) )
-	    { LDEB(1); return -1;	}
-
-	return 0;
-	}
-
-    if  ( df->dfKind == DOCfkLISTTEXT )
-	{
-	if  ( ps->psInsideListLabel )
-	    {
-	    if  ( docPsPrintFinishListTextField( dtl, df ) )
-		{ LDEB(1); return -1;	}
-	    }
-
-	return 0;
+	case DOCfkLISTTEXT:
+	    if  ( ps->psInsideListLabel )
+		{
+		if  ( docPsPrintFinishListTextField( dtl, df ) )
+		    { LDEB(df->dfKind); return -1;	}
+		}
+	    break;
 	}
 
     return 0;

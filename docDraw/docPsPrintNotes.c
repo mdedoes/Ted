@@ -18,6 +18,21 @@
 #   include	<docDebug.h>
 #   include	<appDebugon.h>
 
+static int docPsPrintNoteLinkTitle(	MemoryBuffer *		mbTitle,
+					struct BufferDocument *	bd,
+					const DocumentField *	df )
+    {
+    struct DocumentNote *	dn= docGetNoteOfField( df, bd );
+
+    if  ( dn )
+	{
+	if  ( docCollectNoteTitle( mbTitle, dn, bd ) )
+	    { LDEB(1); return -1;	}
+	}
+
+    return 0;
+    }
+
 int docPsPrintStartNote(
 		    const DrawTextLine *	dtl,
 		    int				part,
@@ -36,52 +51,44 @@ int docPsPrintStartNote(
     int				closed;
 
     MemoryBuffer		mbSource;
-    MemoryBuffer		mbTarget;
 
     utilInitMemoryBuffer( &mbSource );
-    utilInitMemoryBuffer( &mbTarget );
 
+    /* Sanity check */
     cnt= docCountParticulesInFieldFwd( paraNode, &closed, part,
 				    paraNode->biParaParticuleCount );
     if  ( cnt < 0 )
 	{ LDEB(cnt); }
 
-    if  ( docSetNoteLinks( &mbTarget, &mbSource, paraNode, df ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-
-    /* Include destination to jump to from the target */
-    psDestPdfmark( ps, lineTop, &mbSource );
-
-    /* Remember what the target is to use that at the end of the link */
-    utilEmptyMemoryBuffer( &(ps->psAnnotationDictionaryName) );
-    utilEmptyMemoryBuffer( &(ps->psLinkFile) );
-
-    utilEmptyMemoryBuffer( &(ps->psLinkTitle) );
-    if  ( paraNode->biTreeType == DOCinBODY )
-	{
-	struct DocumentNote *	dn;
-
-	dn= docGetNoteOfField( df, dtl->dtlDocument );
-	if  ( dn )
-	    {
-	    if  ( docCollectNoteTitle( &(ps->psLinkTitle),
-						    dn, dtl->dtlDocument ) )
-		{ LDEB(1); rval= -1;	}
-	    }
-	}
-
-    if  ( utilCopyMemoryBuffer( &(ps->psLinkMark), &mbTarget ) )
-	{ LDEB(1); rval= -1; goto ready;	}
-
     ps->psInsideLink= 1;
     ps->psLinkParticulesDone= 0;
     ps->psLinkRectLeft= x0Twips;
 
+    /* Remember what the target is to use that at the end of the link */
+    utilEmptyMemoryBuffer( &(ps->psAnnotationDictionaryName) );
+    utilEmptyMemoryBuffer( &(ps->psLinkTitle) );
+    utilEmptyMemoryBuffer( &(ps->psLinkFile) );
+
+    /* Retrieve bookmark names for links back and forth */
+    if  ( docSetNoteLinks( &(ps->psLinkMark), &mbSource, paraNode, df ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+
+    /* Collect the title for the link */
+    if  ( paraNode->biTreeType == DOCinBODY					&&
+	  docPsPrintNoteLinkTitle( &(ps->psLinkTitle), dtl->dtlDocument, df )	)
+	{ LDEB(1); rval= -1;	}
+
+    if  ( ps->psTagDocumentStructure	&&
+	  ! ps->psInArtifact		&&
+	  docPsPrintFinishInline( ps )	)
+	{ LDEB(1); rval= -1; goto ready;	}
+
+    /* Include source bookmark as the destination for the jump back from the target */
+    psDestPdfmark( ps, lineTop, &mbSource );
+
   ready:
 
     utilCleanMemoryBuffer( &mbSource );
-    utilCleanMemoryBuffer( &mbTarget );
 
     return rval;
     }
-

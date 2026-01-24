@@ -1893,10 +1893,8 @@ tedFindPosition.o: \
     ../appUtil/utilColor.h \
     ../appUtil/utilMemoryBuffer.h \
     ../docBase/docLayoutPosition.h \
-    ../docBase/docListNumberTree.h \
     ../docBase/docSelectionScope.h \
     ../docBuf/docCellNode.h \
-    ../docBuf/docDocumentTree.h \
     ../docBuf/docNodeTree.h \
     ../docBuf/docParaNode.h \
     ../docBuf/docRowNode.h \
@@ -1906,7 +1904,6 @@ tedFindPosition.o: \
     ../docDraw/docDraw.h \
     ../docDraw/docPositionFindJob.h \
     ../docDraw/docSelectionGeometry.h \
-    ../docField/docChildFields.h \
     ../docFont/fontMatchFont.h \
     ../docLayout/docLayoutDocumentTree.h \
     ../docLayout/layoutContext.h \

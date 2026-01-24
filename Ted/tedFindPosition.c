@@ -18,7 +18,6 @@
 #   include	<docTreeNode.h>
 #   include	<docSelect.h>
 #   include	<docSelectionGeometry.h>
-#   include	<docDocumentTree.h>
 #   include	<docPositionFindJob.h>
 #   include	<layoutContext.h>
 
