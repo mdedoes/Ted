@@ -11,6 +11,7 @@
 #   include	<docTreeNode.h>
 #   include	<docNotes.h>
 #   include	<docDocumentField.h>
+#   include	<docSelect.h>
 #   include	<psPrint.h>
 #   include	<docFields.h>
 #   include	<docTreeType.h>
@@ -21,15 +22,31 @@
 #   include	<appDebugon.h>
 
 static int docPsPrintNoteLinkTitle(	MemoryBuffer *		mbTitle,
-					struct BufferDocument *	bd,
+					const DrawTextLine *	dtl,
 					const DocumentField *	df )
     {
+    struct BufferDocument *	bd= dtl->dtlDocument;
+    BufferItem *		paraNode= dtl->dtlParaNode;
+    PrintingState *		ps= (PrintingState *)dtl->dtlThrough;
     struct DocumentNote *	dn= docGetNoteOfField( df, bd );
 
-    if  ( dn )
+    if  ( paraNode->biTreeType == DOCinBODY )
 	{
-	if  ( docCollectNoteTitle( mbTitle, dn, bd ) )
-	    { LDEB(1); return -1;	}
+	if  ( dn )
+	    {
+	    if  ( docCollectNoteTitle( mbTitle, dn, bd ) )
+		{ LDEB(1); return -1;	}
+	    }
+	}
+    else{
+	DocumentSelection	dsInside;
+
+	if  ( ! docDelimitFieldInTree( &dsInside, (DocumentSelection *)0,
+					(int *)0, (int *)0, dtl->dtlTree, df ) )
+	    {
+	    if  ( docCollectReference( &(ps->psLinkTitle), &dsInside, dtl->dtlDocument ) )
+		{ LDEB(1); return -1;	}
+	    }
 	}
 
     return 0;
@@ -76,8 +93,7 @@ int docPsPrintStartNote(
 	{ LDEB(1); rval= -1; goto ready;	}
 
     /* Collect the title for the link */
-    if  ( paraNode->biTreeType == DOCinBODY					&&
-	  docPsPrintNoteLinkTitle( &(ps->psLinkTitle), dtl->dtlDocument, df )	)
+    if  ( docPsPrintNoteLinkTitle( &(ps->psLinkTitle), dtl, df ) )
 	{ LDEB(1); rval= -1;	}
 
     if  ( ps->psTagDocumentStructure	&&
@@ -117,6 +133,11 @@ static void fillStructureAttributes(
 
     sioOutPrintf( sosAttributes, "/NoteType/%s", noteType ); /* Is a PDF-UA 2 FENote attribute */
     sioOutPrintf( sosAttributes, " /ID (%s)", scratch );
+
+    if  ( rootNode->biTreeType != DOCinBODY )
+	{
+	sioOutPrintf( sosAttributes, " /A <</Placement/Block /O/Layout>>" );
+	}
 
     sioOutClose( sosAttributes );
     }

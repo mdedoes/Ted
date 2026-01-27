@@ -682,13 +682,11 @@ docPsPrintHyperlink.o: \
     ../docBase/docEditRange.h \
     ../docBase/docLayoutPosition.h \
     ../docBase/docSelectionScope.h \
-    ../docBase/docTextLine.h \
     ../docBuf/docDebug.h \
     ../docBuf/docFields.h \
     ../docBuf/docSelect.h \
     docDrawConfig.h \
     docDrawLine.h \
-    ../docField/docBookmarkField.h \
     ../docField/docChildFields.h \
     ../docField/docDocumentField.h \
     ../docField/docFieldInstructions.h \
@@ -779,15 +777,12 @@ docPsPrintLink.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docTextLine.h \
     ../docBuf/docDebug.h \
-    ../docBuf/docFields.h \
-    ../docBuf/docSelect.h \
     docDrawConfig.h \
     docDrawLine.h \
     ../docField/docBookmarkField.h \
     ../docField/docChildFields.h \
     ../docField/docDocumentField.h \
     ../docField/docFieldInstructions.h \
-    ../docField/docHyperlinkField.h \
     docPsPrintImpl.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
@@ -838,6 +833,8 @@ docPsPrintList.o: \
     docPsPrintList.c
 
 docPsPrintNotes.o: \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/sioMemory.h \
     ../appUtil/utilMemoryBuffer.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
@@ -851,6 +848,7 @@ docPsPrintNotes.o: \
     ../docBuf/docParaNode.h \
     ../docBuf/docRowNode.h \
     ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
     ../docBuf/docTreeNode.h \
     docDrawConfig.h \
     docDrawLine.h \
