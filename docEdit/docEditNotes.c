@@ -167,6 +167,15 @@ int docEditMakeNote(	DocumentNote **			pDn,
 	}
 
     /*  5  */
+    pb= docOpenParagraphBuilder( bd,
+		&(dn->dnDocumentTree.dtRoot->biSectSelectionScope),
+		&(dn->dnDocumentTree) );
+    if  ( ! pb )
+	{ XDEB(pb); rval= -1; goto ready;	}
+
+    if  ( docParaBuilderStartExistingParagraph( pb, noteParaNode, 0 ) )
+	{ LDEB(1); rval= -1; goto ready;	}
+
     if  ( docInsertParaHeadField( &dfHead, &dsInsideHead, &dsAroundHead,
 		    &partHead, &partTail,
 		    pb, fieldKind, textAttributeNumberSuper ) )

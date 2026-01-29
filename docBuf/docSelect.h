@@ -251,10 +251,10 @@ extern int docTableRectangleSelection(	struct DocumentSelection *	ds,
 					const struct TableRectangle *	tr );
 
 extern int docParaNextWord(	const struct BufferItem *	paraNode,
-				int			stroff );
+				int				stroff );
 
 extern int docParaPrevWord(	const struct BufferItem *	paraNode,
-				int			stroff );
+				int				stroff );
 
 extern int docParaHeadOfWord(	int *				pStroff,
 				const struct BufferItem *	paraNode,

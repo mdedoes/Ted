@@ -136,7 +136,7 @@ static void fillStructureAttributes(
 
     if  ( rootNode->biTreeType != DOCinBODY )
 	{
-	sioOutPrintf( sosAttributes, " /A <</Placement/Block /O/Layout>>" );
+	sioOutPrintf( sosAttributes, " /Placement/Block /O/Layout" );
 	}
 
     sioOutClose( sosAttributes );

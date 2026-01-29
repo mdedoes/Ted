@@ -458,27 +458,25 @@ int docCollectNoteTitle(	MemoryBuffer *		mbTitle,
 				const DocumentNote *	dn,
 				struct BufferDocument *	bd )
     {
-    DocumentPosition	dpLast;
+    DocumentPosition	dpHead;
     DocumentSelection	dsTail;
 
-    if  ( docTailPosition( &dpLast, dn->dnDocumentTree.dtRoot ) )
+    if  ( docHeadPosition( &dpHead, dn->dnDocumentTree.dtRoot ) )
 	{ LDEB(1); return -1;	}
     else{
-	int	paraNr= docNumberOfParagraph( dpLast.dpNode );
+	docAvoidParaHeadField( &dpHead, (int *)0, bd );
 
-	if  ( paraNr == 1 )
-	    {
-	    dpLast.dpStroff= 0;
-	    docAvoidParaHeadField( &dpLast, (int *)0, bd );
+	docSetParaSelection( &dsTail,
+		dpHead.dpNode, 1,
+		dpHead.dpStroff,
+		docParaStrlen( dpHead.dpNode )- dpHead.dpStroff );
 
-	    docSetParaSelection( &dsTail,
-		    dpLast.dpNode, 1,
-		    dpLast.dpStroff,
-		    docParaStrlen( dpLast.dpNode )- dpLast.dpStroff );
+	if  ( docCollectReference( mbTitle, &dsTail, bd ) )
+	    { LDEB(1); return -1;	}
 
-	    if  ( docCollectReference( mbTitle, &dsTail, bd ) )
-		{ LDEB(1); return -1;	}
-	    }
+	if  ( docNextParagraph( dpHead.dpNode )			&&
+	      utilMemoryBufferAppendString( mbTitle, " ..." )	)
+	    { LDEB(1); return -1;	}
 	}
 
     return 0;
