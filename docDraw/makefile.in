@@ -46,7 +46,7 @@ CFLAGS=	\
 
 #CFLAGS= -g -O2 $(WFLAGS) $(INCLUDES)
 
-# 43!!obs
+# 44!!obs
 OBS	=	\
 		docSelectionGeometry.o\
 		docScreenRuler.o\
@@ -74,6 +74,7 @@ OBS	=	\
 		docPsPrintLink.o\
 		docPsPrintLineStructure.o\
 		docPsPrintImage.o\
+		docPsPrintHyperlink.o\
 		docPsPrintHierarchy.o\
 		docPsPrintFields.o\
 		docPsPrint.o\
@@ -675,6 +676,32 @@ docPsPrintHierarchy.o: \
     ../utilPs/textAttribute.h \
     docPsPrintHierarchy.c
 
+docPsPrintHyperlink.o: \
+    ../appUtil/utilMemoryBuffer.h \
+    ../docBase/docEditPosition.h \
+    ../docBase/docEditRange.h \
+    ../docBase/docLayoutPosition.h \
+    ../docBase/docSelectionScope.h \
+    ../docBuf/docDebug.h \
+    ../docBuf/docFields.h \
+    ../docBuf/docSelect.h \
+    docDrawConfig.h \
+    docDrawLine.h \
+    ../docField/docChildFields.h \
+    ../docField/docDocumentField.h \
+    ../docField/docFieldInstructions.h \
+    ../docField/docHyperlinkField.h \
+    docPsPrintImpl.h \
+    ../include/appDebug.h \
+    ../include/appDebugon.h \
+    ../utilGeo/geoAffineTransform.h \
+    ../utilGeo/geoDocumentPageSetup.h \
+    ../utilGeo/geoRectangle.h \
+    ../utilGeo/geoRectangleOffsets.h \
+    ../utilPs/psNup.h \
+    ../utilPs/psPrint.h \
+    docPsPrintHyperlink.c
+
 docPsPrintImage.o: \
     ../appUtil/sioGeneral.h \
     ../appUtil/sioHexedMemory.h \
@@ -750,15 +777,12 @@ docPsPrintLink.o: \
     ../docBase/docSelectionScope.h \
     ../docBase/docTextLine.h \
     ../docBuf/docDebug.h \
-    ../docBuf/docFields.h \
-    ../docBuf/docSelect.h \
     docDrawConfig.h \
     docDrawLine.h \
     ../docField/docBookmarkField.h \
     ../docField/docChildFields.h \
     ../docField/docDocumentField.h \
     ../docField/docFieldInstructions.h \
-    ../docField/docHyperlinkField.h \
     docPsPrintImpl.h \
     ../include/appDebug.h \
     ../include/appDebugon.h \
@@ -809,6 +833,8 @@ docPsPrintList.o: \
     docPsPrintList.c
 
 docPsPrintNotes.o: \
+    ../appUtil/sioGeneral.h \
+    ../appUtil/sioMemory.h \
     ../appUtil/utilMemoryBuffer.h \
     ../docBase/docEditPosition.h \
     ../docBase/docEditRange.h \
@@ -822,6 +848,7 @@ docPsPrintNotes.o: \
     ../docBuf/docParaNode.h \
     ../docBuf/docRowNode.h \
     ../docBuf/docSectNode.h \
+    ../docBuf/docSelect.h \
     ../docBuf/docTreeNode.h \
     docDrawConfig.h \
     docDrawLine.h \

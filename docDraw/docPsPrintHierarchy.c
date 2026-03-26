@@ -33,6 +33,7 @@ const char STRUCTtypeTOCI[]= "TOCI";
 /* const char STRUCTtypeSECT[]= "Sect"; */
 const char STRUCTtypeTR[]= "TR";
 const char STRUCTtypeTABLE[]= "Table";
+const char STRUCTtypeNOTE[]= "Note";
 
 const char STRUCTtypeSPAN[]= "Span";
 const char STRUCTtypeLINK[]= "Link";
@@ -63,7 +64,12 @@ int docPsPrintStartTree(	void *				vps,
 				struct DrawingContext *		dc,
 				struct DocumentTree *		tree )
     {
+    int			rval= 0;
     PrintingState *	ps= (PrintingState *)vps;
+
+    MemoryBuffer	structureAttributes;
+
+    utilInitMemoryBuffer( &structureAttributes );
 
     if  ( ps->psInsideLink || ps->psInsideListLabel )
 	{
@@ -86,7 +92,7 @@ int docPsPrintStartTree(	void *				vps,
 	case DOCinLAST_HEADER:
 	    if  ( docDrawHeaderAsArtifact( ps->psPagesPrinted, dc->dcBodySectNode ) &&
 		  docPsPrintBeginTypedArtifact( ps, "Pagination", "Header" )	)
-		{ LDEB(tree->dtRoot->biTreeType); return -1;	}
+		{ LDEB(tree->dtRoot->biTreeType); rval= -1; goto ready;	}
 	    break;
 
 	/* See ISO 14289-1, 7.8 and ISO 32000-1:2008, 14.8.2.2.2, Table 330 */
@@ -96,18 +102,33 @@ int docPsPrintStartTree(	void *				vps,
 	case DOCinLAST_FOOTER:
 	    if  ( docDrawFooterAsArtifact( ps->psPagesPrinted, dc->dcBodySectNode ) &&
 		  docPsPrintBeginTypedArtifact( ps, "Pagination", "Footer" )	)
-		{ LDEB(tree->dtRoot->biTreeType); return -1;	}
+		{ LDEB(tree->dtRoot->biTreeType); rval= -1; goto ready;	}
+	    break;
+
+	case DOCinFOOTNOTE:
+	case DOCinENDNOTE:
+	    if  ( docPsMarkNode( tree->dtRoot ) )
+		{
+		const char *	nodeMark= docPsNoteNodeMark( ps, tree->dtRoot, &structureAttributes );
+
+		if  ( nodeMark								&&
+		      docPsPrintBeginMarkedGroup( ps, nodeMark, &structureAttributes  ) )
+		    { SDEB(nodeMark); rval= -1; goto ready;	}
+		}
 	    break;
 
 	default:
-	    /* What about notes and text in shapes? */
+	    /* What about text in shapes? */
 	    SDEB(docTreeTypeStr(tree->dtRoot->biTreeType));
 	    if  ( docPsPrintBeginArtifact( ps )	)
-		{ LDEB(tree->dtRoot->biTreeType); return -1;	}
+		{ LDEB(tree->dtRoot->biTreeType); rval= -1; goto ready;	}
 	    break;
 	}
 
-    return 0;
+  ready:
+    utilCleanMemoryBuffer( &structureAttributes );
+
+    return rval;
     }
 
 int docPsPrintFinishTree( void *			vps,
@@ -140,8 +161,15 @@ int docPsPrintFinishTree( void *			vps,
 		{ LDEB(tree->dtRoot->biTreeType); return -1;	}
 	    break;
 
+	case DOCinFOOTNOTE:
+	case DOCinENDNOTE:
+	    if  ( docPsMarkNode( tree->dtRoot )			&&
+		  docPsPrintEndMarkedGroup( ps, STRUCTtypeNOTE  ) )
+		{ LLDEB(tree->dtRoot->biTreeType,tree->dtRoot->biLevel); return -1;	}
+	    break;
+
 	default:
-	    /* What about notes and text in shapes? */
+	    /* What about text in shapes? */
 	    if  ( docPsPrintEndArtifact( ps ) )
 		{ LDEB(tree->dtRoot->biTreeType); return -1;	}
 	    break;

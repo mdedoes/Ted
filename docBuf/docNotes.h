@@ -26,6 +26,9 @@ struct MemoryBuffer;
 /*									*/
 /************************************************************************/
 
+extern const char * const	DOC_NOTES_FORMAT_REF;
+extern const char * const	DOC_NOTES_FORMAT_DEF;
+
 extern int docInsertNote(	struct DocumentNote **		pDn,
 				struct BufferDocument *		bd,
 				struct DocumentField *		dfNote,

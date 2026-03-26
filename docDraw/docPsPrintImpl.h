@@ -40,6 +40,7 @@ extern const char STRUCTtypeTOC[];
 extern const char STRUCTtypeTOCI[];
 extern const char STRUCTtypeTR[];
 extern const char STRUCTtypeTABLE[];
+extern const char STRUCTtypeNOTE[];
 extern const char STRUCTtypeSPAN[];
 extern const char STRUCTtypeLINK[];
 extern const char STRUCTtypeLBL[];
@@ -257,6 +258,15 @@ extern int docPsPrintFinishLink( const struct DrawTextLine *	dtl,
 				int				x1Twips,
 				const struct DocumentField *	df );
 
+extern int docPsPrintFinishNote( const struct DrawTextLine *	dtl,
+				int				x1Twips,
+				const struct DocumentField *	df );
+
+extern int docPsPrintFinishHyperlink(
+				const struct DrawTextLine *	dtl,
+				int				x1Twips,
+				const struct DocumentField *	df );
+
 extern int docPsPrintStartSymbol(
 				const struct DrawTextLine *	dtl,
 				int				x0Twips,
@@ -330,6 +340,10 @@ extern int docPsPrintStartNote(	const struct DrawTextLine *	dtl,
 				int				x0Twips,
 				const struct DocumentField *	df,
 				int				lineTop );
+extern const char * docPsNoteNodeMark(
+		const struct PrintingState *	ps,
+		const struct BufferItem *	rootNode,
+		struct MemoryBuffer *		structureAttributes );
 
 extern int docPsPrintOpenParaTocLevels(	struct PrintingState *		ps,
 					const struct BufferItem *	paraNode,

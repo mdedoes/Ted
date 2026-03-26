@@ -115,35 +115,6 @@ static int psEmitDestEntry(
 
 /************************************************************************/
 /*									*/
-/*  Insert the destination of a pdfmark jump in the Printout.		*/
-/*									*/
-/************************************************************************/
-
-int psEmitDestPdfmark(		SimpleOutputStream *		sos,
-				const AffineTransform2D *	at,
-				int				lineTop,
-				const MemoryBuffer *		mbRef )
-    {
-    int			top;
-    int			x= 0;
-    int			y= lineTop;
-
-    top= AT2_Y( x, y, at );
-
-    sioOutPrintf( sos, "[" );
-
-    psEmitDestEntry( sos, mbRef );
-    sioOutPrintf( sos, "\n" );
-
-    sioOutPrintf( sos, "  /View [ /XYZ null %d null ]\n", top );
-
-    sioOutPrintf( sos, "/DEST pdfmark\n" );
-
-    return 0;
-    }
-
-/************************************************************************/
-/*									*/
 /*  Write links to be picked up by the distiller.			*/
 /*									*/
 /************************************************************************/
@@ -454,17 +425,24 @@ int psSetCatalogProperty(	PrintingState *		ps,
     return 0;
     }
 
-/************************************************************************/
-/*									*/
-/*  Insert the destination of a pdfmark jump in the Printout.		*/
-/*									*/
-/************************************************************************/
-
+/**
+ * Insert the destination of a pdfmark jump in the Printout.
+ *
+ * @param lineTop The top y coordinate of the current text line
+ * @param mbRef The name of the destination (reference)
+ */
 int psDestPdfmark(		PrintingState *		ps,
 				int			lineTop,
 				const MemoryBuffer *	mbRef )
     {
-    psEmitDestPdfmark( ps->psSos, &(ps->psCurrentTransform), lineTop, mbRef );
+    const int	x= 0;
+    const int	y= lineTop;
+    const int	top= AT2_Y( x, y, &(ps->psCurrentTransform) );
+
+    sioOutPrintf( ps->psSos, "[" );
+    psEmitDestEntry( ps->psSos, mbRef );
+    sioOutPrintf( ps->psSos, " /View [ /XYZ null %d null ] /DEST pdfmark\n", top );
+
     return 0;
     }
 

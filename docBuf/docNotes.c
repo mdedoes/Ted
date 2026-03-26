@@ -36,6 +36,9 @@
 /*									*/
 /************************************************************************/
 
+const char * const	DOC_NOTES_FORMAT_REF= "_NREF_%d";
+const char * const	DOC_NOTES_FORMAT_DEF= "_NDEF_%d";
+
 void docInitNote(		DocumentNote *		dn )
     {
     docInitDocumentTree( &(dn->dnDocumentTree) );
@@ -411,14 +414,21 @@ DocumentNote *	docGetNoteOfField(	const DocumentField *	dfNote,
     return (DocumentNote *)0;
     }
 
+/**
+ * Collect the internal destinations for the links that go back and forth
+ * from the reference in the document body and the link back from the 
+ * note back to the reference.
+ * @param mbTarget receives the target of the link. Use it to create a hyperlink
+ * @param mbSource receives the source of the link. Use is to create a bookmark
+ * @param paraNode The paragraph that holds the field. The type of tree determines
+ *	the direction of the links.
+ * @param dfChftn The note field
+ */
 int docSetNoteLinks(	MemoryBuffer *			mbTarget,
 			MemoryBuffer *			mbSource,
 			BufferItem *			paraNode,
 			const DocumentField *		dfChftn )
     {
-    const char *	formatRef= "_NREF_%d";
-    const char *	formatDef= "_NDEF_%d";
-
     if  ( paraNode->biTreeType != DOCinBODY )
 	{
 	struct BufferItem *	rootNode= docGetSectNode( paraNode );
@@ -428,8 +438,8 @@ int docSetNoteLinks(	MemoryBuffer *			mbTarget,
 	else{
 	    int	fieldNumber= rootNode->biSectSelectionScope.ssOwnerNumber;
 
-	    utilMemoryBufferPrintf( mbTarget, formatRef, fieldNumber+ 1 );
-	    utilMemoryBufferPrintf( mbSource, formatDef, fieldNumber+ 1 );
+	    utilMemoryBufferPrintf( mbTarget, DOC_NOTES_FORMAT_REF, fieldNumber+ 1 );
+	    utilMemoryBufferPrintf( mbSource, DOC_NOTES_FORMAT_DEF, fieldNumber+ 1 );
 
 	    return 0;
 	    }
@@ -437,8 +447,8 @@ int docSetNoteLinks(	MemoryBuffer *			mbTarget,
     else{
 	int	fieldNumber= dfChftn->dfFieldNumber;
 
-	utilMemoryBufferPrintf( mbTarget, formatDef, fieldNumber+ 1 );
-	utilMemoryBufferPrintf( mbSource, formatRef, fieldNumber+ 1 );
+	utilMemoryBufferPrintf( mbTarget, DOC_NOTES_FORMAT_DEF, fieldNumber+ 1 );
+	utilMemoryBufferPrintf( mbSource, DOC_NOTES_FORMAT_REF, fieldNumber+ 1 );
 
 	return 0;
 	}
@@ -448,27 +458,25 @@ int docCollectNoteTitle(	MemoryBuffer *		mbTitle,
 				const DocumentNote *	dn,
 				struct BufferDocument *	bd )
     {
-    DocumentPosition	dpLast;
+    DocumentPosition	dpHead;
     DocumentSelection	dsTail;
 
-    if  ( docTailPosition( &dpLast, dn->dnDocumentTree.dtRoot ) )
+    if  ( docHeadPosition( &dpHead, dn->dnDocumentTree.dtRoot ) )
 	{ LDEB(1); return -1;	}
     else{
-	int	paraNr= docNumberOfParagraph( dpLast.dpNode );
+	docAvoidParaHeadField( &dpHead, (int *)0, bd );
 
-	if  ( paraNr == 1 )
-	    {
-	    dpLast.dpStroff= 0;
-	    docAvoidParaHeadField( &dpLast, (int *)0, bd );
+	docSetParaSelection( &dsTail,
+		dpHead.dpNode, 1,
+		dpHead.dpStroff,
+		docParaStrlen( dpHead.dpNode )- dpHead.dpStroff );
 
-	    docSetParaSelection( &dsTail,
-		    dpLast.dpNode, 1,
-		    dpLast.dpStroff,
-		    docParaStrlen( dpLast.dpNode )- dpLast.dpStroff );
+	if  ( docCollectReference( mbTitle, &dsTail, bd ) )
+	    { LDEB(1); return -1;	}
 
-	    if  ( docCollectReference( mbTitle, &dsTail, bd ) )
-		{ LDEB(1); return -1;	}
-	    }
+	if  ( docNextParagraph( dpHead.dpNode )			&&
+	      utilMemoryBufferAppendString( mbTitle, " ..." )	)
+	    { LDEB(1); return -1;	}
 	}
 
     return 0;

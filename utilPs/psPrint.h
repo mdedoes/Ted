@@ -193,7 +193,8 @@ typedef struct PrintingState
 				 * The number of dictionaries that we created.
 				 * This is used to get unique dictionary names.
 				 * For the sake of understandability, the names
-				 * hold a little mode than the unique number.
+				 * hold a little more than the unique number.
+				 * Values are unique over the document.
 				 */
     int				psDictionaryNameCount;
 
@@ -272,9 +273,11 @@ typedef struct StructItem
 			    /**
 			     *  The content id (MCID) of the marked 
 			     *  content that matches this StructItem
-			     *  Only used in leaves.
+			     *  Only used in leaves. Values must be unique
+			     *  per ContentStream (= Page in our case)
 			     */
     int			siContentId;
+
 			    /**
 			     *  True if this StructItem is a leaf in the tree.
 			     */
@@ -418,12 +421,7 @@ extern int psDestPdfmark(	PrintingState *			ps,
 				int				lineTop,
 				const struct MemoryBuffer *	mbRef );
 
-extern int psEmitDestPdfmark(	struct SimpleOutputStream *	sos,
-				const AffineTransform2D *	at,
-				int				lineTop,
-				const struct MemoryBuffer *	mbRef );
-
-extern void psTransformMatrix(		struct SimpleOutputStream *		sos,
+extern void psTransformMatrix(		struct SimpleOutputStream *	sos,
 					const AffineTransform2D *	at );
 
 extern void psFillRectangle(		PrintingState *		ps,
@@ -494,10 +492,6 @@ extern int psSetPageProperty(	PrintingState *			ps,
 extern int psSetCatalogProperty( PrintingState *		ps,
 				const char *			key,
 				const char *			value );
-
-extern int psPdfMarkPosition(	PrintingState *			ps,
-				const char *			structureType,
-				int				contentId );
 
 extern int psPdfBeginMarkedContent( PrintingState *		ps,
 				const char *			structureType,

@@ -200,7 +200,8 @@ int docPsPrintBeginFigure(
 	    { LDEB(1); return -1;	}
 
 	if  ( psPdfBeginMarkedFigure( ps,
-	      structItem->siStructureType, structItem->siContentId,
+	      structItem->siStructureType,
+	      structItem->siContentId,
 	      drTwips, &(io->ioAltText) ) )
 	    { LDEB(1); return -1;	}
 

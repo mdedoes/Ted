@@ -478,6 +478,24 @@ int docUpdDocumentProperties(	PropertyMask *			pDoneMask,
     return 0;
     }
 
+static int docEqualPropertyBuffers(	DocumentProperties *	dp1,
+					DocumentProperties *	dp2,
+					int			prop )
+	{
+	const MemoryBuffer *	from;
+	MemoryBuffer *		to;
+
+	from= docGetDocumentPropertyBuffer( dp1, prop );
+	to= docGetDocumentPropertyBuffer( dp2, prop );
+
+	if  ( from == (MemoryBuffer *)0 && to == (MemoryBuffer *)0 )
+	    { return 1;	}
+	if  ( from == (MemoryBuffer *)0 || to == (MemoryBuffer *)0 )
+	    { return 0;	}
+
+	return utilEqualMemoryBuffer( to, from );
+	}
+
 void docDocumentPropertyDifference(
 				PropertyMask *			pDifMask,
 				const DocumentProperties *	dp1,
@@ -510,15 +528,10 @@ void docDocumentPropertyDifference(
 
 	if  ( PROPmaskISSET( cmpMask, prop ) )
 	    {
-	    const MemoryBuffer *	from;
-	    MemoryBuffer *		to;
-
-	    from= docGetDocumentPropertyBuffer(
-					(DocumentProperties *)dp1, prop );
-	    to= docGetDocumentPropertyBuffer(
-					(DocumentProperties *)dp2, prop );
-
-	    if  ( ! utilEqualMemoryBuffer( to, from ) )
+	    if  ( ! docEqualPropertyBuffers(
+					(DocumentProperties *)dp1,
+					(DocumentProperties *)dp2,
+					prop ) )
 		{ PROPmaskADD( &dpDifMask, prop );	}
 	    }
 	}

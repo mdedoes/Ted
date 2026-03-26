@@ -48,7 +48,7 @@ CFLAGS=	\
 
 #CFLAGS= -g -O2 $(WFLAGS) $(X_CFLAGS) $(INCLUDES)
 
-# 64!!obs
+# 62!!obs
 OBS	=	\
 		bmxwd.o\
 		bmxpm.o\
@@ -61,10 +61,8 @@ OBS	=	\
 		bmtogray.o\
 		bmtiff.o\
 		bmthreshold.o\
-		bmTextureMap.o\
 		bmsqueeze.o\
 		bmselect.o\
-		bmSegments.o\
 		bmrtf.o\
 		bmreduce.o\
 		bmputrow.o\
@@ -315,32 +313,6 @@ bmObjectReader.o: \
     ../include/appDebug.h \
     ../include/appDebugon.h \
     bmObjectReader.c
-
-bmSegments.o: \
-    ../appUtil/utilColor.h \
-    ../appUtil/utilPalette.h \
-    bitmapConfig.h \
-    bitmap.h \
-    bmintern.h \
-    bmSegments.h \
-    ../include/appDebug.h \
-    ../include/appDebugon.h \
-    ../utilGeo/geoRectangle.h \
-    bmSegments.c
-
-bmTextureMap.o: \
-    ../appUtil/utilColor.h \
-    ../appUtil/utilPalette.h \
-    bitmapConfig.h \
-    bitmap.h \
-    bmcolor.h \
-    bmgetrow.h \
-    bmintern.h \
-    bmputrow.h \
-    bmRender.h \
-    ../include/appDebug.h \
-    ../include/appDebugon.h \
-    bmTextureMap.c
 
 bmWebSafe.o: \
     ../appUtil/utilColor.h \
